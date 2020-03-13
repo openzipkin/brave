@@ -14,8 +14,6 @@
 package brave.propagation;
 
 import brave.internal.Platform;
-import java.util.Arrays;
-import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -31,7 +29,6 @@ import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentI
 import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentIdAsBytes;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.powermock.api.mockito.PowerMockito.mock;
@@ -189,29 +186,29 @@ public class B3SingleFormatTest {
       .isSameAs(SamplingFlags.DEBUG);
   }
 
-  @Test public void parseB3SingleFormat_middleOfString_incorrectOffset() {
+  @Test public void parseB3SingleFormat_middleOfString_incorrectIndex() {
     String input = "b2=foo,b3=d,b4=bar";
     assertThat(parseB3SingleFormat(input, 10, 12))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: truncated", null);
+    verify(platform).log("Invalid input: only valid characters are lower-hex and hyphen", null);
   }
 
-  @Test public void parseB3SingleFormat_idsNotYetSampled() {
+  @Test public void parseB3SingleFormat_spanIdsNotYetSampled() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId).context())
       .isEqualToComparingFieldByField(
         TraceContext.newBuilder().traceId(1).spanId(3).build()
       );
   }
 
-  @Test public void parseB3SingleFormat_idsNotYetSampled128() {
+  @Test public void parseB3SingleFormat_spanIdsNotYetSampled128() {
     assertThat(parseB3SingleFormat(traceId + traceId + "-" + spanId).context())
       .isEqualToComparingFieldByField(
         TraceContext.newBuilder().traceIdHigh(1).traceId(1).spanId(3).build()
       );
   }
 
-  @Test public void parseB3SingleFormat_idsUnsampled() {
+  @Test public void parseB3SingleFormat_spanIdsUnsampled() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-0").context())
       .isEqualToComparingFieldByField(
         TraceContext.newBuilder().traceId(1).spanId(3).sampled(false).build()
@@ -232,7 +229,15 @@ public class B3SingleFormatTest {
       );
   }
 
-  @Test public void parseB3SingleFormat_idsWithDebug() {
+  // odd but possible to not yet sample a child
+  @Test public void parseB3SingleFormat_parentid_notYetSampled() {
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-" + parentId).context())
+      .isEqualToComparingFieldByField(
+        TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).build()
+      );
+  }
+
+  @Test public void parseB3SingleFormat_spanIdsWithDebug() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-d").context())
       .isEqualToComparingFieldByField(
         TraceContext.newBuilder().traceId(1).spanId(3).debug(true).build()
@@ -249,85 +254,59 @@ public class B3SingleFormatTest {
       .isEqualTo(TraceContextOrSamplingFlags.SAMPLED);
   }
 
-  @Test public void parseB3SingleFormat_ascii() {
-    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-💩"))
-      .isNull(); // instead of crashing
-
-    verify(platform)
-      .log("Invalid input: non-ASCII character at offset {0}", 34, null);
-  }
-
-  @Test public void parseB3SingleFormat_sampledCorrupt() {
-    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-y"))
-      .isNull(); // instead of crashing
-
-    verify(platform)
-      .log("Invalid input: expected 0, 1 or d for sampled at offset {0}", 34, null);
-  }
-
   @Test public void parseB3SingleFormat_debug() {
     assertThat(parseB3SingleFormat("d"))
       .isEqualTo(TraceContextOrSamplingFlags.DEBUG);
   }
 
-  @Test public void parseB3SingleFormat_malformed_traceId() {
-    assertThat(parseB3SingleFormat(traceId.substring(0, 15) + "?-" + spanId))
-      .isNull(); // instead of raising exception
-
-    verify(platform).log("Invalid input: expected a 16 or 32 lower hex trace ID at offset 0", null);
-  }
-
-  @Test public void parseB3SingleFormat_malformed_id() {
-    assertThat(parseB3SingleFormat(traceId + "-" + spanId.substring(0, 15) + "?"))
-      .isNull(); // instead of raising exception
-
-    verify(platform).log("Invalid input: expected a 16 lower hex span ID at offset {0}", 17, null);
-  }
-
-  @Test public void parseB3SingleFormat_malformed_sampled_parentid() {
-    assertThat(
-      parseB3SingleFormat(traceId + "-" + spanId + "-1-" + parentId.substring(0, 15) + "?"))
-      .isNull(); // instead of raising exception
-
-    verify(platform).log("Invalid input: expected a 16 lower hex parent ID at offset {0}", 36,
-      null);
-  }
-
-  @Test public void parseB3SingleFormat_malformed_invalid_delimiter_before_parent() {
-    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-1!" + parentId))
-      .isNull(); // instead of raising exception
-
-    verify(platform).log("Invalid input: expected a hyphen(-) delimiter at offset {0}", 35, null);
-  }
-
-  // odd but possible to not yet sample a child
-  @Test public void parseB3SingleFormat_parentid_notYetSampled() {
-    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-" + parentId).context())
-      .isEqualToComparingFieldByField(
-        TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).build()
-      );
-  }
-
-  @Test public void parseB3SingleFormat_malformed_parentid_notYetSampled() {
-    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-" + parentId.substring(0, 15) + "?"))
-      .isNull(); // instead of raising exception
-
-    verify(platform).log("Invalid input: expected a 16 lower hex parent ID at offset {0}", 34,
-      null);
+  /** This tests that the being index is inclusive and the end index is exclusive */
+  @Test public void parseB3SingleFormat_ignoresBeforeAndAfter() {
+    String encoded = traceId + "-" + spanId;
+    String sequence = "??" + encoded + "??";
+    assertThat(parseB3SingleFormat(sequence, 2, 2 + encoded.length()))
+      .isEqualToComparingFieldByField(parseB3SingleFormat(encoded));
   }
 
   @Test public void parseB3SingleFormat_malformed() {
     assertThat(parseB3SingleFormat("not-a-tumor"))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: truncated", null);
+    verify(platform).log("Invalid input: only valid characters are lower-hex and hyphen", null);
+  }
+
+  @Test public void parseB3SingleFormat_malformed_notAscii() {
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-💩"))
+      .isNull(); // instead of crashing
+
+    verify(platform).log("Invalid input: only valid characters are lower-hex and hyphen", null);
   }
 
   @Test public void parseB3SingleFormat_malformed_uuid() {
     assertThat(parseB3SingleFormat("b970dafd-0d95-40aa-95d8-1d8725aebe40"))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: expected a 16 or 32 lower hex trace ID at offset 0", null);
+    verify(platform).log("Invalid input: more than 4 fields exist", null);
+  }
+
+  @Test public void parseB3SingleFormat_malformed_hyphenForSampled() {
+    assertThat(parseB3SingleFormat("-")).isNull();
+
+    verify(platform).log("Invalid input: expected 0, 1 or d for sampled", null);
+  }
+
+  @Test public void parseB3SingleFormat_too_many_fields() {
+    assertThat(
+      parseB3SingleFormat(traceId + "-" + spanId + "-1-" + parentId + "-"))
+      .isNull(); // instead of raising exception
+
+    verify(platform).log("Invalid input: more than 4 fields exist", null);
+  }
+
+  @Test public void parseB3SingleFormat_sampledCorrupt() {
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-f"))
+      .isNull(); // instead of crashing
+
+    verify(platform).log("Invalid input: expected 0, 1 or d for sampled", null);
   }
 
   @Test public void parseB3SingleFormat_empty() {
@@ -336,51 +315,117 @@ public class B3SingleFormatTest {
     verify(platform).log("Invalid input: empty", null);
   }
 
-  @Test public void parseB3SingleFormat_hyphenNotSampled() {
-    assertThat(parseB3SingleFormat("-")).isNull();
+  @Test public void parseB3SingleFormat_empty_traceId() {
+    assertThat(parseB3SingleFormat("-234567812345678-" + spanId))
+      .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: expected 0, 1 or d for sampled at offset {0}", 0, null);
+    verify(platform).log("Invalid input: expected a 16 or 32 lower hex trace ID", null);
   }
 
-  @Test public void parseB3SingleFormat_truncated() {
-    List<String> truncated = Arrays.asList(
-      "-1",
-      "1-",
-      traceId.substring(0, 15),
-      traceId,
-      traceId + "-",
-      traceId.substring(0, 15) + "-" + spanId,
-      traceId + "-" + spanId.substring(0, 15),
-      traceId + "-" + spanId + "-",
-      traceId + "-" + spanId + "-1-",
-      traceId + "-" + spanId + "-1-" + parentId.substring(0, 15)
-    );
-    for (String b3 : truncated) {
-      assertThat(parseB3SingleFormat(b3))
-        .withFailMessage("expected " + b3 + " to not parse").isNull();
-      verify(platform).log("Invalid input: truncated", null);
-      reset(platform);
-    }
+  @Test public void parseB3SingleFormat_empty_spanId() {
+    assertThat(parseB3SingleFormat(traceId + "--"))
+      .isNull(); // instead of raising exception
+
+    verify(platform).log("Invalid input: empty {0}", "span ID", null);
+  }
+
+  @Test public void parseB3SingleFormat_empty_spanId_with_parent() {
+    assertThat(parseB3SingleFormat(traceId + "--" + parentId))
+      .isNull(); // instead of raising exception
+
+    verify(platform).log("Invalid input: empty {0}", "span ID", null);
+  }
+
+  /** We don't know if the intent was a sampled flag or a parent ID, but less logic to pick one. */
+  @Test public void parseB3SingleFormat_empty_after_spanId() {
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-"))
+      .isNull(); // instead of raising exception
+
+    verify(platform).log("Invalid input: empty {0}", "sampled", null);
+  }
+
+  @Test public void parseB3SingleFormat_empty_sampled_with_parentId() {
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "--" + parentId))
+      .isNull(); // instead of raising exception
+
+    verify(platform).log("Invalid input: empty {0}", "sampled", null);
+  }
+
+  @Test public void parseB3SingleFormat_empty_parent_after_sampled() {
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-d-"))
+      .isNull(); // instead of raising exception
+
+    verify(platform).log("Invalid input: empty {0}", "parent ID", null);
+  }
+
+  @Test public void parseB3SingleFormat_truncated_traceId() {
+    assertThat(parseB3SingleFormat("1-" + spanId))
+      .isNull(); // instead of raising exception
+
+    verify(platform).log("Invalid input: expected a 16 or 32 lower hex trace ID", null);
+  }
+
+  @Test public void parseB3SingleFormat_truncated_traceId128() {
+    assertThat(parseB3SingleFormat(traceIdHigh.substring(0, 15) + traceId + "-" + spanId))
+      .isNull(); // instead of raising exception
+
+    verify(platform).log("Invalid input: expected a 16 or 32 lower hex trace ID", null);
+  }
+
+  @Test public void parseB3SingleFormat_truncated_spanId() {
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId.substring(0, 15)))
+      .isNull(); // instead of raising exception
+
+    verify(platform).log("Truncated reading {0}", "span ID", null);
+  }
+
+  @Test public void parseB3SingleFormat_truncated_parentId() {
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-" + parentId.substring(0, 15)))
+      .isNull(); // instead of raising exception
+
+    verify(platform).log("Truncated reading {0}", "parent ID", null);
+  }
+
+  @Test public void parseB3SingleFormat_truncated_parentId_after_sampled() {
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-1-" + parentId.substring(0, 15)))
+      .isNull(); // instead of raising exception
+
+    verify(platform).log("Truncated reading {0}", "parent ID", null);
   }
 
   @Test public void parseB3SingleFormat_traceIdTooLong() {
     assertThat(parseB3SingleFormat(traceId + traceId + "a" + "-" + spanId))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: trace ID is too long", null);
+    verify(platform).log("Invalid input: expected a 16 or 32 lower hex trace ID", null);
   }
 
   @Test public void parseB3SingleFormat_spanIdTooLong() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "a"))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: span ID is too long", null);
+    verify(platform).log("Invalid input: {0} is too long", "span ID", null);
+  }
+
+  /** Sampled too long without parent looks the same as a truncated parent ID */
+  @Test public void parseB3SingleFormat_sampledTooLong() {
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-11-" + parentId))
+      .isNull(); // instead of raising exception
+
+    verify(platform).log("Invalid input: {0} is too long", "sampled", null);
   }
 
   @Test public void parseB3SingleFormat_parentIdTooLong() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-" + parentId + "a"))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: parent ID is too long", null);
+    verify(platform).log("Invalid input: {0} is too long", "parent ID", null);
+  }
+
+  @Test public void parseB3SingleFormat_parentIdTooLong_afterSampled() {
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-1-" + parentId + "a"))
+      .isNull(); // instead of raising exception
+
+    verify(platform).log("Invalid input: {0} is too long", "parent ID", null);
   }
 }

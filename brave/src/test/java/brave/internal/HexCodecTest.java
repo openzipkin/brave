@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,6 +15,7 @@ package brave.internal;
 
 import org.junit.Test;
 
+import static brave.internal.HexCodec.lenientLowerHexToUnsignedLong;
 import static brave.internal.HexCodec.lowerHexToUnsignedLong;
 import static brave.internal.HexCodec.toLowerHex;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,6 +28,22 @@ public class HexCodecTest {
   public void lowerHexToUnsignedLong_downgrades128bitIdsByDroppingHighBits() {
     assertThat(lowerHexToUnsignedLong("463ac35c9f6413ad48485a3953bb6124"))
       .isEqualTo(lowerHexToUnsignedLong("48485a3953bb6124"));
+  }
+
+  /** This tests that the being index is inclusive and the end index is exclusive */
+  @Test
+  public void lenientLowerHexToUnsignedLong_ignoresBeforeAndAfter() {
+    // intentionally shorter than 16 characters
+    lenientLowerHexToUnsignedLong_ignoresBeforeAndAfter("12345678");
+    // exactly 16 characters
+    lenientLowerHexToUnsignedLong_ignoresBeforeAndAfter("1234567812345678");
+  }
+
+  void lenientLowerHexToUnsignedLong_ignoresBeforeAndAfter(String encoded) {
+    String sequence = "??" + encoded + "??";
+    assertThat(lenientLowerHexToUnsignedLong(sequence, 2, 2 + encoded.length()))
+      .isEqualTo(lowerHexToUnsignedLong(encoded))
+      .isEqualTo(Long.parseUnsignedLong(encoded, 16));
   }
 
   @Test

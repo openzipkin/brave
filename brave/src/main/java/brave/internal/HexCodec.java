@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -33,19 +33,36 @@ public final class HexCodec {
   /**
    * Parses a 16 character lower-hex string with no prefix into an unsigned long, starting at the
    * specified index.
+   *
+   * <p>This reads a trace context a sequence potentially larger than the format. The use-case is
+   * reducing garbage, by re-using the input {@code value} across multiple parse operations.
+   *
+   * @param value the sequence that contains a lower-hex encoded unsigned long.
+   * @param beginIndex the inclusive begin index: {@linkplain CharSequence#charAt(int) index} of the
+   * first lower-hex character representing the unsigned long.
    */
-  public static long lowerHexToUnsignedLong(CharSequence lowerHex, int index) {
-    int endIndex = Math.min(index + 16, lowerHex.length());
-    long result = lenientLowerHexToUnsignedLong(lowerHex, index, endIndex);
-    if (result == 0) throw isntLowerHexLong(lowerHex);
+  public static long lowerHexToUnsignedLong(CharSequence value, int beginIndex) {
+    int endIndex = Math.min(beginIndex + 16, value.length());
+    long result = lenientLowerHexToUnsignedLong(value, beginIndex, endIndex);
+    if (result == 0) throw isntLowerHexLong(value);
     return result;
   }
 
-  /** Like {@link #lowerHexToUnsignedLong(CharSequence, int)}, but returns zero on invalid input */
-  public static long lenientLowerHexToUnsignedLong(CharSequence lowerHex, int index, int endIndex) {
+  /**
+   * Like {@link #lowerHexToUnsignedLong(CharSequence, int)}, but returns zero on invalid input.
+   *
+   * @param value the sequence that contains a lower-hex encoded unsigned long.
+   * @param beginIndex the inclusive begin index: {@linkplain CharSequence#charAt(int) index} of the
+   * first lower-hex character representing the unsigned long.
+   * @param endIndex the exclusive end index: {@linkplain CharSequence#charAt(int) index}
+   * <em>after</em> the last lower-hex character representing the unsigned long.
+   */
+  public static long lenientLowerHexToUnsignedLong(CharSequence value, int beginIndex,
+    int endIndex) {
     long result = 0;
-    while (index < endIndex) {
-      char c = lowerHex.charAt(index++);
+    int pos = beginIndex;
+    while (pos < endIndex) {
+      char c = value.charAt(pos++);
       result <<= 4;
       if (c >= '0' && c <= '9') {
         result |= c - '0';
