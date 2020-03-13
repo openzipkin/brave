@@ -214,7 +214,7 @@ public final class B3SingleFormat {
     int flags = 0;
     long parentId = 0L;
     if (endIndex > pos) {
-      pos++; // consume the delimiter
+      pos++; // consume the hyphen
 
       if (endIndex == pos) { // traceid-spanid-
         Platform.get().log("Truncated after reading span ID", null);
