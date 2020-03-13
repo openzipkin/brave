@@ -181,7 +181,7 @@ public final class B3SingleFormat {
       }
     }
 
-    if (hyphenCount < 1) {
+    if (indexOfFirstHyphen == -1) {
       Platform.get().log("Truncated reading trace ID", null);
       return null;
     } else if (hyphenCount > 3) {
@@ -203,47 +203,33 @@ public final class B3SingleFormat {
       return null;
     }
 
-    traceId = tryParseId("trace", value, pos, endIndex);
+    traceId = tryParseHex("trace ID", value, pos, endIndex);
     if (traceId == 0) return null;
     pos += 17; // lower 64 bits of the trace ID and the hyphen
 
-    long spanId = tryParseId("span", value, pos, endIndex);
+    long spanId = tryParseHex("span ID", value, pos, endIndex);
     if (spanId == 0) return null;
     pos += 16; // spanid
 
     int flags = 0;
     long parentId = 0L;
-    if (endIndex > pos) {
+    if (hyphenCount > 1) { // traceid-spanid-
       pos++; // consume the hyphen
 
-      if (endIndex == pos) { // traceid-spanid-
-        Platform.get().log("Truncated after reading span ID", null);
-        return null;
-      }
-
-      char nextChar = value.charAt(pos);
-      if (nextChar == '-') { // traceid-spanid--...
-        Platform.get().log("Invalid input: empty sampled field", null);
-        return null;
-      }
-
-      // At this point, we are either at the sampling field, or first character of the parentId
-      int nextPos = pos + 1;
-      boolean hasSampledAndParent = hyphenCount == 3;
-      if (nextPos == endIndex || hasSampledAndParent) {
-        flags = parseSampledFlags(nextChar);
-        pos++; // consume the sampled field
+      if (hyphenCount == 3) { // we should parse sampled AND parent ID
+        flags = tryParseSampledFlags(value, endIndex, pos);
         if (flags == 0) return null;
-        if (hasSampledAndParent && value.charAt(pos++) != '-') {
-          Platform.get().log("Invalid input: sampled is too long", null);
-          return null;
-        }
-      }
-
-      if (endIndex > nextPos) {
-        // If we are at this point, we should have a parent ID, encoded as "[0-9a-f]{16}"
-        parentId = tryParseId("parent", value, pos, endIndex);
+        pos += 2; // consume the sampled flag and hyphen
+        parentId = tryParseParentId(value, endIndex, pos);
         if (parentId == 0L) return null;
+      } else { // we should parse sampled OR parent ID
+        if (endIndex - pos <= 1) {
+          flags = tryParseSampledFlags(value, endIndex, pos);
+          if (flags == 0) return null;
+        } else {
+          parentId = tryParseParentId(value, endIndex, pos);
+          if (parentId == 0L) return null;
+        }
       }
     }
 
@@ -258,26 +244,41 @@ public final class B3SingleFormat {
     ));
   }
 
-  /** Returns zero if truncated, malformed, or too big after logging */
-  static long tryParseId(String name, CharSequence value, int beginIndex, int endIndex) {
-    int endOfId = beginIndex + 16;
-    if (beginIndex == endIndex || value.charAt(beginIndex) == '-') {
-      Platform.get().log("Invalid input: empty {0} ID", name, null);
-      return 0L;
-    } else if (endIndex < endOfId) {
-      Platform.get().log("Truncated reading {0} ID", name, null);
-      return 0L;
-    } else if (endIndex > endOfId && value.charAt(endOfId) != '-') {
-      Platform.get().log("Invalid input: {0} ID is too long", name, null);
-      return 0L;
-    }
+  static int tryParseSampledFlags(CharSequence value, int endIndex, int pos) {
+    if (!validateFieldLength("sampled", 1, value, pos, endIndex)) return 0;
+    return parseSampledFlags(value.charAt(pos));
+  }
 
-    long id = lenientLowerHexToUnsignedLong(value, beginIndex, endOfId);
+  static long tryParseParentId(CharSequence value, int endIndex, int pos) {
+    return tryParseHex("parent ID", value, pos, endIndex);
+  }
+
+  /** Returns zero if truncated, malformed, or too big after logging */
+  static long tryParseHex(String name, CharSequence value, int beginIndex, int endIndex) {
+    if (!validateFieldLength(name, 16, value, beginIndex, endIndex)) return 0L;
+
+    long id = lenientLowerHexToUnsignedLong(value, beginIndex, beginIndex + 16);
     if (id != 0L) return id;
 
     // If we got here, we either read 16 zeroes or a mix of hyphens and hex.
-    Platform.get().log("Invalid input: expected a lower hex {0} ID", name, null);
+    Platform.get().log("Invalid input: expected a lower hex {0}", name, null);
     return 0L;
+  }
+
+  static boolean validateFieldLength(String name, int length, CharSequence value, int beginIndex,
+    int endIndex) {
+    int endOfId = beginIndex + length;
+    if (beginIndex == endIndex || value.charAt(beginIndex) == '-') {
+      Platform.get().log("Invalid input: empty {0}", name, null);
+      return false;
+    } else if (endIndex < endOfId) {
+      Platform.get().log("Truncated reading {0}", name, null);
+      return false;
+    } else if (endIndex > endOfId && value.charAt(endOfId) != '-') {
+      Platform.get().log("Invalid input: {0} is too long", name, null);
+      return false;
+    }
+    return true;
   }
 
   static TraceContextOrSamplingFlags tryParseSamplingFlags(char sampledChar) {

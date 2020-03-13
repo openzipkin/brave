@@ -326,36 +326,36 @@ public class B3SingleFormatTest {
     assertThat(parseB3SingleFormat(traceId + "--"))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: empty {0} ID", "span", null);
+    verify(platform).log("Invalid input: empty {0}", "span ID", null);
   }
 
   @Test public void parseB3SingleFormat_empty_spanId_with_parent() {
     assertThat(parseB3SingleFormat(traceId + "--" + parentId))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: empty {0} ID", "span", null);
+    verify(platform).log("Invalid input: empty {0}", "span ID", null);
   }
 
-  /** We say truncated as we don't know if the intent was a sampled flag or a parent ID */
+  /** We don't know if the intent was a sampled flag or a parent ID, but less logic to pick one. */
   @Test public void parseB3SingleFormat_empty_after_spanId() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-"))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Truncated after reading span ID", null);
+    verify(platform).log("Invalid input: empty {0}", "sampled", null);
   }
 
   @Test public void parseB3SingleFormat_empty_sampled_with_parentId() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "--" + parentId))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: empty sampled field", null);
+    verify(platform).log("Invalid input: empty {0}", "sampled", null);
   }
 
   @Test public void parseB3SingleFormat_empty_parent_after_sampled() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-d-"))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: empty {0} ID", "parent", null);
+    verify(platform).log("Invalid input: empty {0}", "parent ID", null);
   }
 
   @Test public void parseB3SingleFormat_truncated_traceId() {
@@ -376,21 +376,21 @@ public class B3SingleFormatTest {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId.substring(0, 15)))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Truncated reading {0} ID", "span", null);
+    verify(platform).log("Truncated reading {0}", "span ID", null);
   }
 
   @Test public void parseB3SingleFormat_truncated_parentId() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-" + parentId.substring(0, 15)))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Truncated reading {0} ID", "parent", null);
+    verify(platform).log("Truncated reading {0}", "parent ID", null);
   }
 
   @Test public void parseB3SingleFormat_truncated_parentId_after_sampled() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-1-" + parentId.substring(0, 15)))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Truncated reading {0} ID", "parent", null);
+    verify(platform).log("Truncated reading {0}", "parent ID", null);
   }
 
   @Test public void parseB3SingleFormat_traceIdTooLong() {
@@ -404,7 +404,7 @@ public class B3SingleFormatTest {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "a"))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: {0} ID is too long", "span", null);
+    verify(platform).log("Invalid input: {0} is too long", "span ID", null);
   }
 
   /** Sampled too long without parent looks the same as a truncated parent ID */
@@ -412,20 +412,20 @@ public class B3SingleFormatTest {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-11-" + parentId))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: sampled is too long", null);
+    verify(platform).log("Invalid input: {0} is too long", "sampled", null);
   }
 
   @Test public void parseB3SingleFormat_parentIdTooLong() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-" + parentId + "a"))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: {0} ID is too long", "parent", null);
+    verify(platform).log("Invalid input: {0} is too long", "parent ID", null);
   }
 
   @Test public void parseB3SingleFormat_parentIdTooLong_afterSampled() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-1-" + parentId + "a"))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: {0} ID is too long", "parent", null);
+    verify(platform).log("Invalid input: {0} is too long", "parent ID", null);
   }
 }
