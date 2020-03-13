@@ -13,12 +13,12 @@
  */
 package brave.propagation;
 
-import brave.internal.HexCodec;
 import brave.internal.Nullable;
 import brave.internal.Platform;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 
+import static brave.internal.HexCodec.lenientLowerHexToUnsignedLong;
 import static brave.internal.HexCodec.writeHexLong;
 import static brave.internal.InternalPropagation.FLAG_DEBUG;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
@@ -68,19 +68,19 @@ public final class B3SingleFormat {
    * with the client.
    */
   public static String writeB3SingleFormatWithoutParentId(TraceContext context) {
-    char[] buffer = getCharBuffer();
-    int length = writeB3SingleFormat(context, 0L, buffer);
-    return new String(buffer, 0, length);
+    char[] value = getCharBuffer();
+    int length = writeB3SingleFormat(context, 0L, value);
+    return new String(value, 0, length);
   }
 
   /**
    * Like {@link #writeB3SingleFormatWithoutParentId(TraceContext)}, but for carriers with byte
-   * array or byte buffer values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
+   * array or byte value values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
    */
   public static byte[] writeB3SingleFormatWithoutParentIdAsBytes(TraceContext context) {
-    char[] buffer = getCharBuffer();
-    int length = writeB3SingleFormat(context, 0L, buffer);
-    return asciiToNewByteArray(buffer, length);
+    char[] value = getCharBuffer();
+    int length = writeB3SingleFormat(context, 0L, value);
+    return asciiToNewByteArray(value, length);
   }
 
   /**
@@ -92,19 +92,19 @@ public final class B3SingleFormat {
    * reuses a client's span ID, prefer {@link #writeB3SingleFormatWithoutParentId(TraceContext)}.
    */
   public static String writeB3SingleFormat(TraceContext context) {
-    char[] buffer = getCharBuffer();
-    int length = writeB3SingleFormat(context, context.parentIdAsLong(), buffer);
-    return new String(buffer, 0, length);
+    char[] value = getCharBuffer();
+    int length = writeB3SingleFormat(context, context.parentIdAsLong(), value);
+    return new String(value, 0, length);
   }
 
   /**
-   * Like {@link #writeB3SingleFormat(TraceContext)}, but for carriers with byte array or byte
-   * buffer values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
+   * Like {@link #writeB3SingleFormat(TraceContext)}, but for carriers with byte array or byte value
+   * values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
    */
   public static byte[] writeB3SingleFormatAsBytes(TraceContext context) {
-    char[] buffer = getCharBuffer();
-    int length = writeB3SingleFormat(context, context.parentIdAsLong(), buffer);
-    return asciiToNewByteArray(buffer, length);
+    char[] value = getCharBuffer();
+    int length = writeB3SingleFormat(context, context.parentIdAsLong(), value);
+    return asciiToNewByteArray(value, length);
   }
 
   static int writeB3SingleFormat(TraceContext context, long parentId, char[] result) {
@@ -135,106 +135,114 @@ public final class B3SingleFormat {
   }
 
   @Nullable
-  public static TraceContextOrSamplingFlags parseB3SingleFormat(CharSequence b3) {
-    return parseB3SingleFormat(b3, 0, b3.length());
+  public static TraceContextOrSamplingFlags parseB3SingleFormat(CharSequence value) {
+    return parseB3SingleFormat(value, 0, value.length());
   }
 
   /**
-   * @param beginIndex the start index, inclusive
-   * @param endIndex the end index, exclusive
+   * This reads a trace context a sequence potentially larger than the format. The use-case is
+   * reducing garbage, by re-using the input {@code value} across multiple parse operations.
+   *
+   * @param value the sequence that contains a B3 single formatted trace context
+   * @param beginIndex the inclusive begin index: {@linkplain CharSequence#charAt(int) index} of the
+   * first character in B3 single format.
+   * @param endIndex the exclusive end index: {@linkplain CharSequence#charAt(int) index}
+   * <em>after</em> the last character in B3 single format.
    */
   @Nullable
-  public static TraceContextOrSamplingFlags parseB3SingleFormat(CharSequence b3, int beginIndex,
+  public static TraceContextOrSamplingFlags parseB3SingleFormat(CharSequence value, int beginIndex,
     int endIndex) {
-    if (beginIndex == endIndex) {
+    int length = endIndex - beginIndex;
+
+    if (length == 0) {
       Platform.get().log("Invalid input: empty", null);
       return null;
-    }
-
-    int pos = beginIndex;
-    if (pos + 1 == endIndex) { // possibly sampling flags
-      return tryParseSamplingFlags(b3, pos);
-    }
-
-    // At this point we minimally expect a traceId-spanId pair
-    if (endIndex < 16 + 1 + 16 /* traceid64-spanid */) {
-      Platform.get().log("Invalid input: truncated", null);
-      return null;
-    } else if (endIndex > FORMAT_MAX_LENGTH) {
+    } else if (length == 1) { // possibly sampling flags
+      return tryParseSamplingFlags(value.charAt(beginIndex));
+    } else if (length > FORMAT_MAX_LENGTH) {
       Platform.get().log("Invalid input: too long", null);
       return null;
     }
 
-    // Cheaply check for only ASCII characters. This allows for more precise messages later, but
-    // kicks out early on data such as unicode.
+    // This initial scan helps simplify other parsing logic by constraining the amount of characters
+    // they need to consider, and if there are not enough or too many fields.
+    int hyphenCount = 0;
+    int indexOfFirstHyphen = -1;
     for (int i = beginIndex; i < endIndex; i++) {
-      if (b3.charAt(i) >= 128) {
-        Platform.get().log("Invalid input: non-ASCII character at offset {0}", i, null);
+      char c = value.charAt(i);
+      if (c == '-') {
+        if (indexOfFirstHyphen == -1) {
+          indexOfFirstHyphen = i;
+        }
+        hyphenCount++;
+      } else if ((c < '0' || c > '9') && (c < 'a' || c > 'f')) {
+        Platform.get().log("Invalid input: only valid characters are lower-hex and hyphen", null);
         return null;
       }
     }
 
+    if (hyphenCount < 1) {
+      Platform.get().log("Truncated reading trace ID", null);
+      return null;
+    } else if (hyphenCount > 3) {
+      Platform.get().log("Invalid input: more than 4 fields exist", null);
+      return null;
+    }
+
+    int pos = beginIndex;
+
     long traceIdHigh, traceId;
-    if (b3.charAt(pos + 32) == '-') {
-      traceIdHigh = tryParse16HexCharacters(b3, pos, endIndex);
+    int traceIdLength = indexOfFirstHyphen - beginIndex;
+    if (traceIdLength == 32) {
+      traceIdHigh = lenientLowerHexToUnsignedLong(value, pos, pos + 16);
       pos += 16; // upper 64 bits of the trace ID
-      traceId = tryParse16HexCharacters(b3, pos, endIndex);
-    } else {
+    } else if (traceIdLength == 16) {
       traceIdHigh = 0L;
-      traceId = tryParse16HexCharacters(b3, pos, endIndex);
-    }
-    pos += 16; // traceId
-
-    if (traceIdHigh == 0L && traceId == 0L) {
-      Platform.get().log("Invalid input: expected a 16 or 32 lower hex trace ID at offset 0", null);
+    } else {
+      Platform.get().log("Invalid input: expected a 16 or 32 lower hex trace ID", null);
       return null;
     }
 
-    if (isLowerHex(b3.charAt(pos))) {
-      Platform.get().log("Invalid input: trace ID is too long", null);
-      return null;
-    }
+    traceId = tryParseId("trace", value, pos, endIndex);
+    if (traceId == 0) return null;
+    pos += 17; // lower 64 bits of the trace ID and the hyphen
 
-    if (!checkHyphen(b3, pos++)) return null;
-
-    long spanId = tryParse16HexCharacters(b3, pos, endIndex);
-    if (spanId == 0L) {
-      Platform.get().log("Invalid input: expected a 16 lower hex span ID at offset {0}", pos, null);
-      return null;
-    }
+    long spanId = tryParseId("span", value, pos, endIndex);
+    if (spanId == 0) return null;
     pos += 16; // spanid
 
     int flags = 0;
     long parentId = 0L;
     if (endIndex > pos) {
-      if (isLowerHex(b3.charAt(pos))) {
-        Platform.get().log("Invalid input: span ID is too long", null);
+      pos++; // consume the delimiter
+
+      if (endIndex == pos) { // traceid-spanid-
+        Platform.get().log("Truncated after reading span ID", null);
         return null;
       }
 
-      // If we are at this point, we have more than just traceId-spanId.
-      // If the sampling field is present, we'll have a delimiter 2 characters from now. Ex "-1"
-      // If it is absent, but a parent ID is (which is strange), we'll have at least 17 characters.
-      // Therefore, if we have less than two characters, the input is truncated.
-      if (endIndex == pos + 1) {
-        Platform.get().log("Invalid input: truncated", null);
+      char nextChar = value.charAt(pos);
+      if (nextChar == '-') { // traceid-spanid--...
+        Platform.get().log("Invalid input: empty sampled field", null);
         return null;
       }
-      if (!checkHyphen(b3, pos++)) return null;
 
-      // If our position is at the end of the string, or another delimiter is one character past our
-      // position, try to read sampled status.
-      boolean afterSampledField = notHexFollowsPos(b3, pos, endIndex);
-      if (endIndex == pos + 1 || afterSampledField) {
-        flags = parseFlags(b3, pos);
+      // At this point, we are either at the sampling field, or first character of the parentId
+      int nextPos = pos + 1;
+      boolean hasSampledAndParent = hyphenCount == 3;
+      if (nextPos == endIndex || hasSampledAndParent) {
+        flags = parseSampledFlags(nextChar);
+        pos++; // consume the sampled field
         if (flags == 0) return null;
-        pos++; // consume the sampled status
-        if (afterSampledField && !checkHyphen(b3, pos++)) return null; // consume the delimiter
+        if (hasSampledAndParent && value.charAt(pos++) != '-') {
+          Platform.get().log("Invalid input: sampled is too long", null);
+          return null;
+        }
       }
 
-      if (endIndex > pos || afterSampledField) {
+      if (endIndex > nextPos) {
         // If we are at this point, we should have a parent ID, encoded as "[0-9a-f]{16}"
-        parentId = tryParseParentId(b3, pos, endIndex);
+        parentId = tryParseId("parent", value, pos, endIndex);
         if (parentId == 0L) return null;
       }
     }
@@ -251,52 +259,41 @@ public final class B3SingleFormat {
   }
 
   /** Returns zero if truncated, malformed, or too big after logging */
-  static long tryParseParentId(CharSequence b3, int pos, int endIndex) {
-    if (endIndex < pos + 16) {
-      Platform.get().log("Invalid input: truncated", null);
+  static long tryParseId(String name, CharSequence value, int beginIndex, int endIndex) {
+    int endOfId = beginIndex + 16;
+    if (beginIndex == endIndex || value.charAt(beginIndex) == '-') {
+      Platform.get().log("Invalid input: empty {0} ID", name, null);
+      return 0L;
+    } else if (endIndex < endOfId) {
+      Platform.get().log("Truncated reading {0} ID", name, null);
+      return 0L;
+    } else if (endIndex > endOfId && value.charAt(endOfId) != '-') {
+      Platform.get().log("Invalid input: {0} ID is too long", name, null);
       return 0L;
     }
 
-    long parentId = tryParse16HexCharacters(b3, pos, endIndex);
-    if (parentId == 0L) {
-      Platform.get()
-        .log("Invalid input: expected a 16 lower hex parent ID at offset {0}", pos, null);
-      return 0L;
-    }
+    long id = lenientLowerHexToUnsignedLong(value, beginIndex, endOfId);
+    if (id != 0L) return id;
 
-    pos += 16;
-    if (endIndex != pos) {
-      Platform.get().log("Invalid input: parent ID is too long", null);
-      return 0L;
-    }
-    return parentId;
+    // If we got here, we either read 16 zeroes or a mix of hyphens and hex.
+    Platform.get().log("Invalid input: expected a lower hex {0} ID", name, null);
+    return 0L;
   }
 
-  static TraceContextOrSamplingFlags tryParseSamplingFlags(CharSequence b3, int pos) {
-    int flags = parseFlags(b3, pos);
+  static TraceContextOrSamplingFlags tryParseSamplingFlags(char sampledChar) {
+    int flags = parseSampledFlags(sampledChar);
     if (flags == 0) return null;
     return TraceContextOrSamplingFlags.create(SamplingFlags.toSamplingFlags(flags));
   }
 
-  static boolean checkHyphen(CharSequence b3, int pos) {
-    if (b3.charAt(pos) == '-') return true;
-    Platform.get().log("Invalid input: expected a hyphen(-) delimiter at offset {0}", pos, null);
+  static boolean checkHyphen(CharSequence value, int index) {
+    if (value.charAt(index) == '-') return true;
+    Platform.get().log("Invalid input: expected a hyphen(-) delimiter", null);
     return false;
   }
 
-  static boolean notHexFollowsPos(CharSequence b3, int pos, int end) {
-    return (end >= pos + 2) && !isLowerHex(b3.charAt(pos + 1));
-  }
-
-  static long tryParse16HexCharacters(CharSequence lowerHex, int index, int end) {
-    int endIndex = index + 16;
-    if (endIndex > end) return 0L;
-    return HexCodec.lenientLowerHexToUnsignedLong(lowerHex, index, endIndex);
-  }
-
-  static int parseFlags(CharSequence b3, int pos) {
+  static int parseSampledFlags(char sampledChar) {
     int flags;
-    char sampledChar = b3.charAt(pos);
     if (sampledChar == 'd') {
       flags = FLAG_SAMPLED_SET | FLAG_SAMPLED | FLAG_DEBUG;
     } else if (sampledChar == '1') {
@@ -304,20 +301,16 @@ public final class B3SingleFormat {
     } else if (sampledChar == '0') {
       flags = FLAG_SAMPLED_SET;
     } else {
-      logInvalidSampled(pos);
+      Platform.get().log("Invalid input: expected 0, 1 or d for sampled", null);
       flags = 0;
     }
     return flags;
   }
 
-  static void logInvalidSampled(int pos) {
-    Platform.get().log("Invalid input: expected 0, 1 or d for sampled at offset {0}", pos, null);
-  }
-
-  static byte[] asciiToNewByteArray(char[] buffer, int length) {
+  static byte[] asciiToNewByteArray(char[] value, int length) {
     byte[] result = new byte[length];
     for (int i = 0; i < length; i++) {
-      result[i] = (byte) buffer[i];
+      result[i] = (byte) value[i];
     }
     return result;
   }
@@ -325,16 +318,12 @@ public final class B3SingleFormat {
   static final ThreadLocal<char[]> CHAR_BUFFER = new ThreadLocal<>();
 
   static char[] getCharBuffer() {
-    char[] charBuffer = CHAR_BUFFER.get();
-    if (charBuffer == null) {
-      charBuffer = new char[FORMAT_MAX_LENGTH];
-      CHAR_BUFFER.set(charBuffer);
+    char[] result = CHAR_BUFFER.get();
+    if (result == null) {
+      result = new char[FORMAT_MAX_LENGTH];
+      CHAR_BUFFER.set(result);
     }
-    return charBuffer;
-  }
-
-  static boolean isLowerHex(char c) {
-    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
+    return result;
   }
 
   B3SingleFormat() {
