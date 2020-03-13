@@ -135,8 +135,8 @@ public final class B3SingleFormat {
   }
 
   @Nullable
-  public static TraceContextOrSamplingFlags parseB3SingleFormat(CharSequence value) {
-    return parseB3SingleFormat(value, 0, value.length());
+  public static TraceContextOrSamplingFlags parseB3SingleFormat(CharSequence b3) {
+    return parseB3SingleFormat(b3, 0, b3.length());
   }
 
   /**
