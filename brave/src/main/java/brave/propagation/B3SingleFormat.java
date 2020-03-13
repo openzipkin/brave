@@ -75,7 +75,7 @@ public final class B3SingleFormat {
 
   /**
    * Like {@link #writeB3SingleFormatWithoutParentId(TraceContext)}, but for carriers with byte
-   * array or byte value values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
+   * array or byte buffer values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
    */
   public static byte[] writeB3SingleFormatWithoutParentIdAsBytes(TraceContext context) {
     char[] value = getCharBuffer();
@@ -98,8 +98,8 @@ public final class B3SingleFormat {
   }
 
   /**
-   * Like {@link #writeB3SingleFormat(TraceContext)}, but for carriers with byte array or byte value
-   * values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
+   * Like {@link #writeB3SingleFormat(TraceContext)}, but for carriers with byte array or byte
+   * buffer values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
    */
   public static byte[] writeB3SingleFormatAsBytes(TraceContext context) {
     char[] value = getCharBuffer();
