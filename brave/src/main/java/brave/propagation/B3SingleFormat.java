@@ -68,9 +68,9 @@ public final class B3SingleFormat {
    * with the client.
    */
   public static String writeB3SingleFormatWithoutParentId(TraceContext context) {
-    char[] value = getCharBuffer();
-    int length = writeB3SingleFormat(context, 0L, value);
-    return new String(value, 0, length);
+    char[] buffer = getCharBuffer();
+    int length = writeB3SingleFormat(context, 0L, buffer);
+    return new String(buffer, 0, length);
   }
 
   /**
@@ -78,9 +78,9 @@ public final class B3SingleFormat {
    * array or byte buffer values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
    */
   public static byte[] writeB3SingleFormatWithoutParentIdAsBytes(TraceContext context) {
-    char[] value = getCharBuffer();
-    int length = writeB3SingleFormat(context, 0L, value);
-    return asciiToNewByteArray(value, length);
+    char[] buffer = getCharBuffer();
+    int length = writeB3SingleFormat(context, 0L, buffer);
+    return asciiToNewByteArray(buffer, length);
   }
 
   /**
@@ -92,9 +92,9 @@ public final class B3SingleFormat {
    * reuses a client's span ID, prefer {@link #writeB3SingleFormatWithoutParentId(TraceContext)}.
    */
   public static String writeB3SingleFormat(TraceContext context) {
-    char[] value = getCharBuffer();
-    int length = writeB3SingleFormat(context, context.parentIdAsLong(), value);
-    return new String(value, 0, length);
+    char[] buffer = getCharBuffer();
+    int length = writeB3SingleFormat(context, context.parentIdAsLong(), buffer);
+    return new String(buffer, 0, length);
   }
 
   /**
@@ -102,9 +102,9 @@ public final class B3SingleFormat {
    * buffer values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
    */
   public static byte[] writeB3SingleFormatAsBytes(TraceContext context) {
-    char[] value = getCharBuffer();
-    int length = writeB3SingleFormat(context, context.parentIdAsLong(), value);
-    return asciiToNewByteArray(value, length);
+    char[] buffer = getCharBuffer();
+    int length = writeB3SingleFormat(context, context.parentIdAsLong(), buffer);
+    return asciiToNewByteArray(buffer, length);
   }
 
   static int writeB3SingleFormat(TraceContext context, long parentId, char[] result) {
@@ -301,10 +301,10 @@ public final class B3SingleFormat {
     return flags;
   }
 
-  static byte[] asciiToNewByteArray(char[] value, int length) {
+  static byte[] asciiToNewByteArray(char[] buffer, int length) {
     byte[] result = new byte[length];
     for (int i = 0; i < length; i++) {
-      result[i] = (byte) value[i];
+      result[i] = (byte) buffer[i];
     }
     return result;
   }
@@ -312,12 +312,12 @@ public final class B3SingleFormat {
   static final ThreadLocal<char[]> CHAR_BUFFER = new ThreadLocal<>();
 
   static char[] getCharBuffer() {
-    char[] result = CHAR_BUFFER.get();
-    if (result == null) {
-      result = new char[FORMAT_MAX_LENGTH];
-      CHAR_BUFFER.set(result);
+    char[] charBuffer = CHAR_BUFFER.get();
+    if (charBuffer == null) {
+      charBuffer = new char[FORMAT_MAX_LENGTH];
+      CHAR_BUFFER.set(charBuffer);
     }
-    return result;
+    return charBuffer;
   }
 
   B3SingleFormat() {
