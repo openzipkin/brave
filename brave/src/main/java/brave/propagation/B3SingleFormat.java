@@ -286,12 +286,6 @@ public final class B3SingleFormat {
     return TraceContextOrSamplingFlags.create(SamplingFlags.toSamplingFlags(flags));
   }
 
-  static boolean checkHyphen(CharSequence value, int index) {
-    if (value.charAt(index) == '-') return true;
-    Platform.get().log("Invalid input: expected a hyphen(-) delimiter", null);
-    return false;
-  }
-
   static int parseSampledFlags(char sampledChar) {
     int flags;
     if (sampledChar == 'd') {
