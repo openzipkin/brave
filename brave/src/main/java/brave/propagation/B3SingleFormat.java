@@ -216,8 +216,6 @@ public final class B3SingleFormat {
         } else if (currentField.equals(Field.SPAN_ID)) {
           spanId = buffer;
 
-          if (isEof) break; // fields after span ID are optional
-
           // The handle malformed cases like below, it is easier to assume the next field is sampled
           // and revert if definitely not vs try to determine if it is definitely sampled.
           // 'traceId-spanId--parentSpanId'
@@ -237,8 +235,6 @@ public final class B3SingleFormat {
             return null;
           }
         }
-
-        if (isEof) break;
 
         buffer = 0L;
         currentFieldLength = 0;
