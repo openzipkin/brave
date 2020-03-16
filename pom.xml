@@ -136,6 +136,7 @@
     <module>brave-bom</module>
     <module>brave-tests</module>
     <module>context</module>
+    <module>propagation</module>
     <module>instrumentation</module>
     <module>spring-beans</module>
   </modules>
