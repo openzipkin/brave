@@ -54,6 +54,7 @@ public final class B3SingleFormat {
   static final int FORMAT_MAX_LENGTH = 32 + 1 + 16 + 3 + 16; // traceid128-spanid-1-parentid
 
   enum Field {
+    TRACE_ID_HIGH("trace ID", 16, false),
     TRACE_ID("trace ID", 16, true),
     SPAN_ID("span ID", 16, true),
     SAMPLED("sampled", 1, false),
@@ -181,7 +182,8 @@ public final class B3SingleFormat {
     long traceIdHigh = 0L, traceId = 0L, spanId = 0L, parentId = 0L;
     int flags = 0;
 
-    Field currentField = Field.TRACE_ID;
+    // Assume it is a 128-bit trace ID and revise back as necessary
+    Field currentField = Field.TRACE_ID_HIGH;
     int currentFieldLength = 0;
     long buffer = 0L;
 
@@ -198,6 +200,9 @@ public final class B3SingleFormat {
           if (isEof && currentFieldLength > 1) {
             currentField = Field.PARENT_SPAN_ID;
           }
+        } else if (currentField == Field.TRACE_ID_HIGH) {
+          // We reached a hyphen before the 17th hex character. This means it is a 64-bit trace ID.
+          currentField = Field.TRACE_ID;
         }
 
         if (!validateFieldLength(currentField, currentFieldLength)) {
@@ -242,17 +247,19 @@ public final class B3SingleFormat {
         continue;
       }
 
-      // Not a hyphen
+      // At this point, 'c' is not a hyphen
 
-      if (currentField == Field.TRACE_ID && beginIndex + 16 == pos) {
-        // special casing the only valid non-hyphen at position 16
-        // we don't guard against all zeros as traceIdHigh can be all zeros for 128-bit
+      // When we get to a non-hyphen at position 16, we have a 128-bit trace ID.
+      if (currentField == Field.TRACE_ID_HIGH && currentFieldLength == 16) {
+        // We don't guard against all zeros as traceIdHigh can be all zeros for 64-bit trace ID
+        // encoded in 128-bits
         traceIdHigh = buffer;
 
         // This character is the next hex. If it isn't, the next iteration will throw. Either way,
         // reset so that we can capture the next 16 characters of the trace ID.
         buffer = 0;
         currentFieldLength = 0;
+        currentField = Field.TRACE_ID;
       }
 
       // The rest of this is normal lower-hex decoding
