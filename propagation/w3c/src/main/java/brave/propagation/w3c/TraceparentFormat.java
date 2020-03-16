@@ -22,6 +22,8 @@ import java.nio.ByteBuffer;
 import static brave.internal.HexCodec.writeHexLong;
 
 /** Implements https://w3c.github.io/trace-context/#traceparent-header */
+// TODO: this uses the internal Platform class as it defers access to the logger and makes JUL less
+// expensive. We should inline that here to to unhook the internal dep.
 final class TraceparentFormat {
   /** Version '00' is fixed length, though future versions may be longer. */
   static final int FORMAT_LENGTH = 3 + 32 + 1 + 16 + 3; // 00-traceid128-spanid-01
@@ -206,12 +208,7 @@ final class TraceparentFormat {
       }
     }
 
-    try {
-      return builder.build();
-    } catch (IllegalArgumentException e) { // trace ID or span ID were all zeros
-      Platform.get().log(e.getMessage(), null);
-      return null;
-    }
+    return builder.build();
   }
 
   static boolean validateFieldLength(int field, int length) {
@@ -266,8 +263,11 @@ final class TraceparentFormat {
     return result;
   }
 
+  // WeakReference to ensure our classes can be unloaded.
+  // TODO: add classloader test
   static final ThreadLocal<WeakReference<TraceContext.Builder>> BUILDER_REF = new ThreadLocal<>();
 
+  // TODO: check with benchmark that this is notably better than just newing up each time.
   static TraceContext.Builder getBuilder() {
     WeakReference<TraceContext.Builder> ref = BUILDER_REF.get();
     TraceContext.Builder builder;
