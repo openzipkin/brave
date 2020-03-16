@@ -227,9 +227,8 @@ public final class B3SingleFormat {
           flags = samplingFlags.flags;
 
           currentField = Field.PARENT_SPAN_ID;
-          currentFieldLength = 0;
-          continue;
         } else {
+          assert currentField == Field.PARENT_SPAN_ID;
           parentId = buffer;
 
           if (!isEof) {
@@ -241,7 +240,11 @@ public final class B3SingleFormat {
         buffer = 0L;
         currentFieldLength = 0;
         continue;
-      } else if (currentField == Field.TRACE_ID && beginIndex + 16 == pos) {
+      }
+
+      // Not a hyphen
+
+      if (currentField == Field.TRACE_ID && beginIndex + 16 == pos) {
         // special casing the only valid non-hyphen at position 16
         // we don't guard against all zeros as traceIdHigh can be all zeros for 128-bit
         traceIdHigh = buffer;
