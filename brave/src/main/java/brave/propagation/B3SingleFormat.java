@@ -186,7 +186,7 @@ public final class B3SingleFormat {
     long buffer = 0L;
 
     // Instead of pos < endIndex, this uses pos <= endIndex to keep field processing consolidated.
-    // Otherwise, we'd have to process again when outside the loop.
+    // Otherwise, we'd have to process again when outside the loop to handle dangling data on EOF.
     for (int pos = beginIndex; pos <= endIndex; pos++) {
       // treat EOF same as a hyphen for simplicity
       boolean isEof = pos == endIndex;
