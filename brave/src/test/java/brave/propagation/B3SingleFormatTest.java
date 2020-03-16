@@ -230,7 +230,8 @@ public class B3SingleFormatTest {
     assertThat(parseB3SingleFormat(input, 10, 12))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: only valid characters are lower-hex and hyphen", null);
+    verify(platform)
+      .log("Invalid input: only valid characters are lower-hex for {0}", "trace ID", null);
   }
 
   @Test public void parseB3SingleFormat_spanIdsNotYetSampled() {
@@ -325,14 +326,16 @@ public class B3SingleFormatTest {
     assertThat(parseB3SingleFormat("not-a-tumor"))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: only valid characters are lower-hex and hyphen", null);
+    verify(platform)
+      .log("Invalid input: only valid characters are lower-hex for {0}", "trace ID", null);
   }
 
   @Test public void parseB3SingleFormat_malformed_notAscii() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId.substring(0, 15) + "💩"))
       .isNull(); // instead of crashing
 
-    verify(platform).log("Invalid input: only valid characters are lower-hex and hyphen", null);
+    verify(platform)
+      .log("Invalid input: only valid characters are lower-hex for {0}", "span ID", null);
   }
 
   @Test public void parseB3SingleFormat_malformed_uuid() {
@@ -345,7 +348,7 @@ public class B3SingleFormatTest {
   @Test public void parseB3SingleFormat_malformed_hyphenForSampled() {
     assertThat(parseB3SingleFormat("-")).isNull();
 
-    verify(platform).log("Invalid input: expected 0, 1 or d for sampled", null);
+    verify(platform).log("Invalid input: expected 0, 1 or d for {0}", "sampled", null);
   }
 
   @Test public void parseB3SingleFormat_zero_traceId() {
@@ -353,7 +356,7 @@ public class B3SingleFormatTest {
       parseB3SingleFormat("0000000000000000-" + spanId + "-1-" + parentId))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: read all zeroes {0}", "trace ID", null);
+    verify(platform).log("Invalid input: read all zeros {0}", "trace ID", null);
   }
 
   @Test public void parseB3SingleFormat_zero_spanId() {
@@ -361,7 +364,7 @@ public class B3SingleFormatTest {
       parseB3SingleFormat(traceId + "-0000000000000000-1-" + parentId))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: read all zeroes {0}", "span ID", null);
+    verify(platform).log("Invalid input: read all zeros {0}", "span ID", null);
   }
 
   /** Serializing parent ID as zero is the same as none. */
@@ -384,7 +387,7 @@ public class B3SingleFormatTest {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-f"))
       .isNull(); // instead of crashing
 
-    verify(platform).log("Invalid input: expected 0, 1 or d for sampled", null);
+    verify(platform).log("Invalid input: expected 0, 1 or d for {0}", "sampled", null);
   }
 
   @Test public void parseB3SingleFormat_empty() {

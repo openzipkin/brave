@@ -53,13 +53,12 @@ import static brave.internal.HexCodec.writeHexLong;
 public final class B3SingleFormat {
   static final int FORMAT_MAX_LENGTH = 32 + 1 + 16 + 3 + 16; // traceid128-spanid-1-parentid
 
-  /** These double as states in the parsing loop, and names to use in logging */
-  static final String
-    FIELD_TRACE_ID_HIGH = "trace ID (high)", // This value is never logged
-    FIELD_TRACE_ID = "trace ID",
-    FIELD_SPAN_ID = "span ID",
-    FIELD_SAMPLED = "sampled",
-    FIELD_PARENT_SPAN_ID = "parent ID";
+  static final int // instead of enum for smaller bytecode
+    FIELD_TRACE_ID_HIGH = 1,
+    FIELD_TRACE_ID = 2,
+    FIELD_SPAN_ID = 3,
+    FIELD_SAMPLED = 4,
+    FIELD_PARENT_SPAN_ID = 5;
 
   /**
    * Writes all B3 defined fields in the trace context, except {@link TraceContext#parentIdAsLong()
@@ -173,8 +172,8 @@ public final class B3SingleFormat {
     int flags = 0;
 
     // Assume it is a 128-bit trace ID and revise back as necessary
-    String currentField = FIELD_TRACE_ID_HIGH;
-    int currentFieldLength = 0;
+    int currentField = FIELD_TRACE_ID_HIGH, currentFieldLength = 0;
+    // Used for hex-decoding, performed by bitwise addition
     long buffer = 0L;
 
     // Instead of pos < endIndex, this uses pos <= endIndex to keep field processing consolidated.
@@ -185,12 +184,12 @@ public final class B3SingleFormat {
       char c = isEof ? '-' : value.charAt(pos);
 
       if (c == '-') {
-        if (currentField.equals(FIELD_SAMPLED)) {
+        if (currentField == FIELD_SAMPLED) {
           // The last field could be sampled or parent ID. Revise assumption if longer than 1 char.
           if (isEof && currentFieldLength > 1) {
             currentField = FIELD_PARENT_SPAN_ID;
           }
-        } else if (currentField.equals(FIELD_TRACE_ID_HIGH)) {
+        } else if (currentField == FIELD_TRACE_ID_HIGH) {
           // We reached a hyphen before the 17th hex character. This means it is a 64-bit trace ID.
           currentField = FIELD_TRACE_ID;
         }
@@ -199,32 +198,39 @@ public final class B3SingleFormat {
           return null;
         }
 
-        if (currentField.equals(FIELD_TRACE_ID)) {
-          traceId = buffer;
+        switch (currentField) {
+          case FIELD_TRACE_ID:
+            traceId = buffer;
 
-          currentField = FIELD_SPAN_ID;
-        } else if (currentField.equals(FIELD_SPAN_ID)) {
-          spanId = buffer;
+            currentField = FIELD_SPAN_ID;
+            break;
+          case FIELD_SPAN_ID:
+            spanId = buffer;
 
-          // The handle malformed cases like below, it is easier to assume the next field is sampled
-          // and revert if definitely not vs try to determine if it is definitely sampled.
-          // 'traceId-spanId--parentSpanId'
-          // 'traceId-spanId-'
-          currentField = FIELD_SAMPLED;
-        } else if (currentField.equals(FIELD_SAMPLED)) {
-          SamplingFlags samplingFlags = tryParseSamplingFlags(value.charAt(pos - 1));
-          if (samplingFlags == null) return null;
-          flags = samplingFlags.flags;
+            // The handle malformed cases like below, it is easier to assume the next field is
+            // sampled and revert if later not vs peek to determine if it is sampled or parent ID.
+            // 'traceId-spanId--parentSpanId'
+            // 'traceId-spanId-'
+            currentField = FIELD_SAMPLED;
+            break;
+          case FIELD_SAMPLED:
+            SamplingFlags samplingFlags = tryParseSamplingFlags(value.charAt(pos - 1));
+            if (samplingFlags == null) return null;
+            flags = samplingFlags.flags;
 
-          currentField = FIELD_PARENT_SPAN_ID;
-        } else {
-          assert currentField.equals(FIELD_PARENT_SPAN_ID);
-          parentId = buffer;
+            currentField = FIELD_PARENT_SPAN_ID;
+            break;
+          case FIELD_PARENT_SPAN_ID:
+            parentId = buffer;
 
-          if (!isEof) {
-            Platform.get().log("Invalid input: more than 4 fields exist", null);
-            return null;
-          }
+            if (!isEof) {
+              Platform.get().log("Invalid input: more than 4 fields exist", null);
+              return null;
+            }
+
+            break;
+          default:
+            throw new AssertionError();
         }
 
         buffer = 0L;
@@ -235,9 +241,8 @@ public final class B3SingleFormat {
       // At this point, 'c' is not a hyphen
 
       // When we get to a non-hyphen at position 16, we have a 128-bit trace ID.
-      if (currentField.equals(FIELD_TRACE_ID_HIGH) && currentFieldLength == 16) {
-        // We don't guard against all zeros as traceIdHigh can be all zeros for 64-bit trace ID
-        // encoded in 128-bits
+      if (currentField == FIELD_TRACE_ID_HIGH && currentFieldLength == 16) {
+        // No validation: traceIdHigh is all zeros when a 64-bit trace ID is encoded in 128-bits.
         traceIdHigh = buffer;
 
         // This character is the next hex. If it isn't, the next iteration will throw. Either way,
@@ -251,64 +256,20 @@ public final class B3SingleFormat {
 
       // The rest of this is normal lower-hex decoding
       buffer <<= 4;
-      switch (c) {
-        case '0':
-          break;
-        case '1':
-          buffer |= 1;
-          break;
-        case '2':
-          buffer |= 2;
-          break;
-        case '3':
-          buffer |= 3;
-          break;
-        case '4':
-          buffer |= 4;
-          break;
-        case '5':
-          buffer |= 5;
-          break;
-        case '6':
-          buffer |= 6;
-          break;
-        case '7':
-          buffer |= 7;
-          break;
-        case '8':
-          buffer |= 8;
-          break;
-        case '9':
-          buffer |= 9;
-          break;
-        case 'a':
-          buffer |= 10;
-          break;
-        case 'b':
-          buffer |= 11;
-          break;
-        case 'c':
-          buffer |= 12;
-          break;
-        case 'd':
-          buffer |= 13;
-          break;
-        case 'e':
-          buffer |= 14;
-          break;
-        case 'f':
-          buffer |= 15;
-          break;
-        default:
-          Platform.get().log("Invalid input: only valid characters are lower-hex and hyphen", null);
-          return null;
+      if (c >= '0' && c <= '9') {
+        buffer |= c - '0';
+      } else if (c >= 'a' && c <= 'f') {
+        buffer |= c - 'a' + 10;
+      } else {
+        log(currentField, "Invalid input: only valid characters are lower-hex for {0}");
+        return null;
       }
     }
 
     // Since we are using a hidden constructor, we need to validate here.
     if (traceId == 0L || spanId == 0L) {
-      String field = traceId == 0L ? FIELD_TRACE_ID : FIELD_SPAN_ID;
-      Platform.get().log("Invalid input: read all zeroes {0}", field, null);
+      int field = traceId == 0L ? FIELD_TRACE_ID : FIELD_SPAN_ID;
+      log(field, "Invalid input: read all zeros {0}");
       return null;
     }
 
@@ -332,24 +293,46 @@ public final class B3SingleFormat {
       case 'd':
         return SamplingFlags.DEBUG;
       default:
-        Platform.get().log("Invalid input: expected 0, 1 or d for sampled", null);
+        log(FIELD_SAMPLED, "Invalid input: expected 0, 1 or d for {0}");
         return null;
     }
   }
 
-  static boolean validateFieldLength(String field, int length) {
-    int expectedLength = field.equals(FIELD_SAMPLED) ? 1 : 16;
+  static boolean validateFieldLength(int field, int length) {
+    int expectedLength = field == FIELD_SAMPLED ? 1 : 16;
     if (length == 0) {
-      Platform.get().log("Invalid input: empty {0}", field, null);
+      log(field, "Invalid input: empty {0}");
       return false;
     } else if (length < expectedLength) {
-      Platform.get().log("Invalid input: {0} is too short", field, null);
+      log(field, "Invalid input: {0} is too short");
       return false;
     } else if (length > expectedLength) {
-      Platform.get().log("Invalid input: {0} is too long", field, null);
+      log(field, "Invalid input: {0} is too long");
       return false;
     }
     return true;
+  }
+
+  static void log(int fieldCode, String s) {
+    String field;
+    switch (fieldCode) {
+      case FIELD_TRACE_ID_HIGH:
+      case FIELD_TRACE_ID:
+        field = "trace ID";
+        break;
+      case FIELD_SPAN_ID:
+        field = "span ID";
+        break;
+      case FIELD_SAMPLED:
+        field = "sampled";
+        break;
+      case FIELD_PARENT_SPAN_ID:
+        field = "parent ID";
+        break;
+      default:
+        throw new AssertionError("field code unmatched: " + fieldCode);
+    }
+    Platform.get().log(s, field, null);
   }
 
   static byte[] asciiToNewByteArray(char[] buffer, int length) {

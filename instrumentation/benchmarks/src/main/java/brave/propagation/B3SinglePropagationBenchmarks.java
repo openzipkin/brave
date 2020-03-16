@@ -49,9 +49,21 @@ public class B3SinglePropagationBenchmarks {
     .sampled(true)
     .build();
 
-  static final Map<String, String> incoming = new LinkedHashMap<String, String>() {
+  static final Map<String, String> incoming128 = new LinkedHashMap<String, String>() {
     {
-      b3Injector.inject(context, this);
+      put("b3", "67891233abcdef012345678912345678-463ac35c9f6413ad-1");
+    }
+  };
+
+  static final Map<String, String> incoming64 = new LinkedHashMap<String, String>() {
+    {
+      put("b3", "2345678912345678-463ac35c9f6413ad-1");
+    }
+  };
+
+  static final Map<String, String> incomingPadded = new LinkedHashMap<String, String>() {
+    {
+      put("b3", "00000000000000002345678912345678-463ac35c9f6413ad-1");
     }
   };
 
@@ -74,8 +86,16 @@ public class B3SinglePropagationBenchmarks {
     b3Injector.inject(context, carrier);
   }
 
-  @Benchmark public TraceContextOrSamplingFlags extract() {
-    return b3Extractor.extract(incoming);
+  @Benchmark public TraceContextOrSamplingFlags extract_128() {
+    return b3Extractor.extract(incoming128);
+  }
+
+  @Benchmark public TraceContextOrSamplingFlags extract_64() {
+    return b3Extractor.extract(incoming64);
+  }
+
+  @Benchmark public TraceContextOrSamplingFlags extract_padded() {
+    return b3Extractor.extract(incomingPadded);
   }
 
   @Benchmark public TraceContextOrSamplingFlags extract_nothing() {
