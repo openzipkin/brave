@@ -40,10 +40,10 @@ import static org.powermock.api.mockito.PowerMockito.when;
 @PowerMockIgnore({"org.apache.logging.*", "javax.script.*"})
 @PrepareForTest({Platform.class, B3SingleFormat.class})
 public class B3SingleFormatTest {
-  String traceIdHigh = "0000000000000009";
-  String traceId = "0000000000000001";
-  String parentId = "0000000000000002";
-  String spanId = "0000000000000003";
+  String traceIdHigh = "1234567890123459";
+  String traceId = "1234567890123451";
+  String parentId = "1234567890123452";
+  String spanId = "1234567890123453";
 
   Platform platform = mock(Platform.class);
 
@@ -58,7 +58,9 @@ public class B3SingleFormatTest {
   }
 
   @Test public void writeB3SingleFormat_notYetSampled() {
-    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(3).build();
+    TraceContext context = TraceContext.newBuilder()
+      .traceId(Long.parseUnsignedLong(traceId, 16))
+      .spanId(Long.parseUnsignedLong(spanId, 16)).build();
 
     assertThat(writeB3SingleFormat(context))
       .isEqualTo(traceId + "-" + spanId)
@@ -66,7 +68,10 @@ public class B3SingleFormatTest {
   }
 
   @Test public void writeB3SingleFormat_notYetSampled_128() {
-    TraceContext context = TraceContext.newBuilder().traceIdHigh(9).traceId(1).spanId(3).build();
+    TraceContext context = TraceContext.newBuilder()
+      .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
+      .traceId(Long.parseUnsignedLong(traceId, 16))
+      .spanId(Long.parseUnsignedLong(spanId, 16)).build();
 
     assertThat(writeB3SingleFormat(context))
       .isEqualTo(traceIdHigh + traceId + "-" + spanId)
@@ -74,7 +79,10 @@ public class B3SingleFormatTest {
   }
 
   @Test public void writeB3SingleFormat_unsampled() {
-    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(3).sampled(false).build();
+    TraceContext context = TraceContext.newBuilder()
+      .traceId(Long.parseUnsignedLong(traceId, 16))
+      .spanId(Long.parseUnsignedLong(spanId, 16))
+      .sampled(false).build();
 
     assertThat(writeB3SingleFormat(context))
       .isEqualTo(traceId + "-" + spanId + "-0")
@@ -82,7 +90,10 @@ public class B3SingleFormatTest {
   }
 
   @Test public void writeB3SingleFormat_sampled() {
-    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(3).sampled(true).build();
+    TraceContext context = TraceContext.newBuilder()
+      .traceId(Long.parseUnsignedLong(traceId, 16))
+      .spanId(Long.parseUnsignedLong(spanId, 16))
+      .sampled(true).build();
 
     assertThat(writeB3SingleFormat(context))
       .isEqualTo(traceId + "-" + spanId + "-1")
@@ -90,7 +101,10 @@ public class B3SingleFormatTest {
   }
 
   @Test public void writeB3SingleFormat_debug() {
-    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(3).debug(true).build();
+    TraceContext context = TraceContext.newBuilder()
+      .traceId(Long.parseUnsignedLong(traceId, 16))
+      .spanId(Long.parseUnsignedLong(spanId, 16))
+      .debug(true).build();
 
     assertThat(writeB3SingleFormat(context))
       .isEqualTo(traceId + "-" + spanId + "-d")
@@ -98,8 +112,11 @@ public class B3SingleFormatTest {
   }
 
   @Test public void writeB3SingleFormat_parent() {
-    TraceContext context =
-      TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).sampled(true).build();
+    TraceContext context = TraceContext.newBuilder()
+      .traceId(Long.parseUnsignedLong(traceId, 16))
+      .parentId(Long.parseUnsignedLong(parentId, 16))
+      .spanId(Long.parseUnsignedLong(spanId, 16))
+      .sampled(true).build();
 
     assertThat(writeB3SingleFormat(context))
       .isEqualTo(traceId + "-" + spanId + "-1-" + parentId)
@@ -107,14 +124,12 @@ public class B3SingleFormatTest {
   }
 
   @Test public void writeB3SingleFormat_largest() {
-    TraceContext context =
-      TraceContext.newBuilder()
-        .traceIdHigh(9)
-        .traceId(1)
-        .parentId(2)
-        .spanId(3)
-        .sampled(true)
-        .build();
+    TraceContext context = TraceContext.newBuilder()
+      .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
+      .traceId(Long.parseUnsignedLong(traceId, 16))
+      .parentId(Long.parseUnsignedLong(parentId, 16))
+      .spanId(Long.parseUnsignedLong(spanId, 16))
+      .sampled(true).build();
 
     assertThat(writeB3SingleFormat(context))
       .isEqualTo(traceIdHigh + traceId + "-" + spanId + "-1-" + parentId)
@@ -126,17 +141,18 @@ public class B3SingleFormatTest {
       parseB3SingleFormat(traceIdHigh + traceId + "-" + spanId + "-1-" + parentId)
     ).extracting(TraceContextOrSamplingFlags::context).isEqualToComparingFieldByField(
       TraceContext.newBuilder()
-        .traceIdHigh(9)
-        .traceId(1)
-        .parentId(2)
-        .spanId(3)
-        .sampled(true)
-        .build()
+        .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
+        .traceId(Long.parseUnsignedLong(traceId, 16))
+        .parentId(Long.parseUnsignedLong(parentId, 16))
+        .spanId(Long.parseUnsignedLong(spanId, 16))
+        .sampled(true).build()
     );
   }
 
   @Test public void writeB3SingleFormatWithoutParent_notYetSampled() {
-    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(3).build();
+    TraceContext context = TraceContext.newBuilder()
+      .traceId(Long.parseUnsignedLong(traceId, 16))
+      .spanId(Long.parseUnsignedLong(spanId, 16)).build();
 
     assertThat(writeB3SingleFormatWithoutParentId(context))
       .isEqualTo(traceId + "-" + spanId)
@@ -144,8 +160,11 @@ public class B3SingleFormatTest {
   }
 
   @Test public void writeB3SingleFormatWithoutParent_unsampled() {
-    TraceContext context =
-      TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).sampled(false).build();
+    TraceContext context = TraceContext.newBuilder()
+      .traceId(Long.parseUnsignedLong(traceId, 16))
+      .parentId(Long.parseUnsignedLong(parentId, 16))
+      .spanId(Long.parseUnsignedLong(spanId, 16))
+      .sampled(false).build();
 
     assertThat(writeB3SingleFormatWithoutParentId(context))
       .isEqualTo(traceId + "-" + spanId + "-0")
@@ -153,8 +172,11 @@ public class B3SingleFormatTest {
   }
 
   @Test public void writeB3SingleFormatWithoutParent_sampled() {
-    TraceContext context =
-      TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).sampled(true).build();
+    TraceContext context = TraceContext.newBuilder()
+      .traceId(Long.parseUnsignedLong(traceId, 16))
+      .parentId(Long.parseUnsignedLong(parentId, 16))
+      .spanId(Long.parseUnsignedLong(spanId, 16))
+      .sampled(true).build();
 
     assertThat(writeB3SingleFormatWithoutParentId(context))
       .isEqualTo(traceId + "-" + spanId + "-1")
@@ -162,8 +184,11 @@ public class B3SingleFormatTest {
   }
 
   @Test public void writeB3SingleFormatWithoutParent_debug() {
-    TraceContext context =
-      TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).debug(true).build();
+    TraceContext context = TraceContext.newBuilder()
+      .traceId(Long.parseUnsignedLong(traceId, 16))
+      .parentId(Long.parseUnsignedLong(parentId, 16))
+      .spanId(Long.parseUnsignedLong(spanId, 16))
+      .debug(true).build();
 
     assertThat(writeB3SingleFormatWithoutParentId(context))
       .isEqualTo(traceId + "-" + spanId + "-d")
@@ -172,10 +197,12 @@ public class B3SingleFormatTest {
 
   /** for example, parsing a w3c context */
   @Test public void parseB3SingleFormat_middleOfString() {
-    String input = "b3=" + traceId + traceId + "-" + spanId + ",";
+    String input = "b3=" + traceIdHigh + traceId + "-" + spanId + ",";
     assertThat(parseB3SingleFormat(input, 3, input.length() - 1).context())
-      .isEqualToComparingFieldByField(
-        TraceContext.newBuilder().traceIdHigh(1).traceId(1).spanId(3).build()
+      .isEqualToComparingFieldByField(TraceContext.newBuilder()
+        .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
+        .traceId(Long.parseUnsignedLong(traceId, 16))
+        .spanId(Long.parseUnsignedLong(spanId, 16)).build()
       );
   }
 
@@ -196,51 +223,66 @@ public class B3SingleFormatTest {
 
   @Test public void parseB3SingleFormat_spanIdsNotYetSampled() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId).context())
-      .isEqualToComparingFieldByField(
-        TraceContext.newBuilder().traceId(1).spanId(3).build()
+      .isEqualToComparingFieldByField(TraceContext.newBuilder()
+        .traceId(Long.parseUnsignedLong(traceId, 16))
+        .spanId(Long.parseUnsignedLong(spanId, 16)).build()
       );
   }
 
   @Test public void parseB3SingleFormat_spanIdsNotYetSampled128() {
-    assertThat(parseB3SingleFormat(traceId + traceId + "-" + spanId).context())
-      .isEqualToComparingFieldByField(
-        TraceContext.newBuilder().traceIdHigh(1).traceId(1).spanId(3).build()
+    assertThat(parseB3SingleFormat(traceIdHigh + traceId + "-" + spanId).context())
+      .isEqualToComparingFieldByField(TraceContext.newBuilder()
+        .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
+        .traceId(Long.parseUnsignedLong(traceId, 16))
+        .spanId(Long.parseUnsignedLong(spanId, 16)).build()
       );
   }
 
   @Test public void parseB3SingleFormat_spanIdsUnsampled() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-0").context())
-      .isEqualToComparingFieldByField(
-        TraceContext.newBuilder().traceId(1).spanId(3).sampled(false).build()
+      .isEqualToComparingFieldByField(TraceContext.newBuilder()
+        .traceId(Long.parseUnsignedLong(traceId, 16))
+        .spanId(Long.parseUnsignedLong(spanId, 16))
+        .sampled(false).build()
       );
   }
 
   @Test public void parseB3SingleFormat_parent_unsampled() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-0-" + parentId).context())
-      .isEqualToComparingFieldByField(
-        TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).sampled(false).build()
+      .isEqualToComparingFieldByField(TraceContext.newBuilder()
+        .traceId(Long.parseUnsignedLong(traceId, 16))
+        .parentId(Long.parseUnsignedLong(parentId, 16))
+        .spanId(Long.parseUnsignedLong(spanId, 16))
+        .sampled(false).build()
       );
   }
 
   @Test public void parseB3SingleFormat_parent_debug() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-d-" + parentId).context())
-      .isEqualToComparingFieldByField(
-        TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).debug(true).build()
+      .isEqualToComparingFieldByField(TraceContext.newBuilder()
+        .traceId(Long.parseUnsignedLong(traceId, 16))
+        .parentId(Long.parseUnsignedLong(parentId, 16))
+        .spanId(Long.parseUnsignedLong(spanId, 16))
+        .debug(true).build()
       );
   }
 
   // odd but possible to not yet sample a child
   @Test public void parseB3SingleFormat_parentid_notYetSampled() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-" + parentId).context())
-      .isEqualToComparingFieldByField(
-        TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).build()
+      .isEqualToComparingFieldByField(TraceContext.newBuilder()
+        .traceId(Long.parseUnsignedLong(traceId, 16))
+        .parentId(Long.parseUnsignedLong(parentId, 16))
+        .spanId(Long.parseUnsignedLong(spanId, 16)).build()
       );
   }
 
   @Test public void parseB3SingleFormat_spanIdsWithDebug() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-d").context())
-      .isEqualToComparingFieldByField(
-        TraceContext.newBuilder().traceId(1).spanId(3).debug(true).build()
+      .isEqualToComparingFieldByField(TraceContext.newBuilder()
+        .traceId(Long.parseUnsignedLong(traceId, 16))
+        .spanId(Long.parseUnsignedLong(spanId, 16))
+        .debug(true).build()
       );
   }
 
