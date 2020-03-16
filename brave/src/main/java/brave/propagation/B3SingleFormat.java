@@ -54,20 +54,16 @@ public final class B3SingleFormat {
   static final int FORMAT_MAX_LENGTH = 32 + 1 + 16 + 3 + 16; // traceid128-spanid-1-parentid
 
   enum Field {
-    TRACE_ID_HIGH("trace ID", 16, false),
-    TRACE_ID("trace ID", 16, true),
-    SPAN_ID("span ID", 16, true),
-    SAMPLED("sampled", 1, false),
-    PARENT_SPAN_ID("parent ID", 16, false);
+    TRACE_ID_HIGH("trace ID"),
+    TRACE_ID("trace ID"),
+    SPAN_ID("span ID"),
+    SAMPLED("sampled"),
+    PARENT_SPAN_ID("parent ID");
 
     final String name;
-    final int length;
-    final boolean required;
 
-    Field(String name, int length, boolean required) {
+    Field(String name) {
       this.name = name;
-      this.length = length;
-      this.required = required;
     }
   }
 
@@ -184,8 +180,9 @@ public final class B3SingleFormat {
 
     // Assume it is a 128-bit trace ID and revise back as necessary
     Field currentField = Field.TRACE_ID_HIGH;
-    int currentFieldLength = 0;
     long buffer = 0L;
+
+    int pos16 = beginIndex + 16, lastFieldPos = beginIndex;
 
     // Instead of pos < endIndex, this uses pos <= endIndex to keep field processing consolidated.
     // Otherwise, we'd have to process again when outside the loop to handle dangling data on EOF.
@@ -195,6 +192,10 @@ public final class B3SingleFormat {
       char c = isEof ? '-' : value.charAt(pos);
 
       if (c == '-') {
+        // Rather than incrementing a counter for each character, this does it once per delimiter
+        int currentFieldLength = pos - lastFieldPos;
+        lastFieldPos = pos + 1;
+
         if (currentField == Field.SAMPLED) {
           // The last field could be sampled or parent ID. Revise assumption if longer than 1 char.
           if (isEof && currentFieldLength > 1) {
@@ -206,11 +207,6 @@ public final class B3SingleFormat {
         }
 
         if (!validateFieldLength(currentField, currentFieldLength)) {
-          return null;
-        }
-
-        if (currentField.required && buffer == 0L) {
-          Platform.get().log("Invalid input: read all zeroes {0}", currentField.name, null);
           return null;
         }
 
@@ -243,36 +239,88 @@ public final class B3SingleFormat {
         }
 
         buffer = 0L;
-        currentFieldLength = 0;
         continue;
       }
 
       // At this point, 'c' is not a hyphen
 
       // When we get to a non-hyphen at position 16, we have a 128-bit trace ID.
-      if (currentField == Field.TRACE_ID_HIGH && currentFieldLength == 16) {
+      if (currentField == Field.TRACE_ID_HIGH && pos == pos16) {
         // We don't guard against all zeros as traceIdHigh can be all zeros for 64-bit trace ID
         // encoded in 128-bits
         traceIdHigh = buffer;
 
         // This character is the next hex. If it isn't, the next iteration will throw. Either way,
         // reset so that we can capture the next 16 characters of the trace ID.
-        buffer = 0;
-        currentFieldLength = 0;
+        buffer = 0L;
         currentField = Field.TRACE_ID;
+        lastFieldPos = pos;
       }
+
+      // Special case long runs of zeros. This can happen a 128-bit trace ID is left padded
+      if (c == '0' && buffer == 0L) continue;
 
       // The rest of this is normal lower-hex decoding
       buffer <<= 4;
-      if (c >= '0' && c <= '9') {
-        buffer |= c - '0';
-      } else if (c >= 'a' && c <= 'f') {
-        buffer |= c - 'a' + 10;
-      } else {
-        Platform.get().log("Invalid input: only valid characters are lower-hex and hyphen", null);
-        return null;
+      switch (c) {
+        case '0':
+          break;
+        case '1':
+          buffer |= 1;
+          break;
+        case '2':
+          buffer |= 2;
+          break;
+        case '3':
+          buffer |= 3;
+          break;
+        case '4':
+          buffer |= 4;
+          break;
+        case '5':
+          buffer |= 5;
+          break;
+        case '6':
+          buffer |= 6;
+          break;
+        case '7':
+          buffer |= 7;
+          break;
+        case '8':
+          buffer |= 8;
+          break;
+        case '9':
+          buffer |= 9;
+          break;
+        case 'a':
+          buffer |= 10;
+          break;
+        case 'b':
+          buffer |= 11;
+          break;
+        case 'c':
+          buffer |= 12;
+          break;
+        case 'd':
+          buffer |= 13;
+          break;
+        case 'e':
+          buffer |= 14;
+          break;
+        case 'f':
+          buffer |= 15;
+          break;
+        default:
+          Platform.get().log("Invalid input: only valid characters are lower-hex and hyphen", null);
+          return null;
       }
-      currentFieldLength++;
+    }
+
+    // Since we are using a hidden constructor, we need to validate here.
+    if (traceId == 0L || spanId == 0L) {
+      String field = traceId == 0L ? Field.TRACE_ID.name : Field.SPAN_ID.name;
+      Platform.get().log("Invalid input: read all zeroes {0}", field, null);
+      return null;
     }
 
     return TraceContextOrSamplingFlags.create(new TraceContext(
@@ -301,13 +349,14 @@ public final class B3SingleFormat {
   }
 
   static boolean validateFieldLength(Field field, int length) {
+    int expectedLength = field == Field.SAMPLED ? 1 : 16;
     if (length == 0) {
       Platform.get().log("Invalid input: empty {0}", field.name, null);
       return false;
-    } else if (length < field.length) {
+    } else if (length < expectedLength) {
       Platform.get().log("Invalid input: {0} is too short", field.name, null);
       return false;
-    } else if (length > field.length) {
+    } else if (length > expectedLength) {
       Platform.get().log("Invalid input: {0} is too long", field.name, null);
       return false;
     }

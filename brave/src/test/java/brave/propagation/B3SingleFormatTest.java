@@ -149,6 +149,18 @@ public class B3SingleFormatTest {
     );
   }
 
+  @Test public void parseB3SingleFormat_padded() {
+    assertThat(
+      parseB3SingleFormat("0000000000000000" + traceId + "-" + spanId + "-1-" + parentId)
+    ).extracting(TraceContextOrSamplingFlags::context).isEqualToComparingFieldByField(
+      TraceContext.newBuilder()
+        .traceId(Long.parseUnsignedLong(traceId, 16))
+        .parentId(Long.parseUnsignedLong(parentId, 16))
+        .spanId(Long.parseUnsignedLong(spanId, 16))
+        .sampled(true).build()
+    );
+  }
+
   @Test public void writeB3SingleFormatWithoutParent_notYetSampled() {
     TraceContext context = TraceContext.newBuilder()
       .traceId(Long.parseUnsignedLong(traceId, 16))
@@ -334,6 +346,30 @@ public class B3SingleFormatTest {
     assertThat(parseB3SingleFormat("-")).isNull();
 
     verify(platform).log("Invalid input: expected 0, 1 or d for sampled", null);
+  }
+
+  @Test public void parseB3SingleFormat_zero_traceId() {
+    assertThat(
+      parseB3SingleFormat("0000000000000000-" + spanId + "-1-" + parentId))
+      .isNull(); // instead of raising exception
+
+    verify(platform).log("Invalid input: read all zeroes {0}", "trace ID", null);
+  }
+
+  @Test public void parseB3SingleFormat_zero_spanId() {
+    assertThat(
+      parseB3SingleFormat(traceId + "-0000000000000000-1-" + parentId))
+      .isNull(); // instead of raising exception
+
+    verify(platform).log("Invalid input: read all zeroes {0}", "span ID", null);
+  }
+
+  /** Serializing parent ID as zero is the same as none. */
+  @Test public void parseB3SingleFormat_zero_parentId() {
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-1-0000000000000000").context())
+      .isEqualToComparingFieldByField(
+        parseB3SingleFormat(traceId + "-" + spanId + "-1").context()
+      );
   }
 
   @Test public void parseB3SingleFormat_too_many_fields() {
