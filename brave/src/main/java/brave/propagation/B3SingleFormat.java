@@ -222,11 +222,13 @@ public final class B3SingleFormat {
           // 'traceId-spanId-'
           currentField = Field.SAMPLED;
         } else if (currentField.equals(Field.SAMPLED)) {
-          SamplingFlags samplingFlags = tryParseSamplingFlags(value.charAt(pos -1));
+          SamplingFlags samplingFlags = tryParseSamplingFlags(value.charAt(pos - 1));
           if (samplingFlags == null) return null;
           flags = samplingFlags.flags;
 
           currentField = Field.PARENT_SPAN_ID;
+          currentFieldLength = 0;
+          continue;
         } else {
           parentId = buffer;
 
