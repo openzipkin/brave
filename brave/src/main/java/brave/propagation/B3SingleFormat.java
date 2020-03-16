@@ -257,9 +257,6 @@ public final class B3SingleFormat {
         lastFieldPos = pos;
       }
 
-      // Special case long runs of zeros. This can happen a 128-bit trace ID is left padded
-      if (c == '0' && buffer == 0L) continue;
-
       // The rest of this is normal lower-hex decoding
       buffer <<= 4;
       switch (c) {
