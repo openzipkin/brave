@@ -53,19 +53,13 @@ import static brave.internal.HexCodec.writeHexLong;
 public final class B3SingleFormat {
   static final int FORMAT_MAX_LENGTH = 32 + 1 + 16 + 3 + 16; // traceid128-spanid-1-parentid
 
-  enum Field {
-    TRACE_ID_HIGH("trace ID"),
-    TRACE_ID("trace ID"),
-    SPAN_ID("span ID"),
-    SAMPLED("sampled"),
-    PARENT_SPAN_ID("parent ID");
-
-    final String name;
-
-    Field(String name) {
-      this.name = name;
-    }
-  }
+  /** These double as states in the parsing loop, and names to use in logging */
+  static final String
+    FIELD_TRACE_ID_HIGH = "trace ID (high)", // This value is never logged
+    FIELD_TRACE_ID = "trace ID",
+    FIELD_SPAN_ID = "span ID",
+    FIELD_SAMPLED = "sampled",
+    FIELD_PARENT_SPAN_ID = "parent ID";
 
   /**
    * Writes all B3 defined fields in the trace context, except {@link TraceContext#parentIdAsLong()
@@ -179,10 +173,9 @@ public final class B3SingleFormat {
     int flags = 0;
 
     // Assume it is a 128-bit trace ID and revise back as necessary
-    Field currentField = Field.TRACE_ID_HIGH;
+    String currentField = FIELD_TRACE_ID_HIGH;
+    int currentFieldLength = 0;
     long buffer = 0L;
-
-    int pos16 = beginIndex + 16, lastFieldPos = beginIndex;
 
     // Instead of pos < endIndex, this uses pos <= endIndex to keep field processing consolidated.
     // Otherwise, we'd have to process again when outside the loop to handle dangling data on EOF.
@@ -192,44 +185,40 @@ public final class B3SingleFormat {
       char c = isEof ? '-' : value.charAt(pos);
 
       if (c == '-') {
-        // Rather than incrementing a counter for each character, this does it once per delimiter
-        int currentFieldLength = pos - lastFieldPos;
-        lastFieldPos = pos + 1;
-
-        if (currentField == Field.SAMPLED) {
+        if (currentField.equals(FIELD_SAMPLED)) {
           // The last field could be sampled or parent ID. Revise assumption if longer than 1 char.
           if (isEof && currentFieldLength > 1) {
-            currentField = Field.PARENT_SPAN_ID;
+            currentField = FIELD_PARENT_SPAN_ID;
           }
-        } else if (currentField == Field.TRACE_ID_HIGH) {
+        } else if (currentField.equals(FIELD_TRACE_ID_HIGH)) {
           // We reached a hyphen before the 17th hex character. This means it is a 64-bit trace ID.
-          currentField = Field.TRACE_ID;
+          currentField = FIELD_TRACE_ID;
         }
 
         if (!validateFieldLength(currentField, currentFieldLength)) {
           return null;
         }
 
-        if (currentField.equals(Field.TRACE_ID)) {
+        if (currentField.equals(FIELD_TRACE_ID)) {
           traceId = buffer;
 
-          currentField = Field.SPAN_ID;
-        } else if (currentField.equals(Field.SPAN_ID)) {
+          currentField = FIELD_SPAN_ID;
+        } else if (currentField.equals(FIELD_SPAN_ID)) {
           spanId = buffer;
 
           // The handle malformed cases like below, it is easier to assume the next field is sampled
           // and revert if definitely not vs try to determine if it is definitely sampled.
           // 'traceId-spanId--parentSpanId'
           // 'traceId-spanId-'
-          currentField = Field.SAMPLED;
-        } else if (currentField.equals(Field.SAMPLED)) {
+          currentField = FIELD_SAMPLED;
+        } else if (currentField.equals(FIELD_SAMPLED)) {
           SamplingFlags samplingFlags = tryParseSamplingFlags(value.charAt(pos - 1));
           if (samplingFlags == null) return null;
           flags = samplingFlags.flags;
 
-          currentField = Field.PARENT_SPAN_ID;
+          currentField = FIELD_PARENT_SPAN_ID;
         } else {
-          assert currentField == Field.PARENT_SPAN_ID;
+          assert currentField.equals(FIELD_PARENT_SPAN_ID);
           parentId = buffer;
 
           if (!isEof) {
@@ -239,13 +228,14 @@ public final class B3SingleFormat {
         }
 
         buffer = 0L;
+        currentFieldLength = 0;
         continue;
       }
 
       // At this point, 'c' is not a hyphen
 
       // When we get to a non-hyphen at position 16, we have a 128-bit trace ID.
-      if (currentField == Field.TRACE_ID_HIGH && pos == pos16) {
+      if (currentField.equals(FIELD_TRACE_ID_HIGH) && currentFieldLength == 16) {
         // We don't guard against all zeros as traceIdHigh can be all zeros for 64-bit trace ID
         // encoded in 128-bits
         traceIdHigh = buffer;
@@ -253,9 +243,11 @@ public final class B3SingleFormat {
         // This character is the next hex. If it isn't, the next iteration will throw. Either way,
         // reset so that we can capture the next 16 characters of the trace ID.
         buffer = 0L;
-        currentField = Field.TRACE_ID;
-        lastFieldPos = pos;
+        currentField = FIELD_TRACE_ID;
+        currentFieldLength = 0;
       }
+
+      currentFieldLength++;
 
       // The rest of this is normal lower-hex decoding
       buffer <<= 4;
@@ -315,7 +307,7 @@ public final class B3SingleFormat {
 
     // Since we are using a hidden constructor, we need to validate here.
     if (traceId == 0L || spanId == 0L) {
-      String field = traceId == 0L ? Field.TRACE_ID.name : Field.SPAN_ID.name;
+      String field = traceId == 0L ? FIELD_TRACE_ID : FIELD_SPAN_ID;
       Platform.get().log("Invalid input: read all zeroes {0}", field, null);
       return null;
     }
@@ -345,16 +337,16 @@ public final class B3SingleFormat {
     }
   }
 
-  static boolean validateFieldLength(Field field, int length) {
-    int expectedLength = field == Field.SAMPLED ? 1 : 16;
+  static boolean validateFieldLength(String field, int length) {
+    int expectedLength = field.equals(FIELD_SAMPLED) ? 1 : 16;
     if (length == 0) {
-      Platform.get().log("Invalid input: empty {0}", field.name, null);
+      Platform.get().log("Invalid input: empty {0}", field, null);
       return false;
     } else if (length < expectedLength) {
-      Platform.get().log("Invalid input: {0} is too short", field.name, null);
+      Platform.get().log("Invalid input: {0} is too short", field, null);
       return false;
     } else if (length > expectedLength) {
-      Platform.get().log("Invalid input: {0} is too long", field.name, null);
+      Platform.get().log("Invalid input: {0} is too long", field, null);
       return false;
     }
     return true;
