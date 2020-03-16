@@ -275,7 +275,7 @@ public class B3SingleFormatTest {
   }
 
   @Test public void parseB3SingleFormat_malformed_notAscii() {
-    assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-💩"))
+    assertThat(parseB3SingleFormat(traceId + "-" + spanId.substring(0, 15) + "💩"))
       .isNull(); // instead of crashing
 
     verify(platform).log("Invalid input: only valid characters are lower-hex and hyphen", null);
@@ -285,7 +285,7 @@ public class B3SingleFormatTest {
     assertThat(parseB3SingleFormat("b970dafd-0d95-40aa-95d8-1d8725aebe40"))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: more than 4 fields exist", null);
+    verify(platform).log("Invalid input: {0} is too short", "trace ID", null);
   }
 
   @Test public void parseB3SingleFormat_malformed_hyphenForSampled() {
@@ -319,7 +319,7 @@ public class B3SingleFormatTest {
     assertThat(parseB3SingleFormat("-234567812345678-" + spanId))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: expected a 16 or 32 lower hex trace ID", null);
+    verify(platform).log("Invalid input: empty {0}", "trace ID", null);
   }
 
   @Test public void parseB3SingleFormat_empty_spanId() {
@@ -362,42 +362,42 @@ public class B3SingleFormatTest {
     assertThat(parseB3SingleFormat("1-" + spanId))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: expected a 16 or 32 lower hex trace ID", null);
+    verify(platform).log("Invalid input: {0} is too short", "trace ID", null);
   }
 
   @Test public void parseB3SingleFormat_truncated_traceId128() {
     assertThat(parseB3SingleFormat(traceIdHigh.substring(0, 15) + traceId + "-" + spanId))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: expected a 16 or 32 lower hex trace ID", null);
+    verify(platform).log("Invalid input: {0} is too short", "trace ID", null);
   }
 
   @Test public void parseB3SingleFormat_truncated_spanId() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId.substring(0, 15)))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Truncated reading {0}", "span ID", null);
+    verify(platform).log("Invalid input: {0} is too short", "span ID", null);
   }
 
   @Test public void parseB3SingleFormat_truncated_parentId() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-" + parentId.substring(0, 15)))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Truncated reading {0}", "parent ID", null);
+    verify(platform).log("Invalid input: {0} is too short", "parent ID", null);
   }
 
   @Test public void parseB3SingleFormat_truncated_parentId_after_sampled() {
     assertThat(parseB3SingleFormat(traceId + "-" + spanId + "-1-" + parentId.substring(0, 15)))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Truncated reading {0}", "parent ID", null);
+    verify(platform).log("Invalid input: {0} is too short", "parent ID", null);
   }
 
   @Test public void parseB3SingleFormat_traceIdTooLong() {
     assertThat(parseB3SingleFormat(traceId + traceId + "a" + "-" + spanId))
       .isNull(); // instead of raising exception
 
-    verify(platform).log("Invalid input: expected a 16 or 32 lower hex trace ID", null);
+    verify(platform).log("Invalid input: {0} is too long", "trace ID", null);
   }
 
   @Test public void parseB3SingleFormat_spanIdTooLong() {
