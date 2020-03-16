@@ -207,7 +207,7 @@ public final class B3SingleFormat {
           case FIELD_SPAN_ID:
             spanId = buffer;
 
-            // The handle malformed cases like below, it is easier to assume the next field is
+            // To handle malformed cases like below, it is easier to assume the next field is
             // sampled and revert if later not vs peek to determine if it is sampled or parent ID.
             // 'traceId-spanId--parentSpanId'
             // 'traceId-spanId-'
