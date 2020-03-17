@@ -54,7 +54,7 @@ public class TraceContextPropagationBenchmarks {
     .build();
 
   // TODO: add tracestate examples which prefer the b3 entry
-  static final Map<String, String> incoming128 = new LinkedHashMap<String, String>() {
+  static final Map<String, String> incoming = new LinkedHashMap<String, String>() {
     {
       put("traceparent", TraceparentFormat.writeTraceparentFormat(context));
     }
@@ -80,8 +80,8 @@ public class TraceContextPropagationBenchmarks {
     tcInjector.inject(context, carrier);
   }
 
-  @Benchmark public TraceContextOrSamplingFlags extract_128() {
-    return tcExtractor.extract(incoming128);
+  @Benchmark public TraceContextOrSamplingFlags extract() {
+    return tcExtractor.extract(incoming);
   }
 
   @Benchmark public TraceContextOrSamplingFlags extract_padded() {
