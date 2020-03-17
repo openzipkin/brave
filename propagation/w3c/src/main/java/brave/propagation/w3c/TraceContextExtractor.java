@@ -24,24 +24,44 @@ import java.util.List;
 
 import static brave.propagation.B3SingleFormat.parseB3SingleFormat;
 
+// TODO: this class has no useful tests wrt traceparent yet
 final class TraceContextExtractor<C, K> implements Extractor<C> {
   final Getter<C, K> getter;
-  final K tracestateKey;
+  final K traceparentKey, tracestateKey;
   final TracestateFormat tracestateFormat;
+  final B3SingleFormatHandler handler = new B3SingleFormatHandler();
 
   TraceContextExtractor(TraceContextPropagation<K> propagation, Getter<C, K> getter) {
     this.getter = getter;
+    this.traceparentKey = propagation.traceparentKey;
     this.tracestateKey = propagation.tracestateKey;
     this.tracestateFormat = new TracestateFormat(propagation.stateName);
   }
 
   @Override public TraceContextOrSamplingFlags extract(C carrier) {
     if (carrier == null) throw new NullPointerException("carrier == null");
-    String value = getter.get(carrier, tracestateKey);
-    if (value == null) return EMPTY;
+    String traceparent = getter.get(carrier, traceparentKey);
+    if (traceparent == null) return EMPTY;
 
-    B3SingleFormatHandler handler = new B3SingleFormatHandler();
-    CharSequence otherEntries = tracestateFormat.parseAndReturnOtherEntries(value, handler);
+    // TODO: add link that says tracestate itself is optional
+    String tracestate = getter.get(carrier, tracestateKey);
+    if (tracestate == null) {
+      // NOTE: we may not want to pay attention to the sampled flag. Since it conflates
+      // not-yet-sampled with sampled=false, implementations that always set flags to -00 would
+      // never be traced!
+      //
+      // NOTE: We are required to use the same trace ID, there's some vagueness about the parent
+      // span ID. Ex we don't know if upstream are sending to the same system or not, when we can't
+      // read the tracestate header. Trusting the span ID (traceparent calls the span ID parent-id)
+      // could result in a headless trace.
+      TraceContext maybeUpstream = TraceparentFormat.parseTraceparentFormat(traceparent);
+      return TraceContextOrSamplingFlags.newBuilder()
+        .context(maybeUpstream)
+        .extra(DEFAULT_EXTRA) // marker for outbound propagation
+        .build();
+    }
+
+    CharSequence otherEntries = tracestateFormat.parseAndReturnOtherEntries(tracestate, handler);
 
     List<Object> extra;
     if (otherEntries == null) {

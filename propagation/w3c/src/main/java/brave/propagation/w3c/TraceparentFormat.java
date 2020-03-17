@@ -97,8 +97,10 @@ final class TraceparentFormat {
       return null;
     }
 
+    // Benchmarks show no difference in memory usage re-using with thread local vs newing each time.
+    TraceContext.Builder builder = TraceContext.newBuilder();
+
     int version = 0;
-    TraceContext.Builder builder = getBuilder();
     boolean traceIdHighZero = false;
 
     int currentField = FIELD_VERSION, currentFieldLength = 0;
@@ -261,24 +263,6 @@ final class TraceparentFormat {
       result[i] = (byte) buffer[i];
     }
     return result;
-  }
-
-  // WeakReference to ensure our classes can be unloaded.
-  // TODO: add classloader test
-  static final ThreadLocal<WeakReference<TraceContext.Builder>> BUILDER_REF = new ThreadLocal<>();
-
-  // TODO: check with benchmark that this is notably better than just newing up each time.
-  static TraceContext.Builder getBuilder() {
-    WeakReference<TraceContext.Builder> ref = BUILDER_REF.get();
-    TraceContext.Builder builder;
-    if (ref == null || (builder = ref.get()) == null) {
-      builder = TraceContext.newBuilder();
-      ref = new WeakReference<>(builder);
-      BUILDER_REF.set(ref);
-    } else {
-      builder.clear();
-    }
-    return builder;
   }
 
   static final ThreadLocal<char[]> CHAR_BUFFER = new ThreadLocal<>();
