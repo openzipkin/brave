@@ -24,10 +24,16 @@ things like not sampling health checks. Conversely, you can force sampling by pr
 Amazon trace format can propagate a trace ID prior to starting a trace, for correlation purposes.
 `traceparent` requires a trace ID and a span ID, so cannot a trace ID standalone.
 
-#### Not yet sampled/ deferred decision
+#### `TraceContext.sampled() == null`
 B3 and Amazon formats support assigning a span ID prior to a sampling decision. `traceparent` has no
 way to tell the difference between an explicit no and lack of a decision, as it only has one bit
 flag.
+
+#### `TraceContext.parentId()`
+The parentId is a propagated field and also used in logging expressions. This is important for RPC
+spans as downstream usually finishes before upstream. This obviates a data race even if Zipkin's UI
+can tolerate lack of parent ID. What `traceparent` calls `parent-id` is not the parent, rather the
+span ID. It has no field for the actual parent ID.
 
 #### Debug flag
 B3 has always had a debug flag, which is a way to force a trace even if normal sampling says no.
