@@ -13,12 +13,21 @@
  */
 package brave.propagation.w3c;
 
-import java.util.Arrays;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TracestateFormatTest {
+  static final String FORTY_KEY_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789_-*/";
+  static final String TWO_HUNDRED_FORTY_KEY_CHARS =
+    FORTY_KEY_CHARS + FORTY_KEY_CHARS + FORTY_KEY_CHARS
+      + FORTY_KEY_CHARS + FORTY_KEY_CHARS + FORTY_KEY_CHARS;
+
+  static final String LONGEST_BASIC_KEY =
+    TWO_HUNDRED_FORTY_KEY_CHARS + FORTY_KEY_CHARS.substring(0, 16);
+
+  static final String LONGEST_TENANT_KEY =
+    "1" + TWO_HUNDRED_FORTY_KEY_CHARS + "@" + FORTY_KEY_CHARS.substring(0, 13);
 
   // all these need log assertions
   @Test public void validateKey_empty() {
@@ -35,13 +44,19 @@ public class TracestateFormatTest {
     assertThat(TracestateFormat.validateKey(new String(tooMany))).isFalse();
   }
 
-  @Test public void validateKey_shortest() {
+  @Test public void validateKey_shortest_basic() {
     assertThat(TracestateFormat.validateKey("a")).isTrue();
   }
 
-  @Test public void validateKey_longest() {
-    char[] longest = new char[256];
-    Arrays.fill(longest, 'a');
-    assertThat(TracestateFormat.validateKey(new String(longest))).isTrue();
+  @Test public void validateKey_shortest_tenant() {
+    assertThat(TracestateFormat.validateKey("1@a")).isTrue();
+  }
+
+  @Test public void validateKey_longest_basic() {
+    assertThat(TracestateFormat.validateKey(LONGEST_BASIC_KEY)).isTrue();
+  }
+
+  @Test public void validateKey_longest_tenant() {
+    assertThat(TracestateFormat.validateKey(LONGEST_TENANT_KEY)).isTrue();
   }
 }
