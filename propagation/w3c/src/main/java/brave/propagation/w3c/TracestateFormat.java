@@ -121,4 +121,51 @@ final class TracestateFormat {
     }
     return otherEntries;
   }
+
+  // Simplify other rules by allowing value-based lookup on an ASCII value
+  static boolean[] VALID_KEY_CHARS = new boolean[128];
+
+  static {
+    for (char c = 0; c < 128; c++) {
+      VALID_KEY_CHARS[c] = isValidTracestateKeyChar(c);
+    }
+  }
+
+  static boolean isValidTracestateKeyChar(char c) {
+    return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+      || c == '@' || c == '_' || c == '-' || c == '*' || c == '/';
+  }
+
+  // TODO: add logging etc.
+  static boolean validateKey(CharSequence key) {
+    int length = key.length();
+    if (length == 0 || length > 256) return false;
+
+    // Until we scan the entire key, we can't validate the first character, because the rules are
+    // different depending on if there is an '@' or not.
+    int vendorIndex = -1;
+    for (int i = 0; i < length; i++) {
+      char c = key.charAt(i);
+
+      // The only valid characters are plain ASCII (numeric range 0-127)
+      if (c > 128 || !VALID_KEY_CHARS[c]) return false;
+
+      if (c == '@') {
+        if (vendorIndex != -1) return false;
+        vendorIndex = i;
+
+        // must be at least one character after the tenant
+        if (i++ == length) return false;
+        if (key.charAt(i) < 'a') return false;
+      }
+    }
+
+    // Now, go back and check to see if this was a Tenant formatted key, as the rules are different.
+    // Either way, we already checked the boundary cases.
+    char first = key.charAt(0);
+    if (vendorIndex == -1) return first >= 'a';
+
+    // tenant ID can only be up to 14 characters, but unlike vendor, it can start with a number.
+    return length - vendorIndex <= 14 && first >= 'a' || first <= '9';
+  }
 }

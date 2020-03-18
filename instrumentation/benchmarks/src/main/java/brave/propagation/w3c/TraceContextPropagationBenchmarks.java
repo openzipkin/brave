@@ -42,7 +42,7 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 public class TraceContextPropagationBenchmarks {
   static final Propagation<String> tc =
-    TraceContextPropagation.FACTORY.create(Propagation.KeyFactory.STRING);
+    TraceContextPropagation.newFactory().create(Propagation.KeyFactory.STRING);
   static final Injector<Map<String, String>> tcInjector = tc.injector(Map::put);
   static final Extractor<Map<String, String>> tcExtractor = tc.extractor(Map::get);
 

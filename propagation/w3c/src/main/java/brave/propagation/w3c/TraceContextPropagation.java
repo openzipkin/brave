@@ -21,52 +21,67 @@ import java.util.Arrays;
 import java.util.List;
 
 public final class TraceContextPropagation<K> implements Propagation<K> {
-  // TODO: not sure if we will want a constant here, or something like a builder. For example, we
-  // probably will need a primary state handler (ex b3) to catch data no longer in the traceparent
-  // format. At any rate, we will need to know what state is primarily ours, so that probably means
-  // not having a constant, unless that constant uses b3 single impl for the tracestate entry.
-  public static final Propagation.Factory FACTORY =
-    new Propagation.Factory() {
-      @Override public <K> Propagation<K> create(KeyFactory<K> keyFactory) {
-        return new TraceContextPropagation<>(keyFactory);
-      }
 
-      /**
-       * Traceparent doesn't support sharing the same span ID, though it may be possible to support
-       * this by extending it with a b3 state entry.
-       */
-      @Override public boolean supportsJoin() {
-        return false;
-      }
+  public static Factory newFactory() {
+    return new FactoryBuilder().build();
+  }
 
-      @Override public TraceContext decorate(TraceContext context) {
-        // TODO: almost certain we will need to decorate as not all contexts will start with an
-        // incoming request (ex schedule or client-originated traces)
-        return super.decorate(context);
-      }
+  public static FactoryBuilder newFactoryBuilder() {
+    return new FactoryBuilder();
+  }
 
-      @Override public boolean requires128BitTraceId() {
-        return true;
-      }
+  public static final class FactoryBuilder {
+    String tracestateKey = "b3";
 
-      @Override public String toString() {
-        return "TracestatePropagationFactory";
-      }
-    };
+    /** The key to use inside the {@code tracestate} value. Defaults to "b3". */
+    public FactoryBuilder tracestateKey(String key) {
+      // https://w3c.github.io/trace-context/#key
+      if (key == null) throw new NullPointerException("key == null");
+      // TODO: add an arg to throw with real message on invalid
+      if (!TracestateFormat.validateKey(key)) throw new IllegalArgumentException("invalid");
+      this.tracestateKey = key;
+      return this;
+    }
 
-  final String stateName;
-  final K traceparentKey, tracestateKey;
-  final List<K> fields;
+    public Factory build() {
+      return new Factory(this);
+    }
 
-  TraceContextPropagation(KeyFactory<K> keyFactory) {
-    this.stateName = "b3";
-    this.traceparentKey = keyFactory.create("traceparent");
-    this.tracestateKey = keyFactory.create("tracestate");
-    this.fields = Arrays.asList(traceparentKey, tracestateKey);
+    FactoryBuilder() {
+    }
+  }
+
+  static final class Factory extends Propagation.Factory {
+    final String tracestateKey;
+
+    Factory(FactoryBuilder builder) {
+      this.tracestateKey = builder.tracestateKey;
+    }
+
+    @Override public <K> Propagation<K> create(KeyFactory<K> keyFactory) {
+      return new TraceContextPropagation<>(keyFactory, tracestateKey);
+    }
+
+    @Override public TraceContext decorate(TraceContext context) {
+      // TODO: almost certain we will need to decorate as not all contexts will start with an
+      // incoming request (ex schedule or client-originated traces)
+      return super.decorate(context);
+    }
+  }
+
+  final String tracestateKey;
+  final K traceparent, tracestate;
+  final List<K> keys;
+
+  TraceContextPropagation(KeyFactory<K> keyFactory, String tracestateKey) {
+    this.tracestateKey = tracestateKey;
+    this.traceparent = keyFactory.create("traceparent");
+    this.tracestate = keyFactory.create("tracestate");
+    this.keys = Arrays.asList(traceparent, tracestate);
   }
 
   @Override public List<K> keys() {
-    return fields;
+    return keys;
   }
 
   @Override public <C> Injector<C> injector(Setter<C, K> setter) {
