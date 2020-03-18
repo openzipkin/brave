@@ -14,6 +14,7 @@
 package brave.propagation.w3c;
 
 import brave.internal.Nullable;
+import brave.internal.Platform;
 
 import static brave.propagation.w3c.TraceparentFormat.FORMAT_LENGTH;
 
@@ -144,10 +145,18 @@ final class TracestateFormat {
       || c == '@' || c == '_' || c == '-' || c == '*' || c == '/';
   }
 
-  // TODO: add logging etc.
-  static boolean validateKey(CharSequence key) {
+  /**
+   * Performs validation according to the ABNF of the {code tracestate} key.
+   *
+   * <p>See https://www.w3.org/TR/trace-context-1/#key
+   *
+   * @param shouldThrow true raises an {@link IllegalArgumentException} when validation fails
+   * instead of logging.
+   */
+  static boolean validateKey(CharSequence key, boolean shouldThrow) {
     int length = key.length();
-    if (length == 0 || length > 256) return false;
+    if (length == 0) return logOrThrow("Invalid input: empty", shouldThrow);
+    if (length > 256) return logOrThrow("Invalid input: too large", shouldThrow);
 
     // Until we scan the entire key, we can't validate the first character, because the rules are
     // different depending on if there is an '@' or not. When there's an '@', it is Tenant syntax.
@@ -155,10 +164,14 @@ final class TracestateFormat {
     for (int i = 0; i < length; i++) {
       char c = key.charAt(i);
 
-      if (c > LAST_VALID_KEY_CHAR || !VALID_KEY_CHARS[c]) return false;
+      if (c > LAST_VALID_KEY_CHAR || !VALID_KEY_CHARS[c]) {
+        return logOrThrow("Invalid input: valid characters are: a-z 0-9 _ - * / @", shouldThrow);
+      }
 
       if (c == '@') {
-        if (atIndex != -1) return false;
+        if (atIndex != -1) {
+          return logOrThrow("Invalid input: only a single '@' is allowed", shouldThrow);
+        }
         atIndex = i;
       }
     }
@@ -166,17 +179,38 @@ final class TracestateFormat {
     // Now, go back and check to see if this was a Tenant formatted key, as the rules are different.
     // Either way, we already checked the boundary cases.
     char first = key.charAt(0);
-    if (atIndex == -1) return first >= 'a'; // <= 'z' implied
+    if (atIndex == -1) {
+      return validateVendorPrefix(first, shouldThrow);
+    }
 
     // Unlike vendor, tenant ID can start with a number.
-    if ((first >= '0' && first <= '9') || first >= 'a') { // <= 'z' implied
+    if ((first >= '0' && first <= '9') || first >= 'a') { // && <= 'z' implied
       int vendorIndex = atIndex + 1;
       int vendorLength = length - vendorIndex;
-      if (vendorLength == 0 || vendorLength > 14) return false;
 
-      return key.charAt(vendorIndex) >= 'a'; // <= 'z' implied
+      if (vendorLength == 0) return logOrThrow("Invalid input: empty vendor", shouldThrow);
+      if (vendorLength > 14) return logOrThrow("Invalid input: vendor too long", shouldThrow);
+
+      return validateVendorPrefix(key.charAt(vendorIndex), shouldThrow);
+    } else if (atIndex == 0) {
+      return logOrThrow("Invalid input: empty tenant ID", shouldThrow);
     } else {
-      return false; // invalid tenant syntax
+      return logOrThrow("Invalid input: tenant ID must start with a-z", shouldThrow);
     }
+  }
+
+  static boolean validateVendorPrefix(char first, boolean shouldThrow) {
+    if (first >= 'a') { // && <= 'z' implied
+      return true;
+    }
+    return logOrThrow("Invalid input: vendor must start with a-z", shouldThrow);
+  }
+
+  static boolean logOrThrow(String msg, boolean shouldThrow) {
+    if (shouldThrow) {
+      throw new IllegalArgumentException(msg);
+    }
+    Platform.get().log(msg, null);
+    return false;
   }
 }

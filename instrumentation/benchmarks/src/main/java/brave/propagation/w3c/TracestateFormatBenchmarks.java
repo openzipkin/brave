@@ -60,11 +60,11 @@ public class TracestateFormatBenchmarks {
     "1" + TWO_HUNDRED_FORTY_KEY_CHARS + "@" + FORTY_KEY_CHARS.substring(0, 13);
 
   @Benchmark public boolean validateKey_brave_longest_basic() {
-    return validateKey(LONGEST_BASIC_KEY);
+    return validateKey(LONGEST_BASIC_KEY, false);
   }
 
   @Benchmark public boolean validateKey_brave_longest_tenant() {
-    return validateKey(LONGEST_TENANT_KEY);
+    return validateKey(LONGEST_TENANT_KEY, false);
   }
 
   @Benchmark public boolean validateKey_regex_longest_basic() {

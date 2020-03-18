@@ -33,12 +33,15 @@ public final class TraceContextPropagation<K> implements Propagation<K> {
   public static final class FactoryBuilder {
     String tracestateKey = "b3";
 
-    /** The key to use inside the {@code tracestate} value. Defaults to "b3". */
+    /**
+     * The key to use inside the {@code tracestate} value. Defaults to "b3".
+     *
+     * @throws IllegalArgumentException if the key doesn't conform to ABNF rules defined by the
+     * <href="https://www.w3.org/TR/trace-context-1/#key">trace-context specification</href>.
+     */
     public FactoryBuilder tracestateKey(String key) {
-      // https://w3c.github.io/trace-context/#key
       if (key == null) throw new NullPointerException("key == null");
-      // TODO: add an arg to throw with real message on invalid
-      if (!TracestateFormat.validateKey(key)) throw new IllegalArgumentException("invalid");
+      TracestateFormat.validateKey(key, true);
       this.tracestateKey = key;
       return this;
     }
