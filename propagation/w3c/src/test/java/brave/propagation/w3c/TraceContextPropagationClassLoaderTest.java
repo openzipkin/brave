@@ -14,7 +14,6 @@
 package brave.propagation.w3c;
 
 import brave.propagation.Propagation;
-import brave.propagation.Propagation.KeyFactory;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
@@ -22,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.Test;
 
+import static brave.propagation.Propagation.KeyFactory.STRING;
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 
 public class TraceContextPropagationClassLoaderTest {
@@ -31,7 +31,7 @@ public class TraceContextPropagationClassLoaderTest {
 
   static class BasicUsage implements Runnable {
     @Override public void run() {
-      Propagation<String> propagation = TraceContextPropagation.FACTORY.create(KeyFactory.STRING);
+      Propagation<String> propagation = TraceContextPropagation.newFactory().create(STRING);
       Injector<Map<String, String>> injector = propagation.injector(Map::put);
       Extractor<Map<String, String>> extractor = propagation.extractor(Map::get);
 

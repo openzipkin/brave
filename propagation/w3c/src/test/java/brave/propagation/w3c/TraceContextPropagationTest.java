@@ -13,7 +13,7 @@
  */
 package brave.propagation.w3c;
 
-import brave.propagation.Propagation.KeyFactory;
+import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
@@ -24,23 +24,22 @@ import java.util.Map;
 import org.junit.Test;
 
 import static brave.internal.HexCodec.lowerHexToUnsignedLong;
+import static brave.propagation.Propagation.KeyFactory.STRING;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TraceContextPropagationTest {
   Map<String, String> carrier = new LinkedHashMap<>();
-  Injector<Map<String, String>> injector =
-      TraceContextPropagation.FACTORY.create(KeyFactory.STRING).injector(Map::put);
-  Extractor<Map<String, String>> extractor =
-      TraceContextPropagation.FACTORY.create(KeyFactory.STRING).extractor(Map::get);
+  Propagation<String> propagation = TraceContextPropagation.newFactory().create(STRING);
+  Injector<Map<String, String>> injector = propagation.injector(Map::put);
+  Extractor<Map<String, String>> extractor = propagation.extractor(Map::get);
 
-  TraceContext sampledContext =
-      TraceContext.newBuilder()
-          .traceIdHigh(lowerHexToUnsignedLong("67891233abcdef01"))
-          .traceId(lowerHexToUnsignedLong("2345678912345678"))
-          .spanId(lowerHexToUnsignedLong("463ac35c9f6413ad"))
-          .sampled(true)
-          .build();
+  TraceContext sampledContext = TraceContext.newBuilder()
+    .traceIdHigh(lowerHexToUnsignedLong("67891233abcdef01"))
+    .traceId(lowerHexToUnsignedLong("2345678912345678"))
+    .spanId(lowerHexToUnsignedLong("463ac35c9f6413ad"))
+    .sampled(true)
+    .build();
   String validTraceparent = "00-67891233abcdef012345678912345678-463ac35c9f6413ad-01";
   String validB3Single = "67891233abcdef012345678912345678-463ac35c9f6413ad-1";
   String otherState = "congo=lZWRzIHRoNhcm5hbCBwbGVhc3VyZS4=";
@@ -70,12 +69,12 @@ public class TraceContextPropagationTest {
     carrier.put("traceparent", validTraceparent);
     carrier.put("tracestate", "b3=" + validB3Single);
 
-    assertThat(extractor.extract(carrier))
-        .isEqualTo(
-            TraceContextOrSamplingFlags.newBuilder()
-                .addExtra(new Extra())
-                .context(sampledContext)
-                .build());
+    assertThat(extractor.extract(carrier)).isEqualTo(
+      TraceContextOrSamplingFlags.newBuilder()
+        .addExtra(new Extra())
+        .context(sampledContext)
+        .build()
+    );
   }
 
   @Test public void extracts_b3_before_other_tracestate() {
@@ -85,12 +84,12 @@ public class TraceContextPropagationTest {
     Extra extra = new Extra();
     extra.otherEntries = otherState;
 
-    assertThat(extractor.extract(carrier))
-        .isEqualTo(
-            TraceContextOrSamplingFlags.newBuilder()
-                .addExtra(extra)
-                .context(sampledContext)
-                .build());
+    assertThat(extractor.extract(carrier)).isEqualTo(
+      TraceContextOrSamplingFlags.newBuilder()
+        .addExtra(extra)
+        .context(sampledContext)
+        .build()
+    );
   }
 
   @Test public void extracts_b3_after_other_tracestate() {
@@ -100,11 +99,11 @@ public class TraceContextPropagationTest {
     Extra extra = new Extra();
     extra.otherEntries = otherState;
 
-    assertThat(extractor.extract(carrier))
-        .isEqualTo(
-            TraceContextOrSamplingFlags.newBuilder()
-                .addExtra(extra)
-                .context(sampledContext)
-                .build());
+    assertThat(extractor.extract(carrier)).isEqualTo(
+      TraceContextOrSamplingFlags.newBuilder()
+        .addExtra(extra)
+        .context(sampledContext)
+        .build()
+    );
   }
 }

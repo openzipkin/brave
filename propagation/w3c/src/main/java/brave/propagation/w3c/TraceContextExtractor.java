@@ -33,9 +33,9 @@ final class TraceContextExtractor<C, K> implements Extractor<C> {
 
   TraceContextExtractor(TraceContextPropagation<K> propagation, Getter<C, K> getter) {
     this.getter = getter;
-    this.traceparentKey = propagation.traceparentKey;
-    this.tracestateKey = propagation.tracestateKey;
-    this.tracestateFormat = new TracestateFormat(propagation.stateName);
+    this.traceparentKey = propagation.traceparent;
+    this.tracestateKey = propagation.tracestate;
+    this.tracestateFormat = new TracestateFormat(propagation.tracestateKey);
   }
 
   @Override public TraceContextOrSamplingFlags extract(C carrier) {

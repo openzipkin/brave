@@ -27,9 +27,9 @@ final class TraceContextInjector<C, K> implements Injector<C> {
   final K traceparentKey, tracestateKey;
 
   TraceContextInjector(TraceContextPropagation<K> propagation, Setter<C, K> setter) {
-    this.tracestateFormat = new TracestateFormat(propagation.stateName);
-    this.traceparentKey = propagation.traceparentKey;
-    this.tracestateKey = propagation.tracestateKey;
+    this.tracestateFormat = new TracestateFormat(propagation.tracestateKey);
+    this.traceparentKey = propagation.traceparent;
+    this.tracestateKey = propagation.tracestate;
     this.setter = setter;
   }
 
