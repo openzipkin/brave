@@ -13,9 +13,14 @@
  */
 package brave.propagation.w3c;
 
+import java.util.Arrays;
+import java.util.stream.Stream;
+import org.assertj.core.api.AbstractBooleanAssert;
+import org.assertj.core.api.AbstractThrowableAssert;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class TracestateFormatTest {
   static final String FORTY_KEY_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789_-*/";
@@ -31,62 +36,82 @@ public class TracestateFormatTest {
 
   // all these need log assertions
   @Test public void validateKey_empty() {
-    assertThat(TracestateFormat.validateKey("")).isFalse();
+    assertThatThrownByValidateKey("")
+      .hasMessage("Invalid input: empty");
   }
 
   @Test public void validateKey_tooLong() {
     char[] tooMany = new char[257];
-    assertThat(TracestateFormat.validateKey(new String(tooMany))).isFalse();
+    Arrays.fill(tooMany, 'a');
+    assertThatThrownByValidateKey(new String(tooMany))
+      .hasMessage("Invalid input: too large");
   }
 
   @Test public void validateKey_shortest_basic() {
-    assertThat(TracestateFormat.validateKey("z")).isTrue();
+    assertThatValidateKey("z").isTrue();
   }
 
   @Test public void validateKey_shortest_tenant() {
-    assertThat(TracestateFormat.validateKey("0@z")).isTrue();
-    assertThat(TracestateFormat.validateKey("a@z")).isTrue();
+    assertThatValidateKey("0@z").isTrue();
+    assertThatValidateKey("a@z").isTrue();
   }
 
   @Test public void validateKey_longest_basic() {
-    assertThat(TracestateFormat.validateKey(LONGEST_BASIC_KEY)).isTrue();
+    assertThatValidateKey(LONGEST_BASIC_KEY).isTrue();
   }
 
   @Test public void validateKey_longest_tenant() {
-    assertThat(TracestateFormat.validateKey(LONGEST_TENANT_KEY)).isTrue();
+    assertThatValidateKey(LONGEST_TENANT_KEY).isTrue();
   }
 
   @Test public void validateKey_invalid_basic() {
     // zero is allowed only as when there is an '@'
-    assertThat(TracestateFormat.validateKey("0")).isFalse();
+    assertThatThrownByValidateKey("0")
+      .hasMessage("Invalid input: vendor must start with a-z");
   }
 
   @Test public void validateKey_invalid_basic_unicode() {
-    assertThat(TracestateFormat.validateKey("a💩")).isFalse();
-    assertThat(TracestateFormat.validateKey("💩a")).isFalse();
+    Stream.of("a💩", "💩a").forEach(key -> assertThatThrownByValidateKey(key)
+      .hasMessage("Invalid input: valid characters are: a-z 0-9 _ - * / @"));
   }
 
   @Test public void validateKey_invalid_tenant() {
-    assertThat(TracestateFormat.validateKey("_@z")).isFalse();
+    assertThatThrownByValidateKey("_@z")
+      .hasMessage("Invalid input: tenant ID must start with a-z");
   }
 
   @Test public void validateKey_invalid_tenant_unicode() {
-    assertThat(TracestateFormat.validateKey("a@a💩")).isFalse();
-    assertThat(TracestateFormat.validateKey("a@💩a")).isFalse();
-    assertThat(TracestateFormat.validateKey("a💩@a")).isFalse();
-    assertThat(TracestateFormat.validateKey("💩a@a")).isFalse();
+    Stream.of(
+      "a@a💩",
+      "a@💩a",
+      "a💩@a",
+      "💩a@a"
+    ).forEach(key -> assertThatThrownByValidateKey(key)
+      .hasMessage("Invalid input: valid characters are: a-z 0-9 _ - * / @"));
   }
 
   @Test public void validateKey_invalid_tenant_empty() {
-    assertThat(TracestateFormat.validateKey("@a")).isFalse();
-    assertThat(TracestateFormat.validateKey("a@")).isFalse();
+    assertThatThrownByValidateKey("@a")
+      .hasMessage("Invalid input: empty tenant ID");
+    assertThatThrownByValidateKey("a@")
+      .hasMessage("Invalid input: empty vendor");
   }
 
   @Test public void validateKey_invalid_tenant_vendor_longest() {
-    assertThat(TracestateFormat.validateKey("a@abcdef12345678")).isTrue();
+    assertThatValidateKey("a@abcdef12345678").isTrue();
   }
 
   @Test public void validateKey_invalid_tenant_vendor_tooLong() {
-    assertThat(TracestateFormat.validateKey("a@abcdef1234567890")).isFalse();
+    assertThatThrownByValidateKey("a@abcdef1234567890")
+      .hasMessage("Invalid input: vendor too long");
+  }
+
+  static AbstractBooleanAssert<?> assertThatValidateKey(String key) {
+    return assertThat(TracestateFormat.validateKey(key, true));
+  }
+
+  static AbstractThrowableAssert<?, ? extends Throwable> assertThatThrownByValidateKey(String key) {
+    return assertThatThrownBy(() -> TracestateFormat.validateKey(key, true))
+      .isInstanceOf(IllegalArgumentException.class);
   }
 }
