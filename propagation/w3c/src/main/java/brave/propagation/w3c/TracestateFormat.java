@@ -122,11 +122,19 @@ final class TracestateFormat {
     return otherEntries;
   }
 
-  // Simplify other rules by allowing value-based lookup on an ASCII value
-  static boolean[] VALID_KEY_CHARS = new boolean[128];
+  // Simplify other rules by allowing value-based lookup on an ASCII value.
+  //
+  // This approach is similar to io.netty.util.internal.StringUtil.HEX2B as it uses an array to
+  // cache values. Unlike HEX2B, this requires a bounds check when using the character's integer
+  // value as a key.
+  //
+  // The performance cost of a bounds check is still better than using BitSet, and avoids allocating
+  // an array of 64 thousand booleans: that could be problematic in old JREs or Android.
+  static int LAST_VALID_KEY_CHAR = 'z';
+  static boolean[] VALID_KEY_CHARS = new boolean[LAST_VALID_KEY_CHAR + 1];
 
   static {
-    for (char c = 0; c < 128; c++) {
+    for (char c = 0; c < VALID_KEY_CHARS.length; c++) {
       VALID_KEY_CHARS[c] = isValidTracestateKeyChar(c);
     }
   }
@@ -142,30 +150,33 @@ final class TracestateFormat {
     if (length == 0 || length > 256) return false;
 
     // Until we scan the entire key, we can't validate the first character, because the rules are
-    // different depending on if there is an '@' or not.
-    int vendorIndex = -1;
+    // different depending on if there is an '@' or not. When there's an '@', it is Tenant syntax.
+    int atIndex = -1;
     for (int i = 0; i < length; i++) {
       char c = key.charAt(i);
 
-      // The only valid characters are plain ASCII (numeric range 0-127)
-      if (c > 128 || !VALID_KEY_CHARS[c]) return false;
+      if (c > LAST_VALID_KEY_CHAR || !VALID_KEY_CHARS[c]) return false;
 
       if (c == '@') {
-        if (vendorIndex != -1) return false;
-        vendorIndex = i;
-
-        // must be at least one character after the tenant
-        if (i++ == length) return false;
-        if (key.charAt(i) < 'a') return false;
+        if (atIndex != -1) return false;
+        atIndex = i;
       }
     }
 
     // Now, go back and check to see if this was a Tenant formatted key, as the rules are different.
     // Either way, we already checked the boundary cases.
     char first = key.charAt(0);
-    if (vendorIndex == -1) return first >= 'a';
+    if (atIndex == -1) return first >= 'a'; // <= 'z' implied
 
-    // tenant ID can only be up to 14 characters, but unlike vendor, it can start with a number.
-    return length - vendorIndex <= 14 && first >= 'a' || first <= '9';
+    // Unlike vendor, tenant ID can start with a number.
+    if ((first >= '0' && first <= '9') || first >= 'a') { // <= 'z' implied
+      int vendorIndex = atIndex + 1;
+      int vendorLength = length - vendorIndex;
+      if (vendorLength == 0 || vendorLength > 14) return false;
+
+      return key.charAt(vendorIndex) >= 'a'; // <= 'z' implied
+    } else {
+      return false; // invalid tenant syntax
+    }
   }
 }
