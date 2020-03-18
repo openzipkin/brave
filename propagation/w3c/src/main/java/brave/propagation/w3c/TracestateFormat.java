@@ -153,6 +153,8 @@ final class TracestateFormat {
    * @param shouldThrow true raises an {@link IllegalArgumentException} when validation fails
    * instead of logging.
    */
+  // The intent is to optimize for valid, non-tenant formats. Logic to narrow error messages is
+  // intentionally deferred. Performance matters as this could be called up to 32 times per header.
   static boolean validateKey(CharSequence key, boolean shouldThrow) {
     int length = key.length();
     if (length == 0) return logOrThrow("Invalid input: empty", shouldThrow);
@@ -169,9 +171,7 @@ final class TracestateFormat {
       }
 
       if (c == '@') {
-        if (atIndex != -1) {
-          return logOrThrow("Invalid input: only a single '@' is allowed", shouldThrow);
-        }
+        if (atIndex != -1) return logOrThrow("Invalid input: only one @ is allowed", shouldThrow);
         atIndex = i;
       }
     }
@@ -179,9 +179,7 @@ final class TracestateFormat {
     // Now, go back and check to see if this was a Tenant formatted key, as the rules are different.
     // Either way, we already checked the boundary cases.
     char first = key.charAt(0);
-    if (atIndex == -1) {
-      return validateVendorPrefix(first, shouldThrow);
-    }
+    if (atIndex == -1) return validateVendorPrefix(first, shouldThrow);
 
     // Unlike vendor, tenant ID can start with a number.
     if ((first >= '0' && first <= '9') || first >= 'a') { // && <= 'z' implied
@@ -207,9 +205,7 @@ final class TracestateFormat {
   }
 
   static boolean logOrThrow(String msg, boolean shouldThrow) {
-    if (shouldThrow) {
-      throw new IllegalArgumentException(msg);
-    }
+    if (shouldThrow) throw new IllegalArgumentException(msg);
     Platform.get().log(msg, null);
     return false;
   }
