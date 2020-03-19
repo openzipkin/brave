@@ -242,6 +242,70 @@ public class B3PropagationTest {
     assertThat(extract(headers).sampled()).isTrue();
   }
 
+  @Test public void extract_128Bit() {
+    Map<String, String> headers = new LinkedHashMap<>();
+    headers.put("X-B3-TraceId", traceIdHigh + traceId);
+    headers.put("X-B3-SpanId", spanId);
+
+    assertThat(extract(headers).context()).isEqualToComparingFieldByField(TraceContext.newBuilder()
+      .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
+      .traceId(Long.parseUnsignedLong(traceId, 16))
+      .spanId(Long.parseUnsignedLong(spanId, 16)).build()
+    );
+  }
+
+  @Test public void extract_padded() {
+    Map<String, String> headers = new LinkedHashMap<>();
+    headers.put("X-B3-TraceId", "0000000000000000" + traceId);
+    headers.put("X-B3-SpanId", spanId);
+
+    assertThat(extract(headers).context()).isEqualToComparingFieldByField(TraceContext.newBuilder()
+      .traceId(Long.parseUnsignedLong(traceId, 16))
+      .spanId(Long.parseUnsignedLong(spanId, 16)).build()
+    );
+  }
+
+  @Test public void extract_padded_right() {
+    Map<String, String> headers = new LinkedHashMap<>();
+    headers.put("X-B3-TraceId", traceIdHigh + "0000000000000000");
+    headers.put("X-B3-SpanId", spanId);
+
+    assertThat(extract(headers).context()).isEqualToComparingFieldByField(TraceContext.newBuilder()
+      .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
+      .spanId(Long.parseUnsignedLong(spanId, 16)).build()
+    );
+  }
+
+  @Test public void extract_zeros_traceId() {
+    Map<String, String> headers = new LinkedHashMap<>();
+    headers.put("X-B3-TraceId", "0000000000000000");
+    headers.put("X-B3-SpanId", spanId);
+
+    assertThat(extract(headers).context()).isNull();
+
+    verify(platform).log("Invalid input: traceId was all zeros", null);
+  }
+
+  @Test public void extract_zeros_traceId_128() {
+    Map<String, String> headers = new LinkedHashMap<>();
+    headers.put("X-B3-TraceId", "00000000000000000000000000000000");
+    headers.put("X-B3-SpanId", spanId);
+
+    assertThat(extract(headers).context()).isNull();
+
+    verify(platform).log("Invalid input: traceId was all zeros", null);
+  }
+
+  @Test public void extract_zeros_spanId() {
+    Map<String, String> headers = new LinkedHashMap<>();
+    headers.put("X-B3-TraceId", traceId);
+    headers.put("X-B3-SpanId", "0000000000000000");
+
+    assertThat(extract(headers).context()).isNull();
+
+    verify(platform).log("Invalid input: spanId was all zeros", null);
+  }
+
   @Test public void extract_sampled_false() {
     Map<String, String> headers = new LinkedHashMap<>();
     headers.put("X-B3-TraceId", traceId);
@@ -265,7 +329,8 @@ public class B3PropagationTest {
       headers.put("X-B3-Sampled", sampled);
       assertThat(extract(headers)).isSameAs(TraceContextOrSamplingFlags.EMPTY);
 
-      verify(platform).log("Invalid input: expected 0 or 1 for X-B3-Sampled, but found '{0}'", sampled, null);
+      verify(platform).log("Invalid input: expected 0 or 1 for X-B3-Sampled, but found '{0}'",
+        sampled, null);
     });
   }
 

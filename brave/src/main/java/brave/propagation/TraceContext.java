@@ -387,23 +387,37 @@ public final class TraceContext extends SamplingFlags {
       int length = traceIdString.length();
       if (invalidIdLength(key, length, 32)) return false;
 
+      boolean traceIdHighAllZeros = false, traceIdAllZeros = false;
+
       // left-most characters, if any, are the high bits
       int traceIdIndex = Math.max(0, length - 16);
       if (traceIdIndex > 0) {
         traceIdHigh = lenientLowerHexToUnsignedLong(traceIdString, 0, traceIdIndex);
-        if (traceIdHigh == 0L && !isAllZeros(traceIdString, 0, traceIdIndex)) {
+        if (traceIdHigh == 0L) {
+          traceIdHighAllZeros = isAllZeros(traceIdString, 0, traceIdIndex);
+          if (!traceIdHighAllZeros) {
+            maybeLogNotLowerHex(traceIdString);
+            return false;
+          }
+        }
+      } else {
+        traceIdHighAllZeros = true;
+      }
+
+      // right-most up to 16 characters are the low bits
+      traceId = lenientLowerHexToUnsignedLong(traceIdString, traceIdIndex, length);
+      if (traceId == 0L) {
+        traceIdAllZeros = isAllZeros(traceIdString, traceIdIndex, length);
+        if (!traceIdAllZeros) {
           maybeLogNotLowerHex(traceIdString);
           return false;
         }
       }
 
-      // right-most up to 16 characters are the low bits
-      traceId = lenientLowerHexToUnsignedLong(traceIdString, traceIdIndex, length);
-      if (traceId == 0L && !isAllZeros(traceIdString, traceIdIndex, length)) {
-        maybeLogNotLowerHex(traceIdString);
-        return false;
+      if (traceIdHighAllZeros && traceIdAllZeros) {
+        Platform.get().log("Invalid input: traceId was all zeros", null);
       }
-      return traceIdHigh != 0L || traceId != 0L; // not all zeros
+      return traceIdHigh != 0L || traceId != 0L;
     }
 
     /** Parses the parent id from the input string. Returns true if the ID was missing or valid. */
@@ -428,6 +442,10 @@ public final class TraceContext extends SamplingFlags {
 
       spanId = lenientLowerHexToUnsignedLong(spanIdString, 0, length);
       if (spanId == 0) {
+        if (isAllZeros(spanIdString, 0, length)) {
+          Platform.get().log("Invalid input: spanId was all zeros", null);
+          return false;
+        }
         maybeLogNotLowerHex(spanIdString);
         return false;
       }
