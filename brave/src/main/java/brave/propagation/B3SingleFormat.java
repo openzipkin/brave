@@ -267,8 +267,8 @@ public final class B3SingleFormat {
     }
 
     // Since we are using a hidden constructor, we need to validate here.
-    if (traceId == 0L || spanId == 0L) {
-      int field = traceId == 0L ? FIELD_TRACE_ID : FIELD_SPAN_ID;
+    if ((traceIdHigh == 0L && traceId == 0L) || spanId == 0L) {
+      int field = spanId == 0L ? FIELD_SPAN_ID : FIELD_TRACE_ID;
       log(field, "Invalid input: read all zeros {0}");
       return null;
     }
