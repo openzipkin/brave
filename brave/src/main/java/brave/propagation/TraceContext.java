@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -387,23 +387,37 @@ public final class TraceContext extends SamplingFlags {
       int length = traceIdString.length();
       if (invalidIdLength(key, length, 32)) return false;
 
+      boolean traceIdHighAllZeros = false, traceIdAllZeros = false;
+
       // left-most characters, if any, are the high bits
       int traceIdIndex = Math.max(0, length - 16);
       if (traceIdIndex > 0) {
         traceIdHigh = lenientLowerHexToUnsignedLong(traceIdString, 0, traceIdIndex);
-        if (traceIdHigh == 0) {
+        if (traceIdHigh == 0L) {
+          traceIdHighAllZeros = isAllZeros(traceIdString, 0, traceIdIndex);
+          if (!traceIdHighAllZeros) {
+            maybeLogNotLowerHex(traceIdString);
+            return false;
+          }
+        }
+      } else {
+        traceIdHighAllZeros = true;
+      }
+
+      // right-most up to 16 characters are the low bits
+      traceId = lenientLowerHexToUnsignedLong(traceIdString, traceIdIndex, length);
+      if (traceId == 0L) {
+        traceIdAllZeros = isAllZeros(traceIdString, traceIdIndex, length);
+        if (!traceIdAllZeros) {
           maybeLogNotLowerHex(traceIdString);
           return false;
         }
       }
 
-      // right-most up to 16 characters are the low bits
-      traceId = lenientLowerHexToUnsignedLong(traceIdString, traceIdIndex, length);
-      if (traceId == 0) {
-        maybeLogNotLowerHex(traceIdString);
-        return false;
+      if (traceIdHighAllZeros && traceIdAllZeros) {
+        Platform.get().log("Invalid input: traceId was all zeros", null);
       }
-      return true;
+      return traceIdHigh != 0L || traceId != 0L;
     }
 
     /** Parses the parent id from the input string. Returns true if the ID was missing or valid. */
@@ -428,13 +442,17 @@ public final class TraceContext extends SamplingFlags {
 
       spanId = lenientLowerHexToUnsignedLong(spanIdString, 0, length);
       if (spanId == 0) {
+        if (isAllZeros(spanIdString, 0, length)) {
+          Platform.get().log("Invalid input: spanId was all zeros", null);
+          return false;
+        }
         maybeLogNotLowerHex(spanIdString);
         return false;
       }
       return true;
     }
 
-    boolean invalidIdLength(Object key, int length, int max) {
+    static boolean invalidIdLength(Object key, int length, int max) {
       if (length > 1 && length <= max) return false;
 
       assert max == 32 || max == 16;
@@ -445,21 +463,30 @@ public final class TraceContext extends SamplingFlags {
       return true;
     }
 
-    boolean isNull(Object key, String maybeNull) {
+    static boolean isNull(Object key, String maybeNull) {
       if (maybeNull != null) return false;
       Platform.get().log("{0} was null", key, null);
       return true;
     }
 
-    void maybeLogNotLowerHex(String notLowerHex) {
+    /** Helps differentiate a parse failure from a successful parse of all zeros. */
+    static boolean isAllZeros(String value, int beginIndex, int endIndex) {
+      for (int i = beginIndex; i < endIndex; i++) {
+        if (value.charAt(i) != '0') return false;
+      }
+      return true;
+    }
+
+    static void maybeLogNotLowerHex(String notLowerHex) {
       Platform.get().log("{0} is not a lower-hex string", notLowerHex, null);
     }
 
+    /** @throws IllegalArgumentException if missing trace ID or span ID */
     public final TraceContext build() {
       String missing = "";
-      if (traceId == 0L) missing += " traceId";
+      if (traceIdHigh == 0L && traceId == 0L) missing += " traceId";
       if (spanId == 0L) missing += " spanId";
-      if (!"".equals(missing)) throw new IllegalStateException("Missing: " + missing);
+      if (!"".equals(missing)) throw new IllegalArgumentException("Missing:" + missing);
       return new TraceContext(
         flags, traceIdHigh, traceId, localRootId, parentId, spanId, ensureImmutable(extra)
       );

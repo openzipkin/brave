@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -21,9 +21,26 @@ import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 import static brave.internal.InternalPropagation.FLAG_SHARED;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class TraceContextTest {
   TraceContext base = TraceContext.newBuilder().traceId(1L).spanId(1L).build();
+
+  @Test public void traceIdRequiredAndNonZero() {
+    assertThatThrownBy(() -> TraceContext.newBuilder().spanId(2L).build())
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Missing: traceId");
+  }
+
+  @Test public void spanIdRequiredAndNonZero() {
+    assertThatThrownBy(() -> TraceContext.newBuilder().build())
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Missing: traceId spanId");
+
+    assertThatThrownBy(() -> TraceContext.newBuilder().traceIdHigh(1L).build())
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Missing: spanId");
+  }
 
   @Test public void compareUnequalIds() {
     TraceContext context = TraceContext.newBuilder().traceId(333L).spanId(3L).build();
@@ -202,12 +219,31 @@ public class TraceContextTest {
       .isEqualTo("000000000000" + traceIdString);
   }
 
+  @Test public void parseTraceId_padded() {
+    TraceContext context = parseGoodTraceID("00000000000000000000000000000001")
+      .spanId(2L).build();
+
+    assertThat(context.traceIdHigh()).isZero();
+    assertThat(context.traceId()).isOne();
+  }
+
+  /** Not a good idea to pad backwards, but it is a valid value */
+  @Test public void parseTraceId_paddedRight() {
+    TraceContext context = parseGoodTraceID("10000000000000000000000000000000")
+      .spanId(2L).build();
+
+    assertThat(context.traceIdHigh())
+      .isEqualTo(Long.parseUnsignedLong("1000000000000000", 16));
+    assertThat(context.traceId()).isZero();
+  }
+
   /**
    * Trace ID is a required parameter, so it cannot be null empty malformed or other nonsense.
    *
    * <p>Notably, this shouldn't throw exception or allocate anything
    */
   @Test public void parseTraceId_malformedReturnsFalse() {
+    parseBadTraceId("00000000000000000000000000000000");
     parseBadTraceId("463acL$c9f6413ad48485a3953bb6124");
     parseBadTraceId("holy 💩");
     parseBadTraceId("-");

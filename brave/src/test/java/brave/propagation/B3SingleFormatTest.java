@@ -138,26 +138,35 @@ public class B3SingleFormatTest {
 
   @Test public void parseB3SingleFormat_largest() {
     assertThat(
-      parseB3SingleFormat(traceIdHigh + traceId + "-" + spanId + "-1-" + parentId)
-    ).extracting(TraceContextOrSamplingFlags::context).isEqualToComparingFieldByField(
-      TraceContext.newBuilder()
-        .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
-        .traceId(Long.parseUnsignedLong(traceId, 16))
-        .parentId(Long.parseUnsignedLong(parentId, 16))
-        .spanId(Long.parseUnsignedLong(spanId, 16))
-        .sampled(true).build()
+      parseB3SingleFormat(traceIdHigh + traceId + "-" + spanId + "-1-" + parentId).context()
+    ).isEqualToComparingFieldByField(TraceContext.newBuilder()
+      .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
+      .traceId(Long.parseUnsignedLong(traceId, 16))
+      .parentId(Long.parseUnsignedLong(parentId, 16))
+      .spanId(Long.parseUnsignedLong(spanId, 16))
+      .sampled(true).build()
     );
   }
 
   @Test public void parseB3SingleFormat_padded() {
     assertThat(
-      parseB3SingleFormat("0000000000000000" + traceId + "-" + spanId + "-1-" + parentId)
-    ).extracting(TraceContextOrSamplingFlags::context).isEqualToComparingFieldByField(
-      TraceContext.newBuilder()
-        .traceId(Long.parseUnsignedLong(traceId, 16))
-        .parentId(Long.parseUnsignedLong(parentId, 16))
-        .spanId(Long.parseUnsignedLong(spanId, 16))
-        .sampled(true).build()
+      parseB3SingleFormat("0000000000000000" + traceId + "-" + spanId + "-1-" + parentId).context()
+    ).isEqualToComparingFieldByField(TraceContext.newBuilder()
+      .traceId(Long.parseUnsignedLong(traceId, 16))
+      .parentId(Long.parseUnsignedLong(parentId, 16))
+      .spanId(Long.parseUnsignedLong(spanId, 16))
+      .sampled(true).build()
+    );
+  }
+
+  @Test public void parseTraceparentFormat_padded_right() {
+    assertThat(
+      parseB3SingleFormat(traceIdHigh + "0000000000000000-" + spanId + "-1-" + parentId).context()
+    ).isEqualToComparingFieldByField(TraceContext.newBuilder()
+      .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
+      .parentId(Long.parseUnsignedLong(parentId, 16))
+      .spanId(Long.parseUnsignedLong(spanId, 16))
+      .sampled(true).build()
     );
   }
 
