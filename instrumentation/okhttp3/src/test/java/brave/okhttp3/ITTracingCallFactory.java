@@ -28,6 +28,7 @@ import okhttp3.Response;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.Test;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -94,8 +95,6 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    // we report one in-process and one RPC client span
-    takeClientSpan();
-    takeLocalSpan();
+    assertSpansReportedInKindOrder(Span.Kind.CLIENT, null);
   }
 }

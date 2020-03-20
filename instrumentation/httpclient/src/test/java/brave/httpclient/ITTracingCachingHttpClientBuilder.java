@@ -16,6 +16,7 @@ package brave.httpclient;
 import okhttp3.mockwebserver.MockResponse;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.junit.Test;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -41,7 +42,7 @@ public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilde
 
     assertThat(server.getRequestCount()).isEqualTo(1);
 
-    takeClientSpan();
-    assertThat(takeLocalSpan().tags()).containsKey("http.cache_hit");
+    Span[] reportedSpans = assertSpansReportedInKindOrder(Span.Kind.CLIENT, null);
+    assertThat(reportedSpans[1].tags()).containsKey("http.cache_hit");
   }
 }

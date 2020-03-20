@@ -26,6 +26,7 @@ import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.Test;
 import zipkin2.Callback;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -115,7 +116,6 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     } finally {
       parent.finish();
     }
-    takeLocalSpan();
 
     takeRequest();
 
@@ -123,7 +123,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
       .isInstanceOf(TraceContext.class)
       .isSameAs(parent.context());
 
-    takeClientSpan();
+    assertSpansReportedInKindOrder(null, Span.Kind.CLIENT);
   }
 
   /** This ensures that response callbacks run when there is no invocation trace context. */

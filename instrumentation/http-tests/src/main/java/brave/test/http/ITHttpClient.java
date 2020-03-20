@@ -101,9 +101,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     assertThat(request.getHeader("x-b3-parentspanid"))
       .isEqualTo(parent.context().spanIdString());
 
-    // we report one in-process and one RPC client span
-    takeClientSpan();
-    takeLocalSpan();
+    assertSpansReportedInKindOrder(Span.Kind.CLIENT, null);
   }
 
   /** This prevents confusion as a blocking client should end before, the start of the next span. */
@@ -118,9 +116,8 @@ public abstract class ITHttpClient<C> extends ITHttp {
       parent.finish();
     }
 
-    // takeClientSpan() enforces span.kind == CLIENT. If this fails, it is likely we have an
-    // instrumentation bug as the most likely cause is the client finished after its parent.
-    assertChildEnclosedByParent(takeClientSpan(), takeLocalSpan());
+    Span[] reportedSpans = assertSpansReportedInKindOrder(Span.Kind.CLIENT, null);
+    assertChildEnclosedByParent(reportedSpans[0], reportedSpans[1]);
   }
 
   @Test public void propagatesExtra_newTrace() throws Exception {
@@ -138,9 +135,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     assertThat(takeRequest().getHeader(EXTRA_KEY))
       .isEqualTo("joey");
 
-    // we report one in-process and one RPC client span
-    takeClientSpan();
-    takeLocalSpan();
+    assertSpansReportedInKindOrder(Span.Kind.CLIENT, null);
   }
 
   @Test public void propagatesExtra_unsampledTrace() throws Exception {

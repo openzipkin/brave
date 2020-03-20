@@ -16,12 +16,14 @@ package brave.test.http;
 import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpTracing;
+import brave.internal.Nullable;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
+import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -123,14 +125,6 @@ public abstract class ITHttp {
     return result;
   }
 
-  protected Span takeLocalSpan() throws InterruptedException {
-    Span local = takeSpan();
-    assertThat(local.kind())
-      .withFailMessage("Expected span %s to have no kind", local)
-      .isNull();
-    return local;
-  }
-
   /** Like {@link #takeSpan()} except an error tag must be present and match the given value. */
   protected Span takeSpanWithError(String errorTag) throws InterruptedException {
     Span result = doTakeSpan();
@@ -187,12 +181,42 @@ public abstract class ITHttp {
     }
   };
 
-  protected void assertChildEnclosedByParent(Span childSpan, Span serverSpan) {
+  protected Span[] assertSpansReportedInKindOrder(@Nullable Span.Kind kind1,
+    @Nullable Span.Kind kind2) throws InterruptedException {
+    // Intentionally pull both spans first to ensure neither are errors.
+    Span span1 = takeSpan(), span2 = takeSpan();
+
+    // First, check if the order is backwards
+    if (Objects.equals(span2.kind(), kind1) && Objects.equals(span1.kind(), kind2)) {
+      throw new AssertionError("Expected span " + span1 + " to report before span " + span2);
+    }
+
+    // Now, check each span
+    assertThat(span1.kind())
+      .withFailMessage("Expected first span %s to have kind=%s", span1, kind1)
+      .isEqualTo(kind1);
+
+    assertThat(span2.kind())
+      .withFailMessage("Expected second span %s to have kind=%s", span2, kind2)
+      .isEqualTo(kind2);
+
+    return new Span[] {span1, span2};
+  }
+
+  protected Span takeLocalSpan() throws InterruptedException {
+    Span local = takeSpan();
+    assertThat(local.kind())
+      .withFailMessage("Expected span %s to have no kind", local)
+      .isNull();
+    return local;
+  }
+
+  protected void assertChildEnclosedByParent(Span childSpan, Span parentSpan) {
     assertThat(childSpan.timestampAsLong())
-      .isGreaterThanOrEqualTo(serverSpan.timestampAsLong());
+      .isGreaterThanOrEqualTo(parentSpan.timestampAsLong());
 
     long childFinishTimeStamp = childSpan.timestampAsLong() + childSpan.durationAsLong();
-    long serverFinishTimeStamp = serverSpan.timestampAsLong() + serverSpan.durationAsLong();
+    long serverFinishTimeStamp = parentSpan.timestampAsLong() + parentSpan.durationAsLong();
 
     assertThat(childFinishTimeStamp)
       .isGreaterThanOrEqualTo(childSpan.timestampAsLong())

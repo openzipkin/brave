@@ -180,21 +180,18 @@ public abstract class ITHttpServer extends ITHttp {
   public void createsChildSpan() throws Exception {
     get("/child");
 
-    Span child = takeLocalSpan();
-    Span parent = takeServerSpan();
+    Span[] reportedSpans = assertSpansReportedInKindOrder(null, Span.Kind.SERVER);
+    Span child = reportedSpans[0], server = reportedSpans[1];
 
-    assertThat(parent.traceId()).isEqualTo(child.traceId());
-    assertThat(parent.id()).isEqualTo(child.parentId());
-    assertThat(parent.timestamp()).isLessThan(child.timestamp());
-    assertThat(parent.duration()).isGreaterThan(child.duration());
+    assertThat(server.traceId()).isEqualTo(child.traceId());
+    assertThat(server.id()).isEqualTo(child.parentId());
   }
 
   @Test public void handlerTimestampAndDurationEnclosedByServer() throws Exception {
     get("/child");
 
-    // takeLocalSpan() enforces there is no span kind. If this fails, it is likely we have an
-    // instrumentation bug as the most likely cause is the server finished prior to its child.
-    assertChildEnclosedByParent(takeLocalSpan(), takeServerSpan());
+    Span[] reportedSpans = assertSpansReportedInKindOrder(null, Span.Kind.SERVER);
+    assertChildEnclosedByParent(reportedSpans[0], reportedSpans[1]);
   }
 
   @Test
