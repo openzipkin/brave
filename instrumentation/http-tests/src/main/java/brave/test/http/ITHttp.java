@@ -216,7 +216,7 @@ public abstract class ITHttp {
 
     // First, check if the order is backwards
     if (Objects.equals(span2.kind(), kind1) && Objects.equals(span1.kind(), kind2)) {
-      throw new AssertionError("Expected span " + span1 + " to report before span " + span2);
+      throw new AssertionError("Expected span " + span2 + " to report before span " + span1);
     }
 
     // Now, check each span
