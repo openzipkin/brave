@@ -23,11 +23,11 @@ import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.rules.DisableOnDebug;
@@ -195,9 +195,11 @@ public abstract class ITHttp {
     // Intentionally pull both spans first to ensure neither are errors.
     Span span1 = takeSpan(), span2 = takeSpan();
 
-    Stream.of(span1, span2).forEach(span -> assertThat(span.kind())
-      .withFailMessage("Expected %s to have kind=%s or %s", span, kind1, kind2)
-      .isIn(kind1, kind2));
+    for (Span span : Arrays.asList(span1, span2)) {
+      assertThat(span.kind())
+        .withFailMessage("Expected %s to have kind=%s or %s", span, kind1, kind2)
+        .isIn(kind1, kind2);
+    }
 
     // Now, check the kinds are different
     if (Objects.equals(span1.kind(), span2.kind())) {
