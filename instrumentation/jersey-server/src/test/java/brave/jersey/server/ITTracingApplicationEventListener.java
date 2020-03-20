@@ -22,7 +22,6 @@ import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 import org.junit.AssumptionViolatedException;
 import org.junit.Test;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -38,8 +37,7 @@ public class ITTracingApplicationEventListener extends ITServletContainer {
   @Test public void tagsResource() throws Exception {
     get("/foo");
 
-    Span span = takeSpan();
-    assertThat(span.tags())
+    assertThat(takeServerSpan().tags())
       .containsEntry("jaxrs.resource.class", "TestResource")
       .containsEntry("jaxrs.resource.method", "foo");
   }
@@ -49,7 +47,7 @@ public class ITTracingApplicationEventListener extends ITServletContainer {
     Response response = get("/managedAsync");
     assertThat(response.isSuccessful()).withFailMessage("not successful: " + response).isTrue();
 
-    takeSpan();
+    takeServerSpan();
   }
 
   @Override public void init(ServletContextHandler handler) {

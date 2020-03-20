@@ -16,12 +16,15 @@ package brave.test.http;
 import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpTracing;
+import brave.internal.Nullable;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -49,7 +52,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>After tests complete, the queue is strictly checked to catch redundant span reporting</li>
  * </ul></pre>
  *
- * <p>As a blocking queue is used, {@link #takeSpan take a span} to perform assertions on it.
+ * <p>As a blocking queue is used, {@linkplain #takeSpan() take a span} to perform assertions on
+ * it.
  *
  * <pre>{@code
  * Span span = takeSpan();
@@ -111,8 +115,29 @@ public abstract class ITHttp {
    */
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
 
-  /** Call this to block until a span was reported */
+  /** Call this to block until a span was reported. The span must not have an "error" tag. */
   protected Span takeSpan() throws InterruptedException {
+    Span result = doTakeSpan();
+
+    assertThat(result.tags().get("error"))
+      .withFailMessage("Expected %s to have no error tag", result)
+      .isNull();
+
+    return result;
+  }
+
+  /** Like {@link #takeSpan()} except an error tag must be present and match the given value. */
+  protected Span takeSpanWithError(String errorTag) throws InterruptedException {
+    Span result = doTakeSpan();
+
+    assertThat(result.tags().get("error"))
+      .withFailMessage("Expected %s to have an error tag matching %s", result, errorTag)
+      .matches(errorTag);
+
+    return result;
+  }
+
+  private Span doTakeSpan() throws InterruptedException {
     Span result = spans.poll(3, TimeUnit.SECONDS);
     assertThat(result)
       .withFailMessage("Span was not reported")
@@ -156,6 +181,86 @@ public abstract class ITHttp {
       }
     }
   };
+
+  /**
+   * Like {@link #assertSpansReportedKindInOrder(Span.Kind, Span.Kind)} except order isn't enforced.
+   * However, the results will return in the kind order specified.
+   */
+  protected Span[] assertSpansReportedKindInAnyOrder(@Nullable Span.Kind kind1,
+    @Nullable Span.Kind kind2) throws InterruptedException {
+    if (Objects.equals(kind1, kind2)) {
+      throw new AssertionError("Expected test to pass different span kinds");
+    }
+
+    // Intentionally pull both spans first to ensure neither are errors.
+    Span span1 = takeSpan(), span2 = takeSpan();
+
+    for (Span span : Arrays.asList(span1, span2)) {
+      assertThat(span.kind())
+        .withFailMessage("Expected %s to have kind=%s or %s", span, kind1, kind2)
+        .isIn(kind1, kind2);
+    }
+
+    // Now, check the kinds are different
+    if (Objects.equals(span1.kind(), span2.kind())) {
+      throw new AssertionError("Expected span " + span1 + " to have different kind than " + span2);
+    }
+
+    // Sort on the way out so that further assertions make sense.
+    Span[] result = new Span[] {span1, span2};
+    return result[0].kind() == kind1 ? result : new Span[] {span2, span1};
+  }
+
+  protected Span[] assertSpansReportedKindInOrder(@Nullable Span.Kind kind1,
+    @Nullable Span.Kind kind2) throws InterruptedException {
+    // Intentionally pull both spans first to ensure neither are errors.
+    Span span1 = takeSpan(), span2 = takeSpan();
+
+    // First, check if the order is backwards
+    if (Objects.equals(span2.kind(), kind1) && Objects.equals(span1.kind(), kind2)) {
+      throw new AssertionError("Expected span " + span2 + " to report before span " + span1);
+    }
+
+    // Now, check each span
+    assertThat(span1.kind())
+      .withFailMessage("Expected first %s to have kind=%s", span1, kind1)
+      .isEqualTo(kind1);
+
+    assertThat(span2.kind())
+      .withFailMessage("Expected second %s to have kind=%s", span2, kind2)
+      .isEqualTo(kind2);
+
+    return new Span[] {span1, span2};
+  }
+
+  protected Span takeLocalSpan() throws InterruptedException {
+    Span local = takeSpan();
+    assertThat(local.kind())
+      .withFailMessage("Expected %s to have no kind", local)
+      .isNull();
+    return local;
+  }
+
+  protected void assertChildEnclosedByParent(Span child, Span parent) {
+    assertThat(parent.traceId())
+      .withFailMessage("Expected the same trace ID: %s %s", parent, child)
+      .isEqualTo(child.traceId());
+
+    assertThat(parent.id())
+      .withFailMessage("Expected %s to be the parent of %s", parent, child)
+      .isEqualTo(child.parentId());
+
+    assertThat(parent.timestampAsLong())
+      .withFailMessage("Expected %s to start before %s", parent, child)
+      .isLessThanOrEqualTo(child.timestampAsLong());
+
+    long childFinishTimeStamp = child.timestampAsLong() + child.durationAsLong();
+    long serverFinishTimeStamp = parent.timestampAsLong() + parent.durationAsLong();
+
+    assertThat(childFinishTimeStamp)
+      .isGreaterThanOrEqualTo(child.timestampAsLong())
+      .isLessThanOrEqualTo(serverFinishTimeStamp);
+  }
 
   protected Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()

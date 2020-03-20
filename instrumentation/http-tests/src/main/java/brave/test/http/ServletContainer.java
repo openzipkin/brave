@@ -13,9 +13,7 @@
  */
 package brave.test.http;
 
-import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 
 /** Starts a jetty server which runs a servlet container */

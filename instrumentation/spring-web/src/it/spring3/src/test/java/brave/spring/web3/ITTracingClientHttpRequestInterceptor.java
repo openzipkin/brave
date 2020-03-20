@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
@@ -73,16 +74,14 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    takeSpan();
+    takeClientSpan();
   }
 
-  @Override @Test(expected = AssertionError.class)
-  public void redirect() throws Exception { // blind to the implementation of redirects
-    super.redirect();
+  @Override @Ignore("blind to the implementation of redirects")
+  public void redirect() {
   }
 
-  @Override @Test(expected = AssertionError.class)
-  public void reportsServerAddress() throws Exception { // doesn't know the remote address
-    super.reportsServerAddress();
+  @Override @Ignore("doesn't know the remote address")
+  public void reportsServerAddress() {
   }
 }

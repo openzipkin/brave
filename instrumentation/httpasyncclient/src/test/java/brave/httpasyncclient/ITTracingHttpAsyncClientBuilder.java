@@ -17,12 +17,14 @@ import brave.test.http.ITHttpAsyncClient;
 import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.Future;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.nio.entity.NStringEntity;
@@ -47,7 +49,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
   @Override protected void get(CloseableHttpAsyncClient client, String pathIncludingQuery)
     throws Exception {
     HttpGet get = new HttpGet(URI.create(url(pathIncludingQuery)));
-    EntityUtils.consume(client.execute(get, null).get().getEntity());
+    blockOnFuture(client, get);
   }
 
   @Override
@@ -55,7 +57,13 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     throws Exception {
     HttpPost post = new HttpPost(URI.create(url(pathIncludingQuery)));
     post.setEntity(new NStringEntity(body));
-    EntityUtils.consume(client.execute(post, null).get().getEntity());
+    blockOnFuture(client, post);
+  }
+
+  static void blockOnFuture(CloseableHttpAsyncClient client, HttpUriRequest req) throws Exception {
+    Future<HttpResponse> future = client.execute(req, null);
+    HttpResponse response = future.get();
+    EntityUtils.consume(response.getEntity());
   }
 
   @Test public void currentSpanVisibleToUserFilters() throws Exception {
@@ -74,7 +82,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    takeSpan();
+    takeClientSpan();
   }
 
   @Test public void failedInterceptorRemovesScope() throws Exception {
@@ -90,7 +98,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
 
     assertThat(currentTraceContext.get()).isNull();
 
-    takeSpan();
+    takeClientSpanWithError("Test");
   }
 
   @Override

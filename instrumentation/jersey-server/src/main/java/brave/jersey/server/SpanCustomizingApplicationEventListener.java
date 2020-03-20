@@ -17,6 +17,7 @@ import brave.SpanCustomizer;
 import brave.internal.Nullable;
 import java.util.List;
 import javax.inject.Inject;
+import javax.ws.rs.ClientErrorException;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.ext.Provider;
 import org.glassfish.jersey.server.ContainerRequest;
@@ -90,6 +91,10 @@ public class SpanCustomizingApplicationEventListener
     // MappableException can wrap a WebApplicationException!
     if (error instanceof WebApplicationException && error.getCause() != null) {
       error = error.getCause();
+    }
+    // Don't create error messages for normal HTTP status codes.
+    if (error instanceof ClientErrorException && error.getCause() == null){
+      return null;
     }
     return error;
   }

@@ -35,7 +35,6 @@ import org.jboss.resteasy.spi.ResteasyConfiguration;
 import org.jboss.resteasy.spi.ResteasyDeployment;
 import org.junit.Ignore;
 import org.junit.Test;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -67,8 +66,7 @@ public class ITSpanCustomizingContainerFilter extends ITServletContainer {
   @Test public void tagsResource() throws Exception {
     get("/foo");
 
-    Span span = takeSpan();
-    assertThat(span.tags())
+    assertThat(takeServerSpan().tags())
       .containsEntry("jaxrs.resource.class", "TestResource")
       .containsEntry("jaxrs.resource.method", "foo");
   }

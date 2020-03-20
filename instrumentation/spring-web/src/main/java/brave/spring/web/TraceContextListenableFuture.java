@@ -36,8 +36,7 @@ final class TraceContextListenableFuture<T> implements ListenableFuture<T> {
   final TraceContext invocationContext;
 
   TraceContextListenableFuture(ListenableFuture<T> delegate,
-    CurrentTraceContext currentTraceContext,
-    TraceContext invocationContext) {
+    CurrentTraceContext currentTraceContext, TraceContext invocationContext) {
     this.delegate = delegate;
     this.currentTraceContext = currentTraceContext;
     this.invocationContext = invocationContext;

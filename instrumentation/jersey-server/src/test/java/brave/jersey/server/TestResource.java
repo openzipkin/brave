@@ -16,7 +16,6 @@ package brave.jersey.server;
 import brave.Tracer;
 import brave.http.HttpTracing;
 import brave.propagation.ExtraFieldPropagation;
-import java.io.IOException;
 import javax.ws.rs.GET;
 import javax.ws.rs.OPTIONS;
 import javax.ws.rs.Path;

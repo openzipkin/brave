@@ -16,7 +16,6 @@ package brave.test.http;
 import brave.ScopedSpan;
 import brave.Tracer;
 import brave.propagation.TraceContext;
-import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -75,6 +74,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     } finally {
       parent.finish();
     }
+    takeLocalSpan();
 
     ScopedSpan otherSpan = tracer.startScopedSpan("test2");
     try {
@@ -84,15 +84,12 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
           .isEqualTo(parent.context().traceIdString());
         assertThat(request.getHeader("x-b3-parentspanid"))
           .isEqualTo(parent.context().spanIdString());
+        takeClientSpan();
       }
     } finally {
       otherSpan.finish();
     }
-
-    // Check we reported 2 in-process spans and 2 RPC client spans
-    assertThat(Arrays.asList(takeSpan(), takeSpan(), takeSpan(), takeSpan()))
-      .extracting(Span::kind)
-      .containsOnly(null, Span.Kind.CLIENT);
+    takeLocalSpan();
   }
 
   /**
@@ -119,16 +116,14 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     } finally {
       parent.finish();
     }
+
     takeRequest();
 
     assertThat(result.poll(1, TimeUnit.SECONDS))
       .isInstanceOf(TraceContext.class)
       .isSameAs(parent.context());
 
-    // Check we reported 1 in-process span and 1 RPC client spans
-    assertThat(Arrays.asList(takeSpan(), takeSpan()))
-      .extracting(Span::kind)
-      .containsOnly(null, Span.Kind.CLIENT);
+    assertSpansReportedKindInAnyOrder(null, Span.Kind.CLIENT);
   }
 
   /** This ensures that response callbacks run when there is no invocation trace context. */
@@ -152,8 +147,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     assertThat(result.poll(1, TimeUnit.SECONDS))
       .isSameAs(nullSentinel);
 
-    assertThat(takeSpan().kind())
-      .isEqualTo(Span.Kind.CLIENT);
+    takeClientSpan();
   }
 
   @Test public void addsStatusCodeWhenNotOk_async() throws Exception {
@@ -181,9 +175,8 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
       .isEqualTo(expectedStatusCode);
 
     String expectedStatusCodeString = String.valueOf(expectedStatusCode);
-    Span span = takeSpan();
-    assertThat(span.tags())
-      .containsEntry("http.status_code", expectedStatusCodeString)
-      .containsEntry("error", expectedStatusCodeString);
+
+    assertThat(takeClientSpanWithError(expectedStatusCodeString).tags())
+      .containsEntry("http.status_code", expectedStatusCodeString);
   }
 }

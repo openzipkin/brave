@@ -42,8 +42,7 @@ public class ITSpanCustomizingApplicationEventListener extends ITServletContaine
   @Test public void tagsResource() throws Exception {
     get("/foo");
 
-    Span span = takeSpan();
-    assertThat(span.tags())
+    assertThat(takeServerSpan().tags())
       .containsEntry("jaxrs.resource.class", "TestResource")
       .containsEntry("jaxrs.resource.method", "foo");
   }
@@ -53,7 +52,7 @@ public class ITSpanCustomizingApplicationEventListener extends ITServletContaine
   @Test public void managedAsync() throws Exception {
     get("/managedAsync");
 
-    takeSpan();
+    takeServerSpan();
   }
 
   @Override public void init(ServletContextHandler handler) {
