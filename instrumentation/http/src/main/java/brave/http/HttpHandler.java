@@ -14,7 +14,6 @@
 package brave.http;
 
 import brave.Span;
-import brave.SpanCustomizer;
 import brave.internal.Nullable;
 
 abstract class HttpHandler {

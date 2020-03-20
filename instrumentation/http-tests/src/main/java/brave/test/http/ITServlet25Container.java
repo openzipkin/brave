@@ -34,7 +34,6 @@ import okhttp3.Response;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.Test;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -138,7 +137,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
         .isEqualTo("abcdefg");
     }
 
-    takeSpan();
+    takeServerSpan();
   }
 
   // copies the header to the response
@@ -172,7 +171,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
         .isEqualTo("abcdefg");
     }
 
-    takeSpan();
+    takeServerSpan();
   }
 
   // Shows how a framework can layer on "http.route" logic
@@ -200,8 +199,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
 
     get("/foo");
 
-    Span span = takeSpan();
-    assertThat(span.name())
+    assertThat(takeServerSpan().name())
       .isEqualTo("get /foo");
   }
 
@@ -229,8 +227,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
 
     get("/foo");
 
-    Span span = takeSpan();
-    assertThat(span.tags())
+    assertThat(takeServerSpan().tags())
       .containsEntry("foo", "bar");
   }
 

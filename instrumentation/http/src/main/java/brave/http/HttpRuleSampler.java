@@ -19,8 +19,8 @@ import brave.sampler.CountingSampler;
 import brave.sampler.Matcher;
 import brave.sampler.ParameterizedSampler;
 import brave.sampler.RateLimitingSampler;
-import brave.sampler.SamplerFunction;
 import brave.sampler.Sampler;
+import brave.sampler.SamplerFunction;
 
 import static brave.http.HttpRequestMatchers.methodEquals;
 import static brave.http.HttpRequestMatchers.pathStartsWith;

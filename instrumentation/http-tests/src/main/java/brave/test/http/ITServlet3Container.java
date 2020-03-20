@@ -30,6 +30,9 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.AfterClass;
 import org.junit.Test;
+import zipkin2.Span;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITServlet3Container extends ITServlet25Container {
   static ExecutorService executor = Executors.newCachedThreadPool();
@@ -45,13 +48,13 @@ public abstract class ITServlet3Container extends ITServlet25Container {
   @Test public void forward() throws Exception {
     get("/forward");
 
-    takeSpan();
+    takeServerSpan();
   }
 
   @Test public void forwardAsync() throws Exception {
     get("/forwardAsync");
 
-    takeSpan();
+    takeServerSpan();
   }
 
   static class ForwardServlet extends HttpServlet {
@@ -104,7 +107,10 @@ public abstract class ITServlet3Container extends ITServlet25Container {
   }
 
   @Test public void errorTag_onException_asyncTimeout() throws Exception {
-    httpStatusCodeTagMatchesResponse_onException("/exceptionAsyncTimeout");
+    Span span = httpStatusCodeTagMatchesResponse("/exceptionAsyncTimeout", "Timed out after 1ms");
+
+    assertThat(span.tags())
+      .containsEntry("http.status_code", "500"); // TODO: why is this not 504?
   }
 
   static class TimeoutExceptionAsyncServlet extends HttpServlet {
@@ -112,7 +118,7 @@ public abstract class ITServlet3Container extends ITServlet25Container {
       if (DispatcherType.ERROR.equals(req.getDispatcherType())) return; // don't loop
 
       AsyncContext ctx = req.startAsync();
-      ctx.setTimeout(1);
+      ctx.setTimeout(1 /* ms */);
       ctx.start(
         () -> {
           resp.setStatus(504);
@@ -128,7 +134,7 @@ public abstract class ITServlet3Container extends ITServlet25Container {
   }
 
   @Test public void errorTag_onException_asyncDispatch() throws Exception {
-    httpStatusCodeTagMatchesResponse_onException("/exceptionAsyncDispatch");
+    httpStatusCodeTagMatchesResponse("/exceptionAsyncDispatch", "not ready");
   }
 
   static class DispatchExceptionAsyncServlet extends HttpServlet {

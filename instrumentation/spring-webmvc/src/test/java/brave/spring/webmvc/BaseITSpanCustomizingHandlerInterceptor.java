@@ -40,7 +40,7 @@ public abstract class BaseITSpanCustomizingHandlerInterceptor extends ITServletC
   @Test public void addsControllerTags() throws Exception {
     get("/foo");
 
-    Span span = takeSpan();
+    Span span = takeServerSpan();
     assertThat(span.tags())
       .containsKeys("mvc.controller.class", "mvc.controller.method");
     assertThat(span.tags().get("mvc.controller.class"))

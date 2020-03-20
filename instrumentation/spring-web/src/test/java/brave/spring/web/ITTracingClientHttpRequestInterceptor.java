@@ -73,7 +73,7 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    takeSpan();
+    takeClientSpan();
   }
 
   @Override @Ignore("blind to the implementation of redirects")

@@ -81,7 +81,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
       .containsKeys("x-b3-traceId", "x-b3-spanId")
       .containsEntry("x-b3-sampled", asList("1"));
 
-    takeSpan();
+    takeClientSpan();
   }
 
   @Test public void makesChildOfCurrentSpan() throws Exception {
@@ -101,9 +101,26 @@ public abstract class ITHttpClient<C> extends ITHttp {
     assertThat(request.getHeader("x-b3-parentspanid"))
       .isEqualTo(parent.context().spanIdString());
 
-    assertThat(Arrays.asList(takeSpan(), takeSpan()))
-      .extracting(Span::kind)
-      .containsOnly(null, Span.Kind.CLIENT);
+    // we report one in-process and one RPC client span
+    takeClientSpan();
+    takeLocalSpan();
+  }
+
+  /** This prevents confusion as a blocking client should end before, the start of the next span. */
+  @Test public void clientTimestampAndDurationEnclosedByParent() throws Exception {
+    Tracer tracer = httpTracing.tracing().tracer();
+    server.enqueue(new MockResponse());
+
+    ScopedSpan parent = tracer.startScopedSpan("test");
+    try {
+      get(client, "/foo");
+    } finally {
+      parent.finish();
+    }
+
+    // takeClientSpan() enforces span.kind == CLIENT. If this fails, it is likely we have an
+    // instrumentation bug as the most likely cause is the client finished after its parent.
+    assertChildEnclosedByParent(takeClientSpan(), takeLocalSpan());
   }
 
   @Test public void propagatesExtra_newTrace() throws Exception {
@@ -122,9 +139,8 @@ public abstract class ITHttpClient<C> extends ITHttp {
       .isEqualTo("joey");
 
     // we report one in-process and one RPC client span
-    assertThat(Arrays.asList(takeSpan(), takeSpan()))
-      .extracting(Span::kind)
-      .containsOnly(null, Span.Kind.CLIENT);
+    takeClientSpan();
+    takeLocalSpan();
   }
 
   @Test public void propagatesExtra_unsampledTrace() throws Exception {
@@ -182,9 +198,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     server.enqueue(new MockResponse());
     get(client, "/foo");
 
-    Span span = takeSpan();
-    assertThat(span.kind())
-      .isEqualTo(Span.Kind.CLIENT);
+    takeClientSpan();
   }
 
   @Test
@@ -192,8 +206,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     server.enqueue(new MockResponse());
     get(client, "/foo");
 
-    Span span = takeSpan();
-    assertThat(span.remoteEndpoint())
+    assertThat(takeClientSpan().remoteEndpoint())
       .isEqualTo(Endpoint.newBuilder()
         .ip("127.0.0.1")
         .port(server.getPort()).build()
@@ -204,8 +217,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     server.enqueue(new MockResponse());
     get(client, "/foo");
 
-    Span span = takeSpan();
-    assertThat(span.name())
+    assertThat(takeClientSpan().name())
       .isEqualTo("get");
   }
 
@@ -223,7 +235,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     server.enqueue(new MockResponse());
     get(client, uri);
 
-    assertThat(takeSpan().tags())
+    assertThat(takeClientSpan().tags())
       .containsEntry("http.url", url(uri));
   }
 
@@ -247,7 +259,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     server.enqueue(new MockResponse());
     get(client, uri);
 
-    Span span = takeSpan();
+    Span span = takeClientSpan();
     assertThat(span.name())
       .isEqualTo("get /foo/bar");
 
@@ -288,7 +300,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     server.enqueue(new MockResponse());
     get(client, uri);
 
-    Span span = takeSpan();
+    Span span = takeClientSpan();
     assertThat(span.name())
       .isEqualTo("get /foo/bar");
 
@@ -311,10 +323,8 @@ public abstract class ITHttpClient<C> extends ITHttp {
       // some clients think 400 is an error
     }
 
-    Span span = takeSpan();
-    assertThat(span.tags())
-      .containsEntry("http.status_code", "400")
-      .containsEntry("error", "400");
+    assertThat(takeClientSpanWithError("400").tags())
+      .containsEntry("http.status_code", "400");
   }
 
   @Test public void redirect() throws Exception {
@@ -332,12 +342,12 @@ public abstract class ITHttpClient<C> extends ITHttp {
       parent.finish();
     }
 
-    Span client1 = takeSpan();
-    Span client2 = takeSpan();
+    Span client1 = takeClientSpan();
+    Span client2 = takeClientSpanWithError("404");
     assertThat(Arrays.asList(client1.tags().get("http.path"), client2.tags().get("http.path")))
       .contains("/foo", "/bar");
 
-    assertThat(takeSpan().kind()).isNull(); // local
+    takeLocalSpan();
   }
 
   @Test public void post() throws Exception {
@@ -350,8 +360,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     assertThat(takeRequest().getBody().readUtf8())
       .isEqualTo(body);
 
-    Span span = takeSpan();
-    assertThat(span.name())
+    assertThat(takeClientSpan().name())
       .isEqualTo("post");
   }
 
@@ -361,8 +370,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     server.enqueue(new MockResponse());
     get(client, path);
 
-    Span span = takeSpan();
-    assertThat(span.tags())
+    assertThat(takeClientSpan().tags())
       .containsEntry("http.path", "/foo");
   }
 
@@ -370,13 +378,8 @@ public abstract class ITHttpClient<C> extends ITHttp {
     finishedSpanHandlerSeesException(get());
   }
 
-  @Test public void reportsSpanOnTransportException() throws Exception {
-    checkReportsSpanOnTransportException(get());
-  }
-
   @Test public void errorTag_onTransportException() throws Exception {
-    Span span = checkReportsSpanOnTransportException(get());
-    assertThat(span.tags()).containsKey("error");
+    checkReportsSpanOnTransportException(get());
   }
 
   Callable<Void> get() {
@@ -416,7 +419,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
       // ok, but the span should include an error!
     }
 
-    return takeSpan();
+    return takeClientSpanWithError(".+"); // We don't know the transport exception
   }
 
   protected String url(String pathIncludingQuery) {
@@ -426,5 +429,25 @@ public abstract class ITHttpClient<C> extends ITHttp {
   /** Ensures a timeout receiving a request happens before the method timeout */
   protected RecordedRequest takeRequest() throws InterruptedException {
     return server.takeRequest(3, TimeUnit.SECONDS);
+  }
+
+  /** Call this to block until a client span was reported. The span must not have an "error" tag. */
+  protected Span takeClientSpan() throws InterruptedException {
+    Span result = takeSpan();
+    assertClientSpan(result);
+    return result;
+  }
+
+  /** Like {@link #takeClientSpan()} except an error tag must match the given value. */
+  protected Span takeClientSpanWithError(String errorTag) throws InterruptedException {
+    Span result = takeSpanWithError(errorTag);
+    assertClientSpan(result);
+    return result;
+  }
+
+  void assertClientSpan(Span span) {
+    assertThat(span.kind())
+      .withFailMessage("Expected span %s to have kind=CLIENT", span)
+      .isEqualTo(Span.Kind.CLIENT);
   }
 }

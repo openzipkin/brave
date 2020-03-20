@@ -49,7 +49,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>After tests complete, the queue is strictly checked to catch redundant span reporting</li>
  * </ul></pre>
  *
- * <p>As a blocking queue is used, {@link #takeSpan take a span} to perform assertions on it.
+ * <p>As a blocking queue is used, {@linkplain #takeSpan() take a span} to perform assertions on
+ * it.
  *
  * <pre>{@code
  * Span span = takeSpan();
@@ -111,8 +112,37 @@ public abstract class ITHttp {
    */
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
 
-  /** Call this to block until a span was reported */
+  /** Call this to block until a span was reported. The span must not have an "error" tag. */
   protected Span takeSpan() throws InterruptedException {
+    Span result = doTakeSpan();
+
+    assertThat(result.tags().get("error"))
+      .withFailMessage("Expected span %s to have no error tag", result)
+      .isNull();
+
+    return result;
+  }
+
+  protected Span takeLocalSpan() throws InterruptedException {
+    Span local = takeSpan();
+    assertThat(local.kind())
+      .withFailMessage("Expected span %s to have no kind", local)
+      .isNull();
+    return local;
+  }
+
+  /** Like {@link #takeSpan()} except an error tag must be present and match the given value. */
+  protected Span takeSpanWithError(String errorTag) throws InterruptedException {
+    Span result = doTakeSpan();
+
+    assertThat(result.tags().get("error"))
+      .withFailMessage("Expected span %s to have an error tag matching %s", result, errorTag)
+      .matches(errorTag);
+
+    return result;
+  }
+
+  private Span doTakeSpan() throws InterruptedException {
     Span result = spans.poll(3, TimeUnit.SECONDS);
     assertThat(result)
       .withFailMessage("Span was not reported")
@@ -156,6 +186,18 @@ public abstract class ITHttp {
       }
     }
   };
+
+  protected void assertChildEnclosedByParent(Span childSpan, Span serverSpan) {
+    assertThat(childSpan.timestampAsLong())
+      .isGreaterThanOrEqualTo(serverSpan.timestampAsLong());
+
+    long childFinishTimeStamp = childSpan.timestampAsLong() + childSpan.durationAsLong();
+    long serverFinishTimeStamp = serverSpan.timestampAsLong() + serverSpan.durationAsLong();
+
+    assertThat(childFinishTimeStamp)
+      .isGreaterThanOrEqualTo(childSpan.timestampAsLong())
+      .isLessThanOrEqualTo(serverFinishTimeStamp);
+  }
 
   protected Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()

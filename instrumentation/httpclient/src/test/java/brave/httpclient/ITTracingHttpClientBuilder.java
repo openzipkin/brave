@@ -64,6 +64,6 @@ public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    takeSpan();
+    takeClientSpan();
   }
 }

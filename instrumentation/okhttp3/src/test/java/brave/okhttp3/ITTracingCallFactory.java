@@ -17,7 +17,6 @@ import brave.ScopedSpan;
 import brave.Tracer;
 import brave.test.http.ITHttpAsyncClient;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -29,7 +28,6 @@ import okhttp3.Response;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.Test;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -97,8 +95,7 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
       .isEqualTo(request.getHeader("my-id"));
 
     // we report one in-process and one RPC client span
-    assertThat(Arrays.asList(takeSpan(), takeSpan()))
-      .extracting(Span::kind)
-      .containsOnly(null, Span.Kind.CLIENT);
+    takeClientSpan();
+    takeLocalSpan();
   }
 }

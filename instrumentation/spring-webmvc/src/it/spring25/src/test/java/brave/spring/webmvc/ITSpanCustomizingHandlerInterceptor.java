@@ -96,8 +96,9 @@ public class ITSpanCustomizingHandlerInterceptor extends ITServletContainer {
     }
 
     @RequestMapping(value = "/child")
-    public void child() {
+    public void child(HttpServletResponse response) throws IOException {
       tracer.nextSpan().name("child").start().finish();
+      response.getWriter().write("child");
     }
 
     @RequestMapping(value = "/exception")

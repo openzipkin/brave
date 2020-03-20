@@ -68,10 +68,6 @@ public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
   }
 
   @Override @Ignore("automatic error propagation is impossible")
-  public void reportsSpanOnTransportException() {
-  }
-
-  @Override @Ignore("automatic error propagation is impossible")
   public void errorTag_onTransportException() {
   }
 
