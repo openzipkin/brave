@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.rules.DisableOnDebug;
@@ -119,7 +120,7 @@ public abstract class ITHttp {
     Span result = doTakeSpan();
 
     assertThat(result.tags().get("error"))
-      .withFailMessage("Expected span %s to have no error tag", result)
+      .withFailMessage("Expected %s to have no error tag", result)
       .isNull();
 
     return result;
@@ -130,7 +131,7 @@ public abstract class ITHttp {
     Span result = doTakeSpan();
 
     assertThat(result.tags().get("error"))
-      .withFailMessage("Expected span %s to have an error tag matching %s", result, errorTag)
+      .withFailMessage("Expected %s to have an error tag matching %s", result, errorTag)
       .matches(errorTag);
 
     return result;
@@ -181,7 +182,34 @@ public abstract class ITHttp {
     }
   };
 
-  protected Span[] assertSpansReportedInKindOrder(@Nullable Span.Kind kind1,
+  /**
+   * Like {@link #assertSpansReportedKindInOrder(Span.Kind, Span.Kind)} except order isn't enforced.
+   * However, the results will return in the kind order specified.
+   */
+  protected Span[] assertSpansReportedKindInAnyOrder(@Nullable Span.Kind kind1,
+    @Nullable Span.Kind kind2) throws InterruptedException {
+    if (Objects.equals(kind1, kind2)) {
+      throw new AssertionError("Expected test to pass different span kinds");
+    }
+
+    // Intentionally pull both spans first to ensure neither are errors.
+    Span span1 = takeSpan(), span2 = takeSpan();
+
+    Stream.of(span1, span2).forEach(span -> assertThat(span.kind())
+      .withFailMessage("Expected %s to have kind=%s or %s", span, kind1, kind2)
+      .isIn(kind1, kind2));
+
+    // Now, check the kinds are different
+    if (Objects.equals(span1.kind(), span2.kind())) {
+      throw new AssertionError("Expected span " + span1 + " to have different kind than " + span2);
+    }
+
+    // Sort on the way out so that further assertions make sense.
+    Span[] result = new Span[] {span1, span2};
+    return result[0].kind() == kind1 ? result : new Span[] {span2, span1};
+  }
+
+  protected Span[] assertSpansReportedKindInOrder(@Nullable Span.Kind kind1,
     @Nullable Span.Kind kind2) throws InterruptedException {
     // Intentionally pull both spans first to ensure neither are errors.
     Span span1 = takeSpan(), span2 = takeSpan();
@@ -193,11 +221,11 @@ public abstract class ITHttp {
 
     // Now, check each span
     assertThat(span1.kind())
-      .withFailMessage("Expected first span %s to have kind=%s", span1, kind1)
+      .withFailMessage("Expected first %s to have kind=%s", span1, kind1)
       .isEqualTo(kind1);
 
     assertThat(span2.kind())
-      .withFailMessage("Expected second span %s to have kind=%s", span2, kind2)
+      .withFailMessage("Expected second %s to have kind=%s", span2, kind2)
       .isEqualTo(kind2);
 
     return new Span[] {span1, span2};
@@ -206,20 +234,29 @@ public abstract class ITHttp {
   protected Span takeLocalSpan() throws InterruptedException {
     Span local = takeSpan();
     assertThat(local.kind())
-      .withFailMessage("Expected span %s to have no kind", local)
+      .withFailMessage("Expected %s to have no kind", local)
       .isNull();
     return local;
   }
 
-  protected void assertChildEnclosedByParent(Span childSpan, Span parentSpan) {
-    assertThat(childSpan.timestampAsLong())
-      .isGreaterThanOrEqualTo(parentSpan.timestampAsLong());
+  protected void assertChildEnclosedByParent(Span child, Span parent) {
+    assertThat(parent.traceId())
+      .withFailMessage("Expected the same trace ID: %s %s", parent, child)
+      .isEqualTo(child.traceId());
 
-    long childFinishTimeStamp = childSpan.timestampAsLong() + childSpan.durationAsLong();
-    long serverFinishTimeStamp = parentSpan.timestampAsLong() + parentSpan.durationAsLong();
+    assertThat(parent.id())
+      .withFailMessage("Expected %s to be the parent of %s", parent, child)
+      .isEqualTo(child.parentId());
+
+    assertThat(parent.timestampAsLong())
+      .withFailMessage("Expected %s to start before %s", parent, child)
+      .isLessThanOrEqualTo(child.timestampAsLong());
+
+    long childFinishTimeStamp = child.timestampAsLong() + child.durationAsLong();
+    long serverFinishTimeStamp = parent.timestampAsLong() + parent.durationAsLong();
 
     assertThat(childFinishTimeStamp)
-      .isGreaterThanOrEqualTo(childSpan.timestampAsLong())
+      .isGreaterThanOrEqualTo(child.timestampAsLong())
       .isLessThanOrEqualTo(serverFinishTimeStamp);
   }
 

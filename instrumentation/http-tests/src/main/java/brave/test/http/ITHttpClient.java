@@ -101,7 +101,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     assertThat(request.getHeader("x-b3-parentspanid"))
       .isEqualTo(parent.context().spanIdString());
 
-    assertSpansReportedInKindOrder(Span.Kind.CLIENT, null);
+    assertSpansReportedKindInAnyOrder(null, Span.Kind.CLIENT);
   }
 
   /** This prevents confusion as a blocking client should end before, the start of the next span. */
@@ -116,7 +116,8 @@ public abstract class ITHttpClient<C> extends ITHttp {
       parent.finish();
     }
 
-    Span[] reportedSpans = assertSpansReportedInKindOrder(Span.Kind.CLIENT, null);
+    // We expect the last to report to be the parent
+    Span[] reportedSpans = assertSpansReportedKindInOrder(Span.Kind.CLIENT, null);
     assertChildEnclosedByParent(reportedSpans[0], reportedSpans[1]);
   }
 
@@ -135,7 +136,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     assertThat(takeRequest().getHeader(EXTRA_KEY))
       .isEqualTo("joey");
 
-    assertSpansReportedInKindOrder(Span.Kind.CLIENT, null);
+    assertSpansReportedKindInAnyOrder(null, Span.Kind.CLIENT);
   }
 
   @Test public void propagatesExtra_unsampledTrace() throws Exception {
@@ -442,7 +443,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
   void assertClientSpan(Span span) {
     assertThat(span.kind())
-      .withFailMessage("Expected span %s to have kind=CLIENT", span)
+      .withFailMessage("Expected %s to have kind=CLIENT", span)
       .isEqualTo(Span.Kind.CLIENT);
   }
 }

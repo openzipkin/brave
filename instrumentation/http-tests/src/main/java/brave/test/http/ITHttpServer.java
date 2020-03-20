@@ -13,9 +13,7 @@
  */
 package brave.test.http;
 
-import brave.ScopedSpan;
 import brave.SpanCustomizer;
-import brave.Tracer;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.http.HttpAdapter;
@@ -40,7 +38,6 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import okhttp3.internal.http.HttpHeaders;
-import okhttp3.mockwebserver.MockResponse;
 import okio.Buffer;
 import org.eclipse.jetty.util.log.Log;
 import org.junit.AssumptionViolatedException;
@@ -180,17 +177,8 @@ public abstract class ITHttpServer extends ITHttp {
   public void createsChildSpan() throws Exception {
     get("/child");
 
-    Span[] reportedSpans = assertSpansReportedInKindOrder(null, Span.Kind.SERVER);
-    Span child = reportedSpans[0], server = reportedSpans[1];
-
-    assertThat(server.traceId()).isEqualTo(child.traceId());
-    assertThat(server.id()).isEqualTo(child.parentId());
-  }
-
-  @Test public void handlerTimestampAndDurationEnclosedByServer() throws Exception {
-    get("/child");
-
-    Span[] reportedSpans = assertSpansReportedInKindOrder(null, Span.Kind.SERVER);
+    // We expect the last to report to be the parent
+    Span[] reportedSpans = assertSpansReportedKindInOrder(null, Span.Kind.SERVER);
     assertChildEnclosedByParent(reportedSpans[0], reportedSpans[1]);
   }
 
@@ -569,7 +557,7 @@ public abstract class ITHttpServer extends ITHttp {
 
   void assertServerSpan(Span span) {
     assertThat(span.kind())
-      .withFailMessage("Expected span %s to have kind=SERVER", span)
+      .withFailMessage("Expected %s to have kind=SERVER", span)
       .isEqualTo(Span.Kind.SERVER);
   }
 }
