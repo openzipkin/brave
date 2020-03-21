@@ -37,9 +37,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-import okhttp3.internal.http.HttpHeaders;
 import okio.Buffer;
-import org.eclipse.jetty.util.log.Log;
 import org.junit.AssumptionViolatedException;
 import org.junit.Before;
 import org.junit.Test;
@@ -527,7 +525,7 @@ public abstract class ITHttpServer extends ITHttp {
     request = request.newBuilder().header("test", testName.getMethodName()).build();
 
     try (Response response = client.newCall(request).execute()) {
-      if (!HttpHeaders.promisesBody(response)) return response;
+      if (response.body() == null) return response;
 
       // buffer response so tests can read it. Otherwise the finally block will drop it
       ResponseBody toReturn;
