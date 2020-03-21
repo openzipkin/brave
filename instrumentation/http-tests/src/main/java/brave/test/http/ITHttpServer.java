@@ -177,9 +177,9 @@ public abstract class ITHttpServer extends ITHttp {
   public void createsChildSpan() throws Exception {
     get("/child");
 
-    // We expect the last to report to be the parent
-    Span[] reportedSpans = assertSpansReportedKindInOrder(null, Span.Kind.SERVER);
-    assertChildEnclosedByParent(reportedSpans[0], reportedSpans[1]);
+    Span[] parentAndChild = takeParentAndChildSpansWithKind(Span.Kind.SERVER, null);
+    assertThat(parentAndChild[1].name())
+      .isEqualTo("child");
   }
 
   @Test

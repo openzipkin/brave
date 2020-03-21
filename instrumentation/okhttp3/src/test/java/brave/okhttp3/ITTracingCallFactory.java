@@ -95,6 +95,6 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    assertSpansReportedKindInAnyOrder(null, Span.Kind.CLIENT);
+    takeSpansWithKind(null, Span.Kind.CLIENT);
   }
 }

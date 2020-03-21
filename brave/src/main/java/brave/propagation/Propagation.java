@@ -44,9 +44,9 @@ public interface Propagation<K> {
      * Does the propagation implementation support sharing client and server span IDs. For example,
      * should an RPC server span share the same identifiers extracted from an incoming request?
      *
-     * In usual <a href="https://github.com/apache/incubator-zipkin-b3-propagation">B3
-     * Propagation</a>, the parent span ID is sent across the wire so that the client and server can
-     * share the same identifiers. Other propagation formats, like <a href="https://github.com/TraceContext/tracecontext-spec">trace-context</a>
+     * In usual <a href="https://github.com/openzipkin/b3-propagation">B3 Propagation</a>, the
+     * parent span ID is sent across the wire so that the client and server can share the same
+     * identifiers. Other propagation formats, like <a href="https://github.com/w3c/trace-context">trace-context</a>
      * only propagate the calling trace and span ID, with an assumption that the receiver always
      * starts a new child span. When join is supported, you can assume that when {@link
      * TraceContext#parentId() the parent span ID} is null, you've been propagated a root span. When

@@ -102,8 +102,11 @@ public abstract class ITHttp {
    * We use a global rule instead of surefire config as this could be executed in gradle, sbt, etc.
    * This way, there's visibility on which method hung without asking the end users to edit build
    * config.
+   *
+   * <p>Normal tests will pass in less than 5 seconds. This timeout is set to 20 to be higher than
+   * needed even in a an overloaded CI server or extreme garbage collection pause.
    */
-  @Rule public TestRule globalTimeout = new DisableOnDebug(Timeout.seconds(10)); // max per method
+  @Rule public TestRule globalTimeout = new DisableOnDebug(Timeout.seconds(20)); // max per method
   @Rule public TestName testName = new TestName();
 
   public static final String EXTRA_KEY = "user-id";
@@ -183,11 +186,11 @@ public abstract class ITHttp {
   };
 
   /**
-   * Like {@link #assertSpansReportedKindInOrder(Span.Kind, Span.Kind)} except order isn't enforced.
-   * However, the results will return in the kind order specified.
+   * Like {@link #takeParentAndChildSpansWithKind(Span.Kind, Span.Kind)} except order isn't
+   * enforced. However, the results will return in the kind order specified.
    */
-  protected Span[] assertSpansReportedKindInAnyOrder(@Nullable Span.Kind kind1,
-    @Nullable Span.Kind kind2) throws InterruptedException {
+  protected Span[] takeSpansWithKind(@Nullable Span.Kind kind1, @Nullable Span.Kind kind2)
+    throws InterruptedException {
     if (Objects.equals(kind1, kind2)) {
       throw new AssertionError("Expected test to pass different span kinds");
     }
@@ -211,28 +214,6 @@ public abstract class ITHttp {
     return result[0].kind() == kind1 ? result : new Span[] {span2, span1};
   }
 
-  protected Span[] assertSpansReportedKindInOrder(@Nullable Span.Kind kind1,
-    @Nullable Span.Kind kind2) throws InterruptedException {
-    // Intentionally pull both spans first to ensure neither are errors.
-    Span span1 = takeSpan(), span2 = takeSpan();
-
-    // First, check if the order is backwards
-    if (Objects.equals(span2.kind(), kind1) && Objects.equals(span1.kind(), kind2)) {
-      throw new AssertionError("Expected span " + span2 + " to report before span " + span1);
-    }
-
-    // Now, check each span
-    assertThat(span1.kind())
-      .withFailMessage("Expected first %s to have kind=%s", span1, kind1)
-      .isEqualTo(kind1);
-
-    assertThat(span2.kind())
-      .withFailMessage("Expected second %s to have kind=%s", span2, kind2)
-      .isEqualTo(kind2);
-
-    return new Span[] {span1, span2};
-  }
-
   protected Span takeLocalSpan() throws InterruptedException {
     Span local = takeSpan();
     assertThat(local.kind())
@@ -241,10 +222,23 @@ public abstract class ITHttp {
     return local;
   }
 
-  protected void assertChildEnclosedByParent(Span child, Span parent) {
+  /**
+   * Like {@link #takeSpansWithKind(Span.Kind, Span.Kind)}, except the child duration must be
+   * enclosed by the parent duration. Reporting order is irrelevant as some libraries report
+   * asynchronously with correct timestamps.
+   */
+  protected Span[] takeParentAndChildSpansWithKind(@Nullable Span.Kind parentKind,
+    @Nullable Span.Kind childKind) throws InterruptedException {
+    Span[] parentAndChild = takeSpansWithKind(parentKind, childKind);
+    Span parent = parentAndChild[0], child = parentAndChild[1];
+
     assertThat(parent.traceId())
       .withFailMessage("Expected the same trace ID: %s %s", parent, child)
       .isEqualTo(child.traceId());
+
+    assertThat(parent.id())
+      .withFailMessage("Expected the different span IDs: %s %s", parent, child)
+      .isNotEqualTo(child.id());
 
     assertThat(parent.id())
       .withFailMessage("Expected %s to be the parent of %s", parent, child)
@@ -258,8 +252,11 @@ public abstract class ITHttp {
     long serverFinishTimeStamp = parent.timestampAsLong() + parent.durationAsLong();
 
     assertThat(childFinishTimeStamp)
+      .withFailMessage("Expected %s to finish after %s", parent, child)
       .isGreaterThanOrEqualTo(child.timestampAsLong())
       .isLessThanOrEqualTo(serverFinishTimeStamp);
+
+    return parentAndChild;
   }
 
   protected Tracing.Builder tracingBuilder(Sampler sampler) {

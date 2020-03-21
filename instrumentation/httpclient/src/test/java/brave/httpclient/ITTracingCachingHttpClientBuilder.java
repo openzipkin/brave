@@ -28,7 +28,7 @@ public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilde
   /**
    * Handle when the client doesn't actually make a client span
    *
-   * <p>See https://github.com/apache/incubator-zipkin-brave/issues/864
+   * <p>See https://github.com/openzipkin/brave/issues/864
    */
   @Test public void cacheControl() throws Exception {
     server.enqueue(new MockResponse()
@@ -42,7 +42,7 @@ public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilde
 
     assertThat(server.getRequestCount()).isEqualTo(1);
 
-    Span[] reportedSpans = assertSpansReportedKindInOrder(Span.Kind.CLIENT, null);
+    Span[] reportedSpans = takeSpansWithKind(Span.Kind.CLIENT, null);
     assertThat(reportedSpans[1].tags()).containsKey("http.cache_hit");
   }
 }
