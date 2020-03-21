@@ -15,6 +15,7 @@ package brave.test.http;
 
 import brave.test.http.ServletContainer.ServerController;
 import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.util.log.Log;
 import org.junit.After;
 
 /** Starts a jetty server which runs a servlet container */
@@ -22,6 +23,7 @@ public abstract class ITServletContainer extends ITHttpServer {
   final ServerController serverController;
 
   protected ITServletContainer(ServerController serverController) {
+    Log.setLog(new Log4J2Log());
     this.serverController = serverController;
   }
 

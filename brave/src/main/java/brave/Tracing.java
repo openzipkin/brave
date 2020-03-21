@@ -225,7 +225,7 @@ public abstract class Tracing implements Closeable {
      * tracingBuilder.spanReporter(spanReporter);
      * }</pre>
      *
-     * <p>See https://github.com/apache/incubator-zipkin-reporter-java
+     * <p>See https://github.com/openzipkin/zipkin-reporter-java
      */
     public Builder spanReporter(Reporter<zipkin2.Span> spanReporter) {
       if (spanReporter == null) throw new NullPointerException("spanReporter == null");

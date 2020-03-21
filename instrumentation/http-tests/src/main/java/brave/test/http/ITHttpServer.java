@@ -37,9 +37,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-import okhttp3.internal.http.HttpHeaders;
 import okio.Buffer;
-import org.eclipse.jetty.util.log.Log;
 import org.junit.AssumptionViolatedException;
 import org.junit.Before;
 import org.junit.Test;
@@ -53,7 +51,6 @@ public abstract class ITHttpServer extends ITHttp {
   OkHttpClient client = new OkHttpClient();
 
   @Before public void setup() throws Exception {
-    Log.setLog(new Log4J2Log());
     httpTracing = HttpTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
     init();
   }
@@ -177,9 +174,9 @@ public abstract class ITHttpServer extends ITHttp {
   public void createsChildSpan() throws Exception {
     get("/child");
 
-    // We expect the last to report to be the parent
-    Span[] reportedSpans = assertSpansReportedKindInOrder(null, Span.Kind.SERVER);
-    assertChildEnclosedByParent(reportedSpans[0], reportedSpans[1]);
+    Span[] parentAndChild = takeSpansWithKind(Span.Kind.SERVER, null);
+    assertParentEnclosesChild(parentAndChild[0], parentAndChild[1]);
+    assertThat(parentAndChild[1].name()).isEqualTo("child");
   }
 
   @Test
@@ -528,7 +525,7 @@ public abstract class ITHttpServer extends ITHttp {
     request = request.newBuilder().header("test", testName.getMethodName()).build();
 
     try (Response response = client.newCall(request).execute()) {
-      if (!HttpHeaders.promisesBody(response)) return response;
+      if (response.body() == null) return response;
 
       // buffer response so tests can read it. Otherwise the finally block will drop it
       ResponseBody toReturn;

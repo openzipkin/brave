@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -200,7 +200,7 @@ public abstract class Span implements SpanCustomizer {
    */
   // Design note: This differs from Brave 3's LocalTracer which completes with a given duration.
   // This was changed for a few use cases.
-  // * Finishing a one-way span on another host https://github.com/apache/incubator-zipkin/issues/1243
+  // * Finishing a one-way span on another host https://github.com/openzipkin/zipkin/issues/1243
   //   * The other host will not be able to read the start timestamp, so can't calculate duration
   // * Consistency in Api: All units and measures are epoch microseconds
   //   * This can reduce accidents where people use duration when they mean a timestamp

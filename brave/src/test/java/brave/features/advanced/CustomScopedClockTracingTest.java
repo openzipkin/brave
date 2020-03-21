@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * span if a query occurred on it. By default, spans have a clock pinned to the trace. To use a
  * clock pinned to a connection, you have to control timestamps manually.
  *
- * <p>See https://github.com/apache/incubator-zipkin-brave/issues/564
+ * <p>See https://github.com/openzipkin/brave/issues/564
  */
 public class CustomScopedClockTracingTest {
   List<Span> spans = new ArrayList<>();

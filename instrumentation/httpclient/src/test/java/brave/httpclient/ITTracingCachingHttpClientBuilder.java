@@ -13,6 +13,7 @@
  */
 package brave.httpclient;
 
+import brave.ScopedSpan;
 import okhttp3.mockwebserver.MockResponse;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.junit.Test;
@@ -28,7 +29,7 @@ public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilde
   /**
    * Handle when the client doesn't actually make a client span
    *
-   * <p>See https://github.com/apache/incubator-zipkin-brave/issues/864
+   * <p>See https://github.com/openzipkin/brave/issues/864
    */
   @Test public void cacheControl() throws Exception {
     server.enqueue(new MockResponse()
@@ -37,12 +38,21 @@ public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilde
       .setBody("Hello"));
 
     // important to use a different path than other tests!
-    get(client, "/cached");
-    get(client, "/cached");
+    ScopedSpan parent = tracer().startScopedSpan("parent");
+    try {
+      get(client, "/cached");
+      get(client, "/cached");
+    } finally {
+      parent.finish();
+    }
 
     assertThat(server.getRequestCount()).isEqualTo(1);
 
-    Span[] reportedSpans = assertSpansReportedKindInOrder(Span.Kind.CLIENT, null);
-    assertThat(reportedSpans[1].tags()).containsKey("http.cache_hit");
+    Span[] realAndCached = takeSpansWithKind(Span.Kind.CLIENT, null);
+    Span parentSpan = takeLocalSpan();
+    assertThat(parentSpan.name()).isEqualTo("parent");
+
+    assertChildrenAreSequential(parentSpan, realAndCached[0], realAndCached[1]);
+    assertThat(realAndCached[1].tags()).containsKey("http.cache_hit");
   }
 }

@@ -116,8 +116,8 @@ poll
 +- processing N
 ```
 
-If this is not the desired behavior, users can customize it by setting `singleRootSpanOnReceiveBatch` to `false`. 
-This will create a root span `poll` for each record received. 
+If this is not the desired behavior, users can customize it by setting `singleRootSpanOnReceiveBatch` to `false`.
+This will create a root span `poll` for each record received.
 
 ```
 trace 1:
@@ -135,4 +135,4 @@ poll
 
 ## Notes
 * This tracer is only compatible with Kafka versions including headers support ( > 0.11.0).
-* More information about "Message Tracing" [here](https://github.com/apache/incubator-zipkin-website/blob/master/pages/instrumenting.md#message-tracing)
+* More information about "Message Tracing" [here](https://github.com/openzipkin/openzipkin.github.io/wiki/Messaging-instrumentation-abstraction)

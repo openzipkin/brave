@@ -123,7 +123,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
       .isInstanceOf(TraceContext.class)
       .isSameAs(parent.context());
 
-    assertSpansReportedKindInAnyOrder(null, Span.Kind.CLIENT);
+    takeSpansWithKind(null, Span.Kind.CLIENT);
   }
 
   /** This ensures that response callbacks run when there is no invocation trace context. */

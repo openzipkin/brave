@@ -29,7 +29,6 @@ import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
-import java.util.Arrays;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -101,7 +100,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     assertThat(request.getHeader("x-b3-parentspanid"))
       .isEqualTo(parent.context().spanIdString());
 
-    assertSpansReportedKindInAnyOrder(null, Span.Kind.CLIENT);
+    takeSpansWithKind(null, Span.Kind.CLIENT);
   }
 
   /** This prevents confusion as a blocking client should end before, the start of the next span. */
@@ -109,16 +108,16 @@ public abstract class ITHttpClient<C> extends ITHttp {
     Tracer tracer = httpTracing.tracing().tracer();
     server.enqueue(new MockResponse());
 
-    ScopedSpan parent = tracer.startScopedSpan("test");
+    ScopedSpan parent = tracer.startScopedSpan("parent");
     try {
       get(client, "/foo");
     } finally {
       parent.finish();
     }
 
-    // We expect the last to report to be the parent
-    Span[] reportedSpans = assertSpansReportedKindInOrder(Span.Kind.CLIENT, null);
-    assertChildEnclosedByParent(reportedSpans[0], reportedSpans[1]);
+    Span[] parentAndChild = takeSpansWithKind(null, Span.Kind.CLIENT);
+    assertParentEnclosesChild(parentAndChild[0], parentAndChild[1]);
+    assertThat(parentAndChild[0].name()).isEqualTo("parent");
   }
 
   @Test public void propagatesExtra_newTrace() throws Exception {
@@ -136,7 +135,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
     assertThat(takeRequest().getHeader(EXTRA_KEY))
       .isEqualTo("joey");
 
-    assertSpansReportedKindInAnyOrder(null, Span.Kind.CLIENT);
+    takeSpansWithKind(null, Span.Kind.CLIENT);
   }
 
   @Test public void propagatesExtra_unsampledTrace() throws Exception {
@@ -329,7 +328,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
       .addHeader("Location: " + url("/bar")));
     server.enqueue(new MockResponse().setResponseCode(404)); // hehe to a bad location!
 
-    ScopedSpan parent = tracer.startScopedSpan("test");
+    ScopedSpan parent = tracer.startScopedSpan("parent");
     try {
       get(client, "/foo");
     } catch (RuntimeException e) {
@@ -338,12 +337,15 @@ public abstract class ITHttpClient<C> extends ITHttp {
       parent.finish();
     }
 
-    Span client1 = takeClientSpan();
-    Span client2 = takeClientSpanWithError("404");
-    assertThat(Arrays.asList(client1.tags().get("http.path"), client2.tags().get("http.path")))
-      .contains("/foo", "/bar");
+    Span initial = takeClientSpan();
+    Span redirected = takeClientSpanWithError("404");
+    Span parentSpan = takeLocalSpan();
+    assertThat(parentSpan.name()).isEqualTo("parent");
 
-    takeLocalSpan();
+    assertChildrenAreSequential(parentSpan, initial, redirected);
+
+    assertThat(initial.tags().get("http.path")).isEqualTo("/foo");
+    assertThat(redirected.tags().get("http.path")).isEqualTo("/bar");
   }
 
   @Test public void post() throws Exception {
