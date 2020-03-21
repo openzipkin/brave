@@ -186,8 +186,11 @@ public abstract class ITHttp {
   };
 
   /**
-   * Like {@link #takeParentAndChildSpansWithKind(Span.Kind, Span.Kind)} except order isn't
-   * enforced. However, the results will return in the kind order specified.
+   * Invokes {@link #takeSpan()} twice, returning results in the kind order specified.
+   *
+   * <p>Note: Reporting order is irrelevant as some libraries report asynchronously with correct
+   * timestamps. To enforce order, consider {@link #takeParentAndChildSpansWithKind(Span.Kind,
+   * Span.Kind)}.
    */
   protected Span[] takeSpansWithKind(@Nullable Span.Kind kind1, @Nullable Span.Kind kind2)
     throws InterruptedException {
@@ -224,8 +227,7 @@ public abstract class ITHttp {
 
   /**
    * Like {@link #takeSpansWithKind(Span.Kind, Span.Kind)}, except the child duration must be
-   * enclosed by the parent duration. Reporting order is irrelevant as some libraries report
-   * asynchronously with correct timestamps.
+   * enclosed by the parent duration.
    */
   protected Span[] takeParentAndChildSpansWithKind(@Nullable Span.Kind parentKind,
     @Nullable Span.Kind childKind) throws InterruptedException {
