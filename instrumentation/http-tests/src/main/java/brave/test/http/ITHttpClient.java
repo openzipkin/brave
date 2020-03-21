@@ -29,7 +29,6 @@ import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
-import java.util.Arrays;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -116,9 +115,9 @@ public abstract class ITHttpClient<C> extends ITHttp {
       parent.finish();
     }
 
-    Span[] parentAndChild = takeParentAndChildSpansWithKind(null, Span.Kind.CLIENT);
-    assertThat(parentAndChild[0].name())
-      .isEqualTo("parent");
+    Span[] parentAndChild = takeSpansWithKind(null, Span.Kind.CLIENT);
+    assertParentEnclosesChild(parentAndChild[0], parentAndChild[1]);
+    assertThat(parentAndChild[0].name()).isEqualTo("parent");
   }
 
   @Test public void propagatesExtra_newTrace() throws Exception {
@@ -329,7 +328,7 @@ public abstract class ITHttpClient<C> extends ITHttp {
       .addHeader("Location: " + url("/bar")));
     server.enqueue(new MockResponse().setResponseCode(404)); // hehe to a bad location!
 
-    ScopedSpan parent = tracer.startScopedSpan("test");
+    ScopedSpan parent = tracer.startScopedSpan("parent");
     try {
       get(client, "/foo");
     } catch (RuntimeException e) {
@@ -338,12 +337,15 @@ public abstract class ITHttpClient<C> extends ITHttp {
       parent.finish();
     }
 
-    Span client1 = takeClientSpan();
-    Span client2 = takeClientSpanWithError("404");
-    assertThat(Arrays.asList(client1.tags().get("http.path"), client2.tags().get("http.path")))
-      .contains("/foo", "/bar");
+    Span redirected = takeClientSpan();
+    Span initial = takeClientSpanWithError("404");
 
-    takeLocalSpan();
+    assertSiblingsAreSequential(initial, redirected);
+
+    assertThat(initial.tags().get("http.path")).isEqualTo("/foo");
+    assertThat(redirected.tags().get("http.path")).isEqualTo("/bar");
+
+    assertThat(takeLocalSpan().name()).isEqualTo("parent");
   }
 
   @Test public void post() throws Exception {

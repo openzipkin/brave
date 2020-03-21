@@ -145,6 +145,15 @@ public abstract class ITHttp {
     assertThat(result)
       .withFailMessage("Span was not reported")
       .isNotNull();
+
+    assertThat(result.timestampAsLong())
+      .withFailMessage("Expected a timestamp: %s", result)
+      .isNotZero();
+
+    assertThat(result.durationAsLong())
+      .withFailMessage("Expected a duration: %s", result)
+      .isNotZero();
+
     return result;
   }
 
@@ -185,13 +194,7 @@ public abstract class ITHttp {
     }
   };
 
-  /**
-   * Invokes {@link #takeSpan()} twice, returning results in the kind order specified.
-   *
-   * <p>Note: Reporting order is irrelevant as some libraries report asynchronously with correct
-   * timestamps. To enforce order, consider {@link #takeParentAndChildSpansWithKind(Span.Kind,
-   * Span.Kind)}.
-   */
+  /** Invokes {@link #takeSpan()} twice, returning results in the kind order specified. */
   protected Span[] takeSpansWithKind(@Nullable Span.Kind kind1, @Nullable Span.Kind kind2)
     throws InterruptedException {
     if (Objects.equals(kind1, kind2)) {
@@ -226,14 +229,10 @@ public abstract class ITHttp {
   }
 
   /**
-   * Like {@link #takeSpansWithKind(Span.Kind, Span.Kind)}, except the child duration must be
-   * enclosed by the parent duration.
+   * Ensures the inputs are parent and child, the parent starts before the child, and the duration
+   * of the child is inside the parent's duration.
    */
-  protected Span[] takeParentAndChildSpansWithKind(@Nullable Span.Kind parentKind,
-    @Nullable Span.Kind childKind) throws InterruptedException {
-    Span[] parentAndChild = takeSpansWithKind(parentKind, childKind);
-    Span parent = parentAndChild[0], child = parentAndChild[1];
-
+  protected void assertParentEnclosesChild(Span parent, Span child) {
     assertThat(parent.traceId())
       .withFailMessage("Expected the same trace ID: %s %s", parent, child)
       .isEqualTo(child.traceId());
@@ -251,14 +250,33 @@ public abstract class ITHttp {
       .isLessThanOrEqualTo(child.timestampAsLong());
 
     long childFinishTimeStamp = child.timestampAsLong() + child.durationAsLong();
-    long serverFinishTimeStamp = parent.timestampAsLong() + parent.durationAsLong();
+    long parentFinishTimeStamp = parent.timestampAsLong() + parent.durationAsLong();
 
     assertThat(childFinishTimeStamp)
       .withFailMessage("Expected %s to finish after %s", parent, child)
       .isGreaterThanOrEqualTo(child.timestampAsLong())
-      .isLessThanOrEqualTo(serverFinishTimeStamp);
+      .isLessThanOrEqualTo(parentFinishTimeStamp);
+  }
 
-    return parentAndChild;
+  /** Ensures the inputs have the same parent, and the first finished before the other started. */
+  protected void assertSiblingsAreSequential(Span span1, Span span2) {
+    assertThat(span1.traceId())
+      .withFailMessage("Expected the same trace ID: %s %s", span1, span2)
+      .isEqualTo(span2.traceId());
+
+    assertThat(span1.parentId())
+      .withFailMessage("Expected the same parent ID: %s %s", span1, span2)
+      .isEqualTo(span2.parentId());
+
+    assertThat(span1.id())
+      .withFailMessage("Expected the different span IDs: %s %s", span1, span2)
+      .isNotEqualTo(span2.id());
+
+    long span1FinishTimeStamp = span1.timestampAsLong() + span1.durationAsLong();
+
+    assertThat(span1FinishTimeStamp)
+      .withFailMessage("Expected %s to finish before %s started", span1, span2)
+      .isLessThanOrEqualTo(span2.timestampAsLong());
   }
 
   protected Tracing.Builder tracingBuilder(Sampler sampler) {
