@@ -49,9 +49,10 @@ public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilde
     assertThat(server.getRequestCount()).isEqualTo(1);
 
     Span[] realAndCached = takeSpansWithKind(Span.Kind.CLIENT, null);
-    assertChildrenAreSequential(takeLocalSpan(), realAndCached[0], realAndCached[1]);
-    assertThat(realAndCached[1].tags()).containsKey("http.cache_hit");
+    Span parentSpan = takeLocalSpan();
+    assertThat(parentSpan.name()).isEqualTo("parent");
 
-    assertThat(takeLocalSpan().name()).isEqualTo("parent");
+    assertChildrenAreSequential(parentSpan, realAndCached[0], realAndCached[1]);
+    assertThat(realAndCached[1].tags()).containsKey("http.cache_hit");
   }
 }
