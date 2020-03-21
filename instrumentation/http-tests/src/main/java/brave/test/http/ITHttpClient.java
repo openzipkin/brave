@@ -337,8 +337,8 @@ public abstract class ITHttpClient<C> extends ITHttp {
       parent.finish();
     }
 
-    Span redirected = takeClientSpan();
-    Span initial = takeClientSpanWithError("404");
+    Span initial = takeClientSpan();
+    Span redirected = takeClientSpanWithError("404");
 
     assertSiblingsAreSequential(initial, redirected);
 
