@@ -520,6 +520,7 @@ public abstract class ITHttpServer extends ITHttp {
   }
 
   /** like {@link #get(Request)} except doesn't throw unsupported on not found */
+  @SuppressWarnings("deprecation")
   Response call(Request request) throws IOException {
     // Particularly during async debugging, knowing which test invoked a request is helpful.
     request = request.newBuilder().header("test", testName.getMethodName()).build();
@@ -532,7 +533,8 @@ public abstract class ITHttpServer extends ITHttp {
       try (ResponseBody body = response.body()) {
         Buffer buffer = new Buffer();
         body.source().readAll(buffer);
-        toReturn = ResponseBody.create(buffer, body.contentType(), body.contentLength());
+        // allow deprecated method call as otherwise we pin the classpath to okhttp 4
+        toReturn = ResponseBody.create(body.contentType(), body.contentLength(), buffer);
       }
       return response.newBuilder().body(toReturn).build();
     }
