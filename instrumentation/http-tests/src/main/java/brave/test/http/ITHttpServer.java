@@ -53,7 +53,6 @@ public abstract class ITHttpServer extends ITHttp {
   OkHttpClient client = new OkHttpClient();
 
   @Before public void setup() throws Exception {
-    Log.setLog(new Log4J2Log());
     httpTracing = HttpTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
     init();
   }

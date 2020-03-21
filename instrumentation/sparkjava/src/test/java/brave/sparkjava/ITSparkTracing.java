@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,12 +14,17 @@
 package brave.sparkjava;
 
 import brave.test.http.ITHttpServer;
+import brave.test.http.Log4J2Log;
 import okhttp3.Response;
+import org.eclipse.jetty.util.log.Log;
 import org.junit.After;
 import org.junit.AssumptionViolatedException;
 import spark.Spark;
 
 public class ITSparkTracing extends ITHttpServer {
+  public ITSparkTracing() {
+    Log.setLog(new Log4J2Log());
+  }
 
   @Override protected Response get(String path) throws Exception {
     if (path.toLowerCase().indexOf("async") == -1) return super.get(path);
