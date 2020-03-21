@@ -76,7 +76,7 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
 
   final class HandleSend implements HttpRequestInterceptor {
     @Override public void process(HttpRequest request, HttpContext context) {
-      TraceContext parent = (TraceContext) context.removeAttribute(TraceContext.class.getName());
+      TraceContext parent = (TraceContext) context.getAttribute(TraceContext.class.getName());
 
       HttpRequestWrapper wrapper = new HttpRequestWrapper(request, context);
       Span span = handler.handleSendWithParent(wrapper, parent);
