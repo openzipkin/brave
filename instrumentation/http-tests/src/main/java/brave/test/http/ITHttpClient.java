@@ -339,13 +339,13 @@ public abstract class ITHttpClient<C> extends ITHttp {
 
     Span initial = takeClientSpan();
     Span redirected = takeClientSpanWithError("404");
+    Span parentSpan = takeLocalSpan();
+    assertThat(parentSpan.name()).isEqualTo("parent");
 
-    assertSiblingsAreSequential(initial, redirected);
+    assertChildrenAreSequential(parentSpan, initial, redirected);
 
     assertThat(initial.tags().get("http.path")).isEqualTo("/foo");
     assertThat(redirected.tags().get("http.path")).isEqualTo("/bar");
-
-    assertThat(takeLocalSpan().name()).isEqualTo("parent");
   }
 
   @Test public void post() throws Exception {

@@ -238,7 +238,7 @@ public abstract class ITHttp {
       .isEqualTo(child.traceId());
 
     assertThat(parent.id())
-      .withFailMessage("Expected the different span IDs: %s %s", parent, child)
+      .withFailMessage("Expected different span IDs: %s %s", parent, child)
       .isNotEqualTo(child.id());
 
     assertThat(parent.id())
@@ -258,25 +258,27 @@ public abstract class ITHttp {
       .isLessThanOrEqualTo(parentFinishTimeStamp);
   }
 
-  /** Ensures the inputs have the same parent, and the first finished before the other started. */
-  protected void assertSiblingsAreSequential(Span span1, Span span2) {
-    assertThat(span1.traceId())
-      .withFailMessage("Expected the same trace ID: %s %s", span1, span2)
-      .isEqualTo(span2.traceId());
+  /** Ensures the children have the same parent, and the first finished before the other started. */
+  protected void assertChildrenAreSequential(Span parent, Span child1, Span child2) {
+    for (Span child : Arrays.asList(child1, child2)) {
+      assertThat(child.traceId())
+        .withFailMessage("Expected to have trace ID(%s): %s", parent.traceId(), child)
+        .isEqualTo(parent.traceId());
 
-    assertThat(span1.parentId())
-      .withFailMessage("Expected the same parent ID: %s %s", span1, span2)
-      .isEqualTo(span2.parentId());
+      assertThat(child.parentId())
+        .withFailMessage("Expected to have parent ID(%s): %s", parent.id(), child)
+        .isEqualTo(parent.id());
+    }
 
-    assertThat(span1.id())
-      .withFailMessage("Expected the different span IDs: %s %s", span1, span2)
-      .isNotEqualTo(span2.id());
+    assertThat(child1.id())
+      .withFailMessage("Expected different span IDs: %s %s", child1, child2)
+      .isNotEqualTo(child2.id());
 
-    long span1FinishTimeStamp = span1.timestampAsLong() + span1.durationAsLong();
+    long span1FinishTimeStamp = child1.timestampAsLong() + child1.durationAsLong();
 
     assertThat(span1FinishTimeStamp)
-      .withFailMessage("Expected %s to finish before %s started", span1, span2)
-      .isLessThanOrEqualTo(span2.timestampAsLong());
+      .withFailMessage("Expected %s to finish before %s started", child1, child2)
+      .isLessThanOrEqualTo(child2.timestampAsLong());
   }
 
   protected Tracing.Builder tracingBuilder(Sampler sampler) {
