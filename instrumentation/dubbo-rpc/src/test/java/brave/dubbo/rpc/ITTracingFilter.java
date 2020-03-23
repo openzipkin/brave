@@ -13,94 +13,27 @@
  */
 package brave.dubbo.rpc;
 
-import brave.Tracing;
-import brave.propagation.StrictScopeDecorator;
-import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.rpc.RpcTracing;
-import brave.sampler.Sampler;
+import brave.test.ITRemote;
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
 import com.alibaba.dubbo.config.ReferenceConfig;
 import com.alibaba.dubbo.rpc.Filter;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import org.junit.After;
-import org.junit.Rule;
-import org.junit.rules.DisableOnDebug;
-import org.junit.rules.TestRule;
-import org.junit.rules.TestWatcher;
-import org.junit.rules.Timeout;
-import org.junit.runner.Description;
-import zipkin2.Span;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-public abstract class ITTracingFilter {
-  /**
-   * Normal tests will pass in less than 5 seconds. This timeout is set to 20 to be higher than
-   * needed even in a an overloaded CI server or extreme garbage collection pause.
-   */
-  @Rule public TestRule globalTimeout = new DisableOnDebug(Timeout.seconds(20)); // max per method
-
-  /** See brave.http.ITHttp for rationale on using a concurrent blocking queue */
-  BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
-
-  Tracing tracing;
-  RpcTracing rpcTracing;
-  TestServer server = new TestServer();
+public abstract class ITTracingFilter extends ITRemote {
+  RpcTracing rpcTracing = RpcTracing.create(tracing);
+  TestServer server = new TestServer(propagationFactory);
   ReferenceConfig<GreeterService> client;
 
   @After public void stop() {
     if (client != null) client.destroy();
     server.stop();
-    Tracing current = Tracing.current();
-    if (current != null) current.close();
   }
 
-  // See brave.http.ITHttp for rationale on polling after tests complete
-  @Rule public TestRule assertSpansEmpty = new TestWatcher() {
-    // only check success path to avoid masking assertion errors or exceptions
-    @Override protected void succeeded(Description description) {
-      try {
-        assertThat(spans.poll(100, TimeUnit.MILLISECONDS))
-          .withFailMessage("Span remaining in queue. Check for redundant reporting")
-          .isNull();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-  };
-
-  Tracing.Builder tracingBuilder(Sampler sampler) {
-    return Tracing.newBuilder()
-      .spanReporter(spans::add)
-      .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-        .addScopeDecorator(StrictScopeDecorator.create())
-        .build())
-      .sampler(sampler);
-  }
-
-  void setTracing(Tracing tracing) {
-    ((TracingFilter) ExtensionLoader.getExtensionLoader(Filter.class)
-      .getExtension("tracing"))
-      .setTracing(tracing);
-    this.tracing = tracing;
-  }
-
-  void setRpcTracing(RpcTracing rpcTracing) {
+  /** Call this after updating {@link #tracing} or {@link #rpcTracing} */
+  void init() {
     ((TracingFilter) ExtensionLoader.getExtensionLoader(Filter.class)
       .getExtension("tracing"))
       .setRpcTracing(rpcTracing);
-    this.tracing = rpcTracing.tracing();
-    this.rpcTracing = rpcTracing;
-  }
-
-  /** Call this to block until a span was reported */
-  Span takeSpan() throws InterruptedException {
-    Span result = spans.poll(3, TimeUnit.SECONDS);
-    assertThat(result)
-      .withFailMessage("Span was not reported")
-      .isNotNull();
-    return result;
   }
 }

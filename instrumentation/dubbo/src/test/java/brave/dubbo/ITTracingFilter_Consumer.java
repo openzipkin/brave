@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,13 +13,14 @@
  */
 package brave.dubbo;
 
-import brave.ScopedSpan;
+import brave.Clock;
+import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.ExtraFieldPropagation;
+import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
-import brave.propagation.TraceContextOrSamplingFlags;
 import brave.rpc.RpcRuleSampler;
 import brave.rpc.RpcTracing;
-import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
+import brave.test.util.AssertableCallback;
 import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.RpcException;
@@ -34,7 +35,6 @@ import static brave.sampler.Sampler.ALWAYS_SAMPLE;
 import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 public class ITTracingFilter_Consumer extends ITTracingFilter {
   ReferenceConfig<GraterService> wrongClient;
@@ -55,12 +55,12 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     wrongClient.setInterface(GraterService.class);
     wrongClient.setUrl(url);
 
-    setTracing(tracingBuilder(ALWAYS_SAMPLE).build());
+    init();
 
     // perform a warmup request to allow CI to fail quicker
     client.get().sayHello("jorge");
     server.takeRequest();
-    takeSpan();
+    takeRemoteSpan(Span.Kind.CLIENT);
   }
 
   @After public void stop() {
@@ -68,34 +68,77 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     super.stop();
   }
 
-  @Test public void propagatesSpan() throws Exception {
+  @Test public void propagatesNewTrace() throws Exception {
     client.get().sayHello("jorge");
 
-    TraceContext context = server.takeRequest().context();
-    assertThat(context.parentId()).isNull();
-    assertThat(context.sampled()).isTrue();
-
-    takeSpan();
+    TraceContext extracted = server.takeRequest().context();
+    assertThat(extracted.sampled()).isTrue();
+    assertThat(extracted.parentIdString()).isNull();
+    assertSameIds(takeRemoteSpan(Span.Kind.CLIENT), extracted);
   }
 
-  @Test public void makesChildOfCurrentSpan() throws Exception {
-    ScopedSpan parent = tracing.tracer().startScopedSpan("test");
-    try {
+  @Test public void propagatesChildOfCurrentSpan() throws Exception {
+    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
       client.get().sayHello("jorge");
-    } finally {
-      parent.finish();
     }
 
-    TraceContext context = server.takeRequest().context();
-    assertThat(context.traceId())
-      .isEqualTo(parent.context().traceId());
-    assertThat(context.parentId())
-      .isEqualTo(parent.context().spanId());
+    TraceContext extracted = server.takeRequest().context();
+    assertThat(extracted.sampled()).isTrue();
+    assertChildOf(extracted, parent);
+    assertSameIds(takeRemoteSpan(Span.Kind.CLIENT), extracted);
+  }
 
-    // we report one in-process and one RPC client span
-    assertThat(Arrays.asList(takeSpan(), takeSpan()))
-      .extracting(Span::kind)
-      .containsOnly(null, Span.Kind.CLIENT);
+  /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
+  @Test public void propagatesUnsampledContext() throws Exception {
+    TraceContext parent = newParentContext(SamplingFlags.NOT_SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
+      client.get().sayHello("jorge");
+    }
+
+    TraceContext extracted = server.takeRequest().context();
+    assertThat(extracted.sampled()).isFalse();
+    assertChildOf(extracted, parent);
+  }
+
+  @Test public void propagatesExtra() throws Exception {
+    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
+      ExtraFieldPropagation.set(parent, EXTRA_KEY, "joey");
+      client.get().sayHello("jorge");
+    }
+
+    TraceContext extracted = server.takeRequest().context();
+    assertThat(ExtraFieldPropagation.get(extracted, EXTRA_KEY)).isEqualTo("joey");
+
+    takeRemoteSpan(Span.Kind.CLIENT);
+  }
+
+  @Test public void propagatesExtra_unsampled() throws Exception {
+    TraceContext parent = newParentContext(SamplingFlags.NOT_SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
+      ExtraFieldPropagation.set(parent, EXTRA_KEY, "joey");
+      client.get().sayHello("jorge");
+    }
+
+    TraceContext extracted = server.takeRequest().context();
+    assertThat(ExtraFieldPropagation.get(extracted, EXTRA_KEY)).isEqualTo("joey");
+  }
+
+  /** This prevents confusion as a blocking client should end before, the start of the next span. */
+  @Test public void clientTimestampAndDurationEnclosedByParent() throws Exception {
+    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    Clock clock = tracing.clock(parent);
+
+    long start = clock.currentTimeMicroseconds();
+    try (Scope scope = currentTraceContext.newScope(parent)) {
+      client.get().sayHello("jorge");
+    }
+    long finish = clock.currentTimeMicroseconds();
+
+    Span clientSpan = takeRemoteSpan(Span.Kind.CLIENT);
+    assertChildOf(clientSpan, parent);
+    assertSpanInInterval(clientSpan, start, finish);
   }
 
   /**
@@ -103,112 +146,40 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
    * was executed.
    */
   @Test public void usesParentFromInvocationTime() throws Exception {
-    server.enqueueDelay(TimeUnit.SECONDS.toMillis(1));
+    AssertableCallback<String> items1 = new AssertableCallback<>();
+    AssertableCallback<String> items2 = new AssertableCallback<>();
 
-    ScopedSpan parent = tracing.tracer().startScopedSpan("test");
-    try {
-      RpcContext.getContext().asyncCall(() -> client.get().sayHello("jorge"));
-      RpcContext.getContext().asyncCall(() -> client.get().sayHello("romeo"));
-    } finally {
-      parent.finish();
+    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
+      RpcContext.getContext().asyncCall(() -> client.get().sayHello("jorge"))
+        .whenComplete(items1);
+      RpcContext.getContext().asyncCall(() -> client.get().sayHello("romeo"))
+        .whenComplete(items2);
     }
 
-    ScopedSpan otherSpan = tracing.tracer().startScopedSpan("test2");
-    try {
+    try (Scope scope = currentTraceContext.newScope(null)) {
+      // complete within a different scope
+      items1.assertThatSuccess().isNotNull();
+      items2.assertThatSuccess().isNotNull();
+
       for (int i = 0; i < 2; i++) {
-        TraceContext context = server.takeRequest().context();
-        assertThat(context.traceId())
-          .isEqualTo(parent.context().traceId());
-        assertThat(context.parentId())
-          .isEqualTo(parent.context().spanId());
+        TraceContext extracted = server.takeRequest().context();
+        assertChildOf(extracted, parent);
       }
-    } finally {
-      otherSpan.finish();
     }
 
-    // Check we reported 2 in-process spans and 2 client spans
-    assertThat(Arrays.asList(takeSpan(), takeSpan(), takeSpan(), takeSpan()))
-      .extracting(Span::kind)
-      .containsOnly(null, Span.Kind.CLIENT);
-  }
-
-  /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
-  @Test public void propagates_sampledFalse() throws Exception {
-    setTracing(tracingBuilder(NEVER_SAMPLE).build());
-
-    client.get().sayHello("jorge");
-    TraceContextOrSamplingFlags extracted = server.takeRequest();
-    assertThat(extracted.sampled()).isFalse();
-
-    // @After will check that nothing is reported
-  }
-
-  @Test public void reportsClientKindToZipkin() throws Exception {
-    client.get().sayHello("jorge");
-
-    Span span = takeSpan();
-    assertThat(span.kind())
-      .isEqualTo(Span.Kind.CLIENT);
-  }
-
-  @Test public void defaultSpanNameIsMethodName() throws Exception {
-    client.get().sayHello("jorge");
-
-    Span span = takeSpan();
-    assertThat(span.name())
-      .isEqualTo("greeterservice/sayhello");
-  }
-
-  @Test public void onTransportException_addsErrorTag() throws Exception {
-    server.stop();
-
-    try {
-      client.get().sayHello("jorge");
-      failBecauseExceptionWasNotThrown(RpcException.class);
-    } catch (RpcException e) {
+    // The spans may report in a different order than the requests
+    for (int i = 0; i < 2; i++) {
+      assertChildOf(takeRemoteSpan(Span.Kind.CLIENT), parent);
     }
-
-    Span span = takeSpan();
-    assertThat(span.tags().get("error"))
-      .contains("RemotingException");
-  }
-
-  @Test public void onTransportException_addsErrorTag_async() throws Exception {
-    server.stop();
-
-    RpcContext.getContext().asyncCall(() -> client.get().sayHello("romeo"));
-
-    Span span = takeSpan();
-    assertThat(span.tags().get("error"))
-      .contains("RemotingException");
-  }
-
-  @Test public void flushesSpanOneWay() throws Exception {
-    RpcContext.getContext().asyncCall(() -> {
-      client.get().sayHello("romeo");
-    });
-
-    Span span = takeSpan();
-    assertThat(span.duration())
-      .isNull();
-  }
-
-  @Test public void addsErrorTag_onUnimplemented() throws Exception {
-    assertThatThrownBy(() -> wrongClient.get().sayHello("jorge"))
-      .isInstanceOf(RpcException.class);
-
-    Span span = takeSpan();
-    assertThat(span.tags().get("dubbo.error_code"))
-      .isEqualTo("1");
-    assertThat(span.tags().get("error"))
-      .contains("Not found exported service");
   }
 
   @Test public void customSampler() throws Exception {
-    setRpcTracing(RpcTracing.newBuilder(tracing).clientSampler(RpcRuleSampler.newBuilder()
+    rpcTracing = RpcTracing.newBuilder(tracing).clientSampler(RpcRuleSampler.newBuilder()
       .putRule(methodEquals("sayGoodbye"), NEVER_SAMPLE)
       .putRule(serviceEquals("brave.dubbo"), ALWAYS_SAMPLE)
-      .build()).build());
+      .build()).build();
+    init();
 
     // unsampled
     client.get().sayGoodbye("jorge");
@@ -216,7 +187,54 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     // sampled
     client.get().sayHello("jorge");
 
-    assertThat(takeSpan().name()).endsWith("sayhello");
+    assertThat(takeRemoteSpan(Span.Kind.CLIENT).name()).endsWith("sayhello");
     // @After will also check that sayGoodbye was not sampled
+  }
+
+  @Test public void reportsClientKindToZipkin() throws Exception {
+    client.get().sayHello("jorge");
+
+    takeRemoteSpan(Span.Kind.CLIENT);
+  }
+
+  @Test public void defaultSpanNameIsMethodName() throws Exception {
+    client.get().sayHello("jorge");
+
+    assertThat(takeRemoteSpan(Span.Kind.CLIENT).name())
+      .isEqualTo("greeterservice/sayhello");
+  }
+
+  @Test public void onTransportException_addsErrorTag() throws Exception {
+    server.stop();
+
+    assertThatThrownBy(() -> client.get().sayHello("jorge"))
+      .isInstanceOf(RpcException.class);
+
+    takeRemoteSpanWithError(Span.Kind.CLIENT, ".*RemotingException.*");
+  }
+
+  @Test public void onTransportException_addsErrorTag_async() throws Exception {
+    server.stop();
+
+    RpcContext.getContext().asyncCall(() -> client.get().sayHello("romeo"));
+
+    takeRemoteSpanWithError(Span.Kind.CLIENT, ".*RemotingException.*");
+  }
+
+  @Test public void flushesSpanOneWay() throws Exception {
+    RpcContext.getContext().asyncCall(() -> {
+      client.get().sayHello("romeo");
+    });
+
+    assertThat(takeFlushedSpan().kind())
+      .isEqualTo(Span.Kind.CLIENT);
+  }
+
+  @Test public void addsErrorTag_onUnimplemented() throws Exception {
+    assertThatThrownBy(() -> wrongClient.get().sayHello("jorge"))
+      .isInstanceOf(RpcException.class);
+
+    Span span = takeRemoteSpanWithError(Span.Kind.CLIENT, ".*Not found exported service.*");
+    assertThat(span.tags().get("dubbo.error_code")).isEqualTo("1");
   }
 }

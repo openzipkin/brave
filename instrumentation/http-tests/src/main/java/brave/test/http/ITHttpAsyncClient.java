@@ -13,37 +13,20 @@
  */
 package brave.test.http;
 
-import brave.ScopedSpan;
-import brave.Tracer;
+import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
-import java.util.concurrent.BlockingQueue;
+import brave.test.util.AssertableCallback;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.concurrent.atomic.AtomicReference;
 import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.Test;
-import zipkin2.Callback;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
-  static final Callback<Integer> LOG_ON_ERROR_CALLBACK = new Callback<Integer>() {
-    @Override public void onSuccess(Integer statusCode) {
-    }
-
-    @Override public void onError(Throwable throwable) {
-      Logger.getAnonymousLogger().log(Level.SEVERE, "Unexpected error", throwable);
-    }
-  };
-
-  // LinkedBlockingQueue doesn't allow nulls. Use a null sentinel as opposed to crashing the
-  // callback thread which would cause result.poll() to await max time.
-  Object nullSentinel = new Object();
-
   /**
    * This invokes a GET with the indicated path, but does not block until the response is complete.
    *
@@ -52,10 +35,10 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
    * callback directly.
    *
    * <p>One of success or failure callbacks must be invoked even on unexpected scenarios. For
-   * example, if there is a cancelation that didn't issue an error callback directly, you should
-   * invoke the {@link Callback#onError(Throwable)} with your own {@link CancellationException}.
+   * example, if there is a cancelation that didn't result in an error, invoke {@link
+   * AssertableCallback#onError(Throwable)} with your own {@link CancellationException}.
    */
-  protected abstract void getAsync(C client, String path, Callback<Integer> callback)
+  protected abstract void getAsync(C client, String path, AssertableCallback<Integer> callback)
     throws Exception;
 
   /**
@@ -63,33 +46,33 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
    * was executed.
    */
   @Test public void usesParentFromInvocationTime() throws Exception {
-    Tracer tracer = httpTracing.tracing().tracer();
     server.enqueue(new MockResponse().setBodyDelay(300, TimeUnit.MILLISECONDS));
     server.enqueue(new MockResponse());
 
-    ScopedSpan parent = tracer.startScopedSpan("test");
-    try {
-      getAsync(client, "/items/1", LOG_ON_ERROR_CALLBACK);
-      getAsync(client, "/items/2", LOG_ON_ERROR_CALLBACK);
-    } finally {
-      parent.finish();
-    }
-    takeLocalSpan();
+    AssertableCallback<Integer> items1 = new AssertableCallback<>();
+    AssertableCallback<Integer> items2 = new AssertableCallback<>();
 
-    ScopedSpan otherSpan = tracer.startScopedSpan("test2");
-    try {
-      for (int i = 0; i < 2; i++) {
-        RecordedRequest request = takeRequest();
-        assertThat(request.getHeader("x-b3-traceId"))
-          .isEqualTo(parent.context().traceIdString());
-        assertThat(request.getHeader("x-b3-parentspanid"))
-          .isEqualTo(parent.context().spanIdString());
-        takeClientSpan();
-      }
-    } finally {
-      otherSpan.finish();
+    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
+      getAsync(client, "/items/1", items1);
+      getAsync(client, "/items/2", items2);
     }
-    takeLocalSpan();
+
+    try (Scope scope = currentTraceContext.newScope(null)) {
+      // complete within a different scope
+      items1.assertThatSuccess().isNotNull();
+      items2.assertThatSuccess().isNotNull();
+
+      for (int i = 0; i < 2; i++) {
+        TraceContext extracted = extract(takeRequest());
+        assertChildOf(extracted, parent);
+      }
+    }
+
+    // The spans may report in a different order than the requests
+    for (int i = 0; i < 2; i++) {
+      assertChildOf(takeRemoteSpan(Span.Kind.CLIENT), parent);
+    }
   }
 
   /**
@@ -99,84 +82,54 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
    * instrumentation and affect dependency link counts.
    */
   @Test public void callbackContextIsFromInvocationTime() throws Exception {
-    BlockingQueue<Object> result = new LinkedBlockingQueue<>();
     server.enqueue(new MockResponse());
 
-    ScopedSpan parent = tracer().startScopedSpan("test");
-    try {
-      getAsync(client, "/foo", new Callback<Integer>() {
-        @Override public void onSuccess(Integer statusCode) {
-          result.add(currentTraceContext.get());
-        }
+    AssertableCallback<Integer> callback = new AssertableCallback<>();
 
-        @Override public void onError(Throwable throwable) {
-          result.add(throwable);
-        }
-      });
-    } finally {
-      parent.finish();
+    // Capture the current trace context when onSuccess or onError occur
+    AtomicReference<TraceContext> invocationContext = new AtomicReference<>();
+    callback.setListener(() -> invocationContext.set(currentTraceContext.get()));
+
+    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
+      getAsync(client, "/foo", callback);
     }
 
-    takeRequest();
-
-    assertThat(result.poll(1, TimeUnit.SECONDS))
-      .isInstanceOf(TraceContext.class)
-      .isSameAs(parent.context());
-
-    takeSpansWithKind(null, Span.Kind.CLIENT);
+    callback.assertThatSuccess().isNotNull(); // ensures listener ran
+    assertThat(invocationContext.get()).isSameAs(parent);
+    assertChildOf(takeRemoteSpan(Span.Kind.CLIENT), parent);
   }
 
   /** This ensures that response callbacks run when there is no invocation trace context. */
   @Test public void callbackContextIsFromInvocationTime_root() throws Exception {
-    BlockingQueue<Object> result = new LinkedBlockingQueue<>();
     server.enqueue(new MockResponse());
 
-    getAsync(client, "/foo", new Callback<Integer>() {
-      @Override public void onSuccess(Integer statusCode) {
-        TraceContext context = currentTraceContext.get();
-        result.add(context != null ? context : nullSentinel);
-      }
+    AssertableCallback<Integer> callback = new AssertableCallback<>();
 
-      @Override public void onError(Throwable throwable) {
-        result.add(throwable);
-      }
-    });
+    // Capture the current trace context when onSuccess or onError occur
+    AtomicReference<TraceContext> invocationContext = new AtomicReference<>();
+    callback.setListener(() -> invocationContext.set(currentTraceContext.get()));
 
-    takeRequest();
+    getAsync(client, "/foo", callback);
 
-    assertThat(result.poll(1, TimeUnit.SECONDS))
-      .isSameAs(nullSentinel);
-
-    takeClientSpan();
+    callback.assertThatSuccess().isNotNull(); // ensures listener ran
+    assertThat(invocationContext.get()).isNull();
+    assertThat(takeRemoteSpan(Span.Kind.CLIENT).parentId()).isNull();
   }
 
   @Test public void addsStatusCodeWhenNotOk_async() throws Exception {
-    BlockingQueue<Object> result = new LinkedBlockingQueue<>();
+    AssertableCallback<Integer> callback = new AssertableCallback<>();
     int expectedStatusCode = 400;
     server.enqueue(new MockResponse().setResponseCode(expectedStatusCode));
 
-    getAsync(client, "/foo", new Callback<Integer>() {
-      @Override public void onSuccess(Integer statusCode) {
-        result.add(statusCode != null ? statusCode : nullSentinel);
-      }
-
-      @Override public void onError(Throwable throwable) {
-        result.add(throwable);
-      }
-    });
+    getAsync(client, "/foo", callback);
 
     takeRequest();
 
     // Ensure the getAsync() method is implemented correctly
-    Object object = result.poll(1, TimeUnit.SECONDS);
-    assertThat(object)
-      .isInstanceOf(Integer.class)
-      .isNotSameAs(nullSentinel)
-      .isEqualTo(expectedStatusCode);
+    callback.assertThatSuccess().isNotNull();
 
-    String expectedStatusCodeString = String.valueOf(expectedStatusCode);
-
-    assertThat(takeClientSpanWithError(expectedStatusCodeString).tags())
-      .containsEntry("http.status_code", expectedStatusCodeString);
+    assertThat(takeRemoteSpanWithError(Span.Kind.CLIENT, "400").tags())
+      .containsEntry("http.status_code", "400");
   }
 }

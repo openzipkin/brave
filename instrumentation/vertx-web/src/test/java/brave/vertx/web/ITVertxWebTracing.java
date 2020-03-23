@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import okhttp3.Response;
 import org.junit.After;
 import org.junit.Test;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
@@ -146,7 +147,7 @@ public class ITVertxWebTracing extends ITHttpServer {
     Response response = get(path);
     assertThat(response.isSuccessful()).withFailMessage("not successful: " + response).isTrue();
 
-    assertThat(takeServerSpan().tags())
+    assertThat(takeRemoteSpan(Span.Kind.SERVER).tags())
       .containsEntry("http.path", path)
       .containsEntry("http.url", url(path));
   }

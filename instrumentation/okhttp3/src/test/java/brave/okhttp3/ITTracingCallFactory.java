@@ -13,9 +13,11 @@
  */
 package brave.okhttp3;
 
-import brave.ScopedSpan;
-import brave.Tracer;
+import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.SamplingFlags;
+import brave.propagation.TraceContext;
 import brave.test.http.ITHttpAsyncClient;
+import brave.test.util.AssertableCallback;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Call;
@@ -60,7 +62,7 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
   }
 
   @Override
-  protected void getAsync(Call.Factory client, String path, zipkin2.Callback<Integer> callback) {
+  protected void getAsync(Call.Factory client, String path, AssertableCallback<Integer> callback) {
     client.newCall(new Request.Builder().url(url(path)).build())
       .enqueue(new Callback() {
         @Override public void onFailure(Call call, IOException e) {
@@ -74,7 +76,6 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
   }
 
   @Test public void currentSpanVisibleToUserInterceptors() throws Exception {
-    Tracer tracer = httpTracing.tracing().tracer();
     server.enqueue(new MockResponse());
     closeClient(client);
 
@@ -84,17 +85,15 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
         .build()))
       .build());
 
-    ScopedSpan parent = tracer.startScopedSpan("test");
-    try {
+    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
       get(client, "/foo");
-    } finally {
-      parent.finish();
     }
 
     RecordedRequest request = takeRequest();
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    takeSpansWithKind(null, Span.Kind.CLIENT);
+    takeRemoteSpan(Span.Kind.CLIENT);
   }
 }

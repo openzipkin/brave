@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -79,9 +79,7 @@ public final class TracingFilter implements Filter {
    */
   public void setRpcTracing(RpcTracing rpcTracing) {
     if (rpcTracing == null) throw new NullPointerException("rpcTracing == null");
-    tracer = rpcTracing.tracing().tracer();
-    extractor = rpcTracing.tracing().propagation().extractor(GETTER);
-    injector = rpcTracing.tracing().propagation().injector(SETTER);
+    setTracing(rpcTracing.tracing());
     clientSampler = rpcTracing.clientSampler();
     serverSampler = rpcTracing.serverSampler();
     isInit = true;

@@ -24,6 +24,7 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.junit.Test;
+import zipkin2.Span;
 
 import static org.apache.http.util.EntityUtils.consume;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -64,6 +65,6 @@ public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    takeClientSpan();
+    takeRemoteSpan(Span.Kind.CLIENT);
   }
 }

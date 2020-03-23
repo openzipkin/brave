@@ -24,6 +24,7 @@ import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -73,7 +74,7 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    takeClientSpan();
+    takeRemoteSpan(Span.Kind.CLIENT);
   }
 
   @Override @Ignore("blind to the implementation of redirects")

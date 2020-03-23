@@ -13,19 +13,16 @@
  */
 package brave.grpc;
 
-import brave.ScopedSpan;
+import brave.Clock;
 import brave.SpanCustomizer;
-import brave.Tracer;
-import brave.Tracing;
-import brave.context.log4j2.ThreadContextScopeDecorator;
-import brave.propagation.CurrentTraceContext;
-import brave.propagation.StrictScopeDecorator;
-import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.ExtraFieldPropagation;
+import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
-import brave.propagation.TraceContextOrSamplingFlags;
 import brave.rpc.RpcRuleSampler;
 import brave.rpc.RpcTracing;
-import brave.sampler.Sampler;
+import brave.test.ITRemote;
+import brave.test.util.AssertableCallback;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
@@ -43,18 +40,12 @@ import io.grpc.examples.helloworld.HelloReply;
 import io.grpc.examples.helloworld.HelloRequest;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Iterator;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestRule;
-import org.junit.rules.TestWatcher;
-import org.junit.runner.Description;
 import zipkin2.Annotation;
 import zipkin2.Span;
 
@@ -65,23 +56,13 @@ import static brave.sampler.Sampler.ALWAYS_SAMPLE;
 import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
-import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 import static org.junit.Assume.assumeTrue;
 
-public abstract class BaseITTracingClientInterceptor {
-  /**
-   * See brave.http.ITHttp for rationale on using a concurrent blocking queue eventhough some calls,
-   * like those using blocking clients, happen on the main thread.
-   */
-  BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
-  Tracing tracing = tracingBuilder(ALWAYS_SAMPLE).build();
-  CurrentTraceContext currentTraceContext = tracing.currentTraceContext();
-  Tracer tracer = tracing.tracer();
-
-  GrpcTracing grpcTracing = GrpcTracing.create(tracing);
-  TestServer server = new TestServer();
+public abstract class BaseITTracingClientInterceptor extends ITRemote {
+  TestServer server = new TestServer(propagationFactory);
   ManagedChannel client;
+  GrpcTracing grpcTracing = GrpcTracing.create(tracing);
 
   @Before public void setup() throws IOException {
     server.start();
@@ -91,23 +72,7 @@ public abstract class BaseITTracingClientInterceptor {
   @After public void close() throws Exception {
     closeClient(client);
     server.stop();
-    Tracing current = Tracing.current();
-    if (current != null) current.close();
   }
-
-  // See brave.http.ITHttp for rationale on polling after tests complete
-  @Rule public TestRule assertSpansEmpty = new TestWatcher() {
-    // only check success path to avoid masking assertion errors or exceptions
-    @Override protected void succeeded(Description description) {
-      try {
-        assertThat(spans.poll(100, TimeUnit.MILLISECONDS))
-          .withFailMessage("Span remaining in queue. Check for redundant reporting")
-          .isNull();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-  };
 
   ManagedChannel newClient() {
     return newClient(grpcTracing.newClientInterceptor());
@@ -126,34 +91,77 @@ public abstract class BaseITTracingClientInterceptor {
     client.awaitTermination(1, TimeUnit.SECONDS);
   }
 
-  @Test public void propagatesSpan() throws Exception {
+  @Test public void propagatesNewTrace() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    TraceContext context = server.takeRequest().context();
-    assertThat(context.parentId()).isNull();
-    assertThat(context.sampled()).isTrue();
-
-    takeSpan();
+    TraceContext extracted = server.takeRequest().context();
+    assertThat(extracted.sampled()).isTrue();
+    assertThat(extracted.parentIdString()).isNull();
+    assertSameIds(takeRemoteSpan(Span.Kind.CLIENT), extracted);
   }
 
-  @Test public void makesChildOfCurrentSpan() throws Exception {
-    ScopedSpan parent = tracer.startScopedSpan("test");
-    try {
+  @Test public void propagatesChildOfCurrentSpan() throws Exception {
+    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
       GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
-    } finally {
-      parent.finish();
     }
 
-    TraceContext context = server.takeRequest().context();
-    assertThat(context.traceId())
-      .isEqualTo(parent.context().traceId());
-    assertThat(context.parentId())
-      .isEqualTo(parent.context().spanId());
+    TraceContext extracted = server.takeRequest().context();
+    assertThat(extracted.sampled()).isTrue();
+    assertChildOf(extracted, parent);
+    assertSameIds(takeRemoteSpan(Span.Kind.CLIENT), extracted);
+  }
 
-    // we report one in-process and one RPC client span
-    assertThat(Arrays.asList(takeSpan(), takeSpan()))
-      .extracting(Span::kind)
-      .containsOnly(null, Span.Kind.CLIENT);
+  /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
+  @Test public void propagatesUnsampledContext() throws Exception {
+    TraceContext parent = newParentContext(SamplingFlags.NOT_SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
+      GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
+    }
+
+    TraceContext extracted = server.takeRequest().context();
+    assertThat(extracted.sampled()).isFalse();
+    assertChildOf(extracted, parent);
+  }
+
+  @Test public void propagatesExtra() throws Exception {
+    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
+      ExtraFieldPropagation.set(parent, EXTRA_KEY, "joey");
+      GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
+    }
+
+    TraceContext extracted = server.takeRequest().context();
+    assertThat(ExtraFieldPropagation.get(extracted, EXTRA_KEY)).isEqualTo("joey");
+
+    takeRemoteSpan(Span.Kind.CLIENT);
+  }
+
+  @Test public void propagatesExtra_unsampled() throws Exception {
+    TraceContext parent = newParentContext(SamplingFlags.NOT_SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
+      ExtraFieldPropagation.set(parent, EXTRA_KEY, "joey");
+      GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
+    }
+
+    TraceContext extracted = server.takeRequest().context();
+    assertThat(ExtraFieldPropagation.get(extracted, EXTRA_KEY)).isEqualTo("joey");
+  }
+
+  /** This prevents confusion as a blocking client should end before, the start of the next span. */
+  @Test public void clientTimestampAndDurationEnclosedByParent() throws Exception {
+    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    Clock clock = tracing.clock(parent);
+
+    long start = clock.currentTimeMicroseconds();
+    try (Scope scope = currentTraceContext.newScope(parent)) {
+      GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
+    }
+    long finish = clock.currentTimeMicroseconds();
+
+    Span clientSpan = takeRemoteSpan(Span.Kind.CLIENT);
+    assertChildOf(clientSpan, parent);
+    assertSpanInInterval(clientSpan, start, finish);
   }
 
   /**
@@ -164,60 +172,58 @@ public abstract class BaseITTracingClientInterceptor {
     server.enqueueDelay(TimeUnit.SECONDS.toMillis(1));
     GreeterGrpc.GreeterFutureStub futureStub = GreeterGrpc.newFutureStub(client);
 
-    ScopedSpan parent = tracer.startScopedSpan("test");
-    try {
+    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
       futureStub.sayHello(HELLO_REQUEST);
       futureStub.sayHello(HELLO_REQUEST);
-    } finally {
-      parent.finish();
     }
 
-    ScopedSpan otherSpan = tracer.startScopedSpan("test2");
-    try {
+    try (Scope scope = currentTraceContext.newScope(null)) {
       for (int i = 0; i < 2; i++) {
-        TraceContext context = server.takeRequest().context();
-        assertThat(context.traceId())
-          .isEqualTo(parent.context().traceId());
-        assertThat(context.parentId())
-          .isEqualTo(parent.context().spanId());
+        TraceContext extracted = server.takeRequest().context();
+        assertChildOf(extracted, parent);
       }
-    } finally {
-      otherSpan.finish();
     }
 
-    // Check we reported 2 local spans and 2 client spans
-    assertThat(Arrays.asList(takeSpan(), takeSpan(), takeSpan(), takeSpan()))
-      .extracting(Span::kind)
-      .containsOnly(null, Span.Kind.CLIENT);
+    // The spans may report in a different order than the requests
+    for (int i = 0; i < 2; i++) {
+      assertChildOf(takeRemoteSpan(Span.Kind.CLIENT), parent);
+    }
   }
 
-  /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
-  @Test public void propagates_sampledFalse() throws Exception {
-    grpcTracing = GrpcTracing.create(tracingBuilder(NEVER_SAMPLE).build());
+  @Test public void customSampler() throws Exception {
     closeClient(client);
+
+    RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).clientSampler(RpcRuleSampler.newBuilder()
+      .putRule(methodEquals("SayHelloWithManyReplies"), NEVER_SAMPLE)
+      .putRule(serviceEquals("helloworld.greeter"), ALWAYS_SAMPLE)
+      .build()).build();
+
+    grpcTracing = GrpcTracing.create(rpcTracing);
     client = newClient();
 
+    // unsampled
+    // NOTE: An iterator request is lazy: invoking the iterator invokes the request
+    GreeterGrpc.newBlockingStub(client).sayHelloWithManyReplies(HELLO_REQUEST).hasNext();
+
+    // sampled
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    TraceContextOrSamplingFlags extracted = server.takeRequest();
-    assertThat(extracted.sampled()).isFalse();
-
-    // @After will check that nothing is reported
+    assertThat(takeRemoteSpan(Span.Kind.CLIENT).name())
+      .isEqualTo("helloworld.greeter/sayhello");
+    // @After will also check that sayHelloWithManyReplies was not sampled
   }
 
   @Test public void reportsClientKindToZipkin() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    Span span = takeSpan();
-    assertThat(span.kind())
-      .isEqualTo(Span.Kind.CLIENT);
+    takeRemoteSpan(Span.Kind.CLIENT);
   }
 
   @Test public void defaultSpanNameIsMethodName() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    Span span = takeSpan();
-    assertThat(span.name())
+    assertThat(takeRemoteSpan(Span.Kind.CLIENT).name())
       .isEqualTo("helloworld.greeter/sayhello");
   }
 
@@ -228,11 +234,9 @@ public abstract class BaseITTracingClientInterceptor {
       () -> GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST),
       StatusRuntimeException.class);
 
-    Span span = takeSpan();
-    assertThat(span.tags()).containsExactly(
-      entry("error", thrown.getStatus().getCode().toString()),
-      entry("grpc.status_code", thrown.getStatus().getCode().toString())
-    );
+    Span span = takeRemoteSpanWithError(Span.Kind.CLIENT, thrown.getStatus().getCode().toString());
+    assertThat(span.tags().get("grpc.status_code"))
+      .isEqualTo(span.tags().get("error"));
   }
 
   @Test public void addsErrorTag_onUnimplemented() throws Exception {
@@ -242,11 +246,9 @@ public abstract class BaseITTracingClientInterceptor {
     } catch (StatusRuntimeException e) {
     }
 
-    Span span = takeSpan();
-    assertThat(span.tags()).containsExactly(
-      entry("error", "UNIMPLEMENTED"),
-      entry("grpc.status_code", "UNIMPLEMENTED")
-    );
+    Span span = takeRemoteSpanWithError(Span.Kind.CLIENT, "UNIMPLEMENTED");
+    assertThat(span.tags().get("grpc.status_code"))
+      .isEqualTo(span.tags().get("error"));
   }
 
   @Test public void addsErrorTag_onCanceledFuture() throws Exception {
@@ -255,11 +257,9 @@ public abstract class BaseITTracingClientInterceptor {
     ListenableFuture<HelloReply> resp = GreeterGrpc.newFutureStub(client).sayHello(HELLO_REQUEST);
     assumeTrue("lost race on cancel", resp.cancel(true));
 
-    Span span = takeSpan();
-    assertThat(span.tags()).containsExactly(
-      entry("error", "CANCELLED"),
-      entry("grpc.status_code", "CANCELLED")
-    );
+    Span span = takeRemoteSpanWithError(Span.Kind.CLIENT, "CANCELLED");
+    assertThat(span.tags().get("grpc.status_code"))
+      .isEqualTo(span.tags().get("error"));
   }
 
   /**
@@ -274,12 +274,12 @@ public abstract class BaseITTracingClientInterceptor {
       new ClientInterceptor() {
         @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
           MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
-          tracer.currentSpanCustomizer().annotate("before");
+          tracing.tracer().currentSpanCustomizer().annotate("before");
           return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(
             next.newCall(method, callOptions)) {
             @Override
             public void start(Listener<RespT> responseListener, Metadata headers) {
-              tracer.currentSpanCustomizer().annotate("start");
+              tracing.tracer().currentSpanCustomizer().annotate("start");
               super.start(responseListener, headers);
             }
           };
@@ -290,7 +290,7 @@ public abstract class BaseITTracingClientInterceptor {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(takeSpan().annotations())
+    assertThat(takeRemoteSpan(Span.Kind.CLIENT).annotations())
       .extracting(Annotation::value)
       .containsOnly("before", "start");
   }
@@ -321,7 +321,7 @@ public abstract class BaseITTracingClientInterceptor {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    Span span = takeSpan();
+    Span span = takeRemoteSpan(Span.Kind.CLIENT);
     assertThat(span.name()).isEqualTo("unary");
     assertThat(span.tags()).containsKeys(
       "grpc.message_received", "grpc.message_sent",
@@ -344,31 +344,8 @@ public abstract class BaseITTracingClientInterceptor {
       .sayHelloWithManyReplies(HelloRequest.newBuilder().setName("this is dog").build());
     assertThat(replies).toIterable().hasSize(10);
 
-    Span span = takeSpan();
     // all response messages are tagged to the same span
-    assertThat(span.tags()).hasSize(10);
-  }
-
-  @Test public void customSampler() throws Exception {
-    closeClient(client);
-
-    RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).clientSampler(RpcRuleSampler.newBuilder()
-      .putRule(methodEquals("SayHelloWithManyReplies"), NEVER_SAMPLE)
-      .putRule(serviceEquals("helloworld.greeter"), ALWAYS_SAMPLE)
-      .build()).build();
-
-    grpcTracing = GrpcTracing.create(rpcTracing);
-    client = newClient();
-
-    // unsampled
-    // NOTE: An iterator request is lazy: invoking the iterator invokes the request
-    GreeterGrpc.newBlockingStub(client).sayHelloWithManyReplies(HELLO_REQUEST).hasNext();
-
-    // sampled
-    GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
-
-    assertThat(takeSpan().name()).isEqualTo("helloworld.greeter/sayhello");
-    // @After will also check that sayHelloWithManyReplies was not sampled
+    assertThat(takeRemoteSpan(Span.Kind.CLIENT).tags()).hasSize(10);
   }
 
   /**
@@ -377,98 +354,54 @@ public abstract class BaseITTracingClientInterceptor {
    * we would see a client span child of a client span, which could be confused with duplicate
    * instrumentation and affect dependency link counts.
    */
-  // Same as ITHttpAsyncClient.callbackContextIsFromInvocationTime()
   @Test public void callbackContextIsFromInvocationTime() throws Exception {
-    BlockingQueue<Object> result = new LinkedBlockingQueue<>();
+    AssertableCallback<HelloReply> callback = new AssertableCallback<>();
 
-    ScopedSpan parent = tracer.startScopedSpan("test");
-    try {
-      GreeterGrpc.newStub(client).sayHello(HELLO_REQUEST, new StreamObserver<HelloReply>() {
-        @Override public void onNext(HelloReply helloReply) {
-          result.add(currentTraceContext.get());
-        }
+    // Capture the current trace context when onSuccess or onError occur
+    AtomicReference<TraceContext> invocationContext = new AtomicReference<>();
+    callback.setListener(() -> invocationContext.set(currentTraceContext.get()));
 
-        @Override public void onError(Throwable throwable) {
-          result.add(throwable);
-        }
-
-        @Override public void onCompleted() {
-          onNext(null);
-        }
-      });
-    } finally {
-      parent.finish();
+    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
+      GreeterGrpc.newStub(client).sayHello(HELLO_REQUEST, new StreamObserverAdapter(callback));
     }
 
-    // onNext
-    assertThat(result.poll(1, TimeUnit.SECONDS))
-      .isInstanceOf(TraceContext.class)
-      .isSameAs(parent.context());
-
-    // onCompleted
-    assertThat(result.poll(1, TimeUnit.SECONDS))
-      .isInstanceOf(TraceContext.class)
-      .isSameAs(parent.context());
-
-    // Check we reported 1 in-process span and 1 RPC client spans
-    assertThat(Arrays.asList(takeSpan(), takeSpan()))
-      .extracting(Span::kind)
-      .containsOnly(null, Span.Kind.CLIENT);
+    callback.assertThatSuccess().isNotNull(); // ensures listener ran
+    assertThat(invocationContext.get()).isSameAs(parent);
+    assertChildOf(takeRemoteSpan(Span.Kind.CLIENT), parent);
   }
 
   /** This ensures that response callbacks run when there is no invocation trace context. */
-  // Same as ITHttpAsyncClient.asyncRootSpan()
-  @Test public void asyncRootSpan() throws Exception {
-    BlockingQueue<Object> result = new LinkedBlockingQueue<>();
+  @Test public void callbackContextIsFromInvocationTime_root() throws Exception {
+    AssertableCallback<HelloReply> callback = new AssertableCallback<>();
 
-    // LinkedBlockingQueue doesn't allow nulls. Use a null sentinel as opposed to crashing the
-    // callback thread which would cause result.poll() to await max time.
-    Object nullSentinel = new Object();
+    // Capture the current trace context when onSuccess or onError occur
+    AtomicReference<TraceContext> invocationContext = new AtomicReference<>();
+    callback.setListener(() -> invocationContext.set(currentTraceContext.get()));
 
-    GreeterGrpc.newStub(client).sayHello(HELLO_REQUEST, new StreamObserver<HelloReply>() {
-      @Override public void onNext(HelloReply helloReply) {
-        TraceContext context = currentTraceContext.get();
-        result.add(context != null ? context : nullSentinel);
-      }
+    GreeterGrpc.newStub(client).sayHello(HELLO_REQUEST, new StreamObserverAdapter(callback));
 
-      @Override public void onError(Throwable throwable) {
-        result.add(throwable);
-      }
-
-      @Override public void onCompleted() {
-        onNext(null);
-      }
-    });
-
-    // onNext
-    assertThat(result.poll(1, TimeUnit.SECONDS))
-      .isSameAs(nullSentinel);
-
-    // onCompleted
-    assertThat(result.poll(1, TimeUnit.SECONDS))
-      .isSameAs(nullSentinel);
-
-    assertThat(takeSpan().kind())
-      .isEqualTo(Span.Kind.CLIENT);
+    callback.assertThatSuccess().isNotNull(); // ensures listener ran
+    assertThat(invocationContext.get()).isNull();
+    assertThat(takeRemoteSpan(Span.Kind.CLIENT).parentId()).isNull();
   }
 
-  Tracing.Builder tracingBuilder(Sampler sampler) {
-    return Tracing.newBuilder()
-      .spanReporter(spans::add)
-      .currentTraceContext( // connect to log4j
-        ThreadLocalCurrentTraceContext.newBuilder()
-          .addScopeDecorator(StrictScopeDecorator.create())
-          .addScopeDecorator(ThreadContextScopeDecorator.create())
-          .build())
-      .sampler(sampler);
-  }
+  static final class StreamObserverAdapter implements StreamObserver<HelloReply> {
+    final AssertableCallback<HelloReply> callback;
 
-  /** Call this to block until a span was reported */
-  Span takeSpan() throws InterruptedException {
-    Span result = spans.poll(3, TimeUnit.SECONDS);
-    assertThat(result)
-      .withFailMessage("Span was not reported")
-      .isNotNull();
-    return result;
+    StreamObserverAdapter(AssertableCallback<HelloReply> callback) {
+      this.callback = callback;
+    }
+
+    @Override public void onNext(HelloReply helloReply) {
+      callback.onSuccess(helloReply);
+    }
+
+    @Override public void onError(Throwable throwable) {
+      callback.onError(throwable);
+    }
+
+    @Override public void onCompleted() {
+    }
   }
 }

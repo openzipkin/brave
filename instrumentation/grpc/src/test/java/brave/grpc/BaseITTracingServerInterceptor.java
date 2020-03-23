@@ -14,15 +14,13 @@
 package brave.grpc;
 
 import brave.SpanCustomizer;
-import brave.Tracing;
-import brave.context.log4j2.ThreadContextScopeDecorator;
 import brave.internal.Nullable;
-import brave.propagation.StrictScopeDecorator;
-import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.propagation.B3SingleFormat;
+import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.rpc.RpcRuleSampler;
 import brave.rpc.RpcTracing;
-import brave.sampler.Sampler;
+import brave.test.ITRemote;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
 import io.grpc.ClientCall;
@@ -45,17 +43,11 @@ import io.grpc.examples.helloworld.GreeterGrpc;
 import io.grpc.examples.helloworld.HelloReply;
 import io.grpc.examples.helloworld.HelloRequest;
 import java.util.Iterator;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestRule;
-import org.junit.rules.TestWatcher;
-import org.junit.runner.Description;
 import zipkin2.Span;
 
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
@@ -65,15 +57,11 @@ import static brave.sampler.Sampler.ALWAYS_SAMPLE;
 import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
-public abstract class BaseITTracingServerInterceptor {
-  /** See brave.http.ITHttp for rationale on using a concurrent blocking queue */
-  BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
-  Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
-
-  GrpcTracing grpcTracing = GrpcTracing.create(tracing);
+public abstract class BaseITTracingServerInterceptor extends ITRemote {
+  RpcTracing rpcTracing = RpcTracing.create(tracing);
+  GrpcTracing grpcTracing = GrpcTracing.create(rpcTracing);
   Server server;
   ManagedChannel client;
 
@@ -114,91 +102,33 @@ public abstract class BaseITTracingServerInterceptor {
       server.shutdown();
       server.awaitTermination();
     }
-    Tracing current = Tracing.current();
-    if (current != null) current.close();
   }
 
-  // See brave.http.ITHttp for rationale on polling after tests complete
-  @Rule public TestRule assertSpansEmpty = new TestWatcher() {
-    // only check success path to avoid masking assertion errors or exceptions
-    @Override protected void succeeded(Description description) {
-      try {
-        assertThat(spans.poll(100, TimeUnit.MILLISECONDS))
-          .withFailMessage("Span remaining in queue. Check for redundant reporting")
-          .isNull();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-  };
-
-  @Test public void usesExistingTraceId() throws Exception {
-    final String traceId = "463ac35c9f6413ad";
-    final String parentId = traceId;
-    final String spanId = "48485a3953bb6124";
-
-    Channel channel = ClientInterceptors.intercept(client, new ClientInterceptor() {
-      @Override
-      public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
-        MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
-        return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
-          @Override
-          public void start(Listener<RespT> responseListener, Metadata headers) {
-            headers.put(Key.of("X-B3-TraceId", ASCII_STRING_MARSHALLER), traceId);
-            headers.put(Key.of("X-B3-ParentSpanId", ASCII_STRING_MARSHALLER), parentId);
-            headers.put(Key.of("X-B3-SpanId", ASCII_STRING_MARSHALLER), spanId);
-            headers.put(Key.of("X-B3-Sampled", ASCII_STRING_MARSHALLER), "1");
-            super.start(responseListener, headers);
-          }
-        };
-      }
-    });
-
+  @Test public void reusesPropagatedSpanId() throws Exception {
+    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    Channel channel = clientWithB3SingleHeader(parent);
     GreeterGrpc.newBlockingStub(channel).sayHello(HELLO_REQUEST);
 
-    Span span = takeSpan();
-    assertThat(span.traceId()).isEqualTo(traceId);
-    assertThat(span.parentId()).isEqualTo(parentId);
-    assertThat(span.id()).isEqualTo(spanId);
-    assertThat(span.shared()).isTrue();
+    assertSameIds(takeRemoteSpan(Span.Kind.SERVER), parent);
   }
 
   @Test public void createsChildWhenJoinDisabled() throws Exception {
-    grpcTracing = GrpcTracing.create(tracingBuilder(NEVER_SAMPLE).supportsJoin(false).build());
+    tracing = tracingBuilder(NEVER_SAMPLE).supportsJoin(false).build();
+    rpcTracing = RpcTracing.create(tracing);
+    grpcTracing = GrpcTracing.create(rpcTracing);
     init();
 
-    final String traceId = "463ac35c9f6413ad";
-    final String parentId = traceId;
-    final String spanId = "48485a3953bb6124";
-
-    Channel channel = ClientInterceptors.intercept(client, new ClientInterceptor() {
-      @Override
-      public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
-        MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
-        return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
-          @Override
-          public void start(Listener<RespT> responseListener, Metadata headers) {
-            headers.put(Key.of("X-B3-TraceId", ASCII_STRING_MARSHALLER), traceId);
-            headers.put(Key.of("X-B3-ParentSpanId", ASCII_STRING_MARSHALLER), parentId);
-            headers.put(Key.of("X-B3-SpanId", ASCII_STRING_MARSHALLER), spanId);
-            headers.put(Key.of("X-B3-Sampled", ASCII_STRING_MARSHALLER), "1");
-            super.start(responseListener, headers);
-          }
-        };
-      }
-    });
-
+    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    Channel channel = clientWithB3SingleHeader(parent);
     GreeterGrpc.newBlockingStub(channel).sayHello(HELLO_REQUEST);
 
-    Span span = takeSpan();
-    assertThat(span.traceId()).isEqualTo(traceId);
-    assertThat(span.parentId()).isEqualTo(spanId);
-    assertThat(span.id()).isNotEqualTo(spanId);
-    assertThat(span.shared()).isNull();
+    assertChildOf(takeRemoteSpan(Span.Kind.SERVER), parent);
   }
 
   @Test public void samplingDisabled() throws Exception {
-    grpcTracing = GrpcTracing.create(tracingBuilder(NEVER_SAMPLE).build());
+    tracing = tracingBuilder(NEVER_SAMPLE).build();
+    rpcTracing = RpcTracing.create(tracing);
+    grpcTracing = GrpcTracing.create(rpcTracing);
     init();
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
@@ -227,29 +157,19 @@ public abstract class BaseITTracingServerInterceptor {
     assertThat(fromUserInterceptor.get())
       .isNotNull();
 
-    takeSpan();
-  }
-
-  @Test public void currentSpanVisibleToImpl() throws Exception {
-    assertThat(GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST).getMessage())
-      .isNotEmpty();
-
-    takeSpan();
+    takeRemoteSpan(Span.Kind.SERVER);
   }
 
   @Test public void reportsServerKindToZipkin() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    Span span = takeSpan();
-    assertThat(span.kind())
-      .isEqualTo(Span.Kind.SERVER);
+    takeRemoteSpan(Span.Kind.SERVER);
   }
 
   @Test public void defaultSpanNameIsMethodName() throws Exception {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    Span span = takeSpan();
-    assertThat(span.name())
+    assertThat(takeRemoteSpan(Span.Kind.SERVER).name())
       .isEqualTo("helloworld.greeter/sayhello");
   }
 
@@ -259,11 +179,8 @@ public abstract class BaseITTracingServerInterceptor {
         .sayHello(HelloRequest.newBuilder().setName("bad").build());
       failBecauseExceptionWasNotThrown(StatusRuntimeException.class);
     } catch (StatusRuntimeException e) {
-      Span span = takeSpan();
-      assertThat(span.tags()).containsExactly(
-        entry("error", "UNKNOWN"),
-        entry("grpc.status_code", "UNKNOWN")
-      );
+      Span span = takeRemoteSpanWithError(Span.Kind.SERVER, "UNKNOWN");
+      assertThat(span.tags().get("grpc.status_code")).isEqualTo("UNKNOWN");
     }
   }
 
@@ -273,10 +190,7 @@ public abstract class BaseITTracingServerInterceptor {
         .sayHello(HelloRequest.newBuilder().setName("testerror").build());
       failBecauseExceptionWasNotThrown(StatusRuntimeException.class);
     } catch (StatusRuntimeException e) {
-      Span span = takeSpan();
-      assertThat(span.tags()).containsExactly(
-        entry("error", "testerror")
-      );
+      takeRemoteSpanWithError(Span.Kind.SERVER, "testerror");
     }
   }
 
@@ -306,7 +220,7 @@ public abstract class BaseITTracingServerInterceptor {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    Span span = takeSpan();
+    Span span = takeRemoteSpan(Span.Kind.SERVER);
     assertThat(span.name()).isEqualTo("unary");
     assertThat(span.tags().keySet()).containsExactlyInAnyOrder(
       "grpc.message_received", "grpc.message_sent",
@@ -328,8 +242,7 @@ public abstract class BaseITTracingServerInterceptor {
       .sayHelloWithManyReplies(HELLO_REQUEST);
     assertThat(replies).toIterable().hasSize(10);
     // all response messages are tagged to the same span
-    Span span = takeSpan();
-    assertThat(span.tags()).hasSize(10);
+    assertThat(takeRemoteSpan(Span.Kind.SERVER).tags()).hasSize(10);
   }
 
   @Test public void customSampler() throws Exception {
@@ -347,27 +260,24 @@ public abstract class BaseITTracingServerInterceptor {
     // sampled
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(takeSpan().name()).isEqualTo("helloworld.greeter/sayhello");
+    assertThat(takeRemoteSpan(Span.Kind.SERVER).name())
+      .isEqualTo("helloworld.greeter/sayhello");
+
     // @After will also check that sayHelloWithManyReplies was not sampled
   }
 
-  Tracing.Builder tracingBuilder(Sampler sampler) {
-    return Tracing.newBuilder()
-      .spanReporter(spans::add)
-      .currentTraceContext( // connect to log4j
-        ThreadLocalCurrentTraceContext.newBuilder()
-          .addScopeDecorator(StrictScopeDecorator.create())
-          .addScopeDecorator(ThreadContextScopeDecorator.create())
-          .build())
-      .sampler(sampler);
-  }
-
-  /** Call this to block until a span was reported */
-  Span takeSpan() throws InterruptedException {
-    Span result = spans.poll(3, TimeUnit.SECONDS);
-    assertThat(result)
-      .withFailMessage("Span was not reported")
-      .isNotNull();
-    return result;
+  Channel clientWithB3SingleHeader(TraceContext parent) {
+    return ClientInterceptors.intercept(client, new ClientInterceptor() {
+      @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
+        MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
+        return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
+          @Override public void start(Listener<RespT> responseListener, Metadata headers) {
+            headers.put(Key.of("b3", ASCII_STRING_MARSHALLER),
+              B3SingleFormat.writeB3SingleFormat(parent));
+            super.start(responseListener, headers);
+          }
+        };
+      }
+    });
   }
 }
