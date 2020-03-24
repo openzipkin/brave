@@ -240,7 +240,7 @@ public abstract class ITRemote {
   };
 
   /**
-   * Blocks until a local span was reported. We define a local span as one with a timestamp and
+   * Blocks until a local span was reported. We define a local span as one with a timestamp and no
    * duration, kind, or remote endpoint. This will fail if there's an "error" tag. If you expect a
    * failure, use {@link #takeLocalSpanWithError(String)} instead.
    */
