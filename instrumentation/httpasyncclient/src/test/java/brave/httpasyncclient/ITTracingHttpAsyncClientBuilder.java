@@ -14,6 +14,7 @@
 package brave.httpasyncclient;
 
 import brave.test.http.ITHttpAsyncClient;
+import brave.test.util.AssertableCallback;
 import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.CancellationException;
@@ -30,7 +31,7 @@ import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.nio.entity.NStringEntity;
 import org.apache.http.util.EntityUtils;
 import org.junit.Test;
-import zipkin2.Callback;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -82,7 +83,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    takeClientSpan();
+    takeRemoteSpan(Span.Kind.CLIENT);
   }
 
   @Test public void failedInterceptorRemovesScope() throws Exception {
@@ -98,12 +99,12 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
 
     assertThat(currentTraceContext.get()).isNull();
 
-    takeClientSpanWithError("Test");
+    takeRemoteSpanWithError(Span.Kind.CLIENT, "Test");
   }
 
   @Override
   protected void getAsync(CloseableHttpAsyncClient client, String path,
-    Callback<Integer> callback) {
+    AssertableCallback<Integer> callback) {
     HttpGet get = new HttpGet(URI.create(url(path)));
     client.execute(get, new FutureCallback<HttpResponse>() {
       @Override public void completed(HttpResponse res) {

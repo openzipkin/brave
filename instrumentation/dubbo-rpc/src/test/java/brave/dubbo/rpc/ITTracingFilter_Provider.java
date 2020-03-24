@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,9 +13,11 @@
  */
 package brave.dubbo.rpc;
 
+import brave.propagation.B3SingleFormat;
+import brave.propagation.SamplingFlags;
+import brave.propagation.TraceContext;
 import brave.rpc.RpcRuleSampler;
 import brave.rpc.RpcTracing;
-import brave.sampler.Sampler;
 import com.alibaba.dubbo.common.beanutil.JavaBeanDescriptor;
 import com.alibaba.dubbo.config.ApplicationConfig;
 import com.alibaba.dubbo.config.ReferenceConfig;
@@ -29,8 +31,7 @@ import static brave.rpc.RpcRequestMatchers.serviceEquals;
 import static brave.sampler.Sampler.ALWAYS_SAMPLE;
 import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.entry;
-import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class ITTracingFilter_Provider extends ITTracingFilter {
 
@@ -42,8 +43,8 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
       if (arg.getProperty("value").equals("bad")) {
         throw new IllegalArgumentException();
       }
-      String value = tracing != null && tracing.currentTraceContext().get() != null
-        ? tracing.currentTraceContext().get().traceIdString()
+      String value = currentTraceContext.get() != null
+        ? currentTraceContext.get().traceIdString()
         : "";
       arg.setProperty("value", value);
       return args[0];
@@ -56,51 +57,35 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     ref.setUrl("dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean");
     client = ref;
 
-    setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
+    init();
   }
 
-  @Test public void usesExistingTraceId() throws Exception {
-    final String traceId = "463ac35c9f6413ad";
-    final String parentId = traceId;
-    final String spanId = "48485a3953bb6124";
+  @Test public void reusesPropagatedSpanId() throws Exception {
+    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
 
-    RpcContext.getContext().getAttachments().put("X-B3-TraceId", traceId);
-    RpcContext.getContext().getAttachments().put("X-B3-ParentSpanId", parentId);
-    RpcContext.getContext().getAttachments().put("X-B3-SpanId", spanId);
-    RpcContext.getContext().getAttachments().put("X-B3-Sampled", "1");
-
+    RpcContext.getContext().getAttachments().put("b3", B3SingleFormat.writeB3SingleFormat(parent));
     client.get().sayHello("jorge");
 
-    Span span = takeSpan();
-    assertThat(span.traceId()).isEqualTo(traceId);
-    assertThat(span.parentId()).isEqualTo(parentId);
-    assertThat(span.id()).isEqualTo(spanId);
-    assertThat(span.shared()).isTrue();
+    assertSameIds(takeRemoteSpan(Span.Kind.SERVER), parent);
   }
 
   @Test public void createsChildWhenJoinDisabled() throws Exception {
-    setTracing(tracingBuilder(NEVER_SAMPLE).supportsJoin(false).build());
+    tracing = tracingBuilder(NEVER_SAMPLE).supportsJoin(false).build();
+    rpcTracing = RpcTracing.create(tracing);
+    init();
 
-    final String traceId = "463ac35c9f6413ad";
-    final String parentId = traceId;
-    final String spanId = "48485a3953bb6124";
+    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
 
-    RpcContext.getContext().getAttachments().put("X-B3-TraceId", traceId);
-    RpcContext.getContext().getAttachments().put("X-B3-ParentSpanId", parentId);
-    RpcContext.getContext().getAttachments().put("X-B3-SpanId", spanId);
-    RpcContext.getContext().getAttachments().put("X-B3-Sampled", "1");
-
+    RpcContext.getContext().getAttachments().put("b3", B3SingleFormat.writeB3SingleFormat(parent));
     client.get().sayHello("jorge");
 
-    Span span = takeSpan();
-    assertThat(span.traceId()).isEqualTo(traceId);
-    assertThat(span.parentId()).isEqualTo(spanId);
-    assertThat(span.id()).isNotEqualTo(spanId);
-    assertThat(span.shared()).isNull();
+    assertChildOf(takeRemoteSpan(Span.Kind.SERVER), parent);
   }
 
-  @Test public void samplingDisabled() throws Exception {
-    setTracing(tracingBuilder(NEVER_SAMPLE).build());
+  @Test public void samplingDisabled() {
+    tracing = tracingBuilder(NEVER_SAMPLE).build();
+    rpcTracing = RpcTracing.create(tracing);
+    init();
 
     client.get().sayHello("jorge");
 
@@ -111,43 +96,36 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     assertThat(client.get().sayHello("jorge"))
       .isNotEmpty();
 
-    takeSpan();
+    takeRemoteSpan(Span.Kind.SERVER);
   }
 
   @Test public void reportsServerKindToZipkin() throws Exception {
     client.get().sayHello("jorge");
 
-    Span span = takeSpan();
-    assertThat(span.kind())
+    assertThat(takeRemoteSpan(Span.Kind.SERVER).kind())
       .isEqualTo(Span.Kind.SERVER);
   }
 
   @Test public void defaultSpanNameIsMethodName() throws Exception {
     client.get().sayHello("jorge");
 
-    Span span = takeSpan();
-    assertThat(span.name())
+    assertThat(takeRemoteSpan(Span.Kind.SERVER).name())
       .isEqualTo("genericservice/sayhello");
   }
 
   @Test public void addsErrorTagOnException() throws Exception {
-    try {
-      client.get().sayHello("bad");
+    assertThatThrownBy(() -> client.get().sayHello("bad"))
+      .isInstanceOf(IllegalArgumentException.class);
 
-      failBecauseExceptionWasNotThrown(IllegalArgumentException.class);
-    } catch (IllegalArgumentException e) {
-      Span span = takeSpan();
-      assertThat(span.tags()).containsExactly(
-        entry("error", "IllegalArgumentException")
-      );
-    }
+    takeRemoteSpanWithError(Span.Kind.SERVER, "IllegalArgumentException");
   }
 
   @Test public void customSampler() throws Exception {
-    setRpcTracing(RpcTracing.newBuilder(tracing).serverSampler(RpcRuleSampler.newBuilder()
+    rpcTracing = RpcTracing.newBuilder(tracing).serverSampler(RpcRuleSampler.newBuilder()
       .putRule(methodEquals("sayGoodbye"), NEVER_SAMPLE)
       .putRule(serviceEquals("brave.dubbo"), ALWAYS_SAMPLE)
-      .build()).build());
+      .build()).build();
+    init();
 
     // unsampled
     client.get().sayGoodbye("jorge");
@@ -155,7 +133,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     // sampled
     client.get().sayHello("jorge");
 
-    assertThat(takeSpan().name()).endsWith("sayhello");
+    assertThat(takeRemoteSpan(Span.Kind.SERVER).name()).endsWith("sayhello");
     // @After will also check that sayGoodbye was not sampled
   }
 }

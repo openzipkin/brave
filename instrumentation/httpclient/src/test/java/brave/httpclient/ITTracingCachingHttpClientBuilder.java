@@ -13,7 +13,10 @@
  */
 package brave.httpclient;
 
-import brave.ScopedSpan;
+import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.SamplingFlags;
+import brave.propagation.TraceContext;
+import java.util.Arrays;
 import okhttp3.mockwebserver.MockResponse;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.junit.Test;
@@ -37,22 +40,22 @@ public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilde
       .addHeader("Cache-Control", "max-age=600, stale-while-revalidate=1200")
       .setBody("Hello"));
 
-    // important to use a different path than other tests!
-    ScopedSpan parent = tracer().startScopedSpan("parent");
-    try {
+    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
       get(client, "/cached");
       get(client, "/cached");
-    } finally {
-      parent.finish();
     }
 
     assertThat(server.getRequestCount()).isEqualTo(1);
 
-    Span[] realAndCached = takeSpansWithKind(Span.Kind.CLIENT, null);
-    Span parentSpan = takeLocalSpan();
-    assertThat(parentSpan.name()).isEqualTo("parent");
+    Span real = takeRemoteSpan(Span.Kind.CLIENT);
+    Span cached = takeLocalSpan();
+    assertThat(cached.tags()).containsKey("http.cache_hit");
 
-    assertChildrenAreSequential(parentSpan, realAndCached[0], realAndCached[1]);
-    assertThat(realAndCached[1].tags()).containsKey("http.cache_hit");
+    for (Span child : Arrays.asList(real, cached)) {
+      assertChildOf(child, parent);
+    }
+
+    assertSequential(real, cached);
   }
 }

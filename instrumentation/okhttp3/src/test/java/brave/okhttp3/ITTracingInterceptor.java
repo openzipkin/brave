@@ -14,6 +14,7 @@
 package brave.okhttp3;
 
 import brave.test.http.ITHttpAsyncClient;
+import brave.test.util.AssertableCallback;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Call;
@@ -32,9 +33,8 @@ public class ITTracingInterceptor extends ITHttpAsyncClient<Call.Factory> {
       .connectTimeout(1, TimeUnit.SECONDS)
       .readTimeout(1, TimeUnit.SECONDS)
       .retryOnConnectionFailure(false)
-      .dispatcher(new Dispatcher(
-        httpTracing.tracing().currentTraceContext()
-          .executorService(new Dispatcher().executorService())
+      .dispatcher(
+        new Dispatcher(currentTraceContext.executorService(new Dispatcher().executorService())
       ))
       .addNetworkInterceptor(TracingInterceptor.create(httpTracing))
       .build();
@@ -59,7 +59,7 @@ public class ITTracingInterceptor extends ITHttpAsyncClient<Call.Factory> {
   }
 
   @Override
-  protected void getAsync(Call.Factory client, String path, zipkin2.Callback<Integer> callback) {
+  protected void getAsync(Call.Factory client, String path, AssertableCallback<Integer> callback) {
     client.newCall(new Request.Builder().url(url(path)).build())
       .enqueue(new Callback() {
         @Override public void onFailure(Call call, IOException e) {

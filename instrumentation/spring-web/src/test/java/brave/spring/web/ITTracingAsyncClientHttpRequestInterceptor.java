@@ -14,6 +14,7 @@
 package brave.spring.web;
 
 import brave.test.http.ITHttpAsyncClient;
+import brave.test.util.AssertableCallback;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
@@ -30,7 +31,7 @@ import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 import org.springframework.web.client.AsyncRestTemplate;
 import org.springframework.web.client.HttpStatusCodeException;
-import zipkin2.Callback;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -71,7 +72,7 @@ public class ITTracingAsyncClientHttpRequestInterceptor
   }
 
   @Override protected void getAsync(AsyncClientHttpRequestFactory client, String path,
-    Callback<Integer> callback) {
+    AssertableCallback<Integer> callback) {
     AsyncRestTemplate restTemplate = new AsyncRestTemplate(client);
     restTemplate.setInterceptors(Collections.singletonList(interceptor));
     restTemplate.getForEntity(url(path), String.class)
@@ -105,7 +106,7 @@ public class ITTracingAsyncClientHttpRequestInterceptor
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    takeClientSpan();
+    takeRemoteSpan(Span.Kind.CLIENT);
   }
 
   @Override @Ignore("blind to the implementation of redirects")

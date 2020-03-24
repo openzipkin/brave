@@ -29,6 +29,7 @@ import org.springframework.web.servlet.DispatcherServlet;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
+import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -41,7 +42,7 @@ public class ITSpanCustomizingAsyncHandlerInterceptor extends ITServletContainer
   @Test public void addsControllerTags() throws Exception {
     get("/foo");
 
-    assertThat(takeServerSpan().tags())
+    assertThat(takeRemoteSpan(Span.Kind.SERVER).tags())
       .containsEntry("mvc.controller.class", "Servlet3TestController")
       .containsEntry("mvc.controller.method", "foo");
   }

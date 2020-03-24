@@ -18,7 +18,7 @@ import brave.propagation.ExtraFieldPropagation;
 import spark.Spark;
 import spark.servlet.SparkApplication;
 
-import static brave.test.http.ITHttp.EXTRA_KEY;
+import static brave.test.ITRemote.EXTRA_KEY;
 
 public class TestApplication implements SparkApplication {
   @Override public void init() {

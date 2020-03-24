@@ -24,7 +24,7 @@ import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.Response;
 
-import static brave.test.http.ITHttp.EXTRA_KEY;
+import static brave.test.ITRemote.EXTRA_KEY;
 
 @Path("")
 public class TestResource { // public for resteasy to inject

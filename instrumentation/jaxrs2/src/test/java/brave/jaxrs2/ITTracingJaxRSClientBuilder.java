@@ -14,6 +14,7 @@
 package brave.jaxrs2;
 
 import brave.test.http.ITHttpAsyncClient;
+import brave.test.util.AssertableCallback;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import javax.ws.rs.client.Client;
@@ -23,7 +24,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
 import org.junit.Ignore;
-import zipkin2.Callback;
 
 public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
   @Override protected Client newClient(int port) {
@@ -45,7 +45,8 @@ public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
       .get(String.class);
   }
 
-  @Override protected void getAsync(Client client, String path, Callback<Integer> callback) {
+  @Override
+  protected void getAsync(Client client, String path, AssertableCallback<Integer> callback) {
     client.target(url(path))
       .request(MediaType.TEXT_PLAIN_TYPE)
       .async()

@@ -23,15 +23,17 @@ import brave.http.HttpResponseParser;
 import brave.http.HttpRuleSampler;
 import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
+import brave.propagation.B3SingleFormat;
 import brave.propagation.ExtraFieldPropagation;
+import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
+import brave.test.ITRemote;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -45,13 +47,14 @@ import zipkin2.Endpoint;
 import zipkin2.Span;
 
 import static brave.http.HttpRequestMatchers.pathStartsWith;
+import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public abstract class ITHttpServer extends ITHttp {
+public abstract class ITHttpServer extends ITRemote {
   OkHttpClient client = new OkHttpClient();
+  protected HttpTracing httpTracing = HttpTracing.create(tracing);
 
   @Before public void setup() throws Exception {
-    httpTracing = HttpTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
     init();
   }
 
@@ -60,51 +63,56 @@ public abstract class ITHttpServer extends ITHttp {
 
   protected abstract String url(String path);
 
-  @Test
-  public void usesExistingTraceId() throws Exception {
+  @Test public void reusesPropagatedSpanId() throws Exception {
     String path = "/foo";
 
-    final String traceId = "463ac35c9f6413ad";
-    final String parentId = traceId;
-    final String spanId = "48485a3953bb6124";
-
+    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
     get(new Request.Builder().url(url(path))
-      .header("X-B3-TraceId", traceId)
-      .header("X-B3-ParentSpanId", parentId)
-      .header("X-B3-SpanId", spanId)
-      .header("X-B3-Sampled", "1")
+      .header("b3", B3SingleFormat.writeB3SingleFormat(parent))
       .build());
 
-    Span span = takeServerSpan();
-    assertThat(span.traceId()).isEqualTo(traceId);
-    assertThat(span.parentId()).isEqualTo(parentId);
-    assertThat(span.id()).isEqualTo(spanId);
+    assertSameIds(takeRemoteSpan(Span.Kind.SERVER), parent);
+  }
+
+  @Test public void createsChildWhenJoinDisabled() throws Exception {
+    tracing = tracingBuilder(NEVER_SAMPLE).supportsJoin(false).build();
+    httpTracing = HttpTracing.create(tracing);
+    init();
+
+    String path = "/foo";
+
+    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    get(new Request.Builder().url(url(path))
+      .header("b3", B3SingleFormat.writeB3SingleFormat(parent))
+      .build());
+
+    Span span = takeRemoteSpan(Span.Kind.SERVER);
+    assertChildOf(span, parent);
+    assertThat(span.id()).isNotEqualTo(parent.spanIdString());
   }
 
   @Test
   public void readsExtra_newTrace() throws Exception {
     readsExtra(new Request.Builder());
 
-    takeServerSpan();
+    takeRemoteSpan(Span.Kind.SERVER);
   }
 
-  @Test
-  public void readsExtra_unsampled() throws Exception {
+  @Test public void readsExtra_unsampled() throws Exception {
     readsExtra(new Request.Builder()
       .header("X-B3-Sampled", "0"));
 
     // @After will check that nothing is reported
   }
 
-  @Test
-  public void readsExtra_existingTrace() throws Exception {
+  @Test public void readsExtra_existingTrace() throws Exception {
     String traceId = "463ac35c9f6413ad";
 
     readsExtra(new Request.Builder()
       .header("X-B3-TraceId", traceId)
       .header("X-B3-SpanId", traceId));
 
-    Span span = takeServerSpan();
+    Span span = takeRemoteSpan(Span.Kind.SERVER);
     assertThat(span.traceId()).isEqualTo(traceId);
     assertThat(span.id()).isEqualTo(traceId);
   }
@@ -156,12 +164,11 @@ public abstract class ITHttpServer extends ITHttp {
   /**
    * Tests that the span propagates between under asynchronous callbacks (even if explicitly)
    */
-  @Test
-  public void async() throws Exception {
+  @Test public void async() throws Exception {
     Response response = get("/async");
     assertThat(response.isSuccessful()).withFailMessage("not successful: " + response).isTrue();
 
-    takeServerSpan();
+    takeRemoteSpan(Span.Kind.SERVER);
   }
 
   /**
@@ -170,54 +177,65 @@ public abstract class ITHttpServer extends ITHttp {
    * "current span", in this case the span representing an incoming server request. When thread
    * state isn't managed properly, the child span will appear as a new trace.
    */
-  @Test
-  public void createsChildSpan() throws Exception {
+  @Test public void createsChildSpan() throws Exception {
     get("/child");
 
-    Span[] parentAndChild = takeSpansWithKind(Span.Kind.SERVER, null);
-    assertParentEnclosesChild(parentAndChild[0], parentAndChild[1]);
-    assertThat(parentAndChild[1].name()).isEqualTo("child");
+    Span child = takeLocalSpan();
+    Span server = takeRemoteSpan(Span.Kind.SERVER);
+    assertChildOf(child, server);
+    assertThat(child.name()).isEqualTo("child"); // sanity check
   }
 
-  @Test
-  public void reportsClientAddress() throws Exception {
+  /**
+   * The child completes before the response code is established, so it should be contained
+   * completely by the server's interval.
+   */
+  @Test public void childCompletesBeforeServer() throws Exception {
+    get("/child");
+
+    Span child = takeLocalSpan();
+    Span server = takeRemoteSpan(Span.Kind.SERVER);
+    assertChildOf(child, server);
+    assertThat(child.name()).isEqualTo("child"); // sanity check
+
+    long begin = server.timestampAsLong(), end = begin + server.durationAsLong();
+    assertSpanInInterval(child, begin, end);
+  }
+
+  @Test public void reportsClientAddress() throws Exception {
     get("/foo");
 
-    assertThat(takeServerSpan().remoteEndpoint())
+    assertThat(takeRemoteSpan(Span.Kind.SERVER).remoteEndpoint())
       .isNotNull();
   }
 
-  @Test
-  public void reportsClientAddress_XForwardedFor() throws Exception {
+  @Test public void reportsClientAddress_XForwardedFor() throws Exception {
     get(new Request.Builder().url(url("/foo"))
       .header("X-Forwarded-For", "1.2.3.4")
       .build());
 
-    assertThat(takeServerSpan().remoteEndpoint())
+    assertThat(takeRemoteSpan(Span.Kind.SERVER).remoteEndpoint())
       .extracting(Endpoint::ipv4)
       .isEqualTo("1.2.3.4");
   }
 
-  @Test
-  public void reportsServerKindToZipkin() throws Exception {
+  @Test public void reportsServerKindToZipkin() throws Exception {
     get("/foo");
 
-    takeServerSpan();
+    takeRemoteSpan(Span.Kind.SERVER);
   }
 
-  @Test
-  public void defaultSpanNameIsMethodNameOrRoute() throws Exception {
+  @Test public void defaultSpanNameIsMethodNameOrRoute() throws Exception {
     get("/foo");
 
-    Span span = takeServerSpan();
+    Span span = takeRemoteSpan(Span.Kind.SERVER);
     if (!span.name().equals("get")) {
       assertThat(span.name())
         .isEqualTo("get /foo");
     }
   }
 
-  @Test
-  public void readsRequestAtResponseTime() throws Exception {
+  @Test public void readsRequestAtResponseTime() throws Exception {
     httpTracing = httpTracing.toBuilder()
       .serverResponseParser((response, context, span) -> {
         span.tag("http.url", response.request().url()); // just the path is tagged by default
@@ -228,12 +246,11 @@ public abstract class ITHttpServer extends ITHttp {
     String uri = "/foo?z=2&yAA=1";
     get(uri);
 
-    assertThat(takeServerSpan().tags())
+    assertThat(takeRemoteSpan(Span.Kind.SERVER).tags())
       .containsEntry("http.url", url(uri));
   }
 
-  @Test
-  public void supportsPortableCustomization() throws Exception {
+  @Test public void supportsPortableCustomization() throws Exception {
     httpTracing = httpTracing.toBuilder()
       .serverRequestParser((request, context, span) -> {
         span.name(request.method().toLowerCase() + " " + request.path());
@@ -250,14 +267,13 @@ public abstract class ITHttpServer extends ITHttp {
     String uri = "/foo?z=2&yAA=1";
     get(uri);
 
-    assertThat(takeServerSpan().tags())
+    assertThat(takeRemoteSpan(Span.Kind.SERVER).tags())
       .containsEntry("http.url", url(uri))
       .containsEntry("request_customizer.is_span", "false")
       .containsEntry("response_customizer.is_span", "false");
   }
 
-  @Test
-  @Deprecated public void supportsPortableCustomizationDeprecated() throws Exception {
+  @Test @Deprecated public void supportsPortableCustomizationDeprecated() throws Exception {
     httpTracing = httpTracing.toBuilder().serverParser(new HttpServerParser() {
       @Override
       public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
@@ -278,7 +294,7 @@ public abstract class ITHttpServer extends ITHttp {
     String uri = "/foo?z=2&yAA=1";
     get(uri);
 
-    assertThat(takeServerSpan().tags())
+    assertThat(takeRemoteSpan(Span.Kind.SERVER).tags())
       .containsEntry("http.url", url(uri))
       .containsEntry("context.visible", "true")
       .containsEntry("request_customizer.is_span", "false")
@@ -290,8 +306,7 @@ public abstract class ITHttpServer extends ITHttp {
    * templating worked (including that it ignores query parameters). Note the route format is
    * framework specific, ex "/items/:itemId" in vert.x
    */
-  @Test
-  public void httpRoute() throws Exception {
+  @Test public void httpRoute() throws Exception {
     httpTracing = httpTracing.toBuilder().serverRequestParser(addHttpUrlTag).build();
     init();
 
@@ -302,8 +317,7 @@ public abstract class ITHttpServer extends ITHttp {
    * The "/nested/items/{itemId}" endpoint should be implemented by two route expressions: A path
    * prefix: "/nested" and then a relative expression "/items/{itemId}"
    */
-  @Test
-  public void httpRoute_nested() throws Exception {
+  @Test public void httpRoute_nested() throws Exception {
     httpTracing = httpTracing.toBuilder().serverRequestParser(addHttpUrlTag).build();
     init();
 
@@ -314,8 +328,7 @@ public abstract class ITHttpServer extends ITHttp {
    * Sometimes state used to carry http route data is different for async requests. This helps
    * ensure we don't miss issues like this.
    */
-  @Test
-  public void httpRoute_async() throws Exception {
+  @Test public void httpRoute_async() throws Exception {
     httpTracing = httpTracing.toBuilder().serverRequestParser(addHttpUrlTag).build();
     init();
 
@@ -336,7 +349,7 @@ public abstract class ITHttpServer extends ITHttp {
     assertThat(request2.body().string())
       .isEqualTo("2");
 
-    Span span1 = takeServerSpan(), span2 = takeServerSpan();
+    Span span1 = takeRemoteSpan(Span.Kind.SERVER), span2 = takeRemoteSpan(Span.Kind.SERVER);
 
     // verify that the path and url reflect the initial request (not a route expression)
     assertThat(span1.tags())
@@ -369,7 +382,7 @@ public abstract class ITHttpServer extends ITHttp {
     assertThat(call("GET", "/foo/bark").code())
       .isEqualTo(404);
 
-    Span span = takeServerSpanWithError("404");
+    Span span = takeRemoteSpanWithError(Span.Kind.SERVER, "404");
 
     // verify normal tags
     assertThat(span.tags())
@@ -393,7 +406,7 @@ public abstract class ITHttpServer extends ITHttp {
     assertThat(call("OPTIONS", "/").isSuccessful())
       .isTrue();
 
-    Span span = takeServerSpan();
+    Span span = takeRemoteSpan(Span.Kind.SERVER);
 
     // verify normal tags
     assertThat(span.tags())
@@ -407,23 +420,21 @@ public abstract class ITHttpServer extends ITHttp {
     }
   }
 
-  @Test
-  public void addsStatusCode_badRequest() throws Exception {
+  @Test public void addsStatusCode_badRequest() throws Exception {
     try {
       get("/badrequest");
     } catch (RuntimeException e) {
       // some servers think 400 is an error
     }
 
-    assertThat(takeServerSpanWithError("400").tags())
+    assertThat(takeRemoteSpanWithError(Span.Kind.SERVER, "400").tags())
       .containsEntry("error", "400");
   }
 
-  @Test
-  public void httpPathTagExcludesQueryParams() throws Exception {
+  @Test public void httpPathTagExcludesQueryParams() throws Exception {
     get("/foo?z=2&yAA=1");
 
-    assertThat(takeServerSpan().tags())
+    assertThat(takeRemoteSpan(Span.Kind.SERVER).tags())
       .containsEntry("http.path", "/foo");
   }
 
@@ -435,42 +446,36 @@ public abstract class ITHttpServer extends ITHttp {
    *   throw new UnavailableException("not ready", 1); // implies 503
    * }</pre>
    */
-  @Test
-  public void httpStatusCodeTagMatchesResponse_onException() throws Exception {
+  @Test public void httpStatusCodeTagMatchesResponse_onException() throws Exception {
     httpStatusCodeTagMatchesResponse("/exception", ".+");
   }
 
-  @Test
-  public void httpStatusCodeTagMatchesResponse_onException_async() throws Exception {
+  @Test public void httpStatusCodeTagMatchesResponse_onException_async() throws Exception {
     httpStatusCodeTagMatchesResponse("/exceptionAsync", ".+");
   }
 
   Span httpStatusCodeTagMatchesResponse(String path, String message) throws Exception {
     Response response = get(path);
 
-    Span span = takeServerSpanWithError(message);
+    Span span = takeRemoteSpanWithError(Span.Kind.SERVER, message);
     assertThat(span.tags())
       .containsEntry("http.status_code", String.valueOf(response.code()));
     return span;
   }
 
-  @Test
-  public void errorTag_exceptionOverridesHttpStatus() throws Exception {
+  @Test public void errorTag_exceptionOverridesHttpStatus() throws Exception {
     httpStatusCodeTagMatchesResponse("/exception", ".*not ready");
   }
 
-  @Test
-  public void errorTag_exceptionOverridesHttpStatus_async() throws Exception {
+  @Test public void errorTag_exceptionOverridesHttpStatus_async() throws Exception {
     httpStatusCodeTagMatchesResponse("/exceptionAsync", ".*not ready");
   }
 
-  @Test
-  public void finishedSpanHandlerSeesException() throws Exception {
+  @Test public void finishedSpanHandlerSeesException() throws Exception {
     finishedSpanHandlerSeesException("/exception");
   }
 
-  @Test
-  public void finishedSpanHandlerSeesException_async() throws Exception {
+  @Test public void finishedSpanHandlerSeesException_async() throws Exception {
     finishedSpanHandlerSeesException("/exceptionAsync");
   }
 
@@ -502,11 +507,9 @@ public abstract class ITHttpServer extends ITHttp {
   protected Response get(Request request) throws Exception {
     Response response = call(request);
     if (response.code() == 404) {
-      Span span = spans.poll(100, TimeUnit.MILLISECONDS);
-      if (span == null) {
-        // In this case, the 404 path is not instrumented. For example, in Spring WebMVC 2.5.
-        // We don't fail here because the primary test here is not span reporting.
-      }
+      // 404 path may or may not be instrumented. Ensure the AssumptionViolatedException isn't
+      // masked by a failure to take a server span.
+      ignoreAnySpans();
       throw new AssumptionViolatedException(
         response.request().url().encodedPath() + " not supported"
       );
@@ -538,25 +541,5 @@ public abstract class ITHttpServer extends ITHttp {
       }
       return response.newBuilder().body(toReturn).build();
     }
-  }
-
-  /** Call this to block until a server span was reported. The span must not have an "error" tag. */
-  protected Span takeServerSpan() throws InterruptedException {
-    Span result = takeSpan();
-    assertServerSpan(result);
-    return result;
-  }
-
-  /** Like {@link #takeServerSpan()} except an error tag must match the given value. */
-  protected Span takeServerSpanWithError(String errorTag) throws InterruptedException {
-    Span result = takeSpanWithError(errorTag);
-    assertServerSpan(result);
-    return result;
-  }
-
-  void assertServerSpan(Span span) {
-    assertThat(span.kind())
-      .withFailMessage("Expected %s to have kind=SERVER", span)
-      .isEqualTo(Span.Kind.SERVER);
   }
 }

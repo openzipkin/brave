@@ -13,7 +13,7 @@
  */
 package brave.grpc;
 
-import brave.propagation.B3Propagation;
+import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import io.grpc.Metadata;
@@ -29,31 +29,35 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 class TestServer {
-  BlockingQueue<Long> delayQueue = new LinkedBlockingQueue<>();
-  BlockingQueue<TraceContextOrSamplingFlags> requestQueue = new LinkedBlockingQueue<>();
-  TraceContext.Extractor<Metadata> extractor =
-    B3Propagation.FACTORY.create(AsciiMetadataKeyFactory.INSTANCE).extractor(Metadata::get);
+  final BlockingQueue<Long> delayQueue = new LinkedBlockingQueue<>();
+  final BlockingQueue<TraceContextOrSamplingFlags> requestQueue = new LinkedBlockingQueue<>();
+  final TraceContext.Extractor<Metadata> extractor;
+  final Server server;
 
-  Server server = ServerBuilder.forPort(PickUnusedPort.get())
-    .addService(ServerInterceptors.intercept(new GreeterImpl(null), new ServerInterceptor() {
+  TestServer(Propagation.Factory propagationFactory) {
+    extractor =
+      propagationFactory.create(AsciiMetadataKeyFactory.INSTANCE).extractor(Metadata::get);
+    server = ServerBuilder.forPort(PickUnusedPort.get())
+      .addService(ServerInterceptors.intercept(new GreeterImpl(null), new ServerInterceptor() {
 
-      @Override
-      public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
-        Metadata headers, ServerCallHandler<ReqT, RespT> next) {
-        Long delay = delayQueue.poll();
-        if (delay != null) {
-          try {
-            Thread.sleep(delay);
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new AssertionError("interrupted sleeping " + delay);
+        @Override
+        public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
+          Metadata headers, ServerCallHandler<ReqT, RespT> next) {
+          Long delay = delayQueue.poll();
+          if (delay != null) {
+            try {
+              Thread.sleep(delay);
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+              throw new AssertionError("interrupted sleeping " + delay);
+            }
           }
+          requestQueue.add(extractor.extract(headers));
+          return next.startCall(call, headers);
         }
-        requestQueue.add(extractor.extract(headers));
-        return next.startCall(call, headers);
-      }
-    }))
-    .build();
+      }))
+      .build();
+  }
 
   void start() throws IOException {
     server.start();

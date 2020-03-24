@@ -14,7 +14,7 @@
 package brave.dubbo.rpc;
 
 import brave.internal.Platform;
-import brave.propagation.B3Propagation;
+import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import com.alibaba.dubbo.common.Constants;
@@ -29,14 +29,14 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 class TestServer {
-  BlockingQueue<Long> delayQueue = new LinkedBlockingQueue<>();
-  BlockingQueue<TraceContextOrSamplingFlags> requestQueue = new LinkedBlockingQueue<>();
-  TraceContext.Extractor<DubboServerRequest> extractor =
-    B3Propagation.B3_STRING.extractor(DubboServerRequest.GETTER);
-  ServiceConfig<GenericService> service;
-  String linkLocalIp;
+  final BlockingQueue<TraceContextOrSamplingFlags> requestQueue = new LinkedBlockingQueue<>();
+  final TraceContext.Extractor<DubboServerRequest> extractor;
+  final ServiceConfig<GenericService> service;
+  final String linkLocalIp;
 
-  TestServer() {
+  TestServer(Propagation.Factory propagationFactory) {
+    extractor =
+      propagationFactory.create(Propagation.KeyFactory.STRING).extractor(DubboServerRequest.GETTER);
     linkLocalIp = Platform.get().linkLocalIp();
     if (linkLocalIp != null) {
       // avoid dubbo's logic which might pick docker ip
@@ -49,16 +49,6 @@ class TestServer {
     service.setProtocol(new ProtocolConfig("dubbo", PickUnusedPort.get()));
     service.setInterface(GreeterService.class);
     service.setRef((method, parameterTypes, args) -> {
-      Long delay = delayQueue.poll();
-      if (delay != null) {
-        try {
-          Thread.sleep(delay);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          throw new AssertionError("interrupted sleeping " + delay);
-        }
-      }
-
       RpcContext context = RpcContext.getContext();
       DubboServerRequest request =
         new DubboServerRequest(context.getInvocation(), context.getAttachments());
@@ -82,10 +72,6 @@ class TestServer {
 
   TraceContextOrSamplingFlags takeRequest() throws InterruptedException {
     return requestQueue.poll(3, TimeUnit.SECONDS);
-  }
-
-  void enqueueDelay(long millis) {
-    this.delayQueue.add(millis);
   }
 
   String ip() {
