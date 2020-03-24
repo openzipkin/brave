@@ -20,6 +20,7 @@ import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.rpc.RpcRuleSampler;
 import brave.rpc.RpcTracing;
+import brave.test.Unsupported;
 import brave.test.util.AssertableCallback;
 import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.rpc.RpcContext;
@@ -226,8 +227,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
       client.get().sayHello("romeo");
     });
 
-    assertThat(takeFlushedSpan().kind())
-      .isEqualTo(Span.Kind.CLIENT);
+    Unsupported.takeOneWayRpcSpan(this, Span.Kind.CLIENT);
   }
 
   @Test public void addsErrorTag_onUnimplemented() throws Exception {

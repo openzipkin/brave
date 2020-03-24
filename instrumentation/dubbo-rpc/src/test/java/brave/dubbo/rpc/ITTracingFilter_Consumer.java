@@ -18,6 +18,7 @@ import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
+import brave.test.Unsupported;
 import com.alibaba.dubbo.config.ApplicationConfig;
 import com.alibaba.dubbo.config.ReferenceConfig;
 import com.alibaba.dubbo.rpc.RpcContext;
@@ -175,8 +176,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
       client.get().sayHello("romeo");
     });
 
-    assertThat(takeFlushedSpan().kind())
-      .isEqualTo(Span.Kind.CLIENT);
+    Unsupported.takeOneWayRpcSpan(this, Span.Kind.CLIENT);
   }
 
   @Test public void addsErrorTag_onUnimplemented() throws Exception {

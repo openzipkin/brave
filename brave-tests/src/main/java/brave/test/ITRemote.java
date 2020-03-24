@@ -14,6 +14,7 @@
 package brave.test;
 
 import brave.Tracing;
+import brave.internal.Nullable;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.ExtraFieldPropagation;
@@ -141,41 +142,6 @@ public abstract class ITRemote {
 
   protected Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
 
-  /** Call this to block until a span was reported. The span must not have an "error" tag. */
-  protected Span takeSpan() throws InterruptedException {
-    Span result = doTakeSpan(false);
-
-    assertThat(result.tags().get("error"))
-      .withFailMessage("Expected %s to have no error tag", result)
-      .isNull();
-
-    return result;
-  }
-
-  /** Similar to {@link #takeSpan()}, except requires {@link Span#durationAsLong()} to be zero. */
-  protected Span takeFlushedSpan() throws InterruptedException {
-    Span result = doTakeSpan(true);
-
-    assertThat(result.tags().get("error"))
-      .withFailMessage("Expected %s to have no error tag", result)
-      .isNull();
-
-    return result;
-  }
-
-  /** Like {@link #takeSpan()} except an error tag must be present and match the given value. */
-  protected Span takeSpanWithError(String errorTag) throws InterruptedException {
-    Span result = doTakeSpan(false);
-
-    // Some exception messages are multi-line
-    Pattern regex = Pattern.compile(errorTag, Pattern.DOTALL);
-    assertThat(result.tags().get("error"))
-      .withFailMessage("Expected %s to have an error tag matching %s", result, errorTag)
-      .matches(regex);
-
-    return result;
-  }
-
   /**
    * Call this before throwing an {@link AssumptionViolatedException}, when there's a chance a span
    * was reported.
@@ -187,7 +153,13 @@ public abstract class ITRemote {
     ignoreAnySpans = true;
   }
 
-  private Span doTakeSpan(boolean flushed) throws InterruptedException {
+  /**
+   * This is hidden because the historical takeSpan() method led to numerous bugs. For example,
+   * tests passed even though the span asserted against wasn't the intended one (local vs remote).
+   * Also, tests passed even though there was an error inside the span. Even error tests have passed
+   * for the wrong reason (ex setup failure not the error raised in instrumentation).
+   */
+  Span doTakeSpan(@Nullable String errorTag, boolean flushed) throws InterruptedException {
     Span result = spans.poll(3, TimeUnit.SECONDS);
     assertThat(result)
       .withFailMessage("Span was not reported")
@@ -196,6 +168,18 @@ public abstract class ITRemote {
     assertThat(result.timestampAsLong())
       .withFailMessage("Expected a timestamp: %s", result)
       .isNotZero();
+
+    if (errorTag != null) {
+      // Some exception messages are multi-line
+      Pattern regex = Pattern.compile(errorTag, Pattern.DOTALL);
+      assertThat(result.tags().get("error"))
+        .withFailMessage("Expected %s to have an error tag matching %s", result, errorTag)
+        .matches(regex);
+    } else {
+      assertThat(result.tags().get("error"))
+        .withFailMessage("Expected %s to have no error tag", result)
+        .isNull();
+    }
 
     if (flushed) {
       assertThat(result.durationAsLong())
@@ -222,7 +206,7 @@ public abstract class ITRemote {
   /**
    * On close, we check that all spans have been verified by the test. This ensures bad behavior
    * such as duplicate reporting doesn't occur. The impact is that every span must at least be
-   * {@link #takeSpan()} taken} before the end of each method.
+   * {@link #doTakeSpan(String, boolean)} before the end of each method.
    */
   @Rule public TestRule assertSpansEmpty = new TestWatcher() {
     // only check success path to avoid masking assertion errors or exceptions
@@ -245,15 +229,14 @@ public abstract class ITRemote {
    * failure, use {@link #takeLocalSpanWithError(String)} instead.
    */
   protected Span takeLocalSpan() throws InterruptedException {
-    Span local = takeSpan();
+    Span local = doTakeSpan(null, false);
     assertLocalSpan(local);
     return local;
   }
 
   /** Like {@link #takeLocalSpan()} except an error tag must match the given value. */
-  protected Span takeLocalSpanWithError(String errorTag)
-    throws InterruptedException {
-    Span result = takeSpanWithError(errorTag);
+  protected Span takeLocalSpanWithError(String errorTag) throws InterruptedException {
+    Span result = doTakeSpan(errorTag, false);
     assertLocalSpan(result);
     return result;
   }
@@ -273,7 +256,7 @@ public abstract class ITRemote {
    * {@link #takeRemoteSpanWithError(Span.Kind, String)} instead.
    */
   protected Span takeRemoteSpan(Span.Kind kind) throws InterruptedException {
-    Span result = takeSpan();
+    Span result = doTakeSpan(null, false);
     assertRemoteSpan(result, kind);
     return result;
   }
@@ -281,7 +264,7 @@ public abstract class ITRemote {
   /** Like {@link #takeRemoteSpan(Span.Kind)} except an error tag must match the given value. */
   protected Span takeRemoteSpanWithError(Span.Kind kind, String errorTag)
     throws InterruptedException {
-    Span result = takeSpanWithError(errorTag);
+    Span result = doTakeSpan(errorTag, false);
     assertRemoteSpan(result, kind);
     return result;
   }

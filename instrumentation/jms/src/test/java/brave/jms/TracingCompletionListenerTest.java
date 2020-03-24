@@ -39,6 +39,8 @@ public class TracingCompletionListenerTest extends ITJms {
       TracingCompletionListener.create(delegate, span, currentTraceContext);
 
     tracingCompletionListener.onCompletion(null);
+
+    // post-conditions validate no span was reported
   }
 
   @Test public void on_completion_should_finish_span() throws Exception {
@@ -49,7 +51,7 @@ public class TracingCompletionListenerTest extends ITJms {
       TracingCompletionListener.create(mock(CompletionListener.class), span, currentTraceContext);
     tracingCompletionListener.onCompletion(message);
 
-    assertThat(takeSpan()).isNotNull();
+    takeLocalSpan();
   }
 
   @Test public void on_exception_should_tag_if_exception() throws Exception {
@@ -73,7 +75,8 @@ public class TracingCompletionListenerTest extends ITJms {
     tracingCompletionListener.onCompletion(message);
 
     verify(delegate).onCompletion(message);
-    assertThat(takeSpan()).isNotNull();
+
+    takeLocalSpan();
   }
 
   @Test public void on_completion_should_have_span_in_scope() throws Exception {
@@ -92,7 +95,7 @@ public class TracingCompletionListenerTest extends ITJms {
 
     TracingCompletionListener.create(delegate, span, currentTraceContext).onCompletion(message);
 
-    takeSpan(); // consumer reported span
+    takeLocalSpan();
   }
 
   @Test public void on_exception_should_forward_then_tag() throws Exception {

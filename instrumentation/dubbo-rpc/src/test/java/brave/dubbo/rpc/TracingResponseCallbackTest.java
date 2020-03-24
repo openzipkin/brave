@@ -34,7 +34,7 @@ public class TracingResponseCallbackTest extends ITTracingFilter {
       TracingResponseCallback.create(null, span, currentTraceContext);
     tracingResponseCallback.done(null);
 
-    takeSpan();
+    takeLocalSpan();
   }
 
   @Test public void caught_should_tag() throws Exception {
@@ -58,7 +58,7 @@ public class TracingResponseCallbackTest extends ITTracingFilter {
     tracingResponseCallback.done(result);
 
     verify(delegate).done(result);
-    takeSpan();
+    takeLocalSpan();
   }
 
   @Test public void done_should_have_span_in_scope() throws Exception {
@@ -77,7 +77,7 @@ public class TracingResponseCallbackTest extends ITTracingFilter {
     TracingResponseCallback.create(delegate, span, currentTraceContext)
       .done(new Object());
 
-    takeSpan();
+    takeLocalSpan();
   }
 
   @Test public void caught_should_forward_then_tag() throws Exception {
