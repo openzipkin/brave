@@ -191,7 +191,7 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
 
   @Test public void should_record_error() throws Exception {
     tracedSession.close();
-    should_record_error(() -> messageProducer.send(message));
+    should_record_error(() -> messageProducer.send(jms.destination, message));
   }
 
   @Test public void should_record_error_queue() throws Exception {
