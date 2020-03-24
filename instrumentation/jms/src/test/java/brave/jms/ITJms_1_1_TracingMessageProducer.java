@@ -72,7 +72,7 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
     return new JmsTestRule.ActiveMQ(testName);
   }
 
-  @Before public void setup() throws Exception {
+  @Before public void setup() throws JMSException {
     tracedSession = jmsTracing.connection(jms.connection)
       .createSession(false, Session.AUTO_ACKNOWLEDGE);
     tracedQueueSession = jmsTracing.queueConnection(jms.queueConnection)
@@ -105,35 +105,35 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
     tracedTopicSession.close();
   }
 
-  @Test public void should_add_b3_single_property() throws Exception {
+  @Test public void should_add_b3_single_property() throws JMSException {
     messageProducer.send(jms.destination, message);
     assertHasB3SingleProperty(messageConsumer.receive());
   }
 
-  @Test public void should_add_b3_single_property_bytes() throws Exception {
+  @Test public void should_add_b3_single_property_bytes() throws JMSException {
     messageProducer.send(jms.destination, bytesMessage);
     assertHasB3SingleProperty(messageConsumer.receive());
   }
 
-  @Test public void should_add_b3_single_property_queue() throws Exception {
+  @Test public void should_add_b3_single_property_queue() throws JMSException {
     queueSender.send(jms.queue, message);
     assertHasB3SingleProperty(queueReceiver.receive());
   }
 
-  @Test public void should_add_b3_single_property_topic() throws Exception {
+  @Test public void should_add_b3_single_property_topic() throws JMSException {
     topicPublisher.publish(jms.topic, message);
     assertHasB3SingleProperty(topicSubscriber.receive());
   }
 
-  void assertHasB3SingleProperty(Message received) throws Exception {
-    Span producerSpan = takeRemoteSpan(Span.Kind.PRODUCER);
+  void assertHasB3SingleProperty(Message received) throws JMSException {
+    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
 
     assertThat(propertiesToMap(received))
       .containsAllEntriesOf(existingProperties)
       .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
-  @Test public void should_not_serialize_parent_span_id() throws Exception {
+  @Test public void should_not_serialize_parent_span_id() throws JMSException {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       messageProducer.send(jms.destination, message);
@@ -141,7 +141,7 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
 
     Message received = messageConsumer.receive();
 
-    Span producerSpan = takeRemoteSpan(Span.Kind.PRODUCER);
+    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
     assertChildOf(producerSpan, parent);
 
     assertThat(propertiesToMap(received))
@@ -149,7 +149,7 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
       .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
-  @Test public void should_prefer_current_to_stale_b3_header() throws Exception {
+  @Test public void should_prefer_current_to_stale_b3_header() throws JMSException {
     jms.setReadOnlyProperties(message, false);
     SETTER.put(message, "b3", writeB3SingleFormat(newTraceContext(SamplingFlags.NOT_SAMPLED)));
 
@@ -160,7 +160,7 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
 
     Message received = messageConsumer.receive();
 
-    Span producerSpan = takeRemoteSpan(Span.Kind.PRODUCER);
+    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
     assertChildOf(producerSpan, parent);
 
     assertThat(propertiesToMap(received))
@@ -168,43 +168,43 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
       .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
-  @Test public void should_record_properties() throws Exception {
+  @Test public void should_record_properties() throws JMSException {
     messageProducer.send(jms.destination, message);
     should_record_properties(Collections.singletonMap("jms.queue", jms.destinationName));
   }
 
-  @Test public void should_record_properties_queue() throws Exception {
+  @Test public void should_record_properties_queue() throws JMSException {
     queueSender.send(jms.queue, message);
     should_record_properties(Collections.singletonMap("jms.queue", jms.queueName));
   }
 
-  @Test public void should_record_properties_topic() throws Exception {
+  @Test public void should_record_properties_topic() throws JMSException {
     topicPublisher.send(jms.topic, message);
     should_record_properties(Collections.singletonMap("jms.topic", jms.topicName));
   }
 
-  void should_record_properties(Map<String, String> producerTags) throws Exception {
-    Span producerSpan = takeRemoteSpan(Span.Kind.PRODUCER);
+  void should_record_properties(Map<String, String> producerTags) throws JMSException {
+    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
     assertThat(producerSpan.name()).isEqualTo("send");
     assertThat(producerSpan.tags()).isEqualTo(producerTags);
   }
 
-  @Test public void should_record_error() throws Exception {
+  @Test public void should_record_error() throws JMSException {
     tracedSession.close();
     should_record_error(() -> messageProducer.send(jms.destination, message));
   }
 
-  @Test public void should_record_error_queue() throws Exception {
+  @Test public void should_record_error_queue() throws JMSException {
     tracedQueueSession.close();
     should_record_error(() -> queueSender.send(jms.queue, message));
   }
 
-  @Test public void should_record_error_topic() throws Exception {
+  @Test public void should_record_error_topic() throws JMSException {
     tracedTopicSession.close();
     should_record_error(() -> topicPublisher.send(jms.topic, message));
   }
 
-  void should_record_error(JMSRunnable send) throws Exception {
+  void should_record_error(JMSRunnable send) throws JMSException {
     String message;
     try {
       send.run();
@@ -213,10 +213,10 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
       message = e.getMessage();
     }
 
-    takeRemoteSpanWithError(Span.Kind.PRODUCER, message);
+    reporter.takeRemoteSpanWithError(Span.Kind.PRODUCER, message);
   }
 
-  @Test public void customSampler() throws Exception {
+  @Test public void customSampler() throws JMSException {
     queueSender.close();
     tracedQueueSession.close();
 

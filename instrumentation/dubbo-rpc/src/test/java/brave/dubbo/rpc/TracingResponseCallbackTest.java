@@ -27,27 +27,27 @@ public class TracingResponseCallbackTest extends ITTracingFilter {
     init();
   }
 
-  @Test public void done_should_finish_span() throws Exception {
+  @Test public void done_should_finish_span() {
     Span span = tracing.tracer().nextSpan().start();
 
     ResponseCallback tracingResponseCallback =
       TracingResponseCallback.create(null, span, currentTraceContext);
     tracingResponseCallback.done(null);
 
-    takeLocalSpan();
+    reporter.takeLocalSpan();
   }
 
-  @Test public void caught_should_tag() throws Exception {
+  @Test public void caught_should_tag() {
     Span span = tracing.tracer().nextSpan().start();
 
     ResponseCallback tracingResponseCallback =
       TracingResponseCallback.create(null, span, currentTraceContext);
     tracingResponseCallback.caught(new Exception("Test exception"));
 
-    takeLocalSpanWithError("Test exception");
+    reporter.takeLocalSpanWithError("Test exception");
   }
 
-  @Test public void done_should_forward_then_finish_span() throws Exception {
+  @Test public void done_should_forward_then_finish_span() {
     Span span = tracing.tracer().nextSpan().start();
 
     ResponseCallback delegate = mock(ResponseCallback.class);
@@ -58,10 +58,10 @@ public class TracingResponseCallbackTest extends ITTracingFilter {
     tracingResponseCallback.done(result);
 
     verify(delegate).done(result);
-    takeLocalSpan();
+    reporter.takeLocalSpan();
   }
 
-  @Test public void done_should_have_span_in_scope() throws Exception {
+  @Test public void done_should_have_span_in_scope() {
     Span span = tracing.tracer().nextSpan().start();
 
     ResponseCallback delegate = new ResponseCallback() {
@@ -77,10 +77,10 @@ public class TracingResponseCallbackTest extends ITTracingFilter {
     TracingResponseCallback.create(delegate, span, currentTraceContext)
       .done(new Object());
 
-    takeLocalSpan();
+    reporter.takeLocalSpan();
   }
 
-  @Test public void caught_should_forward_then_tag() throws Exception {
+  @Test public void caught_should_forward_then_tag() {
     Span span = tracing.tracer().nextSpan().start();
 
     ResponseCallback delegate = new ResponseCallback() {
@@ -96,6 +96,6 @@ public class TracingResponseCallbackTest extends ITTracingFilter {
     TracingResponseCallback.create(delegate, span, currentTraceContext)
       .caught(new Exception("Test exception"));
 
-    takeLocalSpanWithError("Test exception");
+    reporter.takeLocalSpanWithError("Test exception");
   }
 }

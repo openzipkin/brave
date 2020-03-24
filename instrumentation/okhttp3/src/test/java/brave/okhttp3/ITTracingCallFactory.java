@@ -54,7 +54,7 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
   }
 
   @Override protected void post(Call.Factory client, String pathIncludingQuery, String body)
-    throws Exception {
+    throws IOException {
     client.newCall(new Request.Builder().url(url(pathIncludingQuery))
       // intentionally deprecated method so that the v3.x tests can compile
       .post(RequestBody.create(MediaType.parse("text/plain"), body)).build())
@@ -75,7 +75,7 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
       });
   }
 
-  @Test public void currentSpanVisibleToUserInterceptors() throws Exception {
+  @Test public void currentSpanVisibleToUserInterceptors() throws IOException {
     server.enqueue(new MockResponse());
     closeClient(client);
 
@@ -94,6 +94,6 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    takeRemoteSpan(Span.Kind.CLIENT);
+    reporter.takeRemoteSpan(Span.Kind.CLIENT);
   }
 }

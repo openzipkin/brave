@@ -42,7 +42,7 @@ public class ITSpanCustomizingAsyncHandlerInterceptor extends ITServletContainer
   @Test public void addsControllerTags() throws Exception {
     get("/foo");
 
-    assertThat(takeRemoteSpan(Span.Kind.SERVER).tags())
+    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags())
       .containsEntry("mvc.controller.class", "Servlet3TestController")
       .containsEntry("mvc.controller.method", "foo");
   }

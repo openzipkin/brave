@@ -63,17 +63,27 @@ class TestServer {
     server.start();
   }
 
-  void stop() throws InterruptedException {
+  void stop() {
     server.shutdown();
-    server.awaitTermination();
+    try {
+      server.awaitTermination();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError(e);
+    }
   }
 
   int port() {
     return server.getPort();
   }
 
-  TraceContextOrSamplingFlags takeRequest() throws InterruptedException {
-    return requestQueue.poll(3, TimeUnit.SECONDS);
+  TraceContextOrSamplingFlags takeRequest() {
+    try {
+      return requestQueue.poll(3, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError(e);
+    }
   }
 
   void enqueueDelay(long millis) {

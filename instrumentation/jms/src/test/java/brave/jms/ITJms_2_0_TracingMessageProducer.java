@@ -37,22 +37,22 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
     return new ArtemisJmsTestRule(testName);
   }
 
-  @Test public void should_complete_on_callback() throws Exception {
+  @Test public void should_complete_on_callback() throws JMSException {
     should_complete_on_callback(
       listener -> messageProducer.send(jms.destination, message, listener));
   }
 
-  @Test public void should_complete_on_callback_queue() throws Exception {
+  @Test public void should_complete_on_callback_queue() throws JMSException {
     should_complete_on_callback(
       listener -> queueSender.send(jms.queue, message, listener));
   }
 
-  @Test public void should_complete_on_callback_topic() throws Exception {
+  @Test public void should_complete_on_callback_topic() throws JMSException {
     should_complete_on_callback(
       listener -> topicPublisher.send(jms.topic, message, listener));
   }
 
-  void should_complete_on_callback(JMSAsync async) throws Exception {
+  void should_complete_on_callback(JMSAsync async) throws JMSException {
     async.send(new CompletionListener() {
       @Override public void onCompletion(Message message) {
         tracing.tracer().currentSpanCustomizer().tag("onCompletion", "");
@@ -63,13 +63,13 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
       }
     });
 
-    assertThat(takeRemoteSpan(Span.Kind.PRODUCER).tags())
+    assertThat(reporter.takeRemoteSpan(Span.Kind.PRODUCER).tags())
       .containsKey("onCompletion");
   }
 
   @Test
   @Ignore("https://issues.apache.org/jira/browse/ARTEMIS-2054")
-  public void should_complete_on_error_callback() throws Exception {
+  public void should_complete_on_error_callback() throws JMSException {
     CountDownLatch latch = new CountDownLatch(1);
 
     // To force error to be on callback thread, we need to wait until message is
@@ -104,10 +104,10 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
     jms.after();
     latch.countDown();
 
-    takeRemoteSpanWithError(Span.Kind.PRODUCER, "onException");
+    reporter.takeRemoteSpanWithError(Span.Kind.PRODUCER, "onException");
   }
 
-  @Test public void customSampler() throws Exception {
+  @Test public void customSampler() throws JMSException {
     MessagingRuleSampler producerSampler = MessagingRuleSampler.newBuilder()
       .putRule(channelNameEquals(jms.queue.getQueueName()), Sampler.NEVER_SAMPLE)
       .build();

@@ -13,6 +13,7 @@
  */
 package brave.jms;
 
+import brave.messaging.MessagingTracing;
 import brave.test.ITRemote;
 import java.util.Enumeration;
 import java.util.LinkedHashMap;
@@ -21,17 +22,21 @@ import javax.jms.JMSException;
 import javax.jms.Message;
 
 public abstract class ITJms extends ITRemote {
-  JmsTracing jmsTracing = JmsTracing.create(tracing);
+  MessagingTracing messagingTracing = MessagingTracing.create(tracing);
+  JmsTracing jmsTracing = JmsTracing.create(messagingTracing);
 
-  static Map<String, String> propertiesToMap(Message headers) throws Exception {
-    Map<String, String> result = new LinkedHashMap<>();
-
-    Enumeration<String> names = headers.getPropertyNames();
-    while (names.hasMoreElements()) {
-      String name = names.nextElement();
-      result.put(name, headers.getStringProperty(name));
+  static Map<String, String> propertiesToMap(Message headers) {
+    try {
+      Map<String, String> result = new LinkedHashMap<>();
+      Enumeration<String> names = headers.getPropertyNames();
+      while (names.hasMoreElements()) {
+        String name = names.nextElement();
+        result.put(name, headers.getStringProperty(name));
+      }
+      return result;
+    } catch (JMSException e) {
+      throw new AssertionError(e);
     }
-    return result;
   }
 
   interface JMSRunnable {

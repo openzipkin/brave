@@ -13,6 +13,7 @@
  */
 package brave.jms;
 
+import javax.jms.JMSException;
 import javax.jms.Queue;
 import javax.jms.Topic;
 import org.junit.Test;
@@ -31,7 +32,7 @@ public class MessageParserTest {
     assertThat(MessageParser.channelKind(null)).isNull();
   }
 
-  @Test public void channelKind_queueAndTopic_queueOnQueueName() throws Exception {
+  @Test public void channelKind_queueAndTopic_queueOnQueueName() throws JMSException {
     QueueAndTopic destination = mock(QueueAndTopic.class);
     when(destination.getQueueName()).thenReturn("queue-foo");
 
@@ -39,7 +40,7 @@ public class MessageParserTest {
       .isEqualTo("queue");
   }
 
-  @Test public void channelKind_queueAndTopic_topicOnNoQueueName() throws Exception {
+  @Test public void channelKind_queueAndTopic_topicOnNoQueueName() throws JMSException {
     QueueAndTopic destination = mock(QueueAndTopic.class);
     when(destination.getTopicName()).thenReturn("topic-foo");
 
@@ -51,7 +52,7 @@ public class MessageParserTest {
     assertThat(MessageParser.channelName(null)).isNull();
   }
 
-  @Test public void channelName_queueAndTopic_queueOnQueueName() throws Exception {
+  @Test public void channelName_queueAndTopic_queueOnQueueName() throws JMSException {
     QueueAndTopic destination = mock(QueueAndTopic.class);
     when(destination.getQueueName()).thenReturn("queue-foo");
 
@@ -59,7 +60,7 @@ public class MessageParserTest {
       .isEqualTo("queue-foo");
   }
 
-  @Test public void channelName_queueAndTopic_topicOnNoQueueName() throws Exception {
+  @Test public void channelName_queueAndTopic_topicOnNoQueueName() throws JMSException {
     QueueAndTopic destination = mock(QueueAndTopic.class);
     when(destination.getTopicName()).thenReturn("topic-foo");
 

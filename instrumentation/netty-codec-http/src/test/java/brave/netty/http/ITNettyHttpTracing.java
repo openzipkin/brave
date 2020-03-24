@@ -32,7 +32,7 @@ public class ITNettyHttpTracing extends ITHttpServer {
   EventLoopGroup workerGroup;
   int port;
 
-  @Override protected void init() throws Exception {
+  @Override protected void init() {
     stop();
     bossGroup = new NioEventLoopGroup(1);
     workerGroup = new NioEventLoopGroup();
@@ -51,8 +51,13 @@ public class ITNettyHttpTracing extends ITHttpServer {
         }
       });
 
-    Channel ch = b.bind(0).sync().channel();
-    port = ((InetSocketAddress) ch.localAddress()).getPort();
+    try {
+      Channel ch = b.bind(0).sync().channel();
+      port = ((InetSocketAddress) ch.localAddress()).getPort();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError(e);
+    }
   }
 
   @Override

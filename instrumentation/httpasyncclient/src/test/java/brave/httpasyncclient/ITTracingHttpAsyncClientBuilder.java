@@ -18,7 +18,10 @@ import brave.test.util.AssertableCallback;
 import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.apache.http.HttpRequestInterceptor;
@@ -33,6 +36,7 @@ import org.apache.http.util.EntityUtils;
 import org.junit.Test;
 import zipkin2.Span;
 
+import static org.apache.commons.codec.Charsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -48,26 +52,26 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
   }
 
   @Override protected void get(CloseableHttpAsyncClient client, String pathIncludingQuery)
-    throws Exception {
+    throws IOException {
     HttpGet get = new HttpGet(URI.create(url(pathIncludingQuery)));
-    blockOnFuture(client, get);
+    invoke(client, get);
   }
 
   @Override
   protected void post(CloseableHttpAsyncClient client, String pathIncludingQuery, String body)
-    throws Exception {
+    throws IOException {
     HttpPost post = new HttpPost(URI.create(url(pathIncludingQuery)));
-    post.setEntity(new NStringEntity(body));
-    blockOnFuture(client, post);
+    post.setEntity(new NStringEntity(body, UTF_8));
+    invoke(client, post);
   }
 
-  static void blockOnFuture(CloseableHttpAsyncClient client, HttpUriRequest req) throws Exception {
+  static void invoke(CloseableHttpAsyncClient client, HttpUriRequest req) throws IOException {
     Future<HttpResponse> future = client.execute(req, null);
-    HttpResponse response = future.get();
+    HttpResponse response = blockOnFuture(future);
     EntityUtils.consume(response.getEntity());
   }
 
-  @Test public void currentSpanVisibleToUserFilters() throws Exception {
+  @Test public void currentSpanVisibleToUserFilters() throws IOException {
     server.enqueue(new MockResponse());
     closeClient(client);
 
@@ -83,23 +87,24 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    takeRemoteSpan(Span.Kind.CLIENT);
+    reporter.takeRemoteSpan(Span.Kind.CLIENT);
   }
 
-  @Test public void failedInterceptorRemovesScope() throws Exception {
+  @Test public void failedInterceptorRemovesScope() {
     assertThat(currentTraceContext.get()).isNull();
+    RuntimeException error = new RuntimeException("Test");
     client = TracingHttpAsyncClientBuilder.create(httpTracing)
       .addInterceptorLast((HttpRequestInterceptor) (request, context) -> {
-        throw new RuntimeException("Test");
+        throw error;
       }).build();
     client.start();
 
     assertThatThrownBy(() -> get(client, "/foo"))
-      .hasCauseInstanceOf(RuntimeException.class).hasMessageContaining("Test");
+      .isSameAs(error);
 
     assertThat(currentTraceContext.get()).isNull();
 
-    takeRemoteSpanWithError(Span.Kind.CLIENT, "Test");
+    reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, "Test");
   }
 
   @Override
@@ -119,5 +124,22 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
         callback.onError(new CancellationException());
       }
     });
+  }
+
+  /** Ensures we don't wrap exception messages. */
+  static <V> V blockOnFuture(Future<V> future) throws IOException {
+    try {
+      return future.get(3, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError(e);
+    } catch (ExecutionException e) {
+      Throwable er = e.getCause();
+      if (er instanceof RuntimeException) throw (RuntimeException) er;
+      if (er instanceof IOException) throw (IOException) er;
+      throw new AssertionError(e);
+    } catch (TimeoutException e) {
+      throw new AssertionError(e);
+    }
   }
 }

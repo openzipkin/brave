@@ -44,13 +44,13 @@ public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient
   }
 
   @Override protected void post(CloseableHttpClient client, String pathIncludingQuery, String body)
-    throws Exception {
+    throws IOException {
     HttpPost post = new HttpPost(URI.create(url(pathIncludingQuery)));
     post.setEntity(new StringEntity(body));
     consume(client.execute(post).getEntity());
   }
 
-  @Test public void currentSpanVisibleToUserFilters() throws Exception {
+  @Test public void currentSpanVisibleToUserFilters() throws IOException {
     server.enqueue(new MockResponse());
     closeClient(client);
 
@@ -65,6 +65,6 @@ public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    takeRemoteSpan(Span.Kind.CLIENT);
+    reporter.takeRemoteSpan(Span.Kind.CLIENT);
   }
 }

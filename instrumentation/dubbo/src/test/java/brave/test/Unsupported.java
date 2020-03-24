@@ -23,9 +23,9 @@ public abstract class Unsupported {
    * better as a tag. It should be considered a deprecated practice. This method only exists to
    * support Dubbo, exposed to avoid exposing the raw span queue protected.
    */
-  public static Span takeOneWayRpcSpan(ITRemote itRemote, Span.Kind kind) throws Exception {
-    Span span = itRemote.doTakeSpan(null, true);
-    itRemote.assertRemoteSpan(span, kind);
+  public static Span takeOneWayRpcSpan(ITRemote itRemote, Span.Kind kind) {
+    Span span = itRemote.reporter.doTakeSpan(null, true);
+    itRemote.reporter.assertRemoteSpan(span, kind);
     return span;
   }
 }

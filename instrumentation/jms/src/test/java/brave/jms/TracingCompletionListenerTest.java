@@ -43,7 +43,7 @@ public class TracingCompletionListenerTest extends ITJms {
     // post-conditions validate no span was reported
   }
 
-  @Test public void on_completion_should_finish_span() throws Exception {
+  @Test public void on_completion_should_finish_span() {
     Message message = mock(Message.class);
     Span span = tracing.tracer().nextSpan().start();
 
@@ -51,10 +51,10 @@ public class TracingCompletionListenerTest extends ITJms {
       TracingCompletionListener.create(mock(CompletionListener.class), span, currentTraceContext);
     tracingCompletionListener.onCompletion(message);
 
-    takeLocalSpan();
+    reporter.takeLocalSpan();
   }
 
-  @Test public void on_exception_should_tag_if_exception() throws Exception {
+  @Test public void on_exception_should_tag_if_exception() {
     Message message = mock(Message.class);
     Span span = tracing.tracer().nextSpan().start();
 
@@ -62,10 +62,10 @@ public class TracingCompletionListenerTest extends ITJms {
       TracingCompletionListener.create(mock(CompletionListener.class), span, currentTraceContext);
     tracingCompletionListener.onException(message, new Exception("Test exception"));
 
-    takeLocalSpanWithError("Test exception");
+    reporter.takeLocalSpanWithError("Test exception");
   }
 
-  @Test public void on_completion_should_forward_then_finish_span() throws Exception {
+  @Test public void on_completion_should_forward_then_finish_span() {
     Message message = mock(Message.class);
     Span span = tracing.tracer().nextSpan().start();
 
@@ -76,10 +76,10 @@ public class TracingCompletionListenerTest extends ITJms {
 
     verify(delegate).onCompletion(message);
 
-    takeLocalSpan();
+    reporter.takeLocalSpan();
   }
 
-  @Test public void on_completion_should_have_span_in_scope() throws Exception {
+  @Test public void on_completion_should_have_span_in_scope() {
     Message message = mock(Message.class);
     Span span = tracing.tracer().nextSpan().start();
 
@@ -95,10 +95,10 @@ public class TracingCompletionListenerTest extends ITJms {
 
     TracingCompletionListener.create(delegate, span, currentTraceContext).onCompletion(message);
 
-    takeLocalSpan();
+    reporter.takeLocalSpan();
   }
 
-  @Test public void on_exception_should_forward_then_tag() throws Exception {
+  @Test public void on_exception_should_forward_then_tag() {
     Message message = mock(Message.class);
     Span span = tracing.tracer().nextSpan().start();
 
@@ -110,6 +110,6 @@ public class TracingCompletionListenerTest extends ITJms {
 
     verify(delegate).onException(message, e);
 
-    takeLocalSpanWithError("Test exception");
+    reporter.takeLocalSpanWithError("Test exception");
   }
 }

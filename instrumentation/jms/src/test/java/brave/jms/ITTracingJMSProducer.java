@@ -24,6 +24,7 @@ import java.util.Map;
 import javax.jms.CompletionListener;
 import javax.jms.JMSConsumer;
 import javax.jms.JMSContext;
+import javax.jms.JMSException;
 import javax.jms.JMSProducer;
 import javax.jms.JMSRuntimeException;
 import javax.jms.Message;
@@ -69,18 +70,18 @@ public class ITTracingJMSProducer extends ITJms {
     tracedContext.close();
   }
 
-  @Test public void should_add_b3_single_property() throws Exception {
+  @Test public void should_add_b3_single_property() {
     producer.send(jms.queue, "foo");
 
     Message received = consumer.receive();
-    Span producerSpan = takeRemoteSpan(Span.Kind.PRODUCER);
+    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
 
     assertThat(propertiesToMap(received))
       .containsAllEntriesOf(existingProperties)
       .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
-  @Test public void should_not_serialize_parent_span_id() throws Exception {
+  @Test public void should_not_serialize_parent_span_id() {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       producer.send(jms.queue, "foo");
@@ -88,7 +89,7 @@ public class ITTracingJMSProducer extends ITJms {
 
     Message received = consumer.receive();
 
-    Span producerSpan = takeRemoteSpan(Span.Kind.PRODUCER);
+    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
     assertChildOf(producerSpan, parent);
 
     assertThat(propertiesToMap(received))
@@ -96,7 +97,7 @@ public class ITTracingJMSProducer extends ITJms {
       .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
-  @Test public void should_prefer_current_to_stale_b3_header() throws Exception {
+  @Test public void should_prefer_current_to_stale_b3_header() {
     producer.setProperty("b3", writeB3SingleFormat(newTraceContext(SamplingFlags.NOT_SAMPLED)));
 
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
@@ -106,7 +107,7 @@ public class ITTracingJMSProducer extends ITJms {
 
     Message received = consumer.receive();
 
-    Span producerSpan = takeRemoteSpan(Span.Kind.PRODUCER);
+    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
     assertChildOf(producerSpan, parent);
 
     assertThat(propertiesToMap(received))
@@ -114,17 +115,17 @@ public class ITTracingJMSProducer extends ITJms {
       .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
-  @Test public void should_record_properties() throws Exception {
+  @Test public void should_record_properties() {
     producer.send(jms.queue, "foo");
 
     consumer.receive();
 
-    Span producerSpan = takeRemoteSpan(Kind.PRODUCER);
+    Span producerSpan = reporter.takeRemoteSpan(Kind.PRODUCER);
     assertThat(producerSpan.name()).isEqualTo("send");
     assertThat(producerSpan.tags()).containsEntry("jms.queue", jms.queueName);
   }
 
-  @Test public void should_record_error() throws Exception {
+  @Test public void should_record_error() {
     jms.after();
 
     String message;
@@ -135,10 +136,10 @@ public class ITTracingJMSProducer extends ITJms {
       message = e.getMessage();
     }
 
-    takeRemoteSpanWithError(Kind.PRODUCER, message);
+    reporter.takeRemoteSpanWithError(Kind.PRODUCER, message);
   }
 
-  @Test public void should_complete_on_callback() throws Exception {
+  @Test public void should_complete_on_callback() {
     producer.setAsync(new CompletionListener() {
       @Override public void onCompletion(Message message) {
         tracing.tracer().currentSpanCustomizer().tag("onCompletion", "");
@@ -150,11 +151,11 @@ public class ITTracingJMSProducer extends ITJms {
     });
     producer.send(jms.queue, "foo");
 
-    assertThat(takeRemoteSpan(Kind.PRODUCER).tags())
+    assertThat(reporter.takeRemoteSpan(Kind.PRODUCER).tags())
       .containsKeys("onCompletion");
   }
 
-  @Test public void customSampler() throws Exception {
+  @Test public void customSampler() throws JMSException {
     setupTracedProducer(JmsTracing.create(MessagingTracing.newBuilder(tracing)
       .producerSampler(MessagingRuleSampler.newBuilder()
         .putRule(channelNameEquals(jms.queue.getQueueName()), Sampler.NEVER_SAMPLE)

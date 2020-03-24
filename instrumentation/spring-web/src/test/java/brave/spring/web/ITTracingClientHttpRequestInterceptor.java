@@ -14,6 +14,7 @@
 package brave.spring.web;
 
 import brave.test.http.ITHttpClient;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import okhttp3.mockwebserver.MockResponse;
@@ -26,6 +27,7 @@ import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 import zipkin2.Span;
 
+import static brave.spring.web.ITTracingAsyncClientHttpRequestInterceptor.closeHcClient;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHttpRequestFactory> {
@@ -43,8 +45,8 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     return configureClient(TracingClientHttpRequestInterceptor.create(httpTracing));
   }
 
-  @Override protected void closeClient(ClientHttpRequestFactory client) throws Exception {
-    ((HttpComponentsClientHttpRequestFactory) client).destroy();
+  @Override protected void closeClient(ClientHttpRequestFactory client) throws IOException {
+    closeHcClient((HttpComponentsClientHttpRequestFactory) client);
   }
 
   @Override protected void get(ClientHttpRequestFactory client, String pathIncludingQuery) {
@@ -59,7 +61,7 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     restTemplate.postForObject(url(uri), content, String.class);
   }
 
-  @Test public void currentSpanVisibleToUserInterceptors() throws Exception {
+  @Test public void currentSpanVisibleToUserInterceptors() {
     server.enqueue(new MockResponse());
 
     RestTemplate restTemplate = new RestTemplate(client);
@@ -74,7 +76,7 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    takeRemoteSpan(Span.Kind.CLIENT);
+    reporter.takeRemoteSpan(Span.Kind.CLIENT);
   }
 
   @Override @Ignore("blind to the implementation of redirects")

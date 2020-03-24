@@ -51,7 +51,7 @@ public class ITTracingInterceptor extends ITHttpAsyncClient<Call.Factory> {
   }
 
   @Override protected void post(Call.Factory client, String pathIncludingQuery, String body)
-    throws Exception {
+    throws IOException {
     client.newCall(new Request.Builder().url(url(pathIncludingQuery))
       // intentionally deprecated method so that the v3.x tests can compile
       .post(RequestBody.create(MediaType.parse("text/plain"), body)).build())

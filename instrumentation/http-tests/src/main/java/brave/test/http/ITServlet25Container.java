@@ -138,7 +138,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
         .isEqualTo("abcdefg");
     }
 
-    takeRemoteSpan(Span.Kind.SERVER);
+    reporter.takeRemoteSpan(Span.Kind.SERVER);
   }
 
   // copies the header to the response
@@ -172,7 +172,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
         .isEqualTo("abcdefg");
     }
 
-    takeRemoteSpan(Span.Kind.SERVER);
+    reporter.takeRemoteSpan(Span.Kind.SERVER);
   }
 
   // Shows how a framework can layer on "http.route" logic
@@ -200,7 +200,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
 
     get("/foo");
 
-    assertThat(takeRemoteSpan(Span.Kind.SERVER).name())
+    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).name())
       .isEqualTo("get /foo");
   }
 
@@ -228,7 +228,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
 
     get("/foo");
 
-    assertThat(takeRemoteSpan(Span.Kind.SERVER).tags())
+    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags())
       .containsEntry("foo", "bar");
   }
 

@@ -38,14 +38,13 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
    * example, if there is a cancelation that didn't result in an error, invoke {@link
    * AssertableCallback#onError(Throwable)} with your own {@link CancellationException}.
    */
-  protected abstract void getAsync(C client, String path, AssertableCallback<Integer> callback)
-    throws Exception;
+  protected abstract void getAsync(C client, String path, AssertableCallback<Integer> callback);
 
   /**
    * This tests that the parent is determined at the time the request was made, not when the request
    * was executed.
    */
-  @Test public void usesParentFromInvocationTime() throws Exception {
+  @Test public void usesParentFromInvocationTime() {
     server.enqueue(new MockResponse().setBodyDelay(300, TimeUnit.MILLISECONDS));
     server.enqueue(new MockResponse());
 
@@ -60,8 +59,8 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
 
     try (Scope scope = currentTraceContext.newScope(null)) {
       // complete within a different scope
-      items1.assertThatSuccess().isNotNull();
-      items2.assertThatSuccess().isNotNull();
+      items1.join();
+      items2.join();
 
       for (int i = 0; i < 2; i++) {
         TraceContext extracted = extract(takeRequest());
@@ -71,7 +70,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
 
     // The spans may report in a different order than the requests
     for (int i = 0; i < 2; i++) {
-      assertChildOf(takeRemoteSpan(Span.Kind.CLIENT), parent);
+      assertChildOf(reporter.takeRemoteSpan(Span.Kind.CLIENT), parent);
     }
   }
 
@@ -81,7 +80,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
    * we would see a client span child of a client span, which could be confused with duplicate
    * instrumentation and affect dependency link counts.
    */
-  @Test public void callbackContextIsFromInvocationTime() throws Exception {
+  @Test public void callbackContextIsFromInvocationTime() {
     server.enqueue(new MockResponse());
 
     AssertableCallback<Integer> callback = new AssertableCallback<>();
@@ -95,13 +94,13 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
       getAsync(client, "/foo", callback);
     }
 
-    callback.assertThatSuccess().isNotNull(); // ensures listener ran
+    callback.join(); // ensures listener ran
     assertThat(invocationContext.get()).isSameAs(parent);
-    assertChildOf(takeRemoteSpan(Span.Kind.CLIENT), parent);
+    assertChildOf(reporter.takeRemoteSpan(Span.Kind.CLIENT), parent);
   }
 
   /** This ensures that response callbacks run when there is no invocation trace context. */
-  @Test public void callbackContextIsFromInvocationTime_root() throws Exception {
+  @Test public void callbackContextIsFromInvocationTime_root() {
     server.enqueue(new MockResponse());
 
     AssertableCallback<Integer> callback = new AssertableCallback<>();
@@ -112,12 +111,12 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
 
     getAsync(client, "/foo", callback);
 
-    callback.assertThatSuccess().isNotNull(); // ensures listener ran
+    callback.join(); // ensures listener ran
     assertThat(invocationContext.get()).isNull();
-    assertThat(takeRemoteSpan(Span.Kind.CLIENT).parentId()).isNull();
+    assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).parentId()).isNull();
   }
 
-  @Test public void addsStatusCodeWhenNotOk_async() throws Exception {
+  @Test public void addsStatusCodeWhenNotOk_async() {
     AssertableCallback<Integer> callback = new AssertableCallback<>();
     int expectedStatusCode = 400;
     server.enqueue(new MockResponse().setResponseCode(expectedStatusCode));
@@ -127,9 +126,9 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     takeRequest();
 
     // Ensure the getAsync() method is implemented correctly
-    callback.assertThatSuccess().isNotNull();
+    callback.join();
 
-    assertThat(takeRemoteSpanWithError(Span.Kind.CLIENT, "400").tags())
+    assertThat(reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, "400").tags())
       .containsEntry("http.status_code", "400");
   }
 }

@@ -38,7 +38,7 @@ public class ITTracingApplicationEventListener extends ITServletContainer {
   @Test public void tagsResource() throws Exception {
     get("/foo");
 
-    assertThat(takeRemoteSpan(Span.Kind.SERVER).tags())
+    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags())
       .containsEntry("jaxrs.resource.class", "TestResource")
       .containsEntry("jaxrs.resource.method", "foo");
   }
@@ -48,7 +48,7 @@ public class ITTracingApplicationEventListener extends ITServletContainer {
     Response response = get("/managedAsync");
     assertThat(response.isSuccessful()).withFailMessage("not successful: " + response).isTrue();
 
-    takeRemoteSpan(Span.Kind.SERVER);
+    reporter.takeRemoteSpan(Span.Kind.SERVER);
   }
 
   @Override public void init(ServletContextHandler handler) {

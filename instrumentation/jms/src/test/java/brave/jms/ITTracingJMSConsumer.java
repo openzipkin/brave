@@ -20,7 +20,6 @@ import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import javax.jms.JMSConsumer;
 import javax.jms.JMSContext;
-import javax.jms.JMSException;
 import javax.jms.JMSProducer;
 import javax.jms.Message;
 import org.junit.After;
@@ -63,25 +62,26 @@ public class ITTracingJMSConsumer extends ITJms {
     tracedContext.close();
   }
 
-  @Test public void messageListener_runsAfterConsumer() throws Exception {
+  @Test public void messageListener_runsAfterConsumer() {
     consumer.setMessageListener(m -> {
     });
     producer.send(jms.queue, "foo");
 
-    Span consumerSpan = takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan = takeLocalSpan();
+    Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan =
+      reporter.takeLocalSpan();
     assertChildOf(listenerSpan, consumerSpan);
     assertSequential(consumerSpan, listenerSpan);
   }
 
-  @Test public void messageListener_startsNewTrace() throws Exception {
+  @Test public void messageListener_startsNewTrace() {
     messageListener_startsNewTrace(() -> producer.send(jms.queue, "foo"));
   }
 
-  @Test public void messageListener_startsNewTrace_bytes() throws Exception {
+  @Test public void messageListener_startsNewTrace_bytes() {
     messageListener_startsNewTrace(() -> producer.send(jms.queue, new byte[] {1, 2, 3, 4}));
   }
 
-  void messageListener_startsNewTrace(Runnable send) throws Exception {
+  void messageListener_startsNewTrace(Runnable send) {
     consumer.setMessageListener(m -> {
       tracing.tracer().currentSpanCustomizer().name("message-listener");
 
@@ -92,7 +92,8 @@ public class ITTracingJMSConsumer extends ITJms {
 
     send.run();
 
-    Span consumerSpan = takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan = takeLocalSpan();
+    Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan =
+      reporter.takeLocalSpan();
 
     assertThat(consumerSpan.name()).isEqualTo("receive");
     assertThat(consumerSpan.tags())
@@ -106,15 +107,15 @@ public class ITTracingJMSConsumer extends ITJms {
       .containsEntry("b3", "false"); // b3 header not leaked to listener
   }
 
-  @Test public void messageListener_resumesTrace() throws Exception {
+  @Test public void messageListener_resumesTrace() {
     messageListener_resumesTrace(() -> producer.send(jms.queue, "foo"));
   }
 
-  @Test public void messageListener_resumesTrace_bytes() throws Exception {
+  @Test public void messageListener_resumesTrace_bytes() {
     messageListener_resumesTrace(() -> producer.send(jms.queue, new byte[] {1, 2, 3, 4}));
   }
 
-  void messageListener_resumesTrace(Runnable send) throws Exception {
+  void messageListener_resumesTrace(Runnable send) {
     consumer.setMessageListener(m -> {
       // clearing headers ensures later work doesn't try to use the old parent
       String b3 = GETTER.get(m, "b3");
@@ -125,7 +126,8 @@ public class ITTracingJMSConsumer extends ITJms {
     producer.setProperty("b3", parent.traceIdString() + "-" + parent.spanIdString() + "-1");
     send.run();
 
-    Span consumerSpan = takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan = takeLocalSpan();
+    Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan =
+      reporter.takeLocalSpan();
     assertChildOf(consumerSpan, parent);
     assertChildOf(listenerSpan, consumerSpan);
 
@@ -134,45 +136,45 @@ public class ITTracingJMSConsumer extends ITJms {
       .containsEntry("b3", "false"); // b3 header not leaked to listener
   }
 
-  @Test public void receive_startsNewTrace() throws Exception {
+  @Test public void receive_startsNewTrace() {
     receive_startsNewTrace(() -> producer.send(jms.queue, "foo"));
   }
 
-  @Test public void receive_startsNewTrace_bytes() throws Exception {
+  @Test public void receive_startsNewTrace_bytes() {
     receive_startsNewTrace(() -> producer.send(jms.queue, new byte[] {1, 2, 3, 4}));
   }
 
-  void receive_startsNewTrace(Runnable send) throws InterruptedException {
+  void receive_startsNewTrace(Runnable send) {
     send.run();
     consumer.receive();
-    Span consumerSpan = takeRemoteSpan(Span.Kind.CONSUMER);
+    Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
     assertThat(consumerSpan.name()).isEqualTo("receive");
     assertThat(consumerSpan.tags()).containsEntry("jms.queue", jms.queueName);
   }
 
-  @Test public void receive_resumesTrace() throws Exception {
+  @Test public void receive_resumesTrace() {
     receiveResumesTrace(() -> producer.send(jms.queue, "foo"));
   }
 
-  @Test public void receive_resumesTrace_bytes() throws Exception {
+  @Test public void receive_resumesTrace_bytes() {
     receiveResumesTrace(() -> producer.send(jms.queue, new byte[] {1, 2, 3, 4}));
   }
 
-  void receiveResumesTrace(Runnable send) throws InterruptedException, JMSException {
+  void receiveResumesTrace(Runnable send) {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     producer.setProperty("b3", parent.traceIdString() + "-" + parent.spanIdString() + "-1");
     send.run();
 
     Message received = consumer.receive();
 
-    Span consumerSpan = takeRemoteSpan(Span.Kind.CONSUMER);
+    Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
     assertChildOf(consumerSpan, parent);
 
-    assertThat(received.getStringProperty("b3"))
+    assertThat(GETTER.get(received, "b3"))
       .isEqualTo(parent.traceIdString() + "-" + consumerSpan.id() + "-1");
   }
 
-  @Test public void receive_customSampler() throws Exception {
+  @Test public void receive_customSampler() {
     setupTracedConsumer(JmsTracing.create(MessagingTracing.newBuilder(tracing)
       .consumerSampler(MessagingRuleSampler.newBuilder()
         .putRule(operationEquals("receive"), Sampler.NEVER_SAMPLE)
@@ -181,7 +183,7 @@ public class ITTracingJMSConsumer extends ITJms {
     producer.send(jms.queue, "foo");
 
     // Check that the message headers are not sampled
-    assertThat(consumer.receive().getStringProperty("b3"))
+    assertThat(GETTER.get(consumer.receive(), "b3"))
       .endsWith("-0");
 
     // @After will also check that the consumer was not sampled

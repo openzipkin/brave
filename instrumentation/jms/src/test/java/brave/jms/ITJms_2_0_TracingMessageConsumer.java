@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,6 +18,7 @@ import brave.messaging.MessagingTracing;
 import brave.sampler.Sampler;
 import javax.jms.JMSConsumer;
 import javax.jms.JMSContext;
+import javax.jms.JMSException;
 import org.junit.Test;
 import org.junit.rules.TestName;
 
@@ -31,11 +32,11 @@ public class ITJms_2_0_TracingMessageConsumer extends ITJms_1_1_TracingMessageCo
   }
 
   // Inability to encode "b3" on a received BytesMessage only applies to ActiveMQ 5.x
-  @Test public void receive_resumesTrace_bytes() throws Exception {
+  @Test public void receive_resumesTrace_bytes() throws JMSException {
     receive_resumesTrace(() -> messageProducer.send(bytesMessage), messageConsumer);
   }
 
-  @Test public void receive_customSampler() throws Exception {
+  @Test public void receive_customSampler() throws JMSException {
     queueReceiver.close();
 
     MessagingRuleSampler consumerSampler = MessagingRuleSampler.newBuilder()

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,11 +18,9 @@ import brave.ErrorParser;
 import brave.Tracing;
 import brave.TracingCustomizer;
 import brave.handler.FinishedSpanHandler;
-import brave.propagation.CurrentTraceContext;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
-import java.util.List;
 import org.junit.After;
 import org.junit.Test;
 import zipkin2.Endpoint;
