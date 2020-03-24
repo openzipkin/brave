@@ -111,8 +111,8 @@ public abstract class ITRemote {
 
   public static final String EXTRA_KEY = "user-id";
 
-  /** Returns a parent context for use in propagation tests. */
-  protected TraceContext newParentContext(SamplingFlags flags) {
+  /** Returns a trace context for use in propagation tests. */
+  protected TraceContext newTraceContext(SamplingFlags flags) {
     TraceContext result = TraceContext.newBuilder()
       .traceIdHigh(1L).traceId(2L).parentId(3L).spanId(1L)
       .sampled(flags.sampled())
@@ -239,15 +239,39 @@ public abstract class ITRemote {
     }
   };
 
+  /**
+   * Blocks until a local span was reported. We define a local span as one with a timestamp and
+   * duration, kind, or remote endpoint. This will fail if there's an "error" tag. If you expect a
+   * failure, use {@link #takeLocalSpanWithError(String)} instead.
+   */
   protected Span takeLocalSpan() throws InterruptedException {
     Span local = takeSpan();
-    assertThat(local.kind())
-      .withFailMessage("Expected %s to have no kind", local)
-      .isNull();
+    assertLocalSpan(local);
     return local;
   }
 
-  /** Call this to block until a remote span was reported. The span must not have an "error" tag. */
+  /** Like {@link #takeLocalSpan()} except an error tag must match the given value. */
+  protected Span takeLocalSpanWithError(String errorTag)
+    throws InterruptedException {
+    Span result = takeSpanWithError(errorTag);
+    assertLocalSpan(result);
+    return result;
+  }
+
+  private void assertLocalSpan(Span local) {
+    assertThat(local.kind())
+      .withFailMessage("Expected %s to have no kind", local)
+      .isNull();
+    assertThat(local.remoteEndpoint())
+      .withFailMessage("Expected %s to have no remote endpoint", local)
+      .isNull();
+  }
+
+  /**
+   * Blocks until a remote span was reported. We define a remote span as one with a timestamp,
+   * duration and kind. This will fail if there's an "error" tag. If you expect a failure, use
+   * {@link #takeRemoteSpanWithError(Span.Kind, String)} instead.
+   */
   protected Span takeRemoteSpan(Span.Kind kind) throws InterruptedException {
     Span result = takeSpan();
     assertRemoteSpan(result, kind);

@@ -61,7 +61,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
   }
 
   @Test public void reusesPropagatedSpanId() throws Exception {
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
 
     RpcContext.getContext().getAttachments().put("b3", B3SingleFormat.writeB3SingleFormat(parent));
     client.get().sayHello("jorge");
@@ -74,7 +74,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     rpcTracing = RpcTracing.create(tracing);
     init();
 
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
 
     RpcContext.getContext().getAttachments().put("b3", B3SingleFormat.writeB3SingleFormat(parent));
     client.get().sayHello("jorge");

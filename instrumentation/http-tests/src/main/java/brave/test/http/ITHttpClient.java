@@ -90,7 +90,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
   @Test public void propagatesChildOfCurrentSpan() throws Exception {
     server.enqueue(new MockResponse());
 
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       get(client, "/foo");
     }
@@ -105,7 +105,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
   @Test public void propagatesUnsampledContext() throws Exception {
     server.enqueue(new MockResponse());
 
-    TraceContext parent = newParentContext(SamplingFlags.NOT_SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.NOT_SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       get(client, "/foo");
     }
@@ -118,7 +118,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
   @Test public void propagatesExtra() throws Exception {
     server.enqueue(new MockResponse());
 
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       ExtraFieldPropagation.set(parent, EXTRA_KEY, "joey");
       get(client, "/foo");
@@ -133,7 +133,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
   @Test public void propagatesExtra_unsampled() throws Exception {
     server.enqueue(new MockResponse());
 
-    TraceContext parent = newParentContext(SamplingFlags.NOT_SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.NOT_SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       ExtraFieldPropagation.set(parent, EXTRA_KEY, "joey");
       get(client, "/foo");
@@ -165,7 +165,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
   @Test public void clientTimestampAndDurationEnclosedByParent() throws Exception {
     server.enqueue(new MockResponse());
 
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     Clock clock = tracing.clock(parent);
 
     long start = clock.currentTimeMicroseconds();
@@ -317,7 +317,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
       .addHeader("Location: " + url("/bar")));
     server.enqueue(new MockResponse().setResponseCode(404)); // hehe to a bad location!
 
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       get(client, "/foo");
     } catch (RuntimeException e) {

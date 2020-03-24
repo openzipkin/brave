@@ -101,7 +101,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
   }
 
   @Test public void propagatesChildOfCurrentSpan() throws Exception {
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
     }
@@ -114,7 +114,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
 
   /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
   @Test public void propagatesUnsampledContext() throws Exception {
-    TraceContext parent = newParentContext(SamplingFlags.NOT_SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.NOT_SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
     }
@@ -125,7 +125,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
   }
 
   @Test public void propagatesExtra() throws Exception {
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       ExtraFieldPropagation.set(parent, EXTRA_KEY, "joey");
       GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
@@ -138,7 +138,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
   }
 
   @Test public void propagatesExtra_unsampled() throws Exception {
-    TraceContext parent = newParentContext(SamplingFlags.NOT_SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.NOT_SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       ExtraFieldPropagation.set(parent, EXTRA_KEY, "joey");
       GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
@@ -150,7 +150,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
 
   /** This prevents confusion as a blocking client should end before, the start of the next span. */
   @Test public void clientTimestampAndDurationEnclosedByParent() throws Exception {
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     Clock clock = tracing.clock(parent);
 
     long start = clock.currentTimeMicroseconds();
@@ -172,7 +172,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     server.enqueueDelay(TimeUnit.SECONDS.toMillis(1));
     GreeterGrpc.GreeterFutureStub futureStub = GreeterGrpc.newFutureStub(client);
 
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       futureStub.sayHello(HELLO_REQUEST);
       futureStub.sayHello(HELLO_REQUEST);
@@ -361,7 +361,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     AtomicReference<TraceContext> invocationContext = new AtomicReference<>();
     callback.setListener(() -> invocationContext.set(currentTraceContext.get()));
 
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       GreeterGrpc.newStub(client).sayHello(HELLO_REQUEST, new StreamObserverAdapter(callback));
     }

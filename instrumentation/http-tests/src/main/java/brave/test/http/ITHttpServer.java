@@ -66,7 +66,7 @@ public abstract class ITHttpServer extends ITRemote {
   @Test public void reusesPropagatedSpanId() throws Exception {
     String path = "/foo";
 
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     get(new Request.Builder().url(url(path))
       .header("b3", B3SingleFormat.writeB3SingleFormat(parent))
       .build());
@@ -81,7 +81,7 @@ public abstract class ITHttpServer extends ITRemote {
 
     String path = "/foo";
 
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     get(new Request.Builder().url(url(path))
       .header("b3", B3SingleFormat.writeB3SingleFormat(parent))
       .build());

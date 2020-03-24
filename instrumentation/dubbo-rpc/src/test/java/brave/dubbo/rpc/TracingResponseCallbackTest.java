@@ -44,7 +44,7 @@ public class TracingResponseCallbackTest extends ITTracingFilter {
       TracingResponseCallback.create(null, span, currentTraceContext);
     tracingResponseCallback.caught(new Exception("Test exception"));
 
-    takeSpanWithError("Test exception");
+    takeLocalSpanWithError("Test exception");
   }
 
   @Test public void done_should_forward_then_finish_span() throws Exception {
@@ -96,6 +96,6 @@ public class TracingResponseCallbackTest extends ITTracingFilter {
     TracingResponseCallback.create(delegate, span, currentTraceContext)
       .caught(new Exception("Test exception"));
 
-    takeSpanWithError("Test exception");
+    takeLocalSpanWithError("Test exception");
   }
 }

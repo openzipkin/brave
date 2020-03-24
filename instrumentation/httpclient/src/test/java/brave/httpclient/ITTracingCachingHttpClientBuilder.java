@@ -40,7 +40,7 @@ public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilde
       .addHeader("Cache-Control", "max-age=600, stale-while-revalidate=1200")
       .setBody("Hello"));
 
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       get(client, "/cached");
       get(client, "/cached");

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,6 +15,9 @@ package brave.jms;
 
 import brave.messaging.MessagingRuleSampler;
 import brave.messaging.MessagingTracing;
+import brave.propagation.B3SingleFormat;
+import brave.propagation.SamplingFlags;
+import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.util.Collections;
 import java.util.Map;
@@ -44,8 +47,8 @@ import static brave.jms.MessagePropagation.SETTER;
 import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** When adding tests here, also add to {@linkplain brave.jms.ITTracingJMSConsumer} */
-public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
+/** When adding tests here, also add to {@link brave.jms.ITTracingJMSConsumer} */
+public class ITJms_1_1_TracingMessageConsumer extends ITJms {
   @Rule public TestName testName = new TestName();
   @Rule public JmsTestRule jms = newJmsTestRule(testName);
 
@@ -97,20 +100,43 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
     bytesMessage.reset();
   }
 
-  String resetB3PropertyToIncludeParentId(JmsTestRule jms) throws Exception {
+  TraceContext resetB3PropertyWithNewSampledContext(JmsTestRule jms) throws Exception {
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     message = jms.newMessage("foo");
     bytesMessage = jms.newBytesMessage("foo");
-    String parentId = "463ac35c9f6413ad";
-    SETTER.put(message, "b3", parentId + "-" + parentId + "-1");
-    SETTER.put(bytesMessage, "b3", parentId + "-" + parentId + "-1");
+    String b3 = B3SingleFormat.writeB3SingleFormatWithoutParentId(parent);
+    SETTER.put(message, "b3", b3);
+    SETTER.put(bytesMessage, "b3", b3);
     lockMessages();
-    return parentId;
+    return parent;
   }
 
   @After public void tearDownTraced() throws JMSException {
     tracedSession.close();
     tracedQueueSession.close();
     tracedTopicSession.close();
+  }
+
+  @Test public void messageListener_runsAfterConsumer() throws Exception {
+    messageListener_runsAfterConsumer(() -> messageProducer.send(message), messageConsumer);
+  }
+
+  @Test public void messageListener_runsAfterConsumer_queue() throws Exception {
+    messageListener_runsAfterConsumer(() -> queueSender.send(message), queueReceiver);
+  }
+
+  @Test public void messageListener_runsAfterConsumer_topic() throws Exception {
+    messageListener_runsAfterConsumer(() -> topicPublisher.send(message), topicSubscriber);
+  }
+
+  void messageListener_runsAfterConsumer(JMSRunnable send, MessageConsumer messageConsumer) throws Exception {
+    messageConsumer.setMessageListener(m -> {
+    });
+    send.run();
+
+    Span consumerSpan = takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan = takeLocalSpan();
+    assertChildOf(listenerSpan, consumerSpan);
+    assertSequential(consumerSpan, listenerSpan);
   }
 
   @Test public void messageListener_startsNewTrace() throws Exception {
@@ -158,16 +184,14 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
     );
     send.run();
 
-    Span consumerSpan = takeSpan(), listenerSpan = takeSpan();
+    Span consumerSpan = takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan = takeLocalSpan();
 
     assertThat(consumerSpan.name()).isEqualTo("receive");
     assertThat(consumerSpan.parentId()).isNull(); // root span
-    assertThat(consumerSpan.kind()).isEqualTo(Span.Kind.CONSUMER);
     assertThat(consumerSpan.tags()).isEqualTo(consumerTags);
 
+    assertChildOf(listenerSpan, consumerSpan);
     assertThat(listenerSpan.name()).isEqualTo("message-listener"); // overridden name
-    assertThat(listenerSpan.parentId()).isEqualTo(consumerSpan.id()); // root span
-    assertThat(listenerSpan.kind()).isNull(); // processor span, not a consumer
     assertThat(listenerSpan.tags())
       .hasSize(1) // no redundant copy of consumer tags
       .containsEntry("b3", "false"); // b3 header not leaked to listener
@@ -198,12 +222,12 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
       }
     );
 
-    String parentId = resetB3PropertyToIncludeParentId(jms);
+    TraceContext parent = resetB3PropertyWithNewSampledContext(jms);
     send.run();
 
-    Span consumerSpan = takeSpan(), listenerSpan = takeSpan();
-    assertThat(consumerSpan.parentId()).isEqualTo(parentId);
-    assertThat(listenerSpan.parentId()).isEqualTo(consumerSpan.id());
+    Span consumerSpan = takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan = takeLocalSpan();
+    assertChildOf(consumerSpan, parent);
+    assertChildOf(listenerSpan, consumerSpan);
     assertThat(listenerSpan.tags())
       .hasSize(1) // no redundant copy of consumer tags
       .containsEntry("b3", "false"); // b3 header not leaked to listener
@@ -239,10 +263,9 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
 
     messageConsumer.receive();
 
-    Span consumerSpan = takeSpan();
+    Span consumerSpan = takeRemoteSpan(Span.Kind.CONSUMER);
     assertThat(consumerSpan.name()).isEqualTo("receive");
     assertThat(consumerSpan.parentId()).isNull(); // root span
-    assertThat(consumerSpan.kind()).isEqualTo(Span.Kind.CONSUMER);
     assertThat(consumerSpan.tags()).isEqualTo(consumerTags);
   }
 
@@ -264,15 +287,15 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
   }
 
   void receive_resumesTrace(JMSRunnable send, MessageConsumer messageConsumer) throws Exception {
-    String parentId = resetB3PropertyToIncludeParentId(jms);
+    TraceContext parent = resetB3PropertyWithNewSampledContext(jms);
     send.run();
 
     Message received = messageConsumer.receive();
-    Span consumerSpan = takeSpan();
-    assertThat(consumerSpan.parentId()).isEqualTo(parentId);
+    Span consumerSpan = takeRemoteSpan(Span.Kind.CONSUMER);
+    assertChildOf(consumerSpan, parent);
 
     assertThat(received.getStringProperty("b3"))
-      .isEqualTo(parentId + "-" + consumerSpan.id() + "-1");
+      .isEqualTo(parent.traceIdString() + "-" + consumerSpan.id() + "-1");
   }
 
   @Test public void receive_customSampler() throws Exception {

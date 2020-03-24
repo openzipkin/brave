@@ -78,7 +78,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
   }
 
   @Test public void propagatesChildOfCurrentSpan() throws Exception {
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       client.get().sayHello("jorge");
     }
@@ -91,7 +91,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
 
   /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
   @Test public void propagatesUnsampledContext() throws Exception {
-    TraceContext parent = newParentContext(SamplingFlags.NOT_SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.NOT_SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       client.get().sayHello("jorge");
     }
@@ -102,7 +102,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
   }
 
   @Test public void propagatesExtra() throws Exception {
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       ExtraFieldPropagation.set(parent, EXTRA_KEY, "joey");
       client.get().sayHello("jorge");
@@ -115,7 +115,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
   }
 
   @Test public void propagatesExtra_unsampled() throws Exception {
-    TraceContext parent = newParentContext(SamplingFlags.NOT_SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.NOT_SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       ExtraFieldPropagation.set(parent, EXTRA_KEY, "joey");
       client.get().sayHello("jorge");
@@ -127,7 +127,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
 
   /** This prevents confusion as a blocking client should end before, the start of the next span. */
   @Test public void clientTimestampAndDurationEnclosedByParent() throws Exception {
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     Clock clock = tracing.clock(parent);
 
     long start = clock.currentTimeMicroseconds();
@@ -149,7 +149,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     AssertableCallback<String> items1 = new AssertableCallback<>();
     AssertableCallback<String> items2 = new AssertableCallback<>();
 
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       RpcContext.getContext().asyncCall(() -> client.get().sayHello("jorge"))
         .whenComplete(items1);
