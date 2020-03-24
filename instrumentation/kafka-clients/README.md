@@ -22,7 +22,7 @@ tracingProducer.send(new ProducerRecord<K, V>("my-topic", key, value));
 Same goes for the consumer :
 ```java
 Consumer<K, V> consumer = new KafkaConsumer<>(settings);
-TracingConsumer<K, V> tracingConsumer = kafkaTracing.consumer(consumer);
+Consumer<K, V> tracingConsumer = kafkaTracing.consumer(consumer);
 tracingConsumer.poll(10);
 ```
 
