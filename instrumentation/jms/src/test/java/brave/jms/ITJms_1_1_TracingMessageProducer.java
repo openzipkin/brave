@@ -190,26 +190,30 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
   }
 
   @Test public void should_record_error() throws Exception {
+    tracedSession.close();
     should_record_error(() -> messageProducer.send(message));
   }
 
   @Test public void should_record_error_queue() throws Exception {
-    should_record_error(() -> queueSender.send(message));
+    tracedQueueSession.close();
+    should_record_error(() -> queueSender.send(jms.queue, message));
   }
 
   @Test public void should_record_error_topic() throws Exception {
-    should_record_error(() -> topicPublisher.send(message));
+    tracedTopicSession.close();
+    should_record_error(() -> topicPublisher.send(jms.topic, message));
   }
 
   void should_record_error(JMSRunnable send) throws Exception {
-    tracedSession.close();
-
+    String message;
     try {
       send.run();
-    } catch (Exception e) {
+      throw new AssertionError("expected to throw");
+    } catch (JMSException e) {
+      message = e.getMessage();
     }
 
-    takeRemoteSpanWithError(Span.Kind.PRODUCER, ".*[a-z]+.*"); // unknown error format
+    takeRemoteSpanWithError(Span.Kind.PRODUCER, message);
   }
 
   @Test public void customSampler() throws Exception {
