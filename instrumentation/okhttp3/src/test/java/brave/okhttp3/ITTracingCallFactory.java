@@ -85,7 +85,7 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
         .build()))
       .build());
 
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       get(client, "/foo");
     }

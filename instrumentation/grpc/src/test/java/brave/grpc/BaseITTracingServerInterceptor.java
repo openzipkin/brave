@@ -105,7 +105,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
   }
 
   @Test public void reusesPropagatedSpanId() throws Exception {
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     Channel channel = clientWithB3SingleHeader(parent);
     GreeterGrpc.newBlockingStub(channel).sayHello(HELLO_REQUEST);
 
@@ -118,7 +118,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
     grpcTracing = GrpcTracing.create(rpcTracing);
     init();
 
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     Channel channel = clientWithB3SingleHeader(parent);
     GreeterGrpc.newBlockingStub(channel).sayHello(HELLO_REQUEST);
 

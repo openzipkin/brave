@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,9 +13,10 @@
  */
 package brave.jms;
 
-import brave.ScopedSpan;
 import brave.messaging.MessagingRuleSampler;
 import brave.messaging.MessagingTracing;
+import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.util.Collections;
@@ -45,8 +46,8 @@ import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** When adding tests here, also add to {@linkplain brave.jms.ITTracingJMSProducer} */
-public class ITJms_1_1_TracingMessageProducer extends JmsTest {
+/** When adding tests here, also add to {@link brave.jms.ITTracingJMSProducer} */
+public class ITJms_1_1_TracingMessageProducer extends ITJms {
   @Rule public TestName testName = new TestName();
   @Rule public JmsTestRule jms = newJmsTestRule(testName);
 
@@ -125,7 +126,7 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
   }
 
   void assertHasB3SingleProperty(Message received) throws Exception {
-    Span producerSpan = takeSpan();
+    Span producerSpan = takeRemoteSpan(Span.Kind.PRODUCER);
 
     assertThat(propertiesToMap(received))
       .containsAllEntriesOf(existingProperties)
@@ -133,16 +134,15 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
   }
 
   @Test public void should_not_serialize_parent_span_id() throws Exception {
-    ScopedSpan parent = tracing.tracer().startScopedSpan("main");
-    try {
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
       messageProducer.send(jms.destination, message);
-    } finally {
-      parent.finish();
     }
 
     Message received = messageConsumer.receive();
-    Span producerSpan = takeSpan(), parentSpan = takeSpan();
-    assertThat(producerSpan.parentId()).isEqualTo(parentSpan.id());
+
+    Span producerSpan = takeRemoteSpan(Span.Kind.PRODUCER);
+    assertChildOf(producerSpan, parent);
 
     assertThat(propertiesToMap(received))
       .containsAllEntriesOf(existingProperties)
@@ -151,19 +151,17 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
 
   @Test public void should_prefer_current_to_stale_b3_header() throws Exception {
     jms.setReadOnlyProperties(message, false);
-    SETTER.put(message, "b3",
-      writeB3SingleFormat(TraceContext.newBuilder().traceId(1).spanId(1).build()));
+    SETTER.put(message, "b3", writeB3SingleFormat(newTraceContext(SamplingFlags.NOT_SAMPLED)));
 
-    ScopedSpan parent = tracing.tracer().startScopedSpan("main");
-    try {
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
       messageProducer.send(jms.destination, message);
-    } finally {
-      parent.finish();
     }
 
     Message received = messageConsumer.receive();
-    Span producerSpan = takeSpan(), parentSpan = takeSpan();
-    assertThat(producerSpan.parentId()).isEqualTo(parentSpan.id());
+
+    Span producerSpan = takeRemoteSpan(Span.Kind.PRODUCER);
+    assertChildOf(producerSpan, parent);
 
     assertThat(propertiesToMap(received))
       .containsAllEntriesOf(existingProperties)
@@ -186,35 +184,36 @@ public class ITJms_1_1_TracingMessageProducer extends JmsTest {
   }
 
   void should_record_properties(Map<String, String> producerTags) throws Exception {
-    Span producerSpan = takeSpan();
+    Span producerSpan = takeRemoteSpan(Span.Kind.PRODUCER);
     assertThat(producerSpan.name()).isEqualTo("send");
-    assertThat(producerSpan.kind()).isEqualTo(Span.Kind.PRODUCER);
-    assertThat(producerSpan.timestampAsLong()).isPositive();
-    assertThat(producerSpan.durationAsLong()).isPositive();
     assertThat(producerSpan.tags()).isEqualTo(producerTags);
   }
 
   @Test public void should_record_error() throws Exception {
-    should_record_error(() -> messageProducer.send(message));
+    tracedSession.close();
+    should_record_error(() -> messageProducer.send(jms.destination, message));
   }
 
   @Test public void should_record_error_queue() throws Exception {
-    should_record_error(() -> queueSender.send(message));
+    tracedQueueSession.close();
+    should_record_error(() -> queueSender.send(jms.queue, message));
   }
 
   @Test public void should_record_error_topic() throws Exception {
-    should_record_error(() -> topicPublisher.send(message));
+    tracedTopicSession.close();
+    should_record_error(() -> topicPublisher.send(jms.topic, message));
   }
 
   void should_record_error(JMSRunnable send) throws Exception {
-    tracedSession.close();
-
+    String message;
     try {
       send.run();
-    } catch (Exception e) {
+      throw new AssertionError("expected to throw");
+    } catch (JMSException e) {
+      message = e.getMessage();
     }
 
-    assertThat(takeSpan().tags()).containsKey("error");
+    takeRemoteSpanWithError(Span.Kind.PRODUCER, message);
   }
 
   @Test public void customSampler() throws Exception {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -30,7 +30,7 @@ import zipkin2.Span;
 import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** When adding tests here, also add to {@linkplain brave.jms.ITTracingJMSProducer} */
+/** When adding tests here, also add to {@link brave.jms.ITTracingJMSProducer} */
 public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessageProducer {
 
   @Override JmsTestRule newJmsTestRule(TestName testName) {
@@ -63,10 +63,8 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
       }
     });
 
-    Span producerSpan = takeSpan();
-    assertThat(producerSpan.timestampAsLong()).isPositive();
-    assertThat(producerSpan.durationAsLong()).isPositive();
-    assertThat(producerSpan.tags()).containsKeys("onCompletion");
+    assertThat(takeRemoteSpan(Span.Kind.PRODUCER).tags())
+      .containsKey("onCompletion");
   }
 
   @Test
@@ -106,10 +104,7 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
     jms.after();
     latch.countDown();
 
-    Span producerSpan = takeSpan();
-    assertThat(producerSpan.timestampAsLong()).isPositive();
-    assertThat(producerSpan.durationAsLong()).isPositive();
-    assertThat(producerSpan.tags()).containsKeys("error", "onException");
+    takeRemoteSpanWithError(Span.Kind.PRODUCER, "onException");
   }
 
   @Test public void customSampler() throws Exception {

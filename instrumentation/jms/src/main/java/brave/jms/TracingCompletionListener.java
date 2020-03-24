@@ -40,23 +40,19 @@ import javax.jms.Message;
   }
 
   @Override public void onCompletion(Message message) {
-    Scope ws = current.maybeScope(span.context());
-    try {
+    try (Scope ws = current.maybeScope(span.context())) {
       delegate.onCompletion(message);
     } finally {
       span.finish();
-      ws.close();
     }
   }
 
   @Override public void onException(Message message, Exception exception) {
-    Scope ws = current.maybeScope(span.context());
-    try {
+    try (Scope ws = current.maybeScope(span.context())) {
       delegate.onException(message, exception);
     } finally {
       span.error(exception);
       span.finish();
-      ws.close();
     }
   }
 }

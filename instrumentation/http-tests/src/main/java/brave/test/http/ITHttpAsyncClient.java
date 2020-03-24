@@ -52,7 +52,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     AssertableCallback<Integer> items1 = new AssertableCallback<>();
     AssertableCallback<Integer> items2 = new AssertableCallback<>();
 
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       getAsync(client, "/items/1", items1);
       getAsync(client, "/items/2", items2);
@@ -90,7 +90,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     AtomicReference<TraceContext> invocationContext = new AtomicReference<>();
     callback.setListener(() -> invocationContext.set(currentTraceContext.get()));
 
-    TraceContext parent = newParentContext(SamplingFlags.SAMPLED);
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       getAsync(client, "/foo", callback);
     }

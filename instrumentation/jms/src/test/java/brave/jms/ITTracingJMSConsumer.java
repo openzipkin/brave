@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,6 +15,8 @@ package brave.jms;
 
 import brave.messaging.MessagingRuleSampler;
 import brave.messaging.MessagingTracing;
+import brave.propagation.SamplingFlags;
+import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import javax.jms.JMSConsumer;
 import javax.jms.JMSContext;
@@ -32,8 +34,8 @@ import static brave.jms.MessagePropagation.GETTER;
 import static brave.messaging.MessagingRequestMatchers.operationEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** When adding tests here, also add to {@linkplain brave.jms.ITJms_2_0_TracingMessageConsumer} */
-public class ITTracingJMSConsumer extends JmsTest {
+/** When adding tests here, also add to {@link brave.jms.ITJms_2_0_TracingMessageConsumer} */
+public class ITTracingJMSConsumer extends ITJms {
   @Rule public TestName testName = new TestName();
   @Rule public ArtemisJmsTestRule jms = new ArtemisJmsTestRule(testName);
 
@@ -61,6 +63,16 @@ public class ITTracingJMSConsumer extends JmsTest {
     tracedContext.close();
   }
 
+  @Test public void messageListener_runsAfterConsumer() throws Exception {
+    consumer.setMessageListener(m -> {
+    });
+    producer.send(jms.queue, "foo");
+
+    Span consumerSpan = takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan = takeLocalSpan();
+    assertChildOf(listenerSpan, consumerSpan);
+    assertSequential(consumerSpan, listenerSpan);
+  }
+
   @Test public void messageListener_startsNewTrace() throws Exception {
     messageListener_startsNewTrace(() -> producer.send(jms.queue, "foo"));
   }
@@ -80,18 +92,15 @@ public class ITTracingJMSConsumer extends JmsTest {
 
     send.run();
 
-    Span consumerSpan = takeSpan(), listenerSpan = takeSpan();
+    Span consumerSpan = takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan = takeLocalSpan();
 
     assertThat(consumerSpan.name()).isEqualTo("receive");
-    assertThat(consumerSpan.parentId()).isNull(); // root span
-    assertThat(consumerSpan.kind()).isEqualTo(Span.Kind.CONSUMER);
     assertThat(consumerSpan.tags())
       .hasSize(1)
       .containsEntry("jms.queue", jms.queueName);
 
+    assertChildOf(listenerSpan, consumerSpan);
     assertThat(listenerSpan.name()).isEqualTo("message-listener"); // overridden name
-    assertThat(listenerSpan.parentId()).isEqualTo(consumerSpan.id()); // root span
-    assertThat(listenerSpan.kind()).isNull(); // processor span, not a consumer
     assertThat(listenerSpan.tags())
       .hasSize(1) // no redundant copy of consumer tags
       .containsEntry("b3", "false"); // b3 header not leaked to listener
@@ -112,13 +121,14 @@ public class ITTracingJMSConsumer extends JmsTest {
       tracing.tracer().currentSpanCustomizer().tag("b3", String.valueOf(b3 != null));
     });
 
-    String parentId = "463ac35c9f6413ad";
-    producer.setProperty("b3", parentId + "-" + parentId + "-1");
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
+    producer.setProperty("b3", parent.traceIdString() + "-" + parent.spanIdString() + "-1");
     send.run();
 
-    Span consumerSpan = takeSpan(), listenerSpan = takeSpan();
-    assertThat(consumerSpan.parentId()).isEqualTo(parentId);
-    assertThat(listenerSpan.parentId()).isEqualTo(consumerSpan.id());
+    Span consumerSpan = takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan = takeLocalSpan();
+    assertChildOf(consumerSpan, parent);
+    assertChildOf(listenerSpan, consumerSpan);
+
     assertThat(listenerSpan.tags())
       .hasSize(1) // no redundant copy of consumer tags
       .containsEntry("b3", "false"); // b3 header not leaked to listener
@@ -135,10 +145,8 @@ public class ITTracingJMSConsumer extends JmsTest {
   void receive_startsNewTrace(Runnable send) throws InterruptedException {
     send.run();
     consumer.receive();
-    Span consumerSpan = takeSpan();
+    Span consumerSpan = takeRemoteSpan(Span.Kind.CONSUMER);
     assertThat(consumerSpan.name()).isEqualTo("receive");
-    assertThat(consumerSpan.parentId()).isNull(); // root span
-    assertThat(consumerSpan.kind()).isEqualTo(Span.Kind.CONSUMER);
     assertThat(consumerSpan.tags()).containsEntry("jms.queue", jms.queueName);
   }
 
@@ -151,16 +159,17 @@ public class ITTracingJMSConsumer extends JmsTest {
   }
 
   void receiveResumesTrace(Runnable send) throws InterruptedException, JMSException {
-    String parentId = "463ac35c9f6413ad";
-    producer.setProperty("b3", parentId + "-" + parentId + "-1");
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
+    producer.setProperty("b3", parent.traceIdString() + "-" + parent.spanIdString() + "-1");
     send.run();
 
     Message received = consumer.receive();
-    Span consumerSpan = takeSpan();
-    assertThat(consumerSpan.parentId()).isEqualTo(parentId);
+
+    Span consumerSpan = takeRemoteSpan(Span.Kind.CONSUMER);
+    assertChildOf(consumerSpan, parent);
 
     assertThat(received.getStringProperty("b3"))
-      .isEqualTo(parentId + "-" + consumerSpan.id() + "-1");
+      .isEqualTo(parent.traceIdString() + "-" + consumerSpan.id() + "-1");
   }
 
   @Test public void receive_customSampler() throws Exception {

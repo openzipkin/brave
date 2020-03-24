@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -23,22 +23,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-public class TracingCompletionListenerTest extends JmsTest {
+public class TracingCompletionListenerTest extends ITJms {
   @Test public void onCompletion_shouldKeepContext_whenNotSampled() {
     Span span = tracing.tracer().nextSpan(TraceContextOrSamplingFlags.NOT_SAMPLED);
 
     CompletionListener delegate = new CompletionListener() {
       @Override public void onCompletion(Message message) {
-        assertThat(tracing.tracer().currentSpan()).isEqualTo(span);
+        assertThat(currentTraceContext.get()).isEqualTo(span.context());
       }
 
       @Override public void onException(Message message, Exception exception) {
       }
     };
     CompletionListener tracingCompletionListener =
-      TracingCompletionListener.create(delegate, span, current);
+      TracingCompletionListener.create(delegate, span, currentTraceContext);
 
     tracingCompletionListener.onCompletion(null);
+
+    // post-conditions validate no span was reported
   }
 
   @Test public void on_completion_should_finish_span() throws Exception {
@@ -46,10 +48,10 @@ public class TracingCompletionListenerTest extends JmsTest {
     Span span = tracing.tracer().nextSpan().start();
 
     CompletionListener tracingCompletionListener =
-      TracingCompletionListener.create(mock(CompletionListener.class), span, current);
+      TracingCompletionListener.create(mock(CompletionListener.class), span, currentTraceContext);
     tracingCompletionListener.onCompletion(message);
 
-    assertThat(takeSpan()).isNotNull();
+    takeLocalSpan();
   }
 
   @Test public void on_exception_should_tag_if_exception() throws Exception {
@@ -57,11 +59,10 @@ public class TracingCompletionListenerTest extends JmsTest {
     Span span = tracing.tracer().nextSpan().start();
 
     CompletionListener tracingCompletionListener =
-      TracingCompletionListener.create(mock(CompletionListener.class), span, current);
+      TracingCompletionListener.create(mock(CompletionListener.class), span, currentTraceContext);
     tracingCompletionListener.onException(message, new Exception("Test exception"));
 
-    assertThat(takeSpan().tags())
-      .containsEntry("error", "Test exception");
+    takeLocalSpanWithError("Test exception");
   }
 
   @Test public void on_completion_should_forward_then_finish_span() throws Exception {
@@ -70,11 +71,12 @@ public class TracingCompletionListenerTest extends JmsTest {
 
     CompletionListener delegate = mock(CompletionListener.class);
     CompletionListener tracingCompletionListener =
-      TracingCompletionListener.create(delegate, span, current);
+      TracingCompletionListener.create(delegate, span, currentTraceContext);
     tracingCompletionListener.onCompletion(message);
 
     verify(delegate).onCompletion(message);
-    assertThat(takeSpan()).isNotNull();
+
+    takeLocalSpan();
   }
 
   @Test public void on_completion_should_have_span_in_scope() throws Exception {
@@ -83,7 +85,7 @@ public class TracingCompletionListenerTest extends JmsTest {
 
     CompletionListener delegate = new CompletionListener() {
       @Override public void onCompletion(Message message) {
-        assertThat(current.get()).isSameAs(span.context());
+        assertThat(currentTraceContext.get()).isSameAs(span.context());
       }
 
       @Override public void onException(Message message, Exception exception) {
@@ -91,9 +93,9 @@ public class TracingCompletionListenerTest extends JmsTest {
       }
     };
 
-    TracingCompletionListener.create(delegate, span, current).onCompletion(message);
+    TracingCompletionListener.create(delegate, span, currentTraceContext).onCompletion(message);
 
-    takeSpan(); // consumer reported span
+    takeLocalSpan();
   }
 
   @Test public void on_exception_should_forward_then_tag() throws Exception {
@@ -102,12 +104,12 @@ public class TracingCompletionListenerTest extends JmsTest {
 
     CompletionListener delegate = mock(CompletionListener.class);
     CompletionListener tracingCompletionListener =
-      TracingCompletionListener.create(delegate, span, current);
+      TracingCompletionListener.create(delegate, span, currentTraceContext);
     Exception e = new Exception("Test exception");
     tracingCompletionListener.onException(message, e);
 
     verify(delegate).onException(message, e);
-    assertThat(takeSpan().tags())
-      .containsEntry("error", "Test exception");
+
+    takeLocalSpanWithError("Test exception");
   }
 }
