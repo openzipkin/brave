@@ -300,20 +300,20 @@ public abstract class ITHttpClient<C> extends ITRemote {
       .containsEntry("response_customizer.is_span", "false");
   }
 
-  @Test public void addsStatusCodeWhenNotOk() {
+  @Test public void addsStatusCodeWhenNotOk() throws IOException {
     server.enqueue(new MockResponse().setResponseCode(400));
 
     try {
       get(client, "/foo");
-    } catch (IOException e) {
-      // some clients think 400 is an error
+    } catch (RuntimeException e) {
+      // some clients raise 400 as an exception such as HttpClientError
     }
 
     assertThat(reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, "400").tags())
       .containsEntry("http.status_code", "400");
   }
 
-  @Test public void redirect() throws Exception {
+  @Test public void redirect() throws IOException {
     server.enqueue(new MockResponse().setResponseCode(302)
       .addHeader("Location: " + url("/bar")));
     server.enqueue(new MockResponse().setResponseCode(404)); // hehe to a bad location!
@@ -321,8 +321,8 @@ public abstract class ITHttpClient<C> extends ITRemote {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       get(client, "/foo");
-    } catch (IOException e) {
-      // some think 404 is an exception
+    } catch (RuntimeException e) {
+      // some clients raise 404 as an exception such as HttpClientError
     }
 
     Span initial = reporter.takeRemoteSpan(Span.Kind.CLIENT);
