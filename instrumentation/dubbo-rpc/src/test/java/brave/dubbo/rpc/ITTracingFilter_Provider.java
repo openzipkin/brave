@@ -60,16 +60,16 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     init();
   }
 
-  @Test public void reusesPropagatedSpanId() throws Exception {
+  @Test public void reusesPropagatedSpanId() {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
 
     RpcContext.getContext().getAttachments().put("b3", B3SingleFormat.writeB3SingleFormat(parent));
     client.get().sayHello("jorge");
 
-    assertSameIds(takeRemoteSpan(Span.Kind.SERVER), parent);
+    assertSameIds(reporter.takeRemoteSpan(Span.Kind.SERVER), parent);
   }
 
-  @Test public void createsChildWhenJoinDisabled() throws Exception {
+  @Test public void createsChildWhenJoinDisabled() {
     tracing = tracingBuilder(NEVER_SAMPLE).supportsJoin(false).build();
     rpcTracing = RpcTracing.create(tracing);
     init();
@@ -79,7 +79,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     RpcContext.getContext().getAttachments().put("b3", B3SingleFormat.writeB3SingleFormat(parent));
     client.get().sayHello("jorge");
 
-    assertChildOf(takeRemoteSpan(Span.Kind.SERVER), parent);
+    assertChildOf(reporter.takeRemoteSpan(Span.Kind.SERVER), parent);
   }
 
   @Test public void samplingDisabled() {
@@ -92,35 +92,35 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     // @After will check that nothing is reported
   }
 
-  @Test public void currentSpanVisibleToImpl() throws Exception {
+  @Test public void currentSpanVisibleToImpl() {
     assertThat(client.get().sayHello("jorge"))
       .isNotEmpty();
 
-    takeRemoteSpan(Span.Kind.SERVER);
+    reporter.takeRemoteSpan(Span.Kind.SERVER);
   }
 
-  @Test public void reportsServerKindToZipkin() throws Exception {
+  @Test public void reportsServerKindToZipkin() {
     client.get().sayHello("jorge");
 
-    assertThat(takeRemoteSpan(Span.Kind.SERVER).kind())
+    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).kind())
       .isEqualTo(Span.Kind.SERVER);
   }
 
-  @Test public void defaultSpanNameIsMethodName() throws Exception {
+  @Test public void defaultSpanNameIsMethodName() {
     client.get().sayHello("jorge");
 
-    assertThat(takeRemoteSpan(Span.Kind.SERVER).name())
+    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).name())
       .isEqualTo("genericservice/sayhello");
   }
 
-  @Test public void addsErrorTagOnException() throws Exception {
+  @Test public void addsErrorTagOnException() {
     assertThatThrownBy(() -> client.get().sayHello("bad"))
       .isInstanceOf(IllegalArgumentException.class);
 
-    takeRemoteSpanWithError(Span.Kind.SERVER, "IllegalArgumentException");
+    reporter.takeRemoteSpanWithError(Span.Kind.SERVER, "IllegalArgumentException");
   }
 
-  @Test public void customSampler() throws Exception {
+  @Test public void customSampler() {
     rpcTracing = RpcTracing.newBuilder(tracing).serverSampler(RpcRuleSampler.newBuilder()
       .putRule(methodEquals("sayGoodbye"), NEVER_SAMPLE)
       .putRule(serviceEquals("brave.dubbo"), ALWAYS_SAMPLE)
@@ -133,7 +133,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     // sampled
     client.get().sayHello("jorge");
 
-    assertThat(takeRemoteSpan(Span.Kind.SERVER).name()).endsWith("sayhello");
+    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).name()).endsWith("sayhello");
     // @After will also check that sayGoodbye was not sampled
   }
 }

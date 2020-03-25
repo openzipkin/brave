@@ -79,7 +79,8 @@ public final class AssertableCallback<V> extends CountDownLatch implements
     countDown();
   }
 
-  public ObjectAssert<V> assertThatSuccess() {
+  /** Returns the value after performing state checks */
+  @Nullable public V join() {
     awaitUninterruptably();
 
     if (onSuccessCount.get() > 0) {
@@ -91,7 +92,7 @@ public final class AssertableCallback<V> extends CountDownLatch implements
         .withFailMessage("Both onSuccess and onError were signaled")
         .hasValue(0);
 
-      return assertThat(result == NULL_SENTINEL ? null : (V) result);
+      return result == NULL_SENTINEL ? null : (V) result;
     } else if (onErrorCount.get() > 0) {
       assertThat(error)
         .withFailMessage("onError signaled with null")
@@ -100,9 +101,15 @@ public final class AssertableCallback<V> extends CountDownLatch implements
       throw new AssertionError("expected onSuccess, but received onError(" + error + ")",
         (Throwable) error);
     }
-    return null;
+    throw new AssertionError("unexpected state");
   }
 
+  // TODO: not actually used as we don't need to verify http status code or otherwise yet
+  public ObjectAssert<V> assertThatSuccess() {
+    return assertThat(join());
+  }
+
+  // TODO: not actually used as we have no async error tests, yet
   public AbstractThrowableAssert<?, ? extends Throwable> assertThatError() {
     awaitUninterruptably();
 

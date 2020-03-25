@@ -17,6 +17,7 @@ import brave.propagation.B3Propagation;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
+import java.io.IOException;
 import javax.jms.Message;
 import javax.jms.MessageListener;
 import org.apache.activemq.command.ActiveMQTextMessage;
@@ -45,71 +46,71 @@ public class TracingMessageListenerTest extends ITJms {
     tracing.close();
   }
 
-  @Test public void starts_new_trace_if_none_exists() throws Exception {
+  @Test public void starts_new_trace_if_none_exists() {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
-    takeRemoteSpan(CONSUMER);
-    takeLocalSpan();
+    reporter.takeRemoteSpan(CONSUMER);
+    reporter.takeLocalSpan();
   }
 
-  @Test public void starts_new_trace_if_none_exists_noConsumer() throws Exception {
+  @Test public void starts_new_trace_if_none_exists_noConsumer() {
     tracingMessageListener =
       new TracingMessageListener(delegate, jmsTracing, false);
 
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
-    takeLocalSpan();
+    reporter.takeLocalSpan();
   }
 
-  @Test public void consumer_and_listener_have_names() throws Exception {
+  @Test public void consumer_and_listener_have_names() {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
-    assertThat(takeRemoteSpan(CONSUMER).name()).isEqualTo("receive");
-    assertThat(takeLocalSpan().name()).isEqualTo("on-message");
+    assertThat(reporter.takeRemoteSpan(CONSUMER).name()).isEqualTo("receive");
+    assertThat(reporter.takeLocalSpan().name()).isEqualTo("on-message");
   }
 
-  @Test public void listener_has_name() throws Exception {
+  @Test public void listener_has_name() {
     tracingMessageListener =
       new TracingMessageListener(delegate, jmsTracing, false);
 
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
-    assertThat(takeLocalSpan().name()).isEqualTo("on-message");
+    assertThat(reporter.takeLocalSpan().name()).isEqualTo("on-message");
   }
 
-  @Test public void consumer_has_remote_service_name() throws Exception {
+  @Test public void consumer_has_remote_service_name() {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
-    assertThat(takeRemoteSpan(CONSUMER).remoteServiceName())
+    assertThat(reporter.takeRemoteSpan(CONSUMER).remoteServiceName())
       .isEqualTo(jmsTracing.remoteServiceName);
-    takeLocalSpan();
+    reporter.takeLocalSpan();
   }
 
-  @Test public void listener_has_no_remote_service_name() throws Exception {
+  @Test public void listener_has_no_remote_service_name() {
     tracingMessageListener =
       new TracingMessageListener(delegate, jmsTracing, false);
 
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
-    takeLocalSpan();
+    reporter.takeLocalSpan();
   }
 
-  @Test public void tags_consumer_span_but_not_listener() throws Exception {
+  @Test public void tags_consumer_span_but_not_listener() {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     message.setDestination(createDestination("foo", QUEUE_TYPE));
     onMessageConsumed(message);
 
-    assertThat(takeRemoteSpan(CONSUMER).tags()).containsEntry("jms.queue", "foo");
-    assertThat(takeLocalSpan().tags()).isEmpty();
+    assertThat(reporter.takeRemoteSpan(CONSUMER).tags()).containsEntry("jms.queue", "foo");
+    assertThat(reporter.takeLocalSpan().tags()).isEmpty();
   }
 
-  @Test public void listener_has_no_tags_when_header_present() throws Exception {
+  @Test public void listener_has_no_tags_when_header_present() {
     tracingMessageListener =
       new TracingMessageListener(delegate, jmsTracing, false);
 
@@ -118,43 +119,45 @@ public class TracingMessageListenerTest extends ITJms {
     message.setDestination(createDestination("foo", QUEUE_TYPE));
     onMessageConsumed(message);
 
-    assertThat(takeLocalSpan().tags()).isEmpty();
+    assertThat(reporter.takeLocalSpan().tags()).isEmpty();
   }
 
-  @Test public void consumer_span_starts_before_listener() throws Exception {
+  @Test public void consumer_span_starts_before_listener() {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
-    Span consumerSpan = takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan = takeLocalSpan();
+    Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan =
+      reporter.takeLocalSpan();
     assertChildOf(listenerSpan, consumerSpan);
     assertSequential(consumerSpan, listenerSpan);
   }
 
-  @Test public void listener_completes() throws Exception {
+  @Test public void listener_completes() {
     tracingMessageListener =
       new TracingMessageListener(delegate, jmsTracing, false);
 
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
-    takeLocalSpan(); // implicitly checked
+    reporter.takeLocalSpan(); // implicitly checked
   }
 
-  @Test public void continues_parent_trace() throws Exception {
+  @Test public void continues_parent_trace() {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     B3Propagation.B3_STRING.injector(SETTER).inject(parent, message);
 
     onMessageConsumed(message);
 
     // clearing headers ensures later work doesn't try to use the old parent
-    assertThat(message.getProperties()).isEmpty();
+    assertNoProperties(message);
 
-    Span consumerSpan = takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan = takeLocalSpan();
+    Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan =
+      reporter.takeLocalSpan();
     assertChildOf(consumerSpan, parent);
     assertChildOf(listenerSpan, consumerSpan);
   }
 
-  @Test public void listener_continues_parent_trace() throws Exception {
+  @Test public void listener_continues_parent_trace() {
     tracingMessageListener =
       new TracingMessageListener(delegate, jmsTracing, false);
 
@@ -164,26 +167,27 @@ public class TracingMessageListenerTest extends ITJms {
     onMessageConsumed(message);
 
     // clearing headers ensures later work doesn't try to use the old parent
-    assertThat(message.getProperties()).isEmpty();
+    assertNoProperties(message);
 
-    assertChildOf(takeLocalSpan(), parent);
+    assertChildOf(reporter.takeLocalSpan(), parent);
   }
 
-  @Test public void continues_parent_trace_single_header() throws Exception {
+  @Test public void continues_parent_trace_single_header() {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     SETTER.put(message, "b3", B3SingleFormat.writeB3SingleFormatWithoutParentId(parent));
 
     onMessageConsumed(message);
 
     // clearing headers ensures later work doesn't try to use the old parent
-    assertThat(message.getProperties()).isEmpty();
+    assertNoProperties(message);
 
-    Span consumerSpan = takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan = takeLocalSpan();
+    Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan =
+      reporter.takeLocalSpan();
     assertChildOf(consumerSpan, parent);
     assertChildOf(listenerSpan, consumerSpan);
   }
 
-  @Test public void listener_continues_parent_trace_single_header() throws Exception {
+  @Test public void listener_continues_parent_trace_single_header() {
     tracingMessageListener =
       new TracingMessageListener(delegate, jmsTracing, false);
 
@@ -193,35 +197,35 @@ public class TracingMessageListenerTest extends ITJms {
     onMessageConsumed(message);
 
     // clearing headers ensures later work doesn't try to use the old parent
-    assertThat(message.getProperties()).isEmpty();
+    assertNoProperties(message);
 
-    assertChildOf(takeLocalSpan(), parent);
+    assertChildOf(reporter.takeLocalSpan(), parent);
   }
 
-  @Test public void reports_span_if_consume_fails() throws Exception {
+  @Test public void reports_span_if_consume_fails() {
     tracingMessageListener =
       new TracingMessageListener(delegate, jmsTracing, false);
 
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumeFailed(message, new RuntimeException("expected exception"));
 
-    takeLocalSpanWithError("expected exception");
+    reporter.takeLocalSpanWithError("expected exception");
   }
 
-  @Test public void listener_reports_span_if_fails() throws Exception {
+  @Test public void listener_reports_span_if_fails() {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumeFailed(message, new RuntimeException("expected exception"));
 
-    takeRemoteSpan(CONSUMER);
-    takeLocalSpanWithError("expected exception");
+    reporter.takeRemoteSpan(CONSUMER);
+    reporter.takeLocalSpanWithError("expected exception");
   }
 
-  @Test public void reports_span_if_consume_fails_with_no_message() throws Exception {
+  @Test public void reports_span_if_consume_fails_with_no_message() {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumeFailed(message, new RuntimeException());
 
-    takeRemoteSpan(CONSUMER);
-    takeLocalSpanWithError("RuntimeException");
+    reporter.takeRemoteSpan(CONSUMER);
+    reporter.takeLocalSpanWithError("RuntimeException");
   }
 
   @Test public void null_listener_if_delegate_is_null() {
@@ -239,5 +243,13 @@ public class TracingMessageListenerTest extends ITJms {
 
     assertThatThrownBy(() -> tracingMessageListener.onMessage(message))
       .isSameAs(throwable);
+  }
+
+  void assertNoProperties(ActiveMQTextMessage message) {
+    try {
+      assertThat(message.getProperties()).isEmpty();
+    } catch (IOException e) {
+      throw new AssertionError(e);
+    }
   }
 }

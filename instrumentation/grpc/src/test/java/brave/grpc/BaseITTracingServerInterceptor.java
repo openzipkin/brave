@@ -42,6 +42,7 @@ import io.grpc.StatusRuntimeException;
 import io.grpc.examples.helloworld.GreeterGrpc;
 import io.grpc.examples.helloworld.HelloReply;
 import io.grpc.examples.helloworld.HelloRequest;
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -65,15 +66,15 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
   Server server;
   ManagedChannel client;
 
-  @Before public void setup() throws Exception {
+  @Before public void setup() throws IOException {
     init();
   }
 
-  void init() throws Exception {
+  void init() throws IOException {
     init(null);
   }
 
-  void init(@Nullable ServerInterceptor userInterceptor) throws Exception {
+  void init(@Nullable ServerInterceptor userInterceptor) throws IOException {
     stop();
 
     // tracing interceptor needs to go last
@@ -93,26 +94,31 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
   /** Extracted as {@link ManagedChannelBuilder#usePlaintext()} is a version-specific signature */
   protected abstract ManagedChannelBuilder<?> usePlainText(ManagedChannelBuilder<?> localhost);
 
-  @After public void stop() throws Exception {
-    if (client != null) {
-      client.shutdown();
-      client.awaitTermination(1, TimeUnit.SECONDS);
-    }
-    if (server != null) {
-      server.shutdown();
-      server.awaitTermination();
+  @After public void stop() {
+    try {
+      if (client != null) {
+        client.shutdown();
+        client.awaitTermination(1, TimeUnit.SECONDS);
+      }
+      if (server != null) {
+        server.shutdown();
+        server.awaitTermination();
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError(e);
     }
   }
 
-  @Test public void reusesPropagatedSpanId() throws Exception {
+  @Test public void reusesPropagatedSpanId() {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     Channel channel = clientWithB3SingleHeader(parent);
     GreeterGrpc.newBlockingStub(channel).sayHello(HELLO_REQUEST);
 
-    assertSameIds(takeRemoteSpan(Span.Kind.SERVER), parent);
+    assertSameIds(reporter.takeRemoteSpan(Span.Kind.SERVER), parent);
   }
 
-  @Test public void createsChildWhenJoinDisabled() throws Exception {
+  @Test public void createsChildWhenJoinDisabled() throws IOException {
     tracing = tracingBuilder(NEVER_SAMPLE).supportsJoin(false).build();
     rpcTracing = RpcTracing.create(tracing);
     grpcTracing = GrpcTracing.create(rpcTracing);
@@ -122,10 +128,10 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
     Channel channel = clientWithB3SingleHeader(parent);
     GreeterGrpc.newBlockingStub(channel).sayHello(HELLO_REQUEST);
 
-    assertChildOf(takeRemoteSpan(Span.Kind.SERVER), parent);
+    assertChildOf(reporter.takeRemoteSpan(Span.Kind.SERVER), parent);
   }
 
-  @Test public void samplingDisabled() throws Exception {
+  @Test public void samplingDisabled() throws IOException {
     tracing = tracingBuilder(NEVER_SAMPLE).build();
     rpcTracing = RpcTracing.create(tracing);
     grpcTracing = GrpcTracing.create(rpcTracing);
@@ -141,7 +147,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
    *
    * <p>Also notice that we are only making the current context available in the request side.
    */
-  @Test public void currentSpanVisibleToUserInterceptors() throws Exception {
+  @Test public void currentSpanVisibleToUserInterceptors() throws IOException {
     AtomicReference<TraceContext> fromUserInterceptor = new AtomicReference<>();
     init(new ServerInterceptor() {
       @Override
@@ -157,45 +163,45 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
     assertThat(fromUserInterceptor.get())
       .isNotNull();
 
-    takeRemoteSpan(Span.Kind.SERVER);
+    reporter.takeRemoteSpan(Span.Kind.SERVER);
   }
 
-  @Test public void reportsServerKindToZipkin() throws Exception {
+  @Test public void reportsServerKindToZipkin() {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    takeRemoteSpan(Span.Kind.SERVER);
+    reporter.takeRemoteSpan(Span.Kind.SERVER);
   }
 
-  @Test public void defaultSpanNameIsMethodName() throws Exception {
+  @Test public void defaultSpanNameIsMethodName() {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(takeRemoteSpan(Span.Kind.SERVER).name())
+    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).name())
       .isEqualTo("helloworld.greeter/sayhello");
   }
 
-  @Test public void addsErrorTagOnException() throws Exception {
+  @Test public void addsErrorTagOnException() {
     try {
       GreeterGrpc.newBlockingStub(client)
         .sayHello(HelloRequest.newBuilder().setName("bad").build());
       failBecauseExceptionWasNotThrown(StatusRuntimeException.class);
     } catch (StatusRuntimeException e) {
-      Span span = takeRemoteSpanWithError(Span.Kind.SERVER, "UNKNOWN");
+      Span span = reporter.takeRemoteSpanWithError(Span.Kind.SERVER, "UNKNOWN");
       assertThat(span.tags().get("grpc.status_code")).isEqualTo("UNKNOWN");
     }
   }
 
-  @Test public void addsErrorTagOnRuntimeException() throws Exception {
+  @Test public void addsErrorTagOnRuntimeException() {
     try {
       GreeterGrpc.newBlockingStub(client)
         .sayHello(HelloRequest.newBuilder().setName("testerror").build());
       failBecauseExceptionWasNotThrown(StatusRuntimeException.class);
     } catch (StatusRuntimeException e) {
-      takeRemoteSpanWithError(Span.Kind.SERVER, "testerror");
+      reporter.takeRemoteSpanWithError(Span.Kind.SERVER, "testerror");
     }
   }
 
   @Test
-  public void serverParserTest() throws Exception {
+  public void serverParserTest() throws IOException {
     grpcTracing = grpcTracing.toBuilder().serverParser(new GrpcServerParser() {
       @Override protected <M> void onMessageSent(M message, SpanCustomizer span) {
         span.tag("grpc.message_sent", message.toString());
@@ -220,7 +226,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    Span span = takeRemoteSpan(Span.Kind.SERVER);
+    Span span = reporter.takeRemoteSpan(Span.Kind.SERVER);
     assertThat(span.name()).isEqualTo("unary");
     assertThat(span.tags().keySet()).containsExactlyInAnyOrder(
       "grpc.message_received", "grpc.message_sent",
@@ -228,7 +234,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
     );
   }
 
-  @Test public void serverParserTestWithStreamingResponse() throws Exception {
+  @Test public void serverParserTestWithStreamingResponse() throws IOException {
     grpcTracing = grpcTracing.toBuilder().serverParser(new GrpcServerParser() {
       int responsesSent = 0;
 
@@ -242,10 +248,10 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
       .sayHelloWithManyReplies(HELLO_REQUEST);
     assertThat(replies).toIterable().hasSize(10);
     // all response messages are tagged to the same span
-    assertThat(takeRemoteSpan(Span.Kind.SERVER).tags()).hasSize(10);
+    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags()).hasSize(10);
   }
 
-  @Test public void customSampler() throws Exception {
+  @Test public void customSampler() throws IOException {
     RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).serverSampler(RpcRuleSampler.newBuilder()
       .putRule(methodEquals("SayHelloWithManyReplies"), NEVER_SAMPLE)
       .putRule(serviceEquals("helloworld.greeter"), ALWAYS_SAMPLE)
@@ -260,7 +266,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
     // sampled
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(takeRemoteSpan(Span.Kind.SERVER).name())
+    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).name())
       .isEqualTo("helloworld.greeter/sayhello");
 
     // @After will also check that sayHelloWithManyReplies was not sampled

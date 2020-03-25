@@ -75,8 +75,13 @@ class TestServer {
     return service.getProtocol().getPort();
   }
 
-  TraceContextOrSamplingFlags takeRequest() throws InterruptedException {
-    return requestQueue.poll(3, TimeUnit.SECONDS);
+  TraceContextOrSamplingFlags takeRequest() {
+    try {
+      return requestQueue.poll(3, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError(e);
+    }
   }
 
   String ip() {

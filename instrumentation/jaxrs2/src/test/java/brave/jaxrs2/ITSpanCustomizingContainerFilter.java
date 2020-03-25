@@ -67,7 +67,7 @@ public class ITSpanCustomizingContainerFilter extends ITServletContainer {
   @Test public void tagsResource() throws Exception {
     get("/foo");
 
-    assertThat(takeRemoteSpan(Span.Kind.SERVER).tags())
+    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags())
       .containsEntry("jaxrs.resource.class", "TestResource")
       .containsEntry("jaxrs.resource.method", "foo");
   }

@@ -44,8 +44,8 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     return configureClient(TracingClientHttpRequestInterceptor.create(httpTracing));
   }
 
-  @Override protected void closeClient(ClientHttpRequestFactory client) throws Exception {
-    ((HttpComponentsClientHttpRequestFactory) client).destroy();
+  @Override protected void closeClient(ClientHttpRequestFactory client) {
+    // unnecessary to cleanup as the IT runs in a sub-process
   }
 
   @Override protected void get(ClientHttpRequestFactory client, String pathIncludingQuery) {
@@ -60,7 +60,7 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     restTemplate.postForObject(url(uri), content, String.class);
   }
 
-  @Test public void currentSpanVisibleToUserInterceptors() throws Exception {
+  @Test public void currentSpanVisibleToUserInterceptors() throws InterruptedException {
     server.enqueue(new MockResponse());
 
     RestTemplate restTemplate = new RestTemplate(client);
@@ -75,7 +75,7 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    takeRemoteSpan(Span.Kind.CLIENT);
+    reporter.takeRemoteSpan(Span.Kind.CLIENT);
   }
 
   @Override @Ignore("blind to the implementation of redirects")

@@ -25,6 +25,7 @@ import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
+import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Response;
@@ -40,7 +41,7 @@ public class ITVertxWebTracing extends ITHttpServer {
   HttpServer server;
   volatile int port;
 
-  @Override protected void init() throws Exception {
+  @Override protected void init() {
     stop();
     vertx = Vertx.vertx(new VertxOptions());
 
@@ -111,33 +112,31 @@ public class ITVertxWebTracing extends ITHttpServer {
       latch.countDown();
     });
 
-    assertThat(latch.await(10, TimeUnit.SECONDS))
-      .withFailMessage("server didn't start")
-      .isTrue();
+    awaitFor10Seconds(latch, "server didn't start");
   }
 
   // makes sure we don't accidentally rewrite the incoming http path
-  @Test public void handlesReroute() throws Exception {
+  @Test public void handlesReroute() throws IOException {
     handlesReroute("/reroute");
   }
 
-  @Test public void handlesRerouteAsync() throws Exception {
+  @Test public void handlesRerouteAsync() throws IOException {
     handlesReroute("/rerouteAsync");
   }
 
-  @Override @Test public void httpRoute_nested() throws Exception {
+  @Override @Test public void httpRoute_nested() {
     // Can't currently fully resolve the route template of a sub-router
     // We get "/nested" not "/nested/items/:itemId
     // https://groups.google.com/forum/?fromgroups#!topic/vertx/FtF2yVr5ZF8
     try {
       super.httpRoute_nested();
       failBecauseExceptionWasNotThrown(AssertionError.class);
-    } catch (AssertionError e) {
+    } catch (AssertionError | IOException e) {
       assertThat(e.getMessage().contains("nested"));
     }
   }
 
-  void handlesReroute(String path) throws Exception {
+  void handlesReroute(String path) throws IOException {
     httpTracing = httpTracing.toBuilder().serverRequestParser((request, context, span) -> {
       HttpRequestParser.DEFAULT.parse(request, context, span);
       span.tag("http.url", request.url()); // just the path is logged by default
@@ -147,7 +146,7 @@ public class ITVertxWebTracing extends ITHttpServer {
     Response response = get(path);
     assertThat(response.isSuccessful()).withFailMessage("not successful: " + response).isTrue();
 
-    assertThat(takeRemoteSpan(Span.Kind.SERVER).tags())
+    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags())
       .containsEntry("http.path", path)
       .containsEntry("http.url", url(path));
   }
@@ -157,21 +156,27 @@ public class ITVertxWebTracing extends ITHttpServer {
     return "http://127.0.0.1:" + port + path;
   }
 
-  @After public void stop() throws Exception {
-    if (server != null) {
-      CountDownLatch latch = new CountDownLatch(1);
-      server.close(ar -> {
-        latch.countDown();
-      });
-      latch.await(10, TimeUnit.SECONDS);
-    }
-    if (vertx != null) {
-      CountDownLatch latch = new CountDownLatch(1);
-      vertx.close(ar -> {
-        latch.countDown();
-      });
-      latch.await(10, TimeUnit.SECONDS);
-      vertx = null;
+  @After public void stop() {
+    if (vertx == null) return;
+
+    CountDownLatch latch = new CountDownLatch(2);
+    server.close(ar -> {
+      latch.countDown();
+    });
+    vertx.close(ar -> {
+      latch.countDown();
+    });
+    awaitFor10Seconds(latch, "server didn't close");
+  }
+
+  void awaitFor10Seconds(CountDownLatch latch, String message) {
+    try {
+      assertThat(latch.await(10, TimeUnit.SECONDS))
+        .withFailMessage(message)
+        .isTrue();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError(e);
     }
   }
 }

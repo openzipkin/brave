@@ -15,11 +15,14 @@ package brave.spring.web;
 
 import brave.test.http.ITHttpAsyncClient;
 import brave.test.util.AssertableCallback;
+import java.io.Closeable;
+import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
+import org.apache.http.client.HttpClient;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.springframework.http.RequestEntity;
@@ -52,23 +55,26 @@ public class ITTracingAsyncClientHttpRequestInterceptor
     return configureClient(TracingAsyncClientHttpRequestInterceptor.create(httpTracing));
   }
 
-  @Override protected void closeClient(AsyncClientHttpRequestFactory client) throws Exception {
-    ((HttpComponentsClientHttpRequestFactory) client).destroy();
+  @Override protected void closeClient(AsyncClientHttpRequestFactory client) throws IOException {
+    closeHcClient((HttpComponentsClientHttpRequestFactory) client);
   }
 
-  @Override protected void get(AsyncClientHttpRequestFactory client, String pathIncludingQuery)
-    throws Exception {
+  static void closeHcClient(HttpComponentsClientHttpRequestFactory client) throws IOException {
+    HttpClient c = client.getHttpClient();
+    if (c instanceof Closeable) ((Closeable) c).close();
+  }
+
+  @Override protected void get(AsyncClientHttpRequestFactory client, String pathIncludingQuery) {
     AsyncRestTemplate restTemplate = new AsyncRestTemplate(client);
     restTemplate.setInterceptors(Collections.singletonList(interceptor));
-    restTemplate.getForEntity(url(pathIncludingQuery), String.class).get();
+    restTemplate.getForEntity(url(pathIncludingQuery), String.class).completable().join();
   }
 
-  @Override protected void post(AsyncClientHttpRequestFactory client, String uri, String content)
-    throws Exception {
+  @Override protected void post(AsyncClientHttpRequestFactory client, String uri, String content) {
     AsyncRestTemplate restTemplate = new AsyncRestTemplate(client);
     restTemplate.setInterceptors(Collections.singletonList(interceptor));
     restTemplate.postForEntity(url(uri), RequestEntity.post(URI.create(url(uri))).body(content),
-      String.class).get();
+      String.class).completable().join();
   }
 
   @Override protected void getAsync(AsyncClientHttpRequestFactory client, String path,
@@ -106,7 +112,7 @@ public class ITTracingAsyncClientHttpRequestInterceptor
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    takeRemoteSpan(Span.Kind.CLIENT);
+    reporter.takeRemoteSpan(Span.Kind.CLIENT);
   }
 
   @Override @Ignore("blind to the implementation of redirects")

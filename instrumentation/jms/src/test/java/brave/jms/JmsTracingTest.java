@@ -21,6 +21,7 @@ import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
+import javax.jms.JMSException;
 import javax.jms.MessageListener;
 import javax.jms.QueueConnection;
 import javax.jms.TopicConnection;
@@ -164,18 +165,18 @@ public class JmsTracingTest extends ITJms {
       .isSameAs(wrapped);
   }
 
-  @Test public void messageListener_traces() throws Exception {
+  @Test public void messageListener_traces() {
     jmsTracing.messageListener(mock(MessageListener.class), false)
       .onMessage(message);
 
-    assertThat(takeLocalSpan().name()).isEqualTo("on-message");
+    assertThat(reporter.takeLocalSpan().name()).isEqualTo("on-message");
   }
 
-  @Test public void messageListener_traces_addsConsumerSpan() throws Exception {
+  @Test public void messageListener_traces_addsConsumerSpan() {
     jmsTracing.messageListener(mock(MessageListener.class), true)
       .onMessage(message);
 
-    assertThat(asList(takeRemoteSpan(Kind.CONSUMER), takeLocalSpan()))
+    assertThat(asList(reporter.takeRemoteSpan(Kind.CONSUMER), reporter.takeLocalSpan()))
       .extracting(zipkin2.Span::name)
       .containsExactly("receive", "on-message");
   }
@@ -224,11 +225,11 @@ public class JmsTracingTest extends ITJms {
     assertThat(span).isNotNull();
   }
 
-  @Test public void nextSpan_should_tag_queue_when_no_incoming_context() throws Exception {
+  @Test public void nextSpan_should_tag_queue_when_no_incoming_context() {
     message.setDestination(createDestination("foo", QUEUE_TYPE));
     jmsTracing.nextSpan(message).start().finish();
 
-    assertThat(takeLocalSpan().tags())
+    assertThat(reporter.takeLocalSpan().tags())
       .containsOnly(entry("jms.queue", "foo"));
   }
 
@@ -236,15 +237,15 @@ public class JmsTracingTest extends ITJms {
    * We assume the queue is already tagged by the producer span. However, we can change this policy
    * now, or later when dynamic policy is added to JmsTracing
    */
-  @Test public void nextSpan_shouldnt_tag_queue_when_incoming_context() throws Exception {
+  @Test public void nextSpan_shouldnt_tag_queue_when_incoming_context() {
     SETTER.put(message, "b3", "0000000000000001-0000000000000002-1");
     message.setDestination(createDestination("foo", QUEUE_TYPE));
     jmsTracing.nextSpan(message).start().finish();
 
-    assertThat(takeLocalSpan().tags()).isEmpty();
+    assertThat(reporter.takeLocalSpan().tags()).isEmpty();
   }
 
-  @Test public void nextSpan_should_clear_propagation_headers() throws Exception {
+  @Test public void nextSpan_should_clear_propagation_headers() {
     Propagation.B3_STRING.injector(SETTER).inject(parent, message);
     Propagation.B3_SINGLE_STRING.injector(SETTER).inject(parent, message);
 
@@ -252,7 +253,7 @@ public class JmsTracingTest extends ITJms {
     assertThat(ITJms.propertiesToMap(message)).isEmpty();
   }
 
-  @Test public void nextSpan_should_not_clear_other_headers() throws Exception {
+  @Test public void nextSpan_should_not_clear_other_headers() throws JMSException {
     message.setIntProperty("foo", 1);
 
     jmsTracing.nextSpan(message);

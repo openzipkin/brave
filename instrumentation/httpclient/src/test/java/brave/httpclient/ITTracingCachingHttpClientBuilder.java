@@ -16,6 +16,7 @@ package brave.httpclient;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
+import java.io.IOException;
 import java.util.Arrays;
 import okhttp3.mockwebserver.MockResponse;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -34,7 +35,7 @@ public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilde
    *
    * <p>See https://github.com/openzipkin/brave/issues/864
    */
-  @Test public void cacheControl() throws Exception {
+  @Test public void cacheControl() throws IOException {
     server.enqueue(new MockResponse()
       .addHeader("Content-Type", "text/plain")
       .addHeader("Cache-Control", "max-age=600, stale-while-revalidate=1200")
@@ -48,8 +49,8 @@ public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilde
 
     assertThat(server.getRequestCount()).isEqualTo(1);
 
-    Span real = takeRemoteSpan(Span.Kind.CLIENT);
-    Span cached = takeLocalSpan();
+    Span real = reporter.takeRemoteSpan(Span.Kind.CLIENT);
+    Span cached = reporter.takeLocalSpan();
     assertThat(cached.tags()).containsKey("http.cache_hit");
 
     for (Span child : Arrays.asList(real, cached)) {

@@ -17,6 +17,7 @@ import java.lang.reflect.Field;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.jms.Connection;
 import javax.jms.JMSContext;
+import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.QueueConnection;
 import javax.jms.TopicConnection;
@@ -46,26 +47,29 @@ class ArtemisJmsTestRule extends JmsTestRule {
     return factory.createContext(JMSContext.AUTO_ACKNOWLEDGE);
   }
 
-  @Override Connection newConnection() throws Exception {
+  @Override Connection newConnection() throws JMSException {
     if (!started.getAndSet(true)) resource.start();
     return factory.createConnection();
   }
 
-  @Override QueueConnection newQueueConnection() throws Exception {
+  @Override QueueConnection newQueueConnection() throws JMSException {
     if (!started.getAndSet(true)) resource.start();
     return factory.createQueueConnection();
   }
 
-  @Override TopicConnection newTopicConnection() throws Exception {
+  @Override TopicConnection newTopicConnection() throws JMSException {
     if (!started.getAndSet(true)) resource.start();
     return factory.createTopicConnection();
   }
 
-  @Override void setReadOnlyProperties(Message message, boolean readOnlyProperties)
-    throws Exception {
-    Field propertiesReadOnly = ActiveMQMessage.class.getDeclaredField("propertiesReadOnly");
-    propertiesReadOnly.setAccessible(true);
-    propertiesReadOnly.set(message, readOnlyProperties);
+  @Override void setReadOnlyProperties(Message message, boolean readOnlyProperties) {
+    try {
+      Field propertiesReadOnly = ActiveMQMessage.class.getDeclaredField("propertiesReadOnly");
+      propertiesReadOnly.setAccessible(true);
+      propertiesReadOnly.set(message, readOnlyProperties);
+    } catch (Exception e) {
+      throw new AssertionError(e);
+    }
   }
 
   @Override public void after() {

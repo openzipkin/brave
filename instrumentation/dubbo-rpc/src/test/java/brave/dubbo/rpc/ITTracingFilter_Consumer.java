@@ -43,16 +43,16 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     client.setUrl("dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean");
   }
 
-  @Test public void propagatesNewTrace() throws Exception {
+  @Test public void propagatesNewTrace() {
     client.get().sayHello("jorge");
 
     TraceContext extracted = server.takeRequest().context();
     assertThat(extracted.sampled()).isTrue();
     assertThat(extracted.parentIdString()).isNull();
-    assertSameIds(takeRemoteSpan(Span.Kind.CLIENT), extracted);
+    assertSameIds(reporter.takeRemoteSpan(Span.Kind.CLIENT), extracted);
   }
 
-  @Test public void propagatesChildOfCurrentSpan() throws Exception {
+  @Test public void propagatesChildOfCurrentSpan() {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       client.get().sayHello("jorge");
@@ -61,11 +61,11 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     TraceContext extracted = server.takeRequest().context();
     assertThat(extracted.sampled()).isTrue();
     assertChildOf(extracted, parent);
-    assertSameIds(takeRemoteSpan(Span.Kind.CLIENT), extracted);
+    assertSameIds(reporter.takeRemoteSpan(Span.Kind.CLIENT), extracted);
   }
 
   /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
-  @Test public void propagatesUnsampledContext() throws Exception {
+  @Test public void propagatesUnsampledContext() {
     TraceContext parent = newTraceContext(SamplingFlags.NOT_SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       client.get().sayHello("jorge");
@@ -76,7 +76,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     assertChildOf(extracted, parent);
   }
 
-  @Test public void propagatesExtra() throws Exception {
+  @Test public void propagatesExtra() {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       ExtraFieldPropagation.set(parent, EXTRA_KEY, "joey");
@@ -86,10 +86,10 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     TraceContext extracted = server.takeRequest().context();
     assertThat(ExtraFieldPropagation.get(extracted, EXTRA_KEY)).isEqualTo("joey");
 
-    takeRemoteSpan(Span.Kind.CLIENT);
+    reporter.takeRemoteSpan(Span.Kind.CLIENT);
   }
 
-  @Test public void propagatesExtra_unsampled() throws Exception {
+  @Test public void propagatesExtra_unsampled() {
     TraceContext parent = newTraceContext(SamplingFlags.NOT_SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       ExtraFieldPropagation.set(parent, EXTRA_KEY, "joey");
@@ -101,7 +101,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
   }
 
   /** This prevents confusion as a blocking client should end before, the start of the next span. */
-  @Test public void clientTimestampAndDurationEnclosedByParent() throws Exception {
+  @Test public void clientTimestampAndDurationEnclosedByParent() {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     Clock clock = tracing.clock(parent);
 
@@ -111,7 +111,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     }
     long finish = clock.currentTimeMicroseconds();
 
-    Span clientSpan = takeRemoteSpan(Span.Kind.CLIENT);
+    Span clientSpan = reporter.takeRemoteSpan(Span.Kind.CLIENT);
     assertChildOf(clientSpan, parent);
     assertSpanInInterval(clientSpan, start, finish);
   }
@@ -120,7 +120,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
    * This tests that the parent is determined at the time the request was made, not when the request
    * was executed.
    */
-  @Test public void usesParentFromInvocationTime() throws Exception {
+  @Test public void usesParentFromInvocationTime() {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       RpcContext.getContext().asyncCall(() -> client.get().sayHello("jorge"));
@@ -137,41 +137,41 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
 
     // The spans may report in a different order than the requests
     for (int i = 0; i < 2; i++) {
-      assertChildOf(takeRemoteSpan(Span.Kind.CLIENT), parent);
+      assertChildOf(reporter.takeRemoteSpan(Span.Kind.CLIENT), parent);
     }
   }
 
-  @Test public void reportsClientKindToZipkin() throws Exception {
+  @Test public void reportsClientKindToZipkin() {
     client.get().sayHello("jorge");
 
-    takeRemoteSpan(Span.Kind.CLIENT);
+    reporter.takeRemoteSpan(Span.Kind.CLIENT);
   }
 
-  @Test public void defaultSpanNameIsMethodName() throws Exception {
+  @Test public void defaultSpanNameIsMethodName() {
     client.get().sayHello("jorge");
 
-    assertThat(takeRemoteSpan(Span.Kind.CLIENT).name())
+    assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).name())
       .isEqualTo("greeterservice/sayhello");
   }
 
-  @Test public void onTransportException_addsErrorTag() throws Exception {
+  @Test public void onTransportException_addsErrorTag() {
     server.stop();
 
     assertThatThrownBy(() -> client.get().sayHello("jorge"))
       .isInstanceOf(RpcException.class);
 
-    takeRemoteSpanWithError(Span.Kind.CLIENT, ".*RemotingException.*");
+    reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, ".*RemotingException.*");
   }
 
-  @Test public void onTransportException_addsErrorTag_async() throws Exception {
+  @Test public void onTransportException_addsErrorTag_async() {
     server.stop();
 
     RpcContext.getContext().asyncCall(() -> client.get().sayHello("romeo"));
 
-    takeRemoteSpanWithError(Span.Kind.CLIENT, ".*RemotingException.*");
+    reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, ".*RemotingException.*");
   }
 
-  @Test public void flushesSpanOneWay() throws Exception {
+  @Test public void flushesSpanOneWay() {
     RpcContext.getContext().asyncCall(() -> {
       client.get().sayHello("romeo");
     });
@@ -179,7 +179,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     Unsupported.takeOneWayRpcSpan(this, Span.Kind.CLIENT);
   }
 
-  @Test public void addsErrorTag_onUnimplemented() throws Exception {
+  @Test public void addsErrorTag_onUnimplemented() {
     server.stop();
     server = new TestServer(propagationFactory);
     server.service.setRef((method, parameterTypes, args) -> args);
@@ -188,7 +188,8 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     assertThatThrownBy(() -> client.get().sayHello("jorge"))
       .isInstanceOf(RpcException.class);
 
-    Span span = takeRemoteSpanWithError(Span.Kind.CLIENT, ".*Not found exported service.*");
+    Span span =
+      reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, ".*Not found exported service.*");
     assertThat(span.tags().get("dubbo.error_code")).isEqualTo("1");
   }
 
@@ -200,6 +201,6 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     Object o = RpcContext.getContext().getFuture().get();
     assertThat(o).isNotNull();
 
-    takeRemoteSpan(Span.Kind.CLIENT);
+    reporter.takeRemoteSpan(Span.Kind.CLIENT);
   }
 }
