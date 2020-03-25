@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  */
 package brave.kafka.clients;
 
-import brave.ScopedSpan;
+import brave.propagation.CurrentTraceContext.Scope;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -26,7 +26,7 @@ import zipkin2.Span;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public class TracingProducerTest extends BaseTracingTest {
+public class TracingProducerTest extends ITKafka {
   MockProducer<Object, String> mockProducer = new MockProducer<>();
   KafkaTracing kafkaTracing = KafkaTracing.create(tracing);
   TracingProducer<Object, String> tracingProducer =
@@ -43,47 +43,40 @@ public class TracingProducerTest extends BaseTracingTest {
     assertThat(headerKeys).containsOnly("b3");
   }
 
-  @Test public void should_add_b3_headers_when_other_headers_exist() throws InterruptedException {
+  @Test public void should_add_b3_headers_when_other_headers_exist() {
     ProducerRecord<Object, String> record = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
     record.headers().add("tx-id", "1".getBytes());
     tracingProducer.send(record);
     mockProducer.completeNext();
 
-    Span producerSpan = takeSpan(spans);
+    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
     assertThat(lastHeaders(mockProducer))
       .containsEntry("tx-id", "1")
       .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
-  @Test public void should_inject_child_context() throws InterruptedException {
-    ScopedSpan scopedSpan = tracing.tracer().startScopedSpan("main");
-    tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
-    mockProducer.completeNext();
-    scopedSpan.finish();
+  @Test public void should_inject_child_context() {
+    try (Scope scope = currentTraceContext.newScope(parent)) {
+      tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
+      mockProducer.completeNext();
+    }
 
-    Span producerSpan = takeSpan(spans);
+    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    assertChildOf(producerSpan, parent);
     assertThat(lastHeaders(mockProducer))
       .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
-
-    assertThat(producerSpan.parentId())
-      .isEqualTo(takeSpan(spans).id());
   }
 
-  @Test public void should_add_parent_trace_when_context_injected_on_headers()
-    throws InterruptedException {
-    brave.Span span = tracing.tracer().newTrace().start();
+  @Test public void should_add_parent_trace_when_context_injected_on_headers() {
     ProducerRecord<Object, String> record = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
-    tracingProducer.injector.inject(span.context(), new KafkaProducerRequest(record));
+    tracingProducer.injector.inject(parent, new KafkaProducerRequest(record));
     tracingProducer.send(record);
     mockProducer.completeNext();
-    span.finish();
 
-    Span producerSpan = takeSpan(spans);
+    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    assertChildOf(producerSpan, parent);
     assertThat(lastHeaders(mockProducer))
       .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
-
-    assertThat(producerSpan.parentId())
-      .isEqualTo(takeSpan(spans).id());
   }
 
   @Test public void should_call_wrapped_producer() {
@@ -96,17 +89,15 @@ public class TracingProducerTest extends BaseTracingTest {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
     mockProducer.completeNext();
 
-    assertThat(spans)
-      .flatExtracting(Span::name)
-      .containsOnly("send");
+    assertThat(reporter.takeRemoteSpan(Span.Kind.PRODUCER).name())
+      .isEqualTo("send");
   }
 
   @Test public void send_should_tag_topic_and_key() {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
     mockProducer.completeNext();
 
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
+    assertThat(reporter.takeRemoteSpan(Span.Kind.PRODUCER).tags())
       .containsOnly(entry("kafka.topic", TEST_TOPIC), entry("kafka.key", TEST_KEY));
   }
 
@@ -114,8 +105,7 @@ public class TracingProducerTest extends BaseTracingTest {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, null, TEST_VALUE));
     mockProducer.completeNext();
 
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
+    assertThat(reporter.takeRemoteSpan(Span.Kind.PRODUCER).tags())
       .containsOnly(entry("kafka.topic", TEST_TOPIC));
   }
 
@@ -123,8 +113,7 @@ public class TracingProducerTest extends BaseTracingTest {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, new byte[1], TEST_VALUE));
     mockProducer.completeNext();
 
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
+    assertThat(reporter.takeRemoteSpan(Span.Kind.PRODUCER).tags())
       .containsOnly(entry("kafka.topic", TEST_TOPIC));
   }
 }

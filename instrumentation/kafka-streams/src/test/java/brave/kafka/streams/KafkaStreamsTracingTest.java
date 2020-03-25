@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,9 +14,7 @@
 package brave.kafka.streams;
 
 import brave.Span;
-import brave.Tracing;
-import brave.propagation.B3Propagation;
-import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.TraceContext;
 import org.apache.kafka.common.header.Headers;
@@ -34,18 +32,16 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public class KafkaStreamsTracingTest extends BaseTracingTest {
+public class KafkaStreamsTracingTest extends ITKafkaStreams {
 
   @Test
   public void nextSpan_uses_current_context() {
     ProcessorContext fakeProcessorContext = processorContextSupplier.apply(new RecordHeaders());
     Span child;
-    try (CurrentTraceContext.Scope ws = tracing.currentTraceContext()
-      .newScope(TraceContext.newBuilder().traceId(1).spanId(1).build())) {
+    try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
       child = kafkaStreamsTracing.nextSpan(fakeProcessorContext);
     }
-    assertThat(child.context().parentId())
-      .isEqualTo(1L);
+    assertChildOf(child.context(), parent);
   }
 
   @Test
@@ -59,8 +55,7 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
     ProcessorContext fakeProcessorContext = processorContextSupplier.apply(new RecordHeaders());
     kafkaStreamsTracing.nextSpan(fakeProcessorContext).start().finish();
 
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
+    assertThat(reporter.takeLocalSpan().tags())
       .containsOnly(
         entry("kafka.streams.application.id", TEST_APPLICATION_ID),
         entry("kafka.streams.task.id", TEST_TASK_ID));
@@ -72,8 +67,7 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
     processor.init(processorContextSupplier.apply(new RecordHeaders()));
     processor.process(TEST_KEY, TEST_VALUE);
 
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
+    assertThat(reporter.takeLocalSpan().tags())
       .containsOnly(
         entry("kafka.streams.application.id", TEST_APPLICATION_ID),
         entry("kafka.streams.task.id", TEST_TASK_ID));
@@ -81,27 +75,23 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
 
   @Test
   public void processorSupplier_should_add_extra_field() {
-    tracing = Tracing.newBuilder()
-      .propagationFactory(
-        ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "user-id"))
-      .build();
-    kafkaStreamsTracing = KafkaStreamsTracing.create(tracing);
-
     ProcessorSupplier<String, String> processorSupplier =
       kafkaStreamsTracing.processor(
         "forward-1", () ->
           new AbstractProcessor<String, String>() {
             @Override
             public void process(String key, String value) {
-              String userId =
-                ExtraFieldPropagation.get(tracing.tracer().currentSpan().context(), "user-id");
+              TraceContext context = currentTraceContext.get();
+              String userId = ExtraFieldPropagation.get(context, EXTRA_KEY);
               assertThat(userId).isEqualTo("user1");
             }
           });
-    Headers headers = new RecordHeaders().add("user-id", "user1".getBytes());
+    Headers headers = new RecordHeaders().add(EXTRA_KEY, "user1".getBytes());
     Processor<String, String> processor = processorSupplier.get();
     processor.init(processorContextSupplier.apply(headers));
     processor.process(TEST_KEY, TEST_VALUE);
+
+    reporter.takeLocalSpan();
   }
 
   @Test
@@ -110,8 +100,7 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
     processor.init(processorContextSupplier.apply(new RecordHeaders()));
     processor.transform(TEST_KEY, TEST_VALUE);
 
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
+    assertThat(reporter.takeLocalSpan().tags())
       .containsOnly(
         entry("kafka.streams.application.id", TEST_APPLICATION_ID),
         entry("kafka.streams.task.id", TEST_TASK_ID));
@@ -123,8 +112,7 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
     processor.init(processorContextSupplier.apply(new RecordHeaders()));
     processor.transform(TEST_VALUE);
 
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
+    assertThat(reporter.takeLocalSpan().tags())
       .containsOnly(
         entry("kafka.streams.application.id", TEST_APPLICATION_ID),
         entry("kafka.streams.task.id", TEST_TASK_ID));
@@ -137,8 +125,7 @@ public class KafkaStreamsTracingTest extends BaseTracingTest {
     processor.init(processorContextSupplier.apply(new RecordHeaders()));
     processor.transform(TEST_KEY, TEST_VALUE);
 
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
+    assertThat(reporter.takeLocalSpan().tags())
       .containsOnly(
         entry("kafka.streams.application.id", TEST_APPLICATION_ID),
         entry("kafka.streams.task.id", TEST_TASK_ID));

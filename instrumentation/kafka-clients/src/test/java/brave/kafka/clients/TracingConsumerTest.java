@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -25,10 +25,10 @@ import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Span;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
-import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
-public class TracingConsumerTest extends BaseTracingTest {
+public class TracingConsumerTest extends ITKafka {
   MockConsumer<String, String> consumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
   TopicPartition topicPartition = new TopicPartition(TEST_TOPIC, 0);
 
@@ -50,19 +50,9 @@ public class TracingConsumerTest extends BaseTracingTest {
     // offset changed
     assertThat(consumer.position(topicPartition)).isEqualTo(2L);
 
-    // name is correct
-    assertThat(spans)
-      .extracting(Span::name)
-      .containsExactly("poll");
-
-    // kind is correct
-    assertThat(spans)
-      .extracting(Span::kind)
-      .containsExactly(Span.Kind.CONSUMER);
-
-    // tags are correct
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
+    Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    assertThat(consumerSpan.name()).isEqualTo("poll");
+    assertThat(consumerSpan.tags())
       .containsOnly(entry("kafka.topic", "myTopic"));
   }
 
@@ -75,24 +65,14 @@ public class TracingConsumerTest extends BaseTracingTest {
     // offset changed
     assertThat(consumer.position(topicPartition)).isEqualTo(2L);
 
-    // name is correct
-    assertThat(spans)
-      .extracting(Span::name)
-      .containsExactly("poll");
-
-    // kind is correct
-    assertThat(spans)
-      .extracting(Span::kind)
-      .containsExactly(Span.Kind.CONSUMER);
-
-    // tags are correct
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
+    Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    assertThat(consumerSpan.name()).isEqualTo("poll");
+    assertThat(consumerSpan.tags())
       .containsOnly(entry("kafka.topic", "myTopic"));
   }
 
   @Test
-  public void should_add_new_trace_headers_if_b3_missing() throws Exception {
+  public void should_add_new_trace_headers_if_b3_missing() {
     consumer.addRecord(fakeRecord);
 
     Consumer<String, String> tracingConsumer = kafkaTracing.consumer(consumer);
@@ -103,10 +83,12 @@ public class TracingConsumerTest extends BaseTracingTest {
       .flatExtracting(TracingConsumerTest::lastHeaders)
       .extracting(Map.Entry::getKey)
       .containsOnly("b3");
+
+    assertThat(reporter.takeRemoteSpan(Span.Kind.CONSUMER).parentId()).isNull();
   }
 
   @Test
-  public void should_createChildOfTraceHeaders() throws Exception {
+  public void should_createChildOfTraceHeaders() {
     addB3MultiHeaders(fakeRecord);
     consumer.addRecord(fakeRecord);
 
@@ -119,8 +101,10 @@ public class TracingConsumerTest extends BaseTracingTest {
       .hasSize(1)
       .allSatisfy(e -> {
         assertThat(e.getKey()).isEqualTo("b3");
-        assertThat(e.getValue()).startsWith(TRACE_ID);
+        assertThat(e.getValue()).startsWith(parent.traceIdString());
       });
+
+    assertChildOf(reporter.takeRemoteSpan(Span.Kind.CONSUMER), parent);
   }
 
   @Test
@@ -143,9 +127,9 @@ public class TracingConsumerTest extends BaseTracingTest {
     tracingConsumer.poll(10);
 
     // only one consumer span reported
-    assertThat(spans)
-      .hasSize(1)
-      .flatExtracting(s -> s.tags().entrySet())
+    Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    assertThat(consumerSpan.name()).isEqualTo("poll");
+    assertThat(consumerSpan.tags())
       .containsOnly(entry("kafka.topic", "myTopic"));
   }
 
@@ -170,10 +154,12 @@ public class TracingConsumerTest extends BaseTracingTest {
     Consumer<String, String> tracingConsumer = kafkaTracing.consumer(consumer);
     tracingConsumer.poll(10);
 
-    // only one consumer span reported
-    assertThat(spans)
-        .hasSize(500)
-        .flatExtracting(s -> s.tags().entrySet())
+    // 500 consumer spans!
+    for (int i = 0; i < 500; i++) {
+      Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+      assertThat(consumerSpan.name()).isEqualTo("poll");
+      assertThat(consumerSpan.tags())
         .containsOnly(entry("kafka.topic", "myTopic"));
+    }
   }
 }
