@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,12 +13,14 @@
  */
 package brave.kafka.streams;
 
-import brave.Tracing;
 import brave.messaging.MessagingTracing;
-import brave.propagation.StrictScopeDecorator;
-import brave.propagation.ThreadLocalCurrentTraceContext;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import brave.propagation.SamplingFlags;
+import brave.propagation.TraceContext;
+import brave.test.ITRemote;
+import brave.test.util.AssertableCallback;
 import java.util.function.Function;
+import org.apache.kafka.clients.producer.Callback;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.Transformer;
@@ -31,18 +33,20 @@ import org.apache.kafka.streams.processor.AbstractProcessor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
 import org.apache.kafka.streams.processor.TaskId;
-import org.junit.After;
-import zipkin2.Span;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-abstract class BaseTracingTest {
+abstract class ITKafkaStreams extends ITRemote {
   String TEST_APPLICATION_ID = "myAppId";
   String TEST_TASK_ID = "0_0";
   String TEST_TOPIC = "myTopic";
   String TEST_KEY = "foo";
   String TEST_VALUE = "bar";
+
+  MessagingTracing messagingTracing = MessagingTracing.create(tracing);
+  KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.create(messagingTracing);
+  TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
 
   Function<Headers, ProcessorContext> processorContextSupplier =
     (Headers headers) ->
@@ -54,16 +58,6 @@ abstract class BaseTracingTest {
       when(processorContext.headers()).thenReturn(headers);
       return processorContext;
     };
-
-  ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
-  Tracing tracing = Tracing.newBuilder()
-    .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-      .addScopeDecorator(StrictScopeDecorator.create())
-      .build())
-    .spanReporter(spans::add)
-    .build();
-  MessagingTracing messagingTracing = MessagingTracing.create(tracing);
-  KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.create(messagingTracing);
 
   ProcessorSupplier<String, String> fakeProcessorSupplier =
     kafkaStreamsTracing.processor(
@@ -138,8 +132,20 @@ abstract class BaseTracingTest {
           }
         });
 
-  @After
-  public void tearDown() {
-    tracing.close();
+  /** {@link #join()} waits for the callback to complete without any errors */
+  static final class BlockingCallback implements Callback {
+    final AssertableCallback<RecordMetadata> delegate = new AssertableCallback<>();
+
+    void join() {
+      delegate.join();
+    }
+
+    @Override public void onCompletion(RecordMetadata metadata, Exception exception) {
+      if (exception != null) {
+        delegate.onError(exception);
+      } else {
+        delegate.onSuccess(metadata);
+      }
+    }
   }
 }

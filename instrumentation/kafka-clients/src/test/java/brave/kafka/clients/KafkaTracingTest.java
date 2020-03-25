@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,39 +14,35 @@
 package brave.kafka.clients;
 
 import brave.Span;
-import brave.Tracing;
-import brave.propagation.B3Propagation;
-import brave.propagation.CurrentTraceContext;
+import brave.propagation.B3SingleFormat;
+import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.ExtraFieldPropagation;
+import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.Test;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public class KafkaTracingTest extends BaseTracingTest {
+public class KafkaTracingTest extends ITKafka {
   @Test public void nextSpan_prefers_b3_header() {
-    fakeRecord.headers().add("b3", "0000000000000001-0000000000000002-1".getBytes(UTF_8));
+    TraceContext incoming = newTraceContext(SamplingFlags.SAMPLED);
+    fakeRecord.headers().add("b3", B3SingleFormat.writeB3SingleFormatAsBytes(incoming));
 
     Span child;
-    try (CurrentTraceContext.Scope ws = tracing.currentTraceContext()
-      .newScope(TraceContext.newBuilder().traceId(1).spanId(1).build())) {
+    try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
       child = kafkaTracing.nextSpan(fakeRecord);
     }
-    assertThat(child.context().parentId())
-      .isEqualTo(2L);
+    assertChildOf(child.context(), incoming);
   }
 
   @Test public void nextSpan_uses_current_context() {
     Span child;
-    try (CurrentTraceContext.Scope ws = tracing.currentTraceContext()
-      .newScope(TraceContext.newBuilder().traceId(1).spanId(1).build())) {
+    try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
       child = kafkaTracing.nextSpan(fakeRecord);
     }
-    assertThat(child.context().parentId())
-      .isEqualTo(1L);
+    assertChildOf(child.context(), parent);
   }
 
   @Test public void nextSpan_should_create_span_if_no_headers() {
@@ -54,11 +50,6 @@ public class KafkaTracingTest extends BaseTracingTest {
   }
 
   @Test public void nextSpan_should_create_span_with_extra_keys() {
-    tracing = Tracing.newBuilder()
-      .propagationFactory(
-        ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "user-id"))
-      .build();
-    kafkaTracing = KafkaTracing.newBuilder(tracing).build();
     addB3MultiHeaders(fakeRecord);
     fakeRecord.headers().add("user-id", "user1".getBytes());
 
@@ -69,8 +60,7 @@ public class KafkaTracingTest extends BaseTracingTest {
   @Test public void nextSpan_should_tag_topic_and_key_when_no_incoming_context() {
     kafkaTracing.nextSpan(fakeRecord).start().finish();
 
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
+    assertThat(reporter.takeLocalSpan().tags())
       .containsOnly(entry("kafka.topic", TEST_TOPIC), entry("kafka.key", TEST_KEY));
   }
 
@@ -79,8 +69,7 @@ public class KafkaTracingTest extends BaseTracingTest {
 
     kafkaTracing.nextSpan(fakeRecord).start().finish();
 
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
+    assertThat(reporter.takeLocalSpan().tags())
       .containsOnly(entry("kafka.topic", TEST_TOPIC));
   }
 
@@ -90,8 +79,7 @@ public class KafkaTracingTest extends BaseTracingTest {
 
     kafkaTracing.nextSpan(record).start().finish();
 
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
+    assertThat(reporter.takeLocalSpan().tags())
       .containsOnly(entry("kafka.topic", TEST_TOPIC));
   }
 
@@ -103,8 +91,7 @@ public class KafkaTracingTest extends BaseTracingTest {
     addB3MultiHeaders(fakeRecord);
     kafkaTracing.nextSpan(fakeRecord).start().finish();
 
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
+    assertThat(reporter.takeLocalSpan().tags())
       .isEmpty();
   }
 

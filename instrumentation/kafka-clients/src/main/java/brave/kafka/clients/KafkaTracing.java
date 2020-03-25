@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -25,8 +25,10 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.SamplerFunction;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -118,8 +120,9 @@ public final class KafkaTracing {
   final Extractor<Headers> processorExtractor;
   final Injector<KafkaProducerRequest> producerInjector;
   final Injector<KafkaConsumerRequest> consumerInjector;
-  final SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
   final Set<String> propagationKeys;
+  final TraceContextOrSamplingFlags emptyExtraction;
+  final SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
   final String remoteServiceName;
   final boolean singleRootSpanOnReceiveBatch;
 
@@ -132,9 +135,12 @@ public final class KafkaTracing {
     this.processorExtractor = propagation.extractor(KafkaPropagation.GETTER);
     this.producerInjector = propagation.injector(KafkaProducerRequest::setHeader);
     this.consumerInjector = propagation.injector(KafkaConsumerRequest::setHeader);
+    this.propagationKeys = new LinkedHashSet<>(propagation.keys());
+    // When Extra Fields or similar are in use, the result != TraceContextOrSamplingFlags.EMPTY
+    this.emptyExtraction = propagation.<Map<String, String>>extractor(Map::get)
+      .extract(Collections.emptyMap());
     this.producerSampler = messagingTracing.producerSampler();
     this.consumerSampler = messagingTracing.consumerSampler();
-    this.propagationKeys = new LinkedHashSet<>(propagation.keys());
     this.remoteServiceName = builder.remoteServiceName;
     this.singleRootSpanOnReceiveBatch = builder.singleRootSpanOnReceiveBatch;
   }
@@ -184,7 +190,7 @@ public final class KafkaTracing {
   ) {
     TraceContextOrSamplingFlags extracted = extractor.extract(request);
     // Clear any propagation keys present in the headers
-    if (!extracted.equals(TraceContextOrSamplingFlags.EMPTY)) {
+    if (!extracted.equals(emptyExtraction)) {
       clearHeaders(headers);
     }
     return extracted;

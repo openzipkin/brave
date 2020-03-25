@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,26 +13,21 @@
  */
 package brave.kafka.clients;
 
-import brave.Tracing;
 import brave.internal.HexCodec;
 import brave.messaging.MessagingRuleSampler;
 import brave.messaging.MessagingTracing;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
-import brave.propagation.StrictScopeDecorator;
-import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
 import brave.sampler.Sampler;
+import brave.test.TestSpanReporter;
 import com.github.charithe.kafka.EphemeralKafkaBroker;
 import com.github.charithe.kafka.KafkaJunitRule;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -45,97 +40,57 @@ import org.junit.After;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestName;
-import org.junit.rules.TestRule;
-import org.junit.rules.TestWatcher;
-import org.junit.runner.Description;
 import zipkin2.DependencyLink;
 import zipkin2.Span;
+import zipkin2.Span.Kind;
 import zipkin2.internal.DependencyLinker;
 
-import static brave.kafka.clients.BaseTracingTest.takeSpan;
 import static brave.kafka.clients.KafkaTags.KAFKA_TOPIC_TAG;
 import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static brave.messaging.MessagingRequestMatchers.operationEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 
-public class ITKafkaTracing {
-
-  String TEST_KEY = "foo";
-  String TEST_VALUE = "bar";
-
-  /**
-   * See brave.http.ITHttp for rationale on using a concurrent blocking queue eventhough some calls,
-   * like consumer operations, happen on the main thread.
-   */
-  BlockingQueue<Span> consumerSpans = new LinkedBlockingQueue<>();
-  BlockingQueue<Span> producerSpans = new LinkedBlockingQueue<>();
-
-  KafkaTracing consumerTracing = KafkaTracing.create(Tracing.newBuilder()
-    .localServiceName("consumer")
-    .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-      .addScopeDecorator(StrictScopeDecorator.create())
-      .build())
-    .spanReporter(consumerSpans::add)
-    .build());
-  KafkaTracing producerTracing = KafkaTracing.create(Tracing.newBuilder()
-    .localServiceName("producer")
-    .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-      .addScopeDecorator(StrictScopeDecorator.create())
-      .build())
-    .spanReporter(producerSpans::add)
-    .build());
-
+public class ITKafkaTracing extends ITKafka {
   @ClassRule
   public static KafkaJunitRule kafkaRule = new KafkaJunitRule(EphemeralKafkaBroker.create());
-  @Rule
-  public TestName testName = new TestName();
+
+  @Rule public TestSpanReporter producerReporter = new TestSpanReporter();
+  @Rule public TestSpanReporter consumerReporter = new TestSpanReporter();
+
+  KafkaTracing producerTracing = KafkaTracing.create(
+    tracingBuilder(Sampler.ALWAYS_SAMPLE).localServiceName("producer")
+      .spanReporter(producerReporter).build()
+  );
+
+  KafkaTracing consumerTracing = KafkaTracing.create(
+    tracingBuilder(Sampler.ALWAYS_SAMPLE).localServiceName("consumer")
+      .spanReporter(consumerReporter).build()
+  );
 
   Producer<String, String> producer;
   Consumer<String, String> consumer;
 
-  // See brave.http.ITHttp for rationale on polling after tests complete
-  @Rule public TestRule assertSpansEmpty = new TestWatcher() {
-    // only check success path to avoid masking assertion errors or exceptions
-    @Override protected void succeeded(Description description) {
-      try {
-        assertThat(producerSpans.poll(100, TimeUnit.MILLISECONDS))
-          .withFailMessage("Producer span remaining in queue. Check for redundant reporting")
-          .isNull();
-        assertThat(consumerSpans.poll(100, TimeUnit.MILLISECONDS))
-          .withFailMessage("Consumer span remaining in queue. Check for redundant reporting")
-          .isNull();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-  };
-
-  @After
-  public void close() {
+  @After public void close() {
     if (producer != null) producer.close();
     if (consumer != null) consumer.close();
-    Tracing current = Tracing.current();
-    if (current != null) current.close();
   }
 
-  @Test
-  public void poll_creates_one_consumer_span_per_extracted_context() throws Exception {
+  @Test public void poll_creates_one_consumer_span_per_extracted_context() {
     String topic1 = testName.getMethodName() + "1";
     String topic2 = testName.getMethodName() + "2";
 
     producer = createTracingProducer();
     consumer = createTracingConsumer(topic1, topic2);
 
-    producer.send(new ProducerRecord<>(topic1, TEST_KEY, TEST_VALUE)).get();
-    producer.send(new ProducerRecord<>(topic2, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(topic1, TEST_KEY, TEST_VALUE));
+    send(new ProducerRecord<>(topic2, TEST_KEY, TEST_VALUE));
 
     ConsumerRecords<String, String> records = consumer.poll(10000);
 
     assertThat(records).hasSize(2);
-    Span producerSpan1 = takeSpan(producerSpans), producerSpan2 = takeSpan(producerSpans);
-    Span consumerSpan1 = takeSpan(consumerSpans), consumerSpan2 = takeSpan(consumerSpans);
+    Span producerSpan1 = takeProducerSpan(), producerSpan2 = takeProducerSpan();
+    Span consumerSpan1 = takeConsumerSpan(), consumerSpan2 = takeConsumerSpan();
 
     // Check to see the trace is continued between the producer and the consumer
     // we don't know the order the spans will come in. Correlate with the tag instead.
@@ -153,8 +108,22 @@ public class ITKafkaTracing {
     }
   }
 
+  void send(ProducerRecord<String, String> record) {
+    BlockingCallback callback = new BlockingCallback();
+    producer.send(record, callback);
+    callback.join();
+  }
+
+  Span takeProducerSpan() {
+    return producerReporter.takeRemoteSpan(Kind.PRODUCER);
+  }
+
+  Span takeConsumerSpan() {
+    return consumerReporter.takeRemoteSpan(Kind.CONSUMER);
+  }
+
   @Test
-  public void poll_creates_one_consumer_span_per_topic() throws Exception {
+  public void poll_creates_one_consumer_span_per_topic() {
     String topic1 = testName.getMethodName() + "1";
     String topic2 = testName.getMethodName() + "2";
 
@@ -162,30 +131,30 @@ public class ITKafkaTracing {
     consumer = createTracingConsumer(topic1, topic2);
 
     for (int i = 0; i < 5; i++) {
-      producer.send(new ProducerRecord<>(topic1, TEST_KEY, TEST_VALUE)).get();
-      producer.send(new ProducerRecord<>(topic2, TEST_KEY, TEST_VALUE)).get();
+      send(new ProducerRecord<>(topic1, TEST_KEY, TEST_VALUE));
+      send(new ProducerRecord<>(topic2, TEST_KEY, TEST_VALUE));
     }
 
     ConsumerRecords<String, String> records = consumer.poll(10000);
 
     assertThat(records).hasSize(10);
-    takeSpan(consumerSpans);
-    takeSpan(consumerSpans);
-    // producerSpans empty as not traced
+
+    takeConsumerSpan();
+    takeConsumerSpan();
   }
 
   @Test
-  public void creates_dependency_links() throws Exception {
+  public void creates_dependency_links() {
     producer = createTracingProducer();
     consumer = createTracingConsumer();
 
-    producer.send(new ProducerRecord<>(testName.getMethodName(), TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(testName.getMethodName(), TEST_KEY, TEST_VALUE));
 
     consumer.poll(10000);
 
     List<Span> allSpans = new ArrayList<>();
-    allSpans.add(takeSpan(consumerSpans));
-    allSpans.add(takeSpan(producerSpans));
+    allSpans.add(takeConsumerSpan());
+    allSpans.add(takeProducerSpan());
 
     List<DependencyLink> links = new DependencyLinker().putTrace(allSpans).link();
     assertThat(links).extracting("parent", "child").containsExactly(
@@ -195,17 +164,17 @@ public class ITKafkaTracing {
   }
 
   @Test
-  public void nextSpan_makes_child() throws Exception {
+  public void nextSpan_makes_child() {
     producer = createTracingProducer();
     consumer = createTracingConsumer();
 
-    producer.send(new ProducerRecord<>(testName.getMethodName(), TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(testName.getMethodName(), TEST_KEY, TEST_VALUE));
 
     ConsumerRecords<String, String> records = consumer.poll(10000);
 
     assertThat(records).hasSize(1);
-    Span producerSpan = takeSpan(producerSpans);
-    Span consumerSpan = takeSpan(consumerSpans);
+    Span producerSpan = takeProducerSpan();
+    Span consumerSpan = takeConsumerSpan();
 
     for (ConsumerRecord<String, String> record : records) {
       brave.Span processor = consumerTracing.nextSpan(record);
@@ -219,7 +188,7 @@ public class ITKafkaTracing {
       processor.start().name("processor").finish();
 
       // The processor doesn't taint the consumer span which has already finished
-      Span processorSpan = takeSpan(consumerSpans);
+      Span processorSpan = consumerReporter.takeLocalSpan();
       assertThat(processorSpan.id())
         .isNotEqualTo(consumerSpan.id());
     }
@@ -252,17 +221,17 @@ public class ITKafkaTracing {
   }
 
   @Test
-  public void continues_a_trace_when_only_trace_id_propagated() throws Exception {
-    consumerTracing = KafkaTracing.create(Tracing.newBuilder()
-      .spanReporter(consumerSpans::add)
+  public void continues_a_trace_when_only_trace_id_propagated() {
+    consumerTracing = KafkaTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE)
+      .spanReporter(consumerReporter)
       .propagationFactory(new Propagation.Factory() {
         @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
           return new TraceIdOnlyPropagation<>(keyFactory);
         }
       })
       .build());
-    producerTracing = KafkaTracing.create(Tracing.newBuilder()
-      .spanReporter(producerSpans::add)
+    producerTracing = KafkaTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE)
+      .spanReporter(producerReporter)
       .propagationFactory(new Propagation.Factory() {
         @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
           return new TraceIdOnlyPropagation<>(keyFactory);
@@ -273,15 +242,15 @@ public class ITKafkaTracing {
     producer = createTracingProducer();
     consumer = createTracingConsumer();
 
-    producer.send(new ProducerRecord<>(testName.getMethodName(), TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(testName.getMethodName(), TEST_KEY, TEST_VALUE));
 
     // intentionally using deprecated method as we are checking the same class in an invoker test
     // under src/it. If we want to explicitly tests the Duration arg, we will have to subclass.
     ConsumerRecords<String, String> records = consumer.poll(10_000L);
 
     assertThat(records).hasSize(1);
-    Span producerSpan = takeSpan(producerSpans);
-    Span consumerSpan = takeSpan(consumerSpans);
+    Span producerSpan = takeProducerSpan();
+    Span consumerSpan = takeConsumerSpan();
 
     assertThat(producerSpan.traceId())
       .isEqualTo(consumerSpan.traceId());
@@ -293,19 +262,20 @@ public class ITKafkaTracing {
     }
   }
 
-  @Test public void customSampler_producer() throws Exception {
+  @Test public void customSampler_producer() {
     String topic = testName.getMethodName();
 
-    producerTracing = KafkaTracing.create(MessagingTracing.newBuilder(
-      Tracing.newBuilder().spanReporter(producerSpans::add).build()
-    ).producerSampler(MessagingRuleSampler.newBuilder()
-      .putRule(channelNameEquals(topic), Sampler.NEVER_SAMPLE)
-      .build()).build());
+    producerTracing = KafkaTracing.create(
+      MessagingTracing.newBuilder(producerTracing.messagingTracing.tracing())
+        .producerSampler(MessagingRuleSampler.newBuilder()
+          .putRule(channelNameEquals(topic), Sampler.NEVER_SAMPLE)
+          .build())
+        .build());
 
     producer = createTracingProducer();
     consumer = createTracingConsumer();
 
-    producer.send(new ProducerRecord<>(topic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(topic, TEST_KEY, TEST_VALUE));
 
     // intentionally using deprecated method as we are checking the same class in an invoker test
     // under src/it. If we want to explicitly tests the Duration arg, we will have to subclass.
@@ -331,19 +301,19 @@ public class ITKafkaTracing {
       });
   }
 
-  @Test public void customSampler_consumer() throws Exception {
+  @Test public void customSampler_consumer() {
     String topic = testName.getMethodName();
 
-    consumerTracing = KafkaTracing.create(MessagingTracing.newBuilder(
-      Tracing.newBuilder().spanReporter(consumerSpans::add).build()
-    ).consumerSampler(MessagingRuleSampler.newBuilder()
-      .putRule(operationEquals("receive"), Sampler.NEVER_SAMPLE)
-      .build()).build());
+    consumerTracing = KafkaTracing.create(
+      MessagingTracing.newBuilder(consumerTracing.messagingTracing.tracing())
+        .consumerSampler(MessagingRuleSampler.newBuilder()
+          .putRule(operationEquals("receive"), Sampler.NEVER_SAMPLE)
+          .build()).build());
 
     producer = kafkaRule.helper().createStringProducer(); // intentionally don't trace the producer
     consumer = createTracingConsumer();
 
-    producer.send(new ProducerRecord<>(topic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(topic, TEST_KEY, TEST_VALUE));
 
     // intentionally using deprecated method as we are checking the same class in an invoker test
     // under src/it. If we want to explicitly tests the Duration arg, we will have to subclass.

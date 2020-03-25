@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,10 +20,13 @@ import brave.Tracing;
 import brave.kafka.clients.KafkaTracing;
 import brave.messaging.MessagingTracing;
 import brave.propagation.Propagation;
-import brave.propagation.TraceContext;
+import brave.propagation.TraceContext.Extractor;
+import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import org.apache.kafka.common.header.Header;
@@ -51,9 +54,10 @@ public final class KafkaStreamsTracing {
 
   final KafkaTracing kafkaTracing;
   final Tracer tracer;
+  final Extractor<Headers> extractor;
+  final Injector<Headers> injector;
   final Set<String> propagationKeys;
-  final TraceContext.Extractor<Headers> extractor;
-  final TraceContext.Injector<Headers> injector;
+  final TraceContextOrSamplingFlags emptyExtraction;
 
   KafkaStreamsTracing(Builder builder) { // intentionally hidden constructor
     this.kafkaTracing = builder.kafkaTracing.toBuilder()
@@ -61,9 +65,12 @@ public final class KafkaStreamsTracing {
         .build();
     this.tracer = kafkaTracing.messagingTracing().tracing().tracer();
     Propagation<String> propagation = kafkaTracing.messagingTracing().tracing().propagation();
-    this.propagationKeys = new LinkedHashSet<>(propagation.keys());
     this.extractor = propagation.extractor(KafkaStreamsPropagation.GETTER);
     this.injector = propagation.injector(KafkaStreamsPropagation.SETTER);
+    this.propagationKeys = new LinkedHashSet<>(propagation.keys());
+    // When Extra Fields or similar are in use, the result != TraceContextOrSamplingFlags.EMPTY
+    this.emptyExtraction = propagation.<Map<String, String>>extractor(Map::get)
+      .extract(Collections.emptyMap());
   }
 
   public static KafkaStreamsTracing create(Tracing tracing) {
@@ -449,7 +456,7 @@ public final class KafkaStreamsTracing {
   Span nextSpan(ProcessorContext context) {
     TraceContextOrSamplingFlags extracted = extractor.extract(context.headers());
     // Clear any propagation keys present in the headers
-    if (!extracted.equals(TraceContextOrSamplingFlags.EMPTY)) {
+    if (!extracted.equals(emptyExtraction)) {
       clearHeaders(context.headers());
     }
     Span result = tracer.nextSpan(extracted);
