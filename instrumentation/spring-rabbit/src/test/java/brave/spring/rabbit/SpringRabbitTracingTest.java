@@ -14,7 +14,6 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
-import brave.propagation.ThreadLocalCurrentTraceContext;
 import java.util.Collection;
 import java.util.List;
 import org.junit.After;
@@ -28,10 +27,7 @@ import zipkin2.reporter.Reporter;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class SpringRabbitTracingTest {
-  Tracing tracing = Tracing.newBuilder()
-    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-    .spanReporter(Reporter.NOOP)
-    .build();
+  Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build();
   SpringRabbitTracing rabbitTracing = SpringRabbitTracing.create(tracing);
 
   @After public void close() {

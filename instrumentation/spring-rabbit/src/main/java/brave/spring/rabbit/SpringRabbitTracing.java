@@ -27,6 +27,7 @@ import brave.sampler.SamplerFunction;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.aopalliance.aop.Advice;
@@ -103,8 +104,9 @@ public final class SpringRabbitTracing {
   final Extractor<MessageProperties> processorExtractor;
   final Injector<MessageProducerRequest> producerInjector;
   final Injector<MessageConsumerRequest> consumerInjector;
-  final SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
   final String[] propagationKeys;
+  final TraceContextOrSamplingFlags emptyExtraction;
+  final SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
   final String remoteServiceName;
   final Field beforePublishPostProcessorsField;
 
@@ -118,9 +120,12 @@ public final class SpringRabbitTracing {
     this.processorExtractor = propagation.extractor(SpringRabbitPropagation.GETTER);
     this.producerInjector = propagation.injector(MessageProducerRequest.SETTER);
     this.consumerInjector = propagation.injector(MessageConsumerRequest.SETTER);
+    this.propagationKeys = propagation.keys().toArray(new String[0]);
+    // When Extra Fields or similar are in use, the result != TraceContextOrSamplingFlags.EMPTY
+    this.emptyExtraction = propagation.<Map<String, String>>extractor(Map::get)
+      .extract(Collections.emptyMap());
     this.producerSampler = messagingTracing.producerSampler();
     this.consumerSampler = messagingTracing.consumerSampler();
-    this.propagationKeys = propagation.keys().toArray(new String[0]);
     this.remoteServiceName = builder.remoteServiceName;
     Field beforePublishPostProcessorsField = null;
     try {
@@ -218,7 +223,7 @@ public final class SpringRabbitTracing {
   ) {
     TraceContextOrSamplingFlags extracted = extractor.extract(request);
     // Clear any propagation keys present in the headers
-    if (!extracted.equals(TraceContextOrSamplingFlags.EMPTY)) {
+    if (!extracted.equals(emptyExtraction)) {
       MessageProperties properties = message.getMessageProperties();
       if (properties != null) clearHeaders(properties.getHeaders());
     }

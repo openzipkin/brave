@@ -39,6 +39,21 @@
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-messaging</artifactId>
     </dependency>
+    <!-- spring-aop is required for the consumer side instrumentation point -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-aop</artifactId>
+      <version>${spring5.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- Spring 5 has GenericApplicationContext.registerBean which makes tests easier -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-context</artifactId>
+      <version>${spring5.version}</version>
+      <scope>provided</scope>
+    </dependency>
 
     <dependency>
       <groupId>org.springframework.amqp</groupId>
@@ -47,13 +62,7 @@
       <scope>provided</scope>
     </dependency>
 
-    <!-- spring-aop is required for the consumer side instrumentation point -->
-    <dependency>
-      <groupId>org.springframework</groupId>
-      <artifactId>spring-aop</artifactId>
-      <version>${spring5.version}</version>
-      <scope>provided</scope>
-    </dependency>
+
 
     <dependency>
       <groupId>${project.groupId}</groupId>

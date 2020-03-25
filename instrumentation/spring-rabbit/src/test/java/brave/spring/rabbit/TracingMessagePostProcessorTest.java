@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,12 +16,10 @@ package brave.spring.rabbit;
 import brave.Tracing;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.amqp.core.Message;
@@ -31,11 +29,10 @@ import zipkin2.Span;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TracingMessagePostProcessorTest {
+  TraceContext grandparent = TraceContext.newBuilder().traceId(1L).spanId(1L).sampled(true).build();
+  TraceContext parent = grandparent.toBuilder().parentId(grandparent.spanId()).spanId(2L).build();
   List<Span> spans = new ArrayList<>();
-  Tracing tracing = Tracing.newBuilder()
-    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-    .spanReporter(spans::add)
-    .build();
+  Tracing tracing = Tracing.newBuilder().spanReporter(spans::add).build();
   TracingMessagePostProcessor tracingMessagePostProcessor = new TracingMessagePostProcessor(
     SpringRabbitTracing.newBuilder(tracing).remoteServiceName("my-exchange").build()
   );
@@ -45,7 +42,6 @@ public class TracingMessagePostProcessorTest {
   }
 
   @Test public void should_attempt_to_resume_headers() {
-    TraceContext parent = TraceContext.newBuilder().traceId(1L).spanId(1L).sampled(true).build();
     Message message = MessageBuilder.withBody(new byte[0]).build();
     message.getMessageProperties().setHeader("b3", B3SingleFormat.writeB3SingleFormat(parent));
 
@@ -57,10 +53,6 @@ public class TracingMessagePostProcessorTest {
   }
 
   @Test public void should_prefer_current_span() {
-    TraceContext grandparent =
-      TraceContext.newBuilder().traceId(1L).spanId(1L).sampled(true).build();
-    TraceContext parent = grandparent.toBuilder().parentId(grandparent.spanId()).spanId(2L).build();
-
     // Will be either a bug, or a missing processor stage which can result in an old span in headers
     Message message = MessageBuilder.withBody(new byte[0]).build();
     message.getMessageProperties().setHeader("b3", B3SingleFormat.writeB3SingleFormat(grandparent));
@@ -75,20 +67,7 @@ public class TracingMessagePostProcessorTest {
     assertThat(headers.get("b3").toString()).endsWith("-" + spans.get(0).id() + "-1");
   }
 
-  @Test public void should_add_b3_headers_to_message() {
-    Message message = MessageBuilder.withBody(new byte[0]).build();
-    Message postProcessMessage = tracingMessagePostProcessor.postProcessMessage(message);
-
-    Set<String> headerKeys = postProcessMessage.getMessageProperties().getHeaders().keySet();
-
-    assertThat(headerKeys).containsExactly("b3");
-  }
-
   @Test public void should_add_b3_single_header_to_message() {
-    TracingMessagePostProcessor tracingMessagePostProcessor = new TracingMessagePostProcessor(
-      SpringRabbitTracing.newBuilder(tracing).writeB3SingleFormat(true).build()
-    );
-
     Message message = MessageBuilder.withBody(new byte[0]).build();
     Message postProcessMessage = tracingMessagePostProcessor.postProcessMessage(message);
 
