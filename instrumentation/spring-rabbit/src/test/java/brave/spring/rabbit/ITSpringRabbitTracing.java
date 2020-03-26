@@ -13,6 +13,8 @@
  */
 package brave.spring.rabbit;
 
+import brave.messaging.MessagingRuleSampler;
+import brave.sampler.Sampler;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +24,8 @@ import zipkin2.DependencyLink;
 import zipkin2.Span;
 import zipkin2.internal.DependencyLinker;
 
+import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
+import static brave.messaging.MessagingRequestMatchers.operationEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.groups.Tuple.tuple;
@@ -130,5 +134,27 @@ public class ITSpringRabbitTracing extends ITSpringRabbit {
 
     assertThat(consumerReporter.takeLocalSpan().name())
       .isEqualTo("on-message");
+  }
+
+  @Test public void producerSampler() {
+    producerSampler = MessagingRuleSampler.newBuilder()
+      .putRule(operationEquals("send"), Sampler.NEVER_SAMPLE)
+      .build();
+
+    produceMessage();
+    awaitMessageConsumed();
+
+    // since the producer was unsampled, the consumer should be unsampled also due to propagation
+    // reporter rules verify nothing was reported
+  }
+
+  @Test public void consumerSampler() {
+    consumerSampler = MessagingRuleSampler.newBuilder()
+      .putRule(channelNameEquals(TEST_QUEUE), Sampler.NEVER_SAMPLE)
+      .build();
+
+    produceUntracedMessage();
+    awaitMessageConsumed();
+    // reporter rules verify nothing was reported
   }
 }

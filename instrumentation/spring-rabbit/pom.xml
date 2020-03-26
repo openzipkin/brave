@@ -62,8 +62,6 @@
       <scope>provided</scope>
     </dependency>
 
-
-
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-tests</artifactId>
@@ -76,9 +74,9 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.springframework.amqp</groupId>
-      <artifactId>spring-rabbit-junit</artifactId>
-      <version>${spring-rabbit.version}</version>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>rabbitmq</artifactId>
+      <version>${testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

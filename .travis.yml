@@ -9,6 +9,8 @@ language: java
 jdk: openjdk13
 
 before_install:
+  # Disable testcontainers checks
+  - echo checks.disable=true > ~/.testcontainers.properties
   # allocate commits to CI, not the owner of the deploy key
   - git config user.name "zipkinci"
   - git config user.email "zipkinci+zipkin-dev@googlegroups.com"
@@ -46,6 +48,3 @@ env:
     - secure: "Z6aQmONN3znLNtaMdt4ycoyHGdVqSC9W8N3FluZZFFYcoqhtR+p4RMWjpgloQHPZadLLuJIUijQgCYELCAFFkaIcanytIxWnVgK5/qpdfv7Vx52d5mwyCGq3jFtreVRNsd/4g6vkStr4nRf0+dZcDA4Y10CAlsZloF9ETPqQmco="
     # Ex. travis encrypt SONATYPE_PASSWORD=your_sonatype_password
     - secure: "GY48c/XSiQ87QC7HadzzdXKeymnLYdkwrWliaZzD2djSOv2pgmDMrW05jxIN+81B4w9CcM8R18KsUjpkATWKIctl/+/9sXMlQcvRMdM3EFA66RJA7tg4BjRjRwSv7YQ+935dbCHB/C8Zw05TkUQMpbqtGzjpckGIhNViyOJWYIU="
-
-services:
-  - rabbitmq

@@ -32,7 +32,6 @@ import static org.mockito.Mockito.when;
 import static zipkin2.Span.Kind.CONSUMER;
 
 public class TracingRabbitListenerAdviceTest {
-
   static String TRACE_ID = "463ac35c9f6413ad";
   static String PARENT_ID = "463ac35c9f6413ab";
   static String SPAN_ID = "48485a3953bb6124";
