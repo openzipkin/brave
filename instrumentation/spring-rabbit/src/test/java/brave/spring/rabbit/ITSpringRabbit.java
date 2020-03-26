@@ -72,7 +72,7 @@ public abstract class ITSpringRabbit extends ITRemote {
   }
 
   @AfterClass public static void kiwwTheWabbit() {
-    rabbit.start();
+    rabbit.stop();
   }
 
   @Rule public TestSpanReporter producerReporter = new TestSpanReporter();
