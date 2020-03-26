@@ -15,6 +15,7 @@ Here's a brief overview of what's packaged here:
 * [jms](jms/README.md) - Tracing decorators for JMS 1.1-2.01 producers, consumers and listeners.
 * [kafka-clients](kafka-clients/README.md) - Tracing decorators for Kafka 0.11+ producers and consumers.
 * [kafka-streams](kafka-streams/README.md) - Tracing decorator for Kafka Streams 2.0+ clients.
+* [mongodb](mongodb/README.md) - Tracing MongoDB command listener
 * [mysql](mysql/README.md) - Tracing MySQL statement interceptor
 * [mysql6](mysql6/README.md) - Tracing MySQL v6 statement interceptor
 * [mysql8](mysql8/README.md) - Tracing MySQL v8 statement interceptor

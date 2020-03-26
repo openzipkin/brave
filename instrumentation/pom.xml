@@ -44,6 +44,7 @@
     <module>jersey-server</module>
     <module>jms</module>
     <module>messaging</module>
+    <module>mongodb</module>
     <module>mysql</module>
     <module>mysql6</module>
     <module>mysql8</module>
