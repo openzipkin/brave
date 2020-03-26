@@ -13,7 +13,6 @@
  */
 package brave.spring.rabbit;
 
-import brave.Tracing;
 import brave.messaging.MessagingRequest;
 import brave.messaging.MessagingTracing;
 import brave.sampler.Sampler;
@@ -82,21 +81,18 @@ public abstract class ITSpringRabbit extends ITRemote {
   SamplerFunction<MessagingRequest> producerSampler = SamplerFunctions.deferDecision();
   SamplerFunction<MessagingRequest> consumerSampler = SamplerFunctions.deferDecision();
 
-  MessagingTracing messagingTracing(Tracing tracing) {
-    return MessagingTracing.newBuilder(tracing)
-      .producerSampler(r -> producerSampler.trySample(r))
-      .consumerSampler(r -> consumerSampler.trySample(r))
-      .build();
-  }
-
   SpringRabbitTracing producerTracing = SpringRabbitTracing.create(
-    messagingTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).localServiceName("producer")
+    MessagingTracing.newBuilder(tracingBuilder(Sampler.ALWAYS_SAMPLE).localServiceName("producer")
       .spanReporter(producerReporter).build())
+      .producerSampler(r -> producerSampler.trySample(r))
+      .build()
   );
 
   SpringRabbitTracing consumerTracing = SpringRabbitTracing.create(
-    messagingTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).localServiceName("consumer")
+    MessagingTracing.newBuilder(tracingBuilder(Sampler.ALWAYS_SAMPLE).localServiceName("consumer")
       .spanReporter(consumerReporter).build())
+      .consumerSampler(r -> consumerSampler.trySample(r))
+      .build()
   );
 
   CachingConnectionFactory connectionFactory =
