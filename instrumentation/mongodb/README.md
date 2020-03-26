@@ -5,7 +5,8 @@ This includes [`TraceMongoCommandListener`](src/main/java/brave/mongodb/TraceMon
 for the Mongo Java driver that will report via Brave how long each command takes, along with relevant tags like the
 collection/view name, the command's name (`insert`, `update`, `find`, etc.).
 
-Support for asynchronous clients is **unimplemented**.
+Support for asynchronous clients is **unimplemented**. To request support for this, add your thumbs
+up to https://github.com/openzipkin/brave/issues/1113
 
 This instrumentation can only be used with the synchronous MongoDB driver. Do not use it with the asynchronous
 (`com.mongodb.async.MongoClient`) or reactive (`com.mongodb.reactivestreams.client.MongoClient`) drivers as tracing
