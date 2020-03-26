@@ -60,8 +60,9 @@ public abstract class ITRemote {
 
   /** Returns a trace context for use in propagation tests. */
   protected TraceContext newTraceContext(SamplingFlags flags) {
+    long id = System.nanoTime(); // Random enough as tests are run serially anyway
     TraceContext result = TraceContext.newBuilder()
-      .traceIdHigh(1L).traceId(2L).parentId(3L).spanId(1L)
+      .traceIdHigh(id).traceId(id + 1).parentId(id + 2).spanId(id + 3)
       .sampled(flags.sampled())
       .sampledLocal(flags.sampledLocal())
       .debug(flags.debug()).build();
@@ -69,10 +70,12 @@ public abstract class ITRemote {
     return tracing.propagationFactory().decorate(result);
   }
 
+  final StrictScopeDecorator strictScopeDecorator = StrictScopeDecorator.create();
+
   // field because this allows subclasses to initialize a field Tracing
   protected final CurrentTraceContext currentTraceContext =
     ThreadLocalCurrentTraceContext.newBuilder()
-      .addScopeDecorator(StrictScopeDecorator.create())
+      .addScopeDecorator(strictScopeDecorator)
       .build();
 
   protected final Propagation.Factory propagationFactory =
@@ -90,11 +93,12 @@ public abstract class ITRemote {
 
   /**
    * This closes the current instance of tracing, to prevent it from being accidentally visible to
-   * other test classes which call {@link Tracing#current()}.
+   * other test classes which call {@link Tracing#current()}. It also checks for scope leaks!
    */
   @After public void close() throws Exception {
     Tracing current = Tracing.current();
     if (current != null) current.close();
+    strictScopeDecorator.close();
   }
 
   // Assertions below here can eventually move to a new type
