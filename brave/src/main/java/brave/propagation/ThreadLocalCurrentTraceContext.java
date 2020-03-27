@@ -48,7 +48,8 @@ public class ThreadLocalCurrentTraceContext extends CurrentTraceContext { // not
 
   /**
    * This component is backed by a possibly static shared thread local. Call this to clear the
-   * reference when you are sure any residual state is due to a leak.
+   * reference when you are sure any residual state is due to a leak. This is generally only useful
+   * in tests.
    *
    * @since 5.11
    */
