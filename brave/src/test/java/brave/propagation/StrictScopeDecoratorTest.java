@@ -54,6 +54,12 @@ public class StrictScopeDecoratorTest {
     decorator.close(); // doesn't error
   }
 
+  @Test public void doesntDecorateNoop() {
+    assertThat(decorator.decorateScope(context, Scope.NOOP))
+      .isSameAs(Scope.NOOP);
+    decorator.close(); // doesn't error
+  }
+
   static class BusinessClass {
     final Tracing tracing;
     final ThreadLocalSpan threadLocalSpan;

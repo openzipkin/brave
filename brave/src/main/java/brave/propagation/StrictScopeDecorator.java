@@ -50,6 +50,7 @@ public final class StrictScopeDecorator implements ScopeDecorator, Closeable {
    * different thread.
    */
   @Override public Scope decorateScope(@Nullable TraceContext context, Scope scope) {
+    if (scope == Scope.NOOP) return scope;
     CallerStackTrace caller = new CallerStackTrace(context);
     StackTraceElement[] stackTrace = caller.getStackTrace();
 
