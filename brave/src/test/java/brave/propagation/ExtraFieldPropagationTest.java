@@ -14,6 +14,7 @@
 package brave.propagation;
 
 import brave.Tracing;
+import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.ExtraFieldPropagation.Extra;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -22,9 +23,11 @@ import java.util.TreeMap;
 import org.junit.Before;
 import org.junit.Test;
 
+import static brave.propagation.ExtraFieldPropagation.newFactoryBuilder;
 import static brave.propagation.Propagation.KeyFactory.STRING;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 
 public class ExtraFieldPropagationTest {
@@ -68,15 +71,17 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void downcasesNames() {
-    ExtraFieldPropagation.Factory factory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
-      "X-FOO");
+    ExtraFieldPropagation.RealFactory factory =
+      (ExtraFieldPropagation.RealFactory) ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
+        "X-FOO");
     assertThat(factory.fieldNames)
       .containsExactly("x-foo");
   }
 
   @Test public void trimsNames() {
-    ExtraFieldPropagation.Factory factory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
-      " x-foo  ");
+    ExtraFieldPropagation.RealFactory factory =
+      (ExtraFieldPropagation.RealFactory) ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
+        " x-foo  ");
     assertThat(factory.fieldNames)
       .containsExactly("x-foo");
   }
@@ -105,10 +110,56 @@ public class ExtraFieldPropagationTest {
     TraceContext context = extractWithAmazonTraceId();
 
     try (Tracing t = Tracing.newBuilder().propagationFactory(factory).build();
-         CurrentTraceContext.Scope scope = t.currentTraceContext().newScope(context)) {
+         Scope scope = t.currentTraceContext().newScope(context)) {
       assertThat(ExtraFieldPropagation.get("x-amzn-trace-id"))
         .isEqualTo(awsTraceId);
     }
+  }
+
+  @Test public void emptyFields_disallowed() {
+    assertThatThrownBy(() -> ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, ""))
+      .hasMessage("fieldNames[0] is empty");
+
+    assertThatThrownBy(() -> ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, asList("")))
+      .hasMessage("fieldNames[0] is empty");
+
+    assertThatThrownBy(() -> newFactoryBuilder(B3Propagation.FACTORY).addField("").build())
+      .hasMessage("fieldName is empty");
+
+    assertThatThrownBy(() -> newFactoryBuilder(B3Propagation.FACTORY).addRedactedField("").build())
+      .hasMessage("fieldName is empty");
+
+    assertThatThrownBy(
+      () -> newFactoryBuilder(B3Propagation.FACTORY).addPrefixedFields("foo", asList("")).build())
+      .hasMessage("fieldNames[0] is empty");
+  }
+
+  // We formerly enforced presence of field names in the factory's factory method
+  @Test public void noFields_newFactory_disallowed() {
+    assertThatThrownBy(() -> ExtraFieldPropagation.newFactory(B3Propagation.FACTORY))
+      .hasMessage("no field names");
+
+    assertThatThrownBy(() -> ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, asList()))
+      .hasMessage("no field names");
+  }
+
+  // We formerly accepted .build() when no fields were present
+  @Test public void noFields_newFactoryBuilder_wrapsDelegate() {
+    factory = newFactoryBuilder(B3Propagation.FACTORY).build();
+    initialize();
+
+    // check nothing throws on no-op
+    ExtraFieldPropagation.set(context, "userid", "bob");
+    assertThat(ExtraFieldPropagation.get(context, "userid")).isNull();
+
+    assertThat(extractor.extract(Collections.emptyMap()).extra())
+      .isEmpty();
+
+    injector.inject(context, carrier);
+    TraceContext extractedContext = extractor.extract(carrier).context();
+    assertThat(extractedContext)
+      .usingRecursiveComparison()
+      .isEqualTo(context);
   }
 
   @Test public void current_get_null_if_no_current_context() {
@@ -125,7 +176,7 @@ public class ExtraFieldPropagationTest {
 
   @Test public void current_set() {
     try (Tracing t = Tracing.newBuilder().propagationFactory(factory).build();
-         CurrentTraceContext.Scope scope = t.currentTraceContext().newScope(context)) {
+         Scope scope = t.currentTraceContext().newScope(context)) {
       ExtraFieldPropagation.set("x-amzn-trace-id", awsTraceId);
 
       assertThat(ExtraFieldPropagation.get("x-amzn-trace-id"))
@@ -165,7 +216,7 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void inject_prefixed() {
-    factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
+    factory = newFactoryBuilder(B3Propagation.FACTORY)
       .addField("x-vcap-request-id")
       .addPrefixedFields("baggage-", asList("country-code"))
       .build();
@@ -215,7 +266,7 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void extract_prefixed() {
-    factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
+    factory = newFactoryBuilder(B3Propagation.FACTORY)
       .addField("x-vcap-request-id")
       .addPrefixedFields("baggage-", asList("country-code"))
       .build();
@@ -287,7 +338,7 @@ public class ExtraFieldPropagationTest {
   @Test public void extract_field_multiple_prefixes() {
     // switch to case insensitive as this example is about http :P
     carrier = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
+    factory = newFactoryBuilder(B3Propagation.FACTORY)
       .addField("userId")
       .addField("sessionId")
       .addPrefixedFields("baggage-", asList("userId", "sessionId"))
@@ -309,7 +360,7 @@ public class ExtraFieldPropagationTest {
 
   /** Redaction only applies outbound. Inbound parsing should be unaffected */
   @Test public void extract_redactedField() {
-    factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
+    factory = newFactoryBuilder(B3Propagation.FACTORY)
       .addRedactedField("userid")
       .addField("sessionid")
       .build();
@@ -329,7 +380,7 @@ public class ExtraFieldPropagationTest {
 
   /** Redaction prevents named fields from being written downstream. */
   @Test public void inject_redactedField() {
-    factory = ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
+    factory = newFactoryBuilder(B3Propagation.FACTORY)
       .addRedactedField("userid")
       .addField("sessionid")
       .build();
@@ -346,7 +397,7 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void inject_field_multiple_prefixes() {
-    factory = ExtraFieldPropagation.newFactoryBuilder(B3SinglePropagation.FACTORY)
+    factory = newFactoryBuilder(B3SinglePropagation.FACTORY)
       .addField("userId")
       .addField("sessionId")
       .addPrefixedFields("baggage-", asList("userId", "sessionId"))
@@ -372,13 +423,13 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void deduplicates() {
-    assertThat(ExtraFieldPropagation.newFactoryBuilder(B3SinglePropagation.FACTORY)
+    assertThat(newFactoryBuilder(B3SinglePropagation.FACTORY)
       .addField("country-code")
       .addPrefixedFields("baggage-", asList("country-code"))
       .addPrefixedFields("baggage_", asList("country-code"))
       .build())
       .usingRecursiveComparison().isEqualTo(
-      ExtraFieldPropagation.newFactoryBuilder(B3SinglePropagation.FACTORY)
+      newFactoryBuilder(B3SinglePropagation.FACTORY)
         .addField("country-code").addField("country-code")
         .addPrefixedFields("baggage-", asList("country-code", "country-code"))
         .addPrefixedFields("baggage_", asList("country-code", "country-code"))
