@@ -93,6 +93,8 @@
             <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager
             </java.util.logging.manager>
           </systemPropertyVariables>
+          <!-- Ensure scope leak cause ends up in the console -->
+          <trimStackTrace>false</trimStackTrace>
         </configuration>
       </plugin>
     </plugins>

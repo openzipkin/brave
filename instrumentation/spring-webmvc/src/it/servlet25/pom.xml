@@ -119,6 +119,8 @@
           <includes>
             <include>**/IT*.java</include>
           </includes>
+          <!-- Ensure scope leak cause ends up in the console -->
+          <trimStackTrace>false</trimStackTrace>
         </configuration>
       </plugin>
     </plugins>
