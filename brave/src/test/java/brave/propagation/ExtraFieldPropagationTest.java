@@ -68,15 +68,17 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void downcasesNames() {
-    ExtraFieldPropagation.Factory factory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
-      "X-FOO");
+    ExtraFieldPropagation.RealFactory factory =
+      (ExtraFieldPropagation.RealFactory) ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
+        "X-FOO");
     assertThat(factory.fieldNames)
       .containsExactly("x-foo");
   }
 
   @Test public void trimsNames() {
-    ExtraFieldPropagation.Factory factory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
-      " x-foo  ");
+    ExtraFieldPropagation.RealFactory factory =
+      (ExtraFieldPropagation.RealFactory) ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
+        " x-foo  ");
     assertThat(factory.fieldNames)
       .containsExactly("x-foo");
   }

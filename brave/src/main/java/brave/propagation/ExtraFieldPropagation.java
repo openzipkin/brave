@@ -97,13 +97,12 @@ import java.util.Set;
  * String countryCode = ExtraFieldPropagation.get(span.context(), "country-code");
  * }</pre>
  */
-public final class ExtraFieldPropagation<K> implements Propagation<K> {
+public class ExtraFieldPropagation<K> implements Propagation<K> {
   /** Wraps an underlying propagation implementation, pushing one or more fields */
   public static Factory newFactory(Propagation.Factory delegate, String... fieldNames) {
     if (delegate == null) throw new NullPointerException("delegate == null");
     if (fieldNames == null) throw new NullPointerException("fieldNames == null");
-    String[] validated = ensureLowerCase(new LinkedHashSet<>(Arrays.asList(fieldNames)));
-    return new Factory(delegate, validated, validated, new BitSet());
+    return newFactory(delegate, Arrays.asList(fieldNames));
   }
 
   /** Wraps an underlying propagation implementation, pushing one or more fields */
@@ -112,7 +111,8 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     if (delegate == null) throw new NullPointerException("delegate == null");
     if (fieldNames == null) throw new NullPointerException("fieldNames == null");
     String[] validated = ensureLowerCase(new LinkedHashSet<>(fieldNames));
-    return new Factory(delegate, validated, validated, new BitSet());
+    return validated.length == 0
+      ? new Factory(delegate) : new RealFactory(delegate, validated, validated, new BitSet());
   }
 
   public static FactoryBuilder newFactoryBuilder(Propagation.Factory delegate) {
@@ -163,6 +163,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
       return this;
     }
 
+    /** Returns a wrapper of the delegate if there are no fields to propagate. */
     public Factory build() {
       BitSet redacted = new BitSet();
       List<String> fields = new ArrayList<>(), keys = new ArrayList<>();
@@ -199,8 +200,10 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
       for (i = 0; i < keyToField.length; i++) {
         keyToField[i] = keyToFieldList.get(i);
       }
-      return new Factory(delegate, fields.toArray(new String[0]), keys.toArray(new String[0]),
-        keyToField, redacted);
+      String[] validated = fields.toArray(new String[0]);
+      if (validated.length == 0) return new Factory(delegate);
+      return new RealFactory(delegate, validated, keys.toArray(new String[0]), keyToField,
+        redacted);
     }
   }
 
@@ -272,15 +275,39 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     PropagationFields.put(context, lowercase(name), value, Extra.class);
   }
 
-  public static final class Factory extends Propagation.Factory {
+  public static class Factory extends Propagation.Factory {
     final Propagation.Factory delegate;
+
+    Factory(Propagation.Factory delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override public <K> ExtraFieldPropagation<K> create(Propagation.KeyFactory<K> keyFactory) {
+      return new ExtraFieldPropagation<>(delegate, keyFactory);
+    }
+
+    @Override public boolean supportsJoin() {
+      return delegate.supportsJoin();
+    }
+
+    @Override public boolean requires128BitTraceId() {
+      return delegate.requires128BitTraceId();
+    }
+
+    @Override public TraceContext decorate(TraceContext context) {
+      return delegate.decorate(context);
+    }
+  }
+
+  public static final class RealFactory extends Factory {
     final String[] fieldNames;
     final String[] keyNames;
     final int[] keyToField;
     final BitSet redacted;
     final ExtraFactory extraFactory;
 
-    Factory(Propagation.Factory delegate, String[] fieldNames, String[] keyNames, BitSet redacted) {
+    RealFactory(Propagation.Factory delegate, String[] fieldNames, String[] keyNames,
+      BitSet redacted) {
       this(delegate, fieldNames, keyNames, keyToField(keyNames), redacted);
     }
 
@@ -294,22 +321,14 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
       return result;
     }
 
-    Factory(Propagation.Factory delegate, String[] fieldNames, String[] keyNames,
+    RealFactory(Propagation.Factory delegate, String[] fieldNames, String[] keyNames,
       int[] keyToField, BitSet redacted) {
-      this.delegate = delegate;
+      super(delegate);
       this.keyToField = keyToField;
       this.fieldNames = fieldNames;
       this.keyNames = keyNames;
       this.redacted = redacted;
       this.extraFactory = new ExtraFactory(fieldNames);
-    }
-
-    @Override public boolean supportsJoin() {
-      return delegate.supportsJoin();
-    }
-
-    @Override public boolean requires128BitTraceId() {
-      return delegate.requires128BitTraceId();
     }
 
     @Override
@@ -319,7 +338,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
       for (int i = 0; i < length; i++) {
         keys.add(keyFactory.create(keyNames[i]));
       }
-      return new ExtraFieldPropagation<>(this, keyFactory, keys, redacted);
+      return new RealExtraFieldPropagation<>(this, keyFactory, keys, redacted);
     }
 
     @Override public TraceContext decorate(TraceContext context) {
@@ -328,17 +347,10 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
     }
   }
 
-  final Factory factory;
   final Propagation<K> delegate;
-  final List<K> keys;
-  final BitSet redacted;
 
-  ExtraFieldPropagation(Factory factory, Propagation.KeyFactory<K> keyFactory, List<K> keys,
-    BitSet redacted) {
-    this.factory = factory;
-    this.delegate = factory.delegate.create(keyFactory);
-    this.keys = keys;
-    this.redacted = redacted;
+  ExtraFieldPropagation(Propagation.Factory factory, Propagation.KeyFactory<K> keyFactory) {
+    this.delegate = factory.create(keyFactory);
   }
 
   /**
@@ -348,7 +360,7 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
   // This is here to support extraction from carriers missing a get field by name function. The only
   // known example is OpenTracing TextMap https://github.com/opentracing/opentracing-java/issues/305
   public List<K> extraKeys() {
-    return keys;
+    return Collections.emptyList();
   }
 
   /**
@@ -361,19 +373,45 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
   }
 
   @Override public <C> Injector<C> injector(Setter<C, K> setter) {
-    return new ExtraFieldInjector<>(this, setter);
+    return delegate.injector(setter);
   }
 
   @Override public <C> Extractor<C> extractor(Getter<C, K> getter) {
-    return new ExtraFieldExtractor<>(this, getter);
+    return delegate.extractor(getter);
+  }
+
+  static final class RealExtraFieldPropagation<K> extends ExtraFieldPropagation<K> {
+    final RealFactory factory;
+    final List<K> keys;
+    final BitSet redacted;
+
+    RealExtraFieldPropagation(RealFactory factory, Propagation.KeyFactory<K> keyFactory,
+      List<K> keys, BitSet redacted) {
+      super(factory.delegate, keyFactory);
+      this.factory = factory;
+      this.keys = keys;
+      this.redacted = redacted;
+    }
+
+    @Override public List<K> extraKeys() {
+      return keys;
+    }
+
+    @Override public <C> Injector<C> injector(Setter<C, K> setter) {
+      return new ExtraFieldInjector<>(this, setter);
+    }
+
+    @Override public <C> Extractor<C> extractor(Getter<C, K> getter) {
+      return new ExtraFieldExtractor<>(this, getter);
+    }
   }
 
   static final class ExtraFieldInjector<C, K> implements Injector<C> {
-    final ExtraFieldPropagation<K> propagation;
+    final RealExtraFieldPropagation<K> propagation;
     final Injector<C> delegate;
     final Propagation.Setter<C, K> setter;
 
-    ExtraFieldInjector(ExtraFieldPropagation<K> propagation, Setter<C, K> setter) {
+    ExtraFieldInjector(RealExtraFieldPropagation<K> propagation, Setter<C, K> setter) {
       this.propagation = propagation;
       this.delegate = propagation.delegate.injector(setter);
       this.setter = setter;
@@ -397,11 +435,11 @@ public final class ExtraFieldPropagation<K> implements Propagation<K> {
   }
 
   static final class ExtraFieldExtractor<C, K> implements Extractor<C> {
-    final ExtraFieldPropagation<K> propagation;
+    final RealExtraFieldPropagation<K> propagation;
     final Extractor<C> delegate;
     final Propagation.Getter<C, K> getter;
 
-    ExtraFieldExtractor(ExtraFieldPropagation<K> propagation, Getter<C, K> getter) {
+    ExtraFieldExtractor(RealExtraFieldPropagation<K> propagation, Getter<C, K> getter) {
       this.propagation = propagation;
       this.delegate = propagation.delegate.extractor(getter);
       this.getter = getter;
