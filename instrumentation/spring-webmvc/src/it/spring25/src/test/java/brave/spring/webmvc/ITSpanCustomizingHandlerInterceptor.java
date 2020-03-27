@@ -103,7 +103,7 @@ public class ITSpanCustomizingHandlerInterceptor extends ITServletContainer {
 
     @RequestMapping(value = "/exception")
     public void notReady() throws UnavailableException {
-      throw new UnavailableException("not ready", 1 /* temporary implies 503 */);
+      throw NOT_READY_UE;
     }
   }
 

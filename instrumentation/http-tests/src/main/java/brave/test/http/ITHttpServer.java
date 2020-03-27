@@ -51,6 +51,12 @@ import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITHttpServer extends ITRemote {
+  public static final IllegalStateException NOT_READY_ISE = new IllegalStateException("not ready") {
+    @Override public Throwable fillInStackTrace() {
+      return this; // don't fill logs as we are only testing
+    }
+  };
+
   OkHttpClient client = new OkHttpClient();
   protected HttpTracing httpTracing = HttpTracing.create(tracing);
 
@@ -440,12 +446,9 @@ public abstract class ITHttpServer extends ITRemote {
   }
 
   /**
-   * Some synchronous frameworks have limited means to adjust the HTTP status code upon raising an
-   * exception. When this is the case, use the following built-in exception:
-   *
-   * <p><pre>{@code
-   *   throw new UnavailableException("not ready", 1); // implies 503
-   * }</pre>
+   * Throw {@link ITHttpServer#NOT_READY_ISE} inside your controller unless you cannot control the
+   * HTTP status code. When this is the case, you may be able to use a wrapped exception such as
+   * {@link ITServletContainer#NOT_READY_UE} instead.
    */
   @Test public void httpStatusCodeTagMatchesResponse_onException() throws IOException {
     httpStatusCodeTagMatchesResponse("/exception", ".+");

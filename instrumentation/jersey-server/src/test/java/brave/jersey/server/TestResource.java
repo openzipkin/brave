@@ -27,6 +27,7 @@ import javax.ws.rs.core.Response;
 import org.glassfish.jersey.server.ManagedAsync;
 
 import static brave.test.ITRemote.EXTRA_KEY;
+import static brave.test.http.ITHttpServer.NOT_READY_ISE;
 
 @Path("")
 public class TestResource {
@@ -111,14 +112,14 @@ public class TestResource {
   @GET
   @Path("exception")
   public Response notReady() {
-    throw new WebApplicationException(new IllegalStateException("not ready"), 503);
+    throw new WebApplicationException(NOT_READY_ISE, 503);
   }
 
   @GET
   @Path("exceptionAsync")
   public void notReadyAsync(@Suspended AsyncResponse response) {
     Thread thread = new Thread(() -> response.resume(
-      new WebApplicationException(new IllegalStateException("not ready"), 503)
+      new WebApplicationException(NOT_READY_ISE, 503)
     ));
     thread.start();
     try {

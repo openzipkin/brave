@@ -78,7 +78,7 @@ public class ITVertxWebTracing extends ITHttpServer {
       ctx.response().end("happy");
     });
     router.route("/exception").handler(ctx -> {
-      ctx.fail(503, new IllegalStateException("not ready"));
+      ctx.fail(503, NOT_READY_ISE);
     });
     router.route("/items/:itemId").handler(ctx -> {
       ctx.response().end(ctx.request().getParam("itemId"));
@@ -95,7 +95,7 @@ public class ITVertxWebTracing extends ITHttpServer {
     });
     router.mountSubRouter("/nested", subrouter);
     router.route("/exceptionAsync").handler(ctx -> {
-      ctx.request().endHandler(v -> ctx.fail(503, new IllegalStateException("not ready")));
+      ctx.request().endHandler(v -> ctx.fail(503, NOT_READY_ISE));
     });
 
     Handler<RoutingContext> routingContextHandler =

@@ -102,7 +102,7 @@ public abstract class ITServlet3Container extends ITServlet25Container {
         @Override public void onStartAsync(AsyncEvent event) {
         }
       });
-      throw new IllegalStateException("not ready");
+      throw NOT_READY_ISE;
     }
   }
 
@@ -142,7 +142,7 @@ public abstract class ITServlet3Container extends ITServlet25Container {
       if (DispatcherType.ERROR.equals(req.getDispatcherType())) return; // don't loop
 
       if (req.getAttribute("dispatched") != null) {
-        throw new IllegalStateException("not ready");
+        throw NOT_READY_ISE;
       }
 
       req.setAttribute("dispatched", Boolean.TRUE);

@@ -27,6 +27,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
+import static brave.test.http.ITServletContainer.NOT_READY_UE;
+
 @Controller class Servlet25TestController {
   final Tracer tracer;
 
@@ -63,7 +65,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
   @ResponseStatus(value = HttpStatus.SERVICE_UNAVAILABLE)
   @RequestMapping(value = "/exception")
   public ResponseEntity<Void> notReady() throws UnavailableException {
-    throw new UnavailableException("not ready", 1 /* temporary implies 503 */);
+    throw NOT_READY_UE;
   }
 
   @RequestMapping(value = "/items/{itemId}")

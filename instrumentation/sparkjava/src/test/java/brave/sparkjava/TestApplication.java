@@ -19,6 +19,7 @@ import spark.Spark;
 import spark.servlet.SparkApplication;
 
 import static brave.test.ITRemote.EXTRA_KEY;
+import static brave.test.http.ITHttpServer.NOT_READY_ISE;
 
 public class TestApplication implements SparkApplication {
   @Override public void init() {
@@ -35,7 +36,7 @@ public class TestApplication implements SparkApplication {
     });
     Spark.get("/exception", (req, res) -> {
       res.status(503);
-      throw new IllegalStateException("not ready");
+      throw NOT_READY_ISE;
     });
 
     // TODO: we need matchUri: https://github.com/perwendel/spark/issues/959
