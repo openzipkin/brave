@@ -198,10 +198,10 @@ public class ExtraFieldPropagation<K> implements Propagation<K> {
       for (i = 0; i < keyToField.length; i++) {
         keyToField[i] = keyToFieldList.get(i);
       }
-      String[] validated = fields.toArray(new String[0]);
-      if (validated.length == 0) return new Factory(delegate);
-      return new RealFactory(delegate, validated, keys.toArray(new String[0]), keyToField,
-        redacted);
+
+      if (fields.isEmpty()) return new Factory(delegate);
+      return new RealFactory(delegate, fields.toArray(new String[0]), keys.toArray(new String[0]),
+        keyToField, redacted);
     }
   }
 
@@ -297,7 +297,7 @@ public class ExtraFieldPropagation<K> implements Propagation<K> {
     }
   }
 
-  public static final class RealFactory extends Factory {
+  static final class RealFactory extends Factory {
     final String[] fieldNames;
     final String[] keyNames;
     final int[] keyToField;
