@@ -24,6 +24,7 @@ import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.rules.DisableOnDebug;
 import org.junit.rules.TestName;
@@ -73,7 +74,7 @@ public abstract class ITRemote {
   final StrictScopeDecorator strictScopeDecorator = StrictScopeDecorator.create();
 
   // field because this allows subclasses to initialize a field Tracing
-  protected final CurrentTraceContext currentTraceContext =
+  protected final ThreadLocalCurrentTraceContext currentTraceContext =
     ThreadLocalCurrentTraceContext.newBuilder()
       .addScopeDecorator(strictScopeDecorator)
       .build();
@@ -89,6 +90,11 @@ public abstract class ITRemote {
       .propagationFactory(propagationFactory)
       .currentTraceContext(currentTraceContext)
       .sampler(sampler);
+  }
+
+  /** Ensure any leaks present were caused by code invoked in the current method */
+  @Before public void clearThreadLocal() {
+    currentTraceContext.clear();
   }
 
   /**
