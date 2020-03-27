@@ -19,8 +19,9 @@ import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import java.io.Closeable;
 import java.util.Arrays;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 import static java.lang.Thread.currentThread;
 
@@ -43,7 +44,7 @@ public final class StrictScopeDecorator implements ScopeDecorator, Closeable {
     return new StrictScopeDecorator();
   }
 
-  final Queue<CallerStackTrace> currentCallers = new ConcurrentLinkedQueue<>();
+  final Set<CallerStackTrace> currentCallers = Collections.synchronizedSet(new LinkedHashSet<>());
 
   /**
    * Identifies problems by throwing {@link IllegalStateException} when a scope is closed on a
@@ -84,7 +85,9 @@ public final class StrictScopeDecorator implements ScopeDecorator, Closeable {
    */
   // AssertionError to ensure test runners render the stack trace
   @Override public void close() {
-    for (CallerStackTrace caller : currentCallers) {
+    // toArray is synchronized while iterators are not
+    CallerStackTrace[] leakedCallers = currentCallers.toArray(new CallerStackTrace[0]);
+    for (CallerStackTrace caller : leakedCallers) {
       // Sometimes unit test runners truncate the cause of the exception.
       // This flattens the exception as the caller of close() isn't important vs the one that leaked
       AssertionError toThrow = new AssertionError(
@@ -96,10 +99,10 @@ public final class StrictScopeDecorator implements ScopeDecorator, Closeable {
 
   static final class StrictScope implements Scope {
     final Scope delegate;
-    final Queue<CallerStackTrace> currentCallers;
+    final Set<CallerStackTrace> currentCallers;
     final CallerStackTrace caller;
 
-    StrictScope(Scope delegate, CallerStackTrace caller, Queue<CallerStackTrace> currentCallers) {
+    StrictScope(Scope delegate, CallerStackTrace caller, Set<CallerStackTrace> currentCallers) {
       this.delegate = delegate;
       this.currentCallers = currentCallers;
       this.caller = caller;
