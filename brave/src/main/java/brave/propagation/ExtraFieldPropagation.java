@@ -106,13 +106,11 @@ public class ExtraFieldPropagation<K> implements Propagation<K> {
   }
 
   /** Wraps an underlying propagation implementation, pushing one or more fields */
-  public static Factory newFactory(Propagation.Factory delegate,
-    Collection<String> fieldNames) {
+  public static Factory newFactory(Propagation.Factory delegate, Collection<String> fieldNames) {
     if (delegate == null) throw new NullPointerException("delegate == null");
     if (fieldNames == null) throw new NullPointerException("fieldNames == null");
-    String[] validated = ensureLowerCase(new LinkedHashSet<>(fieldNames));
-    return validated.length == 0
-      ? new Factory(delegate) : new RealFactory(delegate, validated, validated, new BitSet());
+    String[] validated = ensureLowerCaseFieldNames(new LinkedHashSet<>(fieldNames));
+    return new RealFactory(delegate, validated, validated, new BitSet());
   }
 
   public static FactoryBuilder newFactoryBuilder(Propagation.Factory delegate) {
@@ -159,7 +157,7 @@ public class ExtraFieldPropagation<K> implements Propagation<K> {
       if (prefix == null) throw new NullPointerException("prefix == null");
       if (prefix.isEmpty()) throw new IllegalArgumentException("prefix is empty");
       if (fieldNames == null) throw new NullPointerException("fieldNames == null");
-      prefixedNames.put(prefix, ensureLowerCase(new LinkedHashSet<>(fieldNames)));
+      prefixedNames.put(prefix, ensureLowerCaseFieldNames(new LinkedHashSet<>(fieldNames)));
       return this;
     }
 
@@ -459,15 +457,15 @@ public class ExtraFieldPropagation<K> implements Propagation<K> {
     }
   }
 
-  static String[] ensureLowerCase(Collection<String> names) {
-    if (names.isEmpty()) throw new IllegalArgumentException("names is empty");
-    Iterator<String> nextName = names.iterator();
-    String[] result = new String[names.size()];
+  static String[] ensureLowerCaseFieldNames(Collection<String> fieldNames) {
+    if (fieldNames.isEmpty()) throw new IllegalArgumentException("no field names");
+    Iterator<String> nextName = fieldNames.iterator();
+    String[] result = new String[fieldNames.size()];
     for (int i = 0; nextName.hasNext(); i++) {
       String name = nextName.next();
-      if (name == null) throw new NullPointerException("names[" + i + "] == null");
+      if (name == null) throw new NullPointerException("fieldNames[" + i + "] == null");
       name = name.trim();
-      if (name.isEmpty()) throw new IllegalArgumentException("names[" + i + "] is empty");
+      if (name.isEmpty()) throw new IllegalArgumentException("fieldNames[" + i + "] is empty");
       result[i] = name.toLowerCase(Locale.ROOT);
     }
     return result;
