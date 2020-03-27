@@ -15,14 +15,15 @@ package brave.spring.web;
 
 import brave.test.http.ITHttpAsyncClient;
 import brave.test.util.AssertableCallback;
-import java.io.Closeable;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
-import org.apache.http.client.HttpClient;
+import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.http.impl.nio.client.HttpAsyncClients;
+import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.springframework.http.RequestEntity;
@@ -41,10 +42,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class ITTracingAsyncClientHttpRequestInterceptor
   extends ITHttpAsyncClient<AsyncClientHttpRequestFactory> {
   AsyncClientHttpRequestInterceptor interceptor;
+  CloseableHttpAsyncClient asyncClient = HttpAsyncClients.createSystem();
+
+  @After @Override public void close() throws Exception {
+    asyncClient.close();
+    super.close();
+  }
 
   AsyncClientHttpRequestFactory configureClient(AsyncClientHttpRequestInterceptor interceptor) {
     HttpComponentsAsyncClientHttpRequestFactory factory =
-      new HttpComponentsAsyncClientHttpRequestFactory();
+      new HttpComponentsAsyncClientHttpRequestFactory(asyncClient);
     factory.setReadTimeout(1000);
     factory.setConnectTimeout(1000);
     this.interceptor = interceptor;
@@ -55,13 +62,8 @@ public class ITTracingAsyncClientHttpRequestInterceptor
     return configureClient(TracingAsyncClientHttpRequestInterceptor.create(httpTracing));
   }
 
-  @Override protected void closeClient(AsyncClientHttpRequestFactory client) throws IOException {
-    closeHcClient((HttpComponentsClientHttpRequestFactory) client);
-  }
-
-  static void closeHcClient(HttpComponentsClientHttpRequestFactory client) throws IOException {
-    HttpClient c = client.getHttpClient();
-    if (c instanceof Closeable) ((Closeable) c).close();
+  @Override protected void closeClient(AsyncClientHttpRequestFactory client) {
+    // done in close()
   }
 
   @Override protected void get(AsyncClientHttpRequestFactory client, String pathIncludingQuery) {

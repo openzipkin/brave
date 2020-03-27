@@ -15,7 +15,6 @@ package brave.test;
 
 import brave.Tracing;
 import brave.propagation.B3Propagation;
-import brave.propagation.CurrentTraceContext;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
@@ -45,6 +44,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ul></pre>
  */
 public abstract class ITRemote {
+  public static final String EXTRA_KEY = "user-id";
+
   /**
    * We use a global rule instead of surefire config as this could be executed in gradle, sbt, etc.
    * This way, there's visibility on which method hung without asking the end users to edit build
@@ -56,8 +57,6 @@ public abstract class ITRemote {
   @Rule public TestRule globalTimeout = new DisableOnDebug(Timeout.seconds(20)); // max per method
   @Rule public TestSpanReporter reporter = new TestSpanReporter();
   @Rule public TestName testName = new TestName();
-
-  public static final String EXTRA_KEY = "user-id";
 
   /** Returns a trace context for use in propagation tests. */
   protected TraceContext newTraceContext(SamplingFlags flags) {
@@ -104,6 +103,11 @@ public abstract class ITRemote {
   @After public void close() throws Exception {
     Tracing current = Tracing.current();
     if (current != null) current.close();
+    checkForLeakedScopes();
+  }
+
+  /** Override to control scope leak enforcement. */
+  protected void checkForLeakedScopes() {
     strictScopeDecorator.close();
   }
 

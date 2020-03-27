@@ -60,12 +60,12 @@ public abstract class ITHttpClient<C> extends ITRemote {
   protected Extractor<RecordedRequest> extractor =
     propagationFactory.create(Propagation.KeyFactory.STRING).extractor(RecordedRequest::getHeader);
 
-  @Before public void setup() {
+  @Before public void setup() throws IOException {
     client = newClient(server.getPort());
   }
 
   /** Make sure the client you return has retries disabled. */
-  protected abstract C newClient(int port);
+  protected abstract C newClient(int port) throws IOException;
 
   protected abstract void closeClient(C client) throws IOException;
 
