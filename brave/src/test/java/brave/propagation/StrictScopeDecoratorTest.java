@@ -219,7 +219,7 @@ public class StrictScopeDecoratorTest {
     thread.join();
 
     assertThatThrownBy(decorator::close)
-      .isInstanceOf(IllegalStateException.class)
+      .isInstanceOf(AssertionError.class)
       .satisfies(t -> assertThat(t.getMessage())
         .matches("Thread \\[t1\\] leaked a scope of [0-9a-f]{16}/[0-9a-f]{16} here:"))
       .hasNoCause()

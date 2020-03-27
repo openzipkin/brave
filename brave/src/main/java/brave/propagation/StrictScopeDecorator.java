@@ -78,14 +78,15 @@ public final class StrictScopeDecorator implements ScopeDecorator, Closeable {
   }
 
   /**
-   * @throws IllegalStateException if any scopes were left unclosed.
+   * @throws AssertionError if any scopes were left unclosed.
    * @since 5.11
    */
+  // AssertionError to ensure test runners render the stack trace
   @Override public void close() {
     for (CallerStackTrace caller : currentCallers) {
       // Sometimes unit test runners truncate the cause of the exception.
       // This flattens the exception as the caller of close() isn't important vs the one that leaked
-      IllegalStateException toThrow = new IllegalStateException(
+      AssertionError toThrow = new AssertionError(
         "Thread [" + caller.threadName + "] leaked a scope of " + caller.context + " here:");
       toThrow.setStackTrace(caller.getStackTrace());
       throw toThrow;
