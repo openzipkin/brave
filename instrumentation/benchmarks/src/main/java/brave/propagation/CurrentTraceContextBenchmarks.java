@@ -162,7 +162,7 @@ public class CurrentTraceContextBenchmarks {
   public static void main(String[] args) throws Exception {
     Options opt = new OptionsBuilder()
       .addProfiler("gc")
-      .include(".*" + CurrentTraceContextBenchmarks.class.getSimpleName() +".*newScope.*")
+      .include(".*" + CurrentTraceContextBenchmarks.class.getSimpleName())
       .build();
 
     new Runner(opt).run();
