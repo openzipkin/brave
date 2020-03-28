@@ -14,11 +14,10 @@
 package brave.spring.web;
 
 import brave.test.http.ITHttpAsyncClient;
-import brave.test.util.AssertableCallback;
-import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.function.BiConsumer;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
@@ -31,7 +30,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.AsyncClientHttpRequestFactory;
 import org.springframework.http.client.AsyncClientHttpRequestInterceptor;
 import org.springframework.http.client.HttpComponentsAsyncClientHttpRequestFactory;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 import org.springframework.web.client.AsyncRestTemplate;
 import org.springframework.web.client.HttpStatusCodeException;
@@ -79,22 +77,22 @@ public class ITTracingAsyncClientHttpRequestInterceptor
       String.class).completable().join();
   }
 
-  @Override protected void getAsync(AsyncClientHttpRequestFactory client, String path,
-    AssertableCallback<Integer> callback) {
+  @Override protected void get(AsyncClientHttpRequestFactory client, String path,
+    BiConsumer<Integer, Throwable> callback) {
     AsyncRestTemplate restTemplate = new AsyncRestTemplate(client);
     restTemplate.setInterceptors(Collections.singletonList(interceptor));
     restTemplate.getForEntity(url(path), String.class)
       .addCallback(new ListenableFutureCallback<ResponseEntity<String>>() {
         @Override public void onFailure(Throwable throwable) {
           if (throwable instanceof HttpStatusCodeException) {
-            callback.onSuccess(((HttpStatusCodeException) throwable).getRawStatusCode());
+            callback.accept(((HttpStatusCodeException) throwable).getRawStatusCode(), null);
           } else {
-            callback.onError(throwable);
+            callback.accept(null, throwable);
           }
         }
 
         @Override public void onSuccess(ResponseEntity<String> entity) {
-          callback.onSuccess(entity.getStatusCodeValue());
+          callback.accept(entity.getStatusCodeValue(), null);
         }
       });
   }
