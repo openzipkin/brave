@@ -98,7 +98,20 @@ public abstract class ITRemote {
 
   /**
    * This closes the current instance of tracing, to prevent it from being accidentally visible to
-   * other test classes which call {@link Tracing#current()}. It also checks for scope leaks!
+   * other test classes which call {@link Tracing#current()}.
+   *
+   * <p>This also checks for scope leaks. It is important that you have closed all resources prior
+   * to this method call. Otherwise, in-flight request cleanup may be mistaken for scope leaks. This
+   * may involve blocking on completion, if using executors.
+   *
+   * <p>Ex.
+   * <pre>{@code
+   * @After @Override public void close() throws Exception {
+   *   executorService.shutdown();
+   *   executorService.awaitTermination(1, TimeUnit.SECONDS);
+   *   super.close();
+   * }
+   * }</pre>
    */
   @After public void close() throws Exception {
     Tracing current = Tracing.current();

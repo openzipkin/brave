@@ -73,6 +73,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
 
   protected abstract void post(C client, String pathIncludingQuery, String body) throws IOException;
 
+  /** Closes the client prior to calling {@link ITRemote#close()} */
   @Override @After public void close() throws Exception {
     closeClient(client);
     super.close();

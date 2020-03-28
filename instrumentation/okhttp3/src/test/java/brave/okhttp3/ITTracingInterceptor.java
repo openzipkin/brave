@@ -33,7 +33,8 @@ public class ITTracingInterceptor extends ITHttpAsyncClient<Call.Factory> {
   Dispatcher dispatcher = new Dispatcher(currentTraceContext.executorService(executorService));
 
   @After @Override public void close() throws Exception {
-    executorService.shutdownNow();
+    executorService.shutdown();
+    executorService.awaitTermination(1, TimeUnit.SECONDS);
     super.close();
   }
 
