@@ -105,9 +105,11 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
       String fieldName = fieldNames[i];
       String previousValue = get(fieldName);
       String currentValue = context != null ? getters[i].get(context) : null;
-      if (currentValue != null && !currentValue.equals(previousValue)) {
-        put(fieldName, currentValue);
-        changed = true;
+      if (currentValue != null) {
+        if (!currentValue.equals(previousValue)) {
+          put(fieldName, currentValue);
+          changed = true;
+        }
       } else if (previousValue != null) {
         remove(fieldName);
         changed = true;

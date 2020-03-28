@@ -25,7 +25,6 @@ import org.slf4j.MDC;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class MDCScopeDecoratorTest extends CurrentTraceContextTest {
-
   @Override protected Class<? extends Supplier<CurrentTraceContext>> currentSupplier() {
     return CurrentSupplier.class;
   }
