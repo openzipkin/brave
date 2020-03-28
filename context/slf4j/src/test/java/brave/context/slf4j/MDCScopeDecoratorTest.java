@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,6 +15,7 @@ package brave.context.slf4j;
 
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.test.propagation.CurrentTraceContextTest;
@@ -24,7 +25,6 @@ import org.slf4j.MDC;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class MDCScopeDecoratorTest extends CurrentTraceContextTest {
-
   @Override protected Class<? extends Supplier<CurrentTraceContext>> currentSupplier() {
     return CurrentSupplier.class;
   }
@@ -32,7 +32,9 @@ public class MDCScopeDecoratorTest extends CurrentTraceContextTest {
   static class CurrentSupplier implements Supplier<CurrentTraceContext> {
     @Override public CurrentTraceContext get() {
       return ThreadLocalCurrentTraceContext.newBuilder()
-        .addScopeDecorator(MDCScopeDecorator.create())
+        .addScopeDecorator(MDCScopeDecorator.newBuilder()
+          .addExtraField(EXTRA_FIELD)
+          .build())
         .build();
     }
   }
@@ -47,6 +49,8 @@ public class MDCScopeDecoratorTest extends CurrentTraceContextTest {
         .isEqualTo(context.spanIdString());
       assertThat(MDC.get("sampled"))
         .isEqualTo(context.sampled() != null ? context.sampled().toString() : null);
+      assertThat(MDC.get(EXTRA_FIELD))
+        .isEqualTo(ExtraFieldPropagation.get(context, EXTRA_FIELD));
     } else {
       assertThat(MDC.get("traceId"))
         .isNull();
@@ -55,6 +59,8 @@ public class MDCScopeDecoratorTest extends CurrentTraceContextTest {
       assertThat(MDC.get("spanId"))
         .isNull();
       assertThat(MDC.get("sampled"))
+        .isNull();
+      assertThat(MDC.get(EXTRA_FIELD))
         .isNull();
     }
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  */
 package brave.context.log4j2;
 
-import brave.internal.propagation.CorrelationFieldScopeDecorator;
+import brave.internal.propagation.CorrelationFieldScopeDecoratorBuilder;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import org.apache.logging.log4j.ThreadContext;
 
@@ -34,24 +34,46 @@ import org.apache.logging.log4j.ThreadContext;
  *                  .build();
  * }</pre>
  */
-public final class ThreadContextScopeDecorator extends CorrelationFieldScopeDecorator {
+public final class ThreadContextScopeDecorator {
+  /** @since 5.11 */
+  public static Builder newBuilder() {
+    return new Builder();
+  }
 
   public static ScopeDecorator create() {
-    return new ThreadContextScopeDecorator();
+    return new Builder().build();
   }
 
-  @Override protected String get(String key) {
-    return ThreadContext.get(key);
-  }
+  /** @since 5.11 */
+  public static final class Builder extends CorrelationFieldScopeDecoratorBuilder<Builder> {
+    /** {@inheritDoc} */
+    @Override public Builder removeField(String fieldName) {
+      return super.removeField(fieldName);
+    }
 
-  @Override protected void put(String key, String value) {
-    ThreadContext.put(key, value);
-  }
+    /** {@inheritDoc} */
+    @Override public Builder addExtraField(String fieldName) {
+      return super.addExtraField(fieldName);
+    }
 
-  @Override protected void remove(String key) {
-    ThreadContext.remove(key);
-  }
+    enum ThreadContextImpl implements Context {
+      INSTANCE;
 
-  ThreadContextScopeDecorator() {
+      @Override public String get(String name) {
+        return ThreadContext.get(name);
+      }
+
+      @Override public void put(String name, String value) {
+        ThreadContext.put(name, value);
+      }
+
+      @Override public void remove(String name) {
+        ThreadContext.remove(name);
+      }
+    }
+
+    Builder() {
+      super(ThreadContextImpl.INSTANCE);
+    }
   }
 }

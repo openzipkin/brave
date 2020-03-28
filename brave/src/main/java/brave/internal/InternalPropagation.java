@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -64,9 +64,12 @@ public abstract class InternalPropagation {
     List<Object> extra
   );
 
-  /** {@linkplain brave.propagation.TraceContext} is immutable so you need to read the result */
+  /** {@link brave.propagation.TraceContext} is immutable so you need to read the result */
   public abstract TraceContext withExtra(TraceContext context, List<Object> immutableExtra);
 
-  /** {@linkplain brave.propagation.TraceContext} is immutable so you need to read the result */
+  /** {@link brave.propagation.TraceContext} is immutable so you need to read the result */
   public abstract TraceContext withFlags(TraceContext context, int flags);
+
+  /** Allows access to an intentionally package-private type. */
+  public abstract Class<? extends PropagationFields<String, String>> extraPropagationFieldsType();
 }

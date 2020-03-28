@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,6 +15,7 @@ package brave.propagation;
 
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
+import brave.internal.PropagationFields;
 import java.util.List;
 
 import static brave.internal.InternalPropagation.FLAG_DEBUG;
@@ -47,6 +48,11 @@ public class SamplingFlags {
 
       @Override public TraceContext withFlags(TraceContext context, int flags) {
         return context.withFlags(flags);
+      }
+
+      @Override
+      public Class<? extends PropagationFields<String, String>> extraPropagationFieldsType() {
+        return ExtraFieldPropagation.Extra.class;
       }
     };
   }

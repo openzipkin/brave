@@ -82,7 +82,7 @@
     <zipkin-reporter.version>2.12.1</zipkin-reporter.version>
 
     <!-- Ensure older versions of spring still work -->
-    <spring5.version>5.2.3.RELEASE</spring5.version>
+    <spring5.version>5.2.5.RELEASE</spring5.version>
     <spring.version>3.2.18.RELEASE</spring.version>
 
     <!-- Apis used, but not in Jetty 7.6* imply duplication in servlet25 test fixtures -->
@@ -99,7 +99,7 @@
     <spring-rabbit.version>2.2.3.RELEASE</spring-rabbit.version>
 
     <finagle.version>19.12.0</finagle.version>
-    <log4j.version>2.13.0</log4j.version>
+    <log4j.version>2.13.1</log4j.version>
     <okhttp.version>4.3.1</okhttp.version>
     <httpclient.version>4.5.11</httpclient.version>
 
@@ -113,7 +113,7 @@
     <powermock.version>2.0.5</powermock.version>
     <mockito.version>2.28.2</mockito.version>
     <jersey.version>2.25.1</jersey.version>
-    <jmh.version>1.22</jmh.version>
+    <jmh.version>1.23</jmh.version>
     <testcontainers.version>1.13.0</testcontainers.version>
 
     <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>

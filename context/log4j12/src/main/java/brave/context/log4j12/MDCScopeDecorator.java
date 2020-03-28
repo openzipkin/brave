@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  */
 package brave.context.log4j12;
 
-import brave.internal.propagation.CorrelationFieldScopeDecorator;
+import brave.internal.propagation.CorrelationFieldScopeDecoratorBuilder;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import org.apache.log4j.MDC;
 
@@ -34,24 +34,47 @@ import org.apache.log4j.MDC;
  *                  .build();
  * }</pre>
  */
-public final class MDCScopeDecorator extends CorrelationFieldScopeDecorator {
+public final class MDCScopeDecorator {
+  /** @since 5.11 */
+  public static Builder newBuilder() {
+    return new Builder();
+  }
+
   public static ScopeDecorator create() {
-    return new MDCScopeDecorator();
+    return new Builder().build();
   }
 
-  @Override protected String get(String key) {
-    Object result = MDC.get(key);
-    return result instanceof String ? (String) result : null;
-  }
+  /** @since 5.11 */
+  public static final class Builder extends CorrelationFieldScopeDecoratorBuilder<Builder> {
+    /** {@inheritDoc} */
+    @Override public Builder removeField(String fieldName) {
+      return super.removeField(fieldName);
+    }
 
-  @Override protected void put(String key, String value) {
-    MDC.put(key, value);
-  }
+    /** {@inheritDoc} */
+    @Override public Builder addExtraField(String fieldName) {
+      return super.addExtraField(fieldName);
+    }
 
-  @Override protected void remove(String key) {
-    MDC.remove(key);
-  }
+    enum MDCContext implements Context {
+      INSTANCE;
 
-  MDCScopeDecorator() {
+      @Override public String get(String name) {
+        Object result = MDC.get(name);
+        return result instanceof String ? (String) result : null;
+      }
+
+      @Override public void put(String name, String value) {
+        MDC.put(name, value);
+      }
+
+      @Override public void remove(String name) {
+        MDC.remove(name);
+      }
+    }
+
+    Builder() {
+      super(MDCContext.INSTANCE);
+    }
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,7 +14,6 @@
 package brave.propagation;
 
 import brave.context.log4j2.ThreadContextScopeDecorator;
-import brave.internal.HexCodec;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -38,20 +37,45 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @State(Scope.Thread)
 public class CurrentTraceContextBenchmarks {
   static final CurrentTraceContext base = ThreadLocalCurrentTraceContext.create();
+  static final CurrentTraceContext log4j2OnlyTraceId = ThreadLocalCurrentTraceContext.newBuilder()
+    .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
+      .removeField("parentId")
+      .removeField("spanId")
+      .removeField("sampled")
+      .build())
+    .build();
+  static final CurrentTraceContext log4j2OnlyExtra = ThreadLocalCurrentTraceContext.newBuilder()
+    .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
+      .removeField("traceId")
+      .removeField("parentId")
+      .removeField("spanId")
+      .removeField("sampled")
+      .addExtraField("user-id")
+      .build())
+    .build();
   static final CurrentTraceContext log4j2 = ThreadLocalCurrentTraceContext.newBuilder()
     .addScopeDecorator(ThreadContextScopeDecorator.create())
     .build();
 
-  static final TraceContext context = TraceContext.newBuilder()
-    .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef012345678912345678"))
-    .traceId(HexCodec.lowerHexToUnsignedLong("2345678912345678"))
-    .spanId(HexCodec.lowerHexToUnsignedLong("463ac35c9f6413ad"))
+  static final ExtraFieldPropagation.Factory extraFactory =
+    ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "user-id");
+
+  static final CurrentTraceContext log4j2Extra = ThreadLocalCurrentTraceContext.newBuilder()
+    .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
+      .addExtraField("user-id")
+      .build())
     .build();
 
-  static final TraceContext contextWithParent = context.toBuilder()
-    .parentId(context.spanId())
-    .spanId(HexCodec.lowerHexToUnsignedLong("e64ac35c9f641ea3"))
-    .build();
+  static final TraceContext context = extraFactory.decorate(TraceContext.newBuilder()
+    .traceId(1L)
+    .parentId(2L)
+    .spanId(3L)
+    .sampled(true)
+    .build());
+
+  static {
+    ExtraFieldPropagation.set(context, "user-id", "romeo");
+  }
 
   final CurrentTraceContext.Scope log4j2Scope = log4j2.newScope(context);
 
@@ -60,12 +84,27 @@ public class CurrentTraceContextBenchmarks {
   }
 
   @Benchmark public void newScope_default() {
-    try (CurrentTraceContext.Scope ws = base.newScope(contextWithParent)) {
+    try (CurrentTraceContext.Scope ws = base.newScope(context)) {
     }
   }
 
   @Benchmark public void newScope_log4j2() {
-    try (CurrentTraceContext.Scope ws = log4j2.newScope(contextWithParent)) {
+    try (CurrentTraceContext.Scope ws = log4j2.newScope(context)) {
+    }
+  }
+
+  @Benchmark public void newScope_log4j2_onlyTraceId() {
+    try (CurrentTraceContext.Scope ws = log4j2OnlyTraceId.newScope(context)) {
+    }
+  }
+
+  @Benchmark public void newScope_log4j2_onlyExtra() {
+    try (CurrentTraceContext.Scope ws = log4j2OnlyExtra.newScope(context)) {
+    }
+  }
+
+  @Benchmark public void newScope_log4j2_extra() {
+    try (CurrentTraceContext.Scope ws = log4j2Extra.newScope(context)) {
     }
   }
 
@@ -90,12 +129,12 @@ public class CurrentTraceContextBenchmarks {
   }
 
   @Benchmark public void maybeScope_default() {
-    try (CurrentTraceContext.Scope ws = base.maybeScope(contextWithParent)) {
+    try (CurrentTraceContext.Scope ws = base.maybeScope(context)) {
     }
   }
 
   @Benchmark public void maybeScope_log4j2() {
-    try (CurrentTraceContext.Scope ws = log4j2.maybeScope(contextWithParent)) {
+    try (CurrentTraceContext.Scope ws = log4j2.maybeScope(context)) {
     }
   }
 
