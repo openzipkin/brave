@@ -38,20 +38,45 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @State(Scope.Thread)
 public class CurrentTraceContextBenchmarks {
   static final CurrentTraceContext base = ThreadLocalCurrentTraceContext.create();
+  static final CurrentTraceContext log4j2OnlyTraceId = ThreadLocalCurrentTraceContext.newBuilder()
+    .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
+      .removeField("parentId")
+      .removeField("spanId")
+      .removeField("sampled")
+      .build())
+    .build();
   static final CurrentTraceContext log4j2 = ThreadLocalCurrentTraceContext.newBuilder()
     .addScopeDecorator(ThreadContextScopeDecorator.create())
     .build();
 
-  static final TraceContext context = TraceContext.newBuilder()
+  static final ExtraFieldPropagation.Factory extraFactory =
+    ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "user-id");
+
+  static final CurrentTraceContext log4j2Extra = ThreadLocalCurrentTraceContext.newBuilder()
+    .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
+      .addExtraField("user-id")
+      .build())
+    .build();
+
+  static final TraceContext context = extraFactory.decorate(TraceContext.newBuilder()
     .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef012345678912345678"))
     .traceId(HexCodec.lowerHexToUnsignedLong("2345678912345678"))
     .spanId(HexCodec.lowerHexToUnsignedLong("463ac35c9f6413ad"))
-    .build();
+    .build());
 
-  static final TraceContext contextWithParent = context.toBuilder()
+  static final TraceContext contextWithParent = extraFactory.decorate(context.toBuilder()
     .parentId(context.spanId())
     .spanId(HexCodec.lowerHexToUnsignedLong("e64ac35c9f641ea3"))
-    .build();
+    .build());
+
+  static final TraceContext contextWithExtraField = extraFactory.decorate(context.toBuilder()
+    .parentId(context.spanId())
+    .spanId(Long.MIN_VALUE)
+    .build());
+
+  static {
+    ExtraFieldPropagation.set(contextWithExtraField, "user-id", "romeo");
+  }
 
   final CurrentTraceContext.Scope log4j2Scope = log4j2.newScope(context);
 
@@ -66,6 +91,16 @@ public class CurrentTraceContextBenchmarks {
 
   @Benchmark public void newScope_log4j2() {
     try (CurrentTraceContext.Scope ws = log4j2.newScope(contextWithParent)) {
+    }
+  }
+
+  @Benchmark public void newScope_log4j2_onlyTraceId() {
+    try (CurrentTraceContext.Scope ws = log4j2OnlyTraceId.newScope(contextWithParent)) {
+    }
+  }
+
+  @Benchmark public void newScope_log4j2_extra() {
+    try (CurrentTraceContext.Scope ws = log4j2Extra.newScope(contextWithExtraField)) {
     }
   }
 

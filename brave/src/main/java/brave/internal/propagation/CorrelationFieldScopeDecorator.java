@@ -20,8 +20,6 @@ import brave.internal.PropagationFields;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import brave.propagation.ExtraFieldPropagation;
-import brave.propagation.Propagation;
-import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -35,10 +33,10 @@ import java.util.Map;
  */
 public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
   final String[] fieldNames;
-  final Getter<TraceContext, String>[] getters;
+  final Getter[] getters;
 
   protected static abstract class Builder<B extends Builder<B>> {
-    final Map<String, Getter<TraceContext, String>> fieldToGetter = new LinkedHashMap<>();
+    final Map<String, Getter> fieldToGetter = new LinkedHashMap<>();
 
     protected Builder() {
       fieldToGetter.put("traceId", TraceContextGetter.TRACE_ID);
@@ -58,8 +56,7 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
     public B removeField(String fieldName) {
       if (fieldName == null) throw new NullPointerException("fieldName == null");
       if (fieldName.isEmpty()) throw new NullPointerException("fieldName is empty");
-      String lowercase = fieldName.toLowerCase(Locale.ROOT); // contract of extra fields internally
-      fieldToGetter.put(lowercase, TraceContextGetter.EXTRA_FIELD);
+      fieldToGetter.remove(fieldName);
       return (B) this;
     }
 
@@ -74,8 +71,7 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
     public B addExtraField(String fieldName) {
       if (fieldName == null) throw new NullPointerException("fieldName == null");
       if (fieldName.isEmpty()) throw new NullPointerException("fieldName is empty");
-      String lowercase = fieldName.toLowerCase(Locale.ROOT); // contract of extra fields internally
-      fieldToGetter.put(lowercase, TraceContextGetter.EXTRA_FIELD);
+      fieldToGetter.put(fieldName, new ExtraFieldGetter(fieldName));
       return (B) this;
     }
 
@@ -89,7 +85,7 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
     fieldNames = new String[fieldCount];
     getters = new Getter[fieldCount];
     int i = 0;
-    for (Map.Entry<String, Getter<TraceContext, String>> entry : builder.fieldToGetter.entrySet()) {
+    for (Map.Entry<String, Getter> entry : builder.fieldToGetter.entrySet()) {
       fieldNames[i] = entry.getKey();
       getters[i++] = entry.getValue();
     }
@@ -107,8 +103,8 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
     boolean changed = false;
     for (int i = 0; i < getters.length; i++) {
       String fieldName = fieldNames[i];
-      String currentValue = context != null ? getters[i].get(context, fieldName) : null;
       String previousValue = get(fieldName);
+      String currentValue = context != null ? getters[i].get(context) : null;
       if (currentValue != null && !currentValue.equals(previousValue)) {
         put(fieldName, currentValue);
         changed = true;
@@ -140,35 +136,46 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
     }
   }
 
-  enum TraceContextGetter implements Propagation.Getter<TraceContext, String> {
+  interface Getter {
+    @Nullable String get(TraceContext context);
+  }
+
+  enum TraceContextGetter implements Getter {
     TRACE_ID() {
-      @Override public String get(TraceContext context, String key) {
+      @Override public String get(TraceContext context) {
         return context.traceIdString();
       }
     },
     PARENT_ID() {
-      @Override public String get(TraceContext context, String key) {
+      @Override public String get(TraceContext context) {
         return context.parentIdString();
       }
     },
     SPAN_ID() {
-      @Override public String get(TraceContext context, String key) {
+      @Override public String get(TraceContext context) {
         return context.spanIdString();
       }
     },
     SAMPLED() {
-      @Override public String get(TraceContext context, String key) {
+      @Override public String get(TraceContext context) {
         Boolean sampled = context.sampled();
         return sampled != null ? sampled.toString() : null;
       }
-    },
-    EXTRA_FIELD() {
-      final Class<? extends PropagationFields<String, String>> propagationType =
-        InternalPropagation.instance.extraPropagationFieldsType();
+    };
+  }
 
-      @Override public String get(TraceContext context, String key) {
-        return PropagationFields.get(context, key, propagationType);
-      }
+  static final class ExtraFieldGetter implements Getter {
+    final Class<? extends PropagationFields<String, String>> propagationType =
+      InternalPropagation.instance.extraPropagationFieldsType();
+
+    final String fieldName;
+
+    ExtraFieldGetter(String fieldName) {
+      this.fieldName = fieldName.toLowerCase(Locale.ROOT); // contract of extra fields internally
+    }
+
+    @Override public String get(TraceContext context) {
+      return PropagationFields.get(context, fieldName, propagationType);
     }
   }
 
