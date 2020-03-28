@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.concurrent.Executor;
 
 import static java.lang.Thread.currentThread;
 
@@ -80,6 +81,12 @@ public final class StrictScopeDecorator implements ScopeDecorator, Closeable {
   }
 
   /**
+   * This is useful in tests to help ensure scopes are not leaked by instrumentation.
+   *
+   * <p><em>Note:</em> It is important to close all resources prior to calling this, so that
+   * in-flight operations are not mistaken as scope leaks. If this raises an error, consider if a
+   * {@linkplain CurrentTraceContext#executor(Executor) wrapped executor} is still running.
+   *
    * @throws AssertionError if any scopes were left unclosed.
    * @since 5.11
    */
@@ -91,7 +98,7 @@ public final class StrictScopeDecorator implements ScopeDecorator, Closeable {
       // Sometimes unit test runners truncate the cause of the exception.
       // This flattens the exception as the caller of close() isn't important vs the one that leaked
       AssertionError toThrow = new AssertionError(
-        "Thread [" + caller.threadName + "] leaked a scope of " + caller.context + " here:");
+        "Thread [" + caller.threadName + "] opened a scope of " + caller.context + " here:");
       toThrow.setStackTrace(caller.getStackTrace());
       throw toThrow;
     }

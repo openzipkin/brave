@@ -227,7 +227,7 @@ public class StrictScopeDecoratorTest {
     assertThatThrownBy(decorator::close)
       .isInstanceOf(AssertionError.class)
       .satisfies(t -> assertThat(t.getMessage())
-        .matches("Thread \\[t1\\] leaked a scope of [0-9a-f]{16}/[0-9a-f]{16} here:"))
+        .matches("Thread \\[t1\\] opened a scope of [0-9a-f]{16}/[0-9a-f]{16} here:"))
       .hasNoCause()
       .satisfies(t -> assertStackTraceStartsWithMethod(t, methodName));
   }
