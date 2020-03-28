@@ -13,7 +13,7 @@
  */
 package brave.context.slf4j;
 
-import brave.internal.propagation.CorrelationFieldScopeDecorator;
+import brave.internal.propagation.CorrelationFieldScopeDecoratorBuilder;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import org.slf4j.MDC;
 
@@ -34,18 +34,18 @@ import org.slf4j.MDC;
  *                  .build();
  * }</pre>
  */
-public final class MDCScopeDecorator extends CorrelationFieldScopeDecorator {
+public final class MDCScopeDecorator {
   /** @since 5.11 */
   public static Builder newBuilder() {
     return new Builder();
   }
 
   public static ScopeDecorator create() {
-    return new MDCScopeDecorator(new Builder());
+    return new Builder().build();
   }
 
   /** @since 5.11 */
-  public static final class Builder extends CorrelationFieldScopeDecorator.Builder<Builder> {
+  public static final class Builder extends CorrelationFieldScopeDecoratorBuilder<Builder> {
     /** {@inheritDoc} */
     @Override public Builder removeField(String fieldName) {
       return super.removeField(fieldName);
@@ -56,28 +56,24 @@ public final class MDCScopeDecorator extends CorrelationFieldScopeDecorator {
       return super.addExtraField(fieldName);
     }
 
-    /** {@inheritDoc} */
-    @Override public ScopeDecorator build() {
-      return new MDCScopeDecorator(this);
+    enum MDCContext implements Context {
+      INSTANCE;
+
+      @Override public String get(String name) {
+        return MDC.get(name);
+      }
+
+      @Override public void put(String name, String value) {
+        MDC.put(name, value);
+      }
+
+      @Override public void remove(String name) {
+        MDC.remove(name);
+      }
     }
 
     Builder() {
+      super(MDCContext.INSTANCE);
     }
-  }
-
-  MDCScopeDecorator(Builder builder) {
-    super(builder);
-  }
-
-  @Override protected String get(String key) {
-    return MDC.get(key);
-  }
-
-  @Override protected void put(String key, String value) {
-    MDC.put(key, value);
-  }
-
-  @Override protected void remove(String key) {
-    MDC.remove(key);
   }
 }

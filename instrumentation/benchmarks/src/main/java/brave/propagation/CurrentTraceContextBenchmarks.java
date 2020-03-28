@@ -14,7 +14,6 @@
 package brave.propagation;
 
 import brave.context.log4j2.ThreadContextScopeDecorator;
-import brave.internal.HexCodec;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -45,6 +44,15 @@ public class CurrentTraceContextBenchmarks {
       .removeField("sampled")
       .build())
     .build();
+  static final CurrentTraceContext log4j2OnlyExtra = ThreadLocalCurrentTraceContext.newBuilder()
+    .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
+      .removeField("traceId")
+      .removeField("parentId")
+      .removeField("spanId")
+      .removeField("sampled")
+      .addExtraField("user-id")
+      .build())
+    .build();
   static final CurrentTraceContext log4j2 = ThreadLocalCurrentTraceContext.newBuilder()
     .addScopeDecorator(ThreadContextScopeDecorator.create())
     .build();
@@ -59,23 +67,14 @@ public class CurrentTraceContextBenchmarks {
     .build();
 
   static final TraceContext context = extraFactory.decorate(TraceContext.newBuilder()
-    .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef012345678912345678"))
-    .traceId(HexCodec.lowerHexToUnsignedLong("2345678912345678"))
-    .spanId(HexCodec.lowerHexToUnsignedLong("463ac35c9f6413ad"))
-    .build());
-
-  static final TraceContext contextWithParent = extraFactory.decorate(context.toBuilder()
-    .parentId(context.spanId())
-    .spanId(HexCodec.lowerHexToUnsignedLong("e64ac35c9f641ea3"))
-    .build());
-
-  static final TraceContext contextWithExtraField = extraFactory.decorate(context.toBuilder()
-    .parentId(context.spanId())
-    .spanId(Long.MIN_VALUE)
+    .traceId(1L)
+    .parentId(2L)
+    .spanId(3L)
+    .sampled(true)
     .build());
 
   static {
-    ExtraFieldPropagation.set(contextWithExtraField, "user-id", "romeo");
+    ExtraFieldPropagation.set(context, "user-id", "romeo");
   }
 
   final CurrentTraceContext.Scope log4j2Scope = log4j2.newScope(context);
@@ -85,22 +84,27 @@ public class CurrentTraceContextBenchmarks {
   }
 
   @Benchmark public void newScope_default() {
-    try (CurrentTraceContext.Scope ws = base.newScope(contextWithParent)) {
+    try (CurrentTraceContext.Scope ws = base.newScope(context)) {
     }
   }
 
   @Benchmark public void newScope_log4j2() {
-    try (CurrentTraceContext.Scope ws = log4j2.newScope(contextWithParent)) {
+    try (CurrentTraceContext.Scope ws = log4j2.newScope(context)) {
     }
   }
 
   @Benchmark public void newScope_log4j2_onlyTraceId() {
-    try (CurrentTraceContext.Scope ws = log4j2OnlyTraceId.newScope(contextWithParent)) {
+    try (CurrentTraceContext.Scope ws = log4j2OnlyTraceId.newScope(context)) {
+    }
+  }
+
+  @Benchmark public void newScope_log4j2_onlyExtra() {
+    try (CurrentTraceContext.Scope ws = log4j2OnlyExtra.newScope(context)) {
     }
   }
 
   @Benchmark public void newScope_log4j2_extra() {
-    try (CurrentTraceContext.Scope ws = log4j2Extra.newScope(contextWithExtraField)) {
+    try (CurrentTraceContext.Scope ws = log4j2Extra.newScope(context)) {
     }
   }
 
@@ -125,12 +129,12 @@ public class CurrentTraceContextBenchmarks {
   }
 
   @Benchmark public void maybeScope_default() {
-    try (CurrentTraceContext.Scope ws = base.maybeScope(contextWithParent)) {
+    try (CurrentTraceContext.Scope ws = base.maybeScope(context)) {
     }
   }
 
   @Benchmark public void maybeScope_log4j2() {
-    try (CurrentTraceContext.Scope ws = log4j2.maybeScope(contextWithParent)) {
+    try (CurrentTraceContext.Scope ws = log4j2.maybeScope(context)) {
     }
   }
 
@@ -158,7 +162,7 @@ public class CurrentTraceContextBenchmarks {
   public static void main(String[] args) throws Exception {
     Options opt = new OptionsBuilder()
       .addProfiler("gc")
-      .include(".*" + CurrentTraceContextBenchmarks.class.getSimpleName())
+      .include(".*" + CurrentTraceContextBenchmarks.class.getSimpleName() +".*newScope.*")
       .build();
 
     new Runner(opt).run();

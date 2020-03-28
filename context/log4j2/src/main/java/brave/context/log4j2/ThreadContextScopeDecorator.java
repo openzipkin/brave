@@ -13,7 +13,7 @@
  */
 package brave.context.log4j2;
 
-import brave.internal.propagation.CorrelationFieldScopeDecorator;
+import brave.internal.propagation.CorrelationFieldScopeDecoratorBuilder;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import org.apache.logging.log4j.ThreadContext;
 
@@ -34,18 +34,18 @@ import org.apache.logging.log4j.ThreadContext;
  *                  .build();
  * }</pre>
  */
-public final class ThreadContextScopeDecorator extends CorrelationFieldScopeDecorator {
+public final class ThreadContextScopeDecorator {
   /** @since 5.11 */
   public static Builder newBuilder() {
     return new Builder();
   }
 
   public static ScopeDecorator create() {
-    return new ThreadContextScopeDecorator(new Builder());
+    return new Builder().build();
   }
 
   /** @since 5.11 */
-  public static final class Builder extends CorrelationFieldScopeDecorator.Builder<Builder> {
+  public static final class Builder extends CorrelationFieldScopeDecoratorBuilder<Builder> {
     /** {@inheritDoc} */
     @Override public Builder removeField(String fieldName) {
       return super.removeField(fieldName);
@@ -56,28 +56,24 @@ public final class ThreadContextScopeDecorator extends CorrelationFieldScopeDeco
       return super.addExtraField(fieldName);
     }
 
-    /** {@inheritDoc} */
-    @Override public ScopeDecorator build() {
-      return new ThreadContextScopeDecorator(this);
+    enum ThreadContextImpl implements Context {
+      INSTANCE;
+
+      @Override public String get(String name) {
+        return ThreadContext.get(name);
+      }
+
+      @Override public void put(String name, String value) {
+        ThreadContext.put(name, value);
+      }
+
+      @Override public void remove(String name) {
+        ThreadContext.remove(name);
+      }
     }
 
     Builder() {
+      super(ThreadContextImpl.INSTANCE);
     }
-  }
-
-  ThreadContextScopeDecorator(Builder builder) {
-    super(builder);
-  }
-
-  @Override protected String get(String key) {
-    return ThreadContext.get(key);
-  }
-
-  @Override protected void put(String key, String value) {
-    ThreadContext.put(key, value);
-  }
-
-  @Override protected void remove(String key) {
-    ThreadContext.remove(key);
   }
 }
