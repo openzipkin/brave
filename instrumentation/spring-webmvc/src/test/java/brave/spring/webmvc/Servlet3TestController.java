@@ -23,6 +23,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
+import static brave.test.http.ITServletContainer.NOT_READY_UE;
+
 @Controller class Servlet3TestController extends Servlet25TestController {
 
   @Autowired Servlet3TestController(HttpTracing httpTracing) {
@@ -38,7 +40,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
   @RequestMapping(value = "/exceptionAsync")
   public Callable<ResponseEntity<Void>> notReadyAsync() {
     return () -> {
-      throw new IllegalStateException("not ready");
+      throw NOT_READY_UE;
     };
   }
 

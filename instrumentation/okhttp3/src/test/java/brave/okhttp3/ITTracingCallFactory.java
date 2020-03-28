@@ -19,9 +19,11 @@ import brave.propagation.TraceContext;
 import brave.test.http.ITHttpAsyncClient;
 import brave.test.util.AssertableCallback;
 import java.io.IOException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.Dispatcher;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -29,24 +31,34 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
+import org.junit.After;
 import org.junit.Test;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
+  Dispatcher dispatcher = new Dispatcher();
+  ExecutorService executorService = dispatcher.executorService();
+
+  @After @Override public void close() throws Exception {
+    executorService.shutdown();
+    executorService.awaitTermination(1, TimeUnit.SECONDS);
+    super.close();
+  }
 
   @Override protected Call.Factory newClient(int port) {
     return TracingCallFactory.create(httpTracing, new OkHttpClient.Builder()
       .connectTimeout(1, TimeUnit.SECONDS)
       .readTimeout(1, TimeUnit.SECONDS)
       .retryOnConnectionFailure(false)
+      .dispatcher(dispatcher)
       .build()
     );
   }
 
   @Override protected void closeClient(Call.Factory client) {
-    ((TracingCallFactory) client).ok.dispatcher().executorService().shutdownNow();
+    // done in close()
   }
 
   @Override protected void get(Call.Factory client, String pathIncludingQuery) throws IOException {
@@ -83,6 +95,7 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
       .addInterceptor(chain -> chain.proceed(chain.request().newBuilder()
         .addHeader("my-id", currentTraceContext.get().traceIdString())
         .build()))
+      .dispatcher(dispatcher)
       .build());
 
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);

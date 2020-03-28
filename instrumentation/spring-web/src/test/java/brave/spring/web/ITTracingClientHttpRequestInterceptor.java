@@ -14,11 +14,13 @@
 package brave.spring.web;
 
 import brave.test.http.ITHttpClient;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.springframework.http.client.ClientHttpRequestFactory;
@@ -27,14 +29,20 @@ import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 import zipkin2.Span;
 
-import static brave.spring.web.ITTracingAsyncClientHttpRequestInterceptor.closeHcClient;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHttpRequestFactory> {
   ClientHttpRequestInterceptor interceptor;
+  CloseableHttpClient httpClient = HttpClients.createSystem();
+
+  @After @Override public void close() throws Exception {
+    httpClient.close();
+    super.close();
+  }
 
   ClientHttpRequestFactory configureClient(ClientHttpRequestInterceptor interceptor) {
-    HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
+    HttpComponentsClientHttpRequestFactory factory =
+      new HttpComponentsClientHttpRequestFactory(httpClient);
     factory.setReadTimeout(1000);
     factory.setConnectTimeout(1000);
     this.interceptor = interceptor;
@@ -45,8 +53,8 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     return configureClient(TracingClientHttpRequestInterceptor.create(httpTracing));
   }
 
-  @Override protected void closeClient(ClientHttpRequestFactory client) throws IOException {
-    closeHcClient((HttpComponentsClientHttpRequestFactory) client);
+  @Override protected void closeClient(ClientHttpRequestFactory client) {
+    // done in close()
   }
 
   @Override protected void get(ClientHttpRequestFactory client, String pathIncludingQuery) {

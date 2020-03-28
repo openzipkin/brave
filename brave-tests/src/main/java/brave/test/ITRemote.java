@@ -15,7 +15,6 @@ package brave.test;
 
 import brave.Tracing;
 import brave.propagation.B3Propagation;
-import brave.propagation.CurrentTraceContext;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
@@ -24,6 +23,7 @@ import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.rules.DisableOnDebug;
 import org.junit.rules.TestName;
@@ -44,6 +44,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ul></pre>
  */
 public abstract class ITRemote {
+  public static final String EXTRA_KEY = "user-id";
+
   /**
    * We use a global rule instead of surefire config as this could be executed in gradle, sbt, etc.
    * This way, there's visibility on which method hung without asking the end users to edit build
@@ -56,12 +58,11 @@ public abstract class ITRemote {
   @Rule public TestSpanReporter reporter = new TestSpanReporter();
   @Rule public TestName testName = new TestName();
 
-  public static final String EXTRA_KEY = "user-id";
-
   /** Returns a trace context for use in propagation tests. */
   protected TraceContext newTraceContext(SamplingFlags flags) {
+    long id = System.nanoTime(); // Random enough as tests are run serially anyway
     TraceContext result = TraceContext.newBuilder()
-      .traceIdHigh(1L).traceId(2L).parentId(3L).spanId(1L)
+      .traceIdHigh(id).traceId(id + 1).parentId(id + 2).spanId(id + 3)
       .sampled(flags.sampled())
       .sampledLocal(flags.sampledLocal())
       .debug(flags.debug()).build();
@@ -69,10 +70,12 @@ public abstract class ITRemote {
     return tracing.propagationFactory().decorate(result);
   }
 
+  final StrictScopeDecorator strictScopeDecorator = StrictScopeDecorator.create();
+
   // field because this allows subclasses to initialize a field Tracing
-  protected final CurrentTraceContext currentTraceContext =
+  protected final ThreadLocalCurrentTraceContext currentTraceContext =
     ThreadLocalCurrentTraceContext.newBuilder()
-      .addScopeDecorator(StrictScopeDecorator.create())
+      .addScopeDecorator(strictScopeDecorator)
       .build();
 
   protected final Propagation.Factory propagationFactory =
@@ -88,13 +91,37 @@ public abstract class ITRemote {
       .sampler(sampler);
   }
 
+  /** Ensure any leaks present were caused by code invoked in the current method */
+  @Before public void clearThreadLocal() {
+    currentTraceContext.clear();
+  }
+
   /**
    * This closes the current instance of tracing, to prevent it from being accidentally visible to
    * other test classes which call {@link Tracing#current()}.
+   *
+   * <p>This also checks for scope leaks. It is important that you have closed all resources prior
+   * to this method call. Otherwise, in-flight request cleanup may be mistaken for scope leaks. This
+   * may involve blocking on completion, if using executors.
+   *
+   * <p>Ex.
+   * <pre>{@code
+   * @After @Override public void close() throws Exception {
+   *   executorService.shutdown();
+   *   executorService.awaitTermination(1, TimeUnit.SECONDS);
+   *   super.close();
+   * }
+   * }</pre>
    */
   @After public void close() throws Exception {
     Tracing current = Tracing.current();
     if (current != null) current.close();
+    checkForLeakedScopes();
+  }
+
+  /** Override to control scope leak enforcement. */
+  protected void checkForLeakedScopes() {
+    strictScopeDecorator.close();
   }
 
   // Assertions below here can eventually move to a new type

@@ -16,6 +16,7 @@ package brave.okhttp3;
 import brave.test.http.ITHttpAsyncClient;
 import brave.test.util.AssertableCallback;
 import java.io.IOException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -25,23 +26,30 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.junit.After;
 
 public class ITTracingInterceptor extends ITHttpAsyncClient<Call.Factory> {
+  ExecutorService executorService = new Dispatcher().executorService();
+  Dispatcher dispatcher = new Dispatcher(currentTraceContext.executorService(executorService));
+
+  @After @Override public void close() throws Exception {
+    executorService.shutdown();
+    executorService.awaitTermination(1, TimeUnit.SECONDS);
+    super.close();
+  }
 
   @Override protected Call.Factory newClient(int port) {
     return new OkHttpClient.Builder()
       .connectTimeout(1, TimeUnit.SECONDS)
       .readTimeout(1, TimeUnit.SECONDS)
       .retryOnConnectionFailure(false)
-      .dispatcher(
-        new Dispatcher(currentTraceContext.executorService(new Dispatcher().executorService())
-      ))
+      .dispatcher(dispatcher)
       .addNetworkInterceptor(TracingInterceptor.create(httpTracing))
       .build();
   }
 
   @Override protected void closeClient(Call.Factory client) {
-    ((OkHttpClient) client).dispatcher().executorService().shutdownNow();
+    // done in close()
   }
 
   @Override protected void get(Call.Factory client, String pathIncludingQuery)

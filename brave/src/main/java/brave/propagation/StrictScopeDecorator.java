@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,9 +13,18 @@
  */
 package brave.propagation;
 
+import brave.Tracer;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
+import java.io.Closeable;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.concurrent.Executor;
+
+import static java.lang.Thread.currentThread;
 
 /**
  * Useful when developing instrumentation as state is enforced more strictly.
@@ -30,38 +39,106 @@ import brave.propagation.CurrentTraceContext.ScopeDecorator;
  *                  ).build();
  * }</pre>
  */
-public final class StrictScopeDecorator implements ScopeDecorator {
-  public static ScopeDecorator create() {
+// Closeable so things like Spring will automatically execute it on shutdown and expose leaks!
+public final class StrictScopeDecorator implements ScopeDecorator, Closeable {
+  public static StrictScopeDecorator create() {
     return new StrictScopeDecorator();
   }
 
-  /** Identifies problems by throwing assertion errors when a scope is closed on a different thread. */
-  @Override public Scope decorateScope(@Nullable TraceContext currentSpan, Scope scope) {
-    return new StrictScope(scope, new Error(String.format("Thread %s opened scope for %s here:",
-      Thread.currentThread().getName(), currentSpan)));
+  final Set<CallerStackTrace> currentCallers = Collections.synchronizedSet(new LinkedHashSet<>());
+
+  /**
+   * Identifies problems by throwing {@link IllegalStateException} when a scope is closed on a
+   * different thread.
+   */
+  @Override public Scope decorateScope(@Nullable TraceContext context, Scope scope) {
+    if (scope == Scope.NOOP) return scope;
+    CallerStackTrace caller = new CallerStackTrace(context);
+    StackTraceElement[] stackTrace = caller.getStackTrace();
+
+    // "new CallerStackTrace(context)" isn't the line we want to start the caller stack trace with
+    int i = 1;
+
+    // This skips internal utilities in this jar. Notably, this will not skip utilities outside it.
+    // For example, HTTP or messaging handlers will become the caller, as would wrappers over Brave,
+    // such as brave-opentracing. This is ok, as if they have bugs, they will show up as the caller!
+    while (i < stackTrace.length) {
+      String className = stackTrace[i].getClassName();
+      if (className.equals(Tracer.class.getName())
+        || className.endsWith("CurrentTraceContext") // subtypes with conventional names
+        || className.equals(ThreadLocalSpan.class.getName())) {
+        i++;
+      } else {
+        break;
+      }
+    }
+    int from = i;
+
+    stackTrace = Arrays.copyOfRange(stackTrace, from, stackTrace.length);
+    caller.setStackTrace(stackTrace);
+
+    return new StrictScope(scope, caller, currentCallers);
+  }
+
+  /**
+   * This is useful in tests to help ensure scopes are not leaked by instrumentation.
+   *
+   * <p><em>Note:</em> It is important to close all resources prior to calling this, so that
+   * in-flight operations are not mistaken as scope leaks. If this raises an error, consider if a
+   * {@linkplain CurrentTraceContext#executor(Executor) wrapped executor} is still running.
+   *
+   * @throws AssertionError if any scopes were left unclosed.
+   * @since 5.11
+   */
+  // AssertionError to ensure test runners render the stack trace
+  @Override public void close() {
+    // toArray is synchronized while iterators are not
+    CallerStackTrace[] leakedCallers = currentCallers.toArray(new CallerStackTrace[0]);
+    for (CallerStackTrace caller : leakedCallers) {
+      // Sometimes unit test runners truncate the cause of the exception.
+      // This flattens the exception as the caller of close() isn't important vs the one that leaked
+      AssertionError toThrow = new AssertionError(
+        "Thread [" + caller.threadName + "] opened a scope of " + caller.context + " here:");
+      toThrow.setStackTrace(caller.getStackTrace());
+      throw toThrow;
+    }
   }
 
   static final class StrictScope implements Scope {
     final Scope delegate;
-    final Throwable caller;
-    final long threadId = Thread.currentThread().getId();
+    final Set<CallerStackTrace> currentCallers;
+    final CallerStackTrace caller;
 
-    StrictScope(Scope delegate, Throwable caller) {
+    StrictScope(Scope delegate, CallerStackTrace caller, Set<CallerStackTrace> currentCallers) {
       this.delegate = delegate;
+      this.currentCallers = currentCallers;
       this.caller = caller;
+      this.currentCallers.add(caller);
     }
 
     @Override public void close() {
-      if (Thread.currentThread().getId() != threadId) {
-        throw new IllegalStateException(
-          "scope closed in a different thread: " + Thread.currentThread().getName(),
-          caller);
+      currentCallers.remove(caller);
+      if (currentThread().getId() != caller.threadId) {
+        throw new IllegalStateException(String.format(
+          "Thread [%s] opened scope, but thread [%s] closed it", caller.threadName,
+          currentThread().getName()), caller);
       }
       delegate.close();
     }
 
     @Override public String toString() {
-      return caller.toString();
+      return caller.getMessage();
+    }
+  }
+
+  static class CallerStackTrace extends Throwable {
+    final String threadName = currentThread().getName();
+    final long threadId = currentThread().getId();
+    final TraceContext context;
+
+    CallerStackTrace(@Nullable TraceContext context) {
+      super("Thread [" + currentThread().getName() + "] opened scope for " + context + " here:");
+      this.context = context;
     }
   }
 

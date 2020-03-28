@@ -83,7 +83,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
       req.setAttribute(RequestDispatcher.ERROR_STATUS_CODE, 503);
       // TODO: org.eclipse.jetty.server.HttpChannelState.onError() clobbers ^^ and hard-codes
       // status based on servlet types.
-      throw new UnavailableException("not ready", 1 /* temporary implies 503 */);
+      throw NOT_READY_UE;
     }
   }
 
