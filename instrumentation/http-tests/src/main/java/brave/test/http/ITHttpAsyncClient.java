@@ -35,7 +35,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
    * implementation coerces a 500 code without an exception as an error, you should call the success
    * callback directly.
    *
-   * <p>One of success or failure callbacks must be invoked even on unexpected scenarios. For
+   * <p>Invoke the callback with one of success or failure even in unexpected scenarios. For
    * example, if there is a cancelation that didn't result in an error, invoke {@link
    * BiConsumer#accept(Object, Object)} with your own {@link CancellationException}.
    *
