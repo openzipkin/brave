@@ -17,51 +17,81 @@ import brave.Tracer;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.PropagationFields;
-import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import brave.propagation.ExtraFieldPropagation;
+import brave.propagation.Propagation;
+import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.Locale;
-import java.util.Set;
+import java.util.Map;
 
 /**
- * Internal type that adds correlation properties "traceId", "parentId", "spanId" and "sampled" when
- * a {@linkplain Tracer#currentSpan() span is current}. "traceId" and "spanId" are used in log
+ * Internal type that adds correlation fields "traceId", "parentId", "spanId" and "sampled" when a
+ * {@linkplain Tracer#currentSpan() span is current}. "traceId" and "spanId" are used in log
  * correlation. "parentId" is used for scenarios such as log parsing that reconstructs the trace
  * tree. "sampled" is used as a hint that a span found in logs might be in Zipkin.
  */
 public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
-  final Updater[] updaters;
+  final String[] fieldNames;
+  final Getter<TraceContext, String>[] getters;
 
   protected static abstract class Builder<B extends Builder<B>> {
-    final Set<String> extraFields = new LinkedHashSet<>(); // insertion order;
+    final Map<String, Getter<TraceContext, String>> fieldToGetter = new LinkedHashMap<>();
+
+    protected Builder() {
+      fieldToGetter.put("traceId", TraceContextGetter.TRACE_ID);
+      fieldToGetter.put("parentId", TraceContextGetter.PARENT_ID);
+      fieldToGetter.put("spanId", TraceContextGetter.SPAN_ID);
+      fieldToGetter.put("sampled", TraceContextGetter.SAMPLED);
+    }
 
     /**
-     * Adds a field from {@link ExtraFieldPropagation} into the correlation context.
+     * Removes a field from the correlation context. This could be a default field you aren't using,
+     * such as "parentId", or one added via {@link #addExtraField(String)}.
+     *
+     * <p><em>Note:</em> If you remove all fields, {@link #build()} will throw an exception.
      *
      * @since 5.11
      */
-    public B addExtraField(String name) {
-      if (name == null) throw new NullPointerException("name == null");
-      String lowercase = name.toLowerCase(Locale.ROOT); // contract of extra fields internally
-      extraFields.add(lowercase);
+    public B removeField(String fieldName) {
+      if (fieldName == null) throw new NullPointerException("fieldName == null");
+      if (fieldName.isEmpty()) throw new NullPointerException("fieldName is empty");
+      String lowercase = fieldName.toLowerCase(Locale.ROOT); // contract of extra fields internally
+      fieldToGetter.put(lowercase, TraceContextGetter.EXTRA_FIELD);
       return (B) this;
     }
 
-    public abstract CurrentTraceContext.ScopeDecorator build();
+    /**
+     * Adds a field from {@link ExtraFieldPropagation#extraKeys()} into the correlation context.
+     *
+     * <p>It is the responsibility of the caller to verify the field is a valid extra field. Any
+     * incorrect fields will be ignored at runtime.
+     *
+     * @since 5.11
+     */
+    public B addExtraField(String fieldName) {
+      if (fieldName == null) throw new NullPointerException("fieldName == null");
+      if (fieldName.isEmpty()) throw new NullPointerException("fieldName is empty");
+      String lowercase = fieldName.toLowerCase(Locale.ROOT); // contract of extra fields internally
+      fieldToGetter.put(lowercase, TraceContextGetter.EXTRA_FIELD);
+      return (B) this;
+    }
+
+    /** @throws IllegalArgumentException if all correlation fields were removed. */
+    public abstract ScopeDecorator build();
   }
 
   protected CorrelationFieldScopeDecorator(Builder<?> builder) {
-    String[] extraFields = builder.extraFields.toArray(new String[0]);
-    updaters = new Updater[4 + extraFields.length];
-    updaters[0] = new TraceIdUpdater(this);
-    updaters[1] = new ParentSpanIdUpdater(this);
-    updaters[2] = new SpanIdUpdater(this);
-    updaters[3] = new SampledUpdater(this);
-    for (int i = 0; i < extraFields.length; i++) {
-      updaters[4 + i] = new ExtraFieldUpdater(this, extraFields[i]);
+    int fieldCount = builder.fieldToGetter.size();
+    if (fieldCount == 0) throw new IllegalArgumentException("no fields");
+    fieldNames = new String[fieldCount];
+    getters = new Getter[fieldCount];
+    int i = 0;
+    for (Map.Entry<String, Getter<TraceContext, String>> entry : builder.fieldToGetter.entrySet()) {
+      fieldNames[i] = entry.getKey();
+      getters[i++] = entry.getValue();
     }
   }
 
@@ -72,19 +102,21 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
    * are restored on {@linkplain Scope#close()}.
    */
   @Override public Scope decorateScope(@Nullable TraceContext context, Scope scope) {
-    String[] previousValues = new String[updaters.length];
+    String[] previousValues = new String[getters.length];
 
     boolean changed = false;
-    for (int i = 0; i < updaters.length; i++) {
-      previousValues[i] = get(updaters[i].field);
-      if (context != null) {
-        if (updaters[i].update(context, previousValues[i])) {
-          changed = true;
-        }
-      } else if (previousValues[i] != null) {
-        remove(updaters[i].field);
+    for (int i = 0; i < getters.length; i++) {
+      String fieldName = fieldNames[i];
+      String currentValue = context != null ? getters[i].get(context, fieldName) : null;
+      String previousValue = get(fieldName);
+      if (currentValue != null && !currentValue.equals(previousValue)) {
+        put(fieldName, currentValue);
+        changed = true;
+      } else if (previousValue != null) {
+        remove(fieldName);
         changed = true;
       }
+      previousValues[i] = previousValue;
     }
 
     if (!changed) return scope;
@@ -92,97 +124,50 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
     class CorrelationFieldCurrentTraceContextScope implements Scope {
       @Override public void close() {
         scope.close();
-        for (int i = 0; i < updaters.length; i++) {
-          replace(updaters[i].field, previousValues[i]);
+        for (int i = 0; i < fieldNames.length; i++) {
+          replace(fieldNames[i], previousValues[i]);
         }
       }
     }
     return new CorrelationFieldCurrentTraceContextScope();
   }
 
-  static final class ExtraFieldUpdater extends Updater {
-    final Class<? extends PropagationFields<String, String>> propagationType;
-
-    ExtraFieldUpdater(CorrelationFieldScopeDecorator decorator, String name) {
-      super(decorator, name);
-      this.propagationType = InternalPropagation.instance.extraPropagationFieldsType();
-    }
-
-    @Override boolean update(TraceContext context, @Nullable String previous) {
-      String current = PropagationFields.get(context, field, propagationType);
-      return updateNullable(previous, current);
+  final void replace(String fieldName, @Nullable String value) {
+    if (value != null) {
+      put(fieldName, value);
+    } else {
+      remove(fieldName);
     }
   }
 
-  static final class TraceIdUpdater extends Updater {
-    TraceIdUpdater(CorrelationFieldScopeDecorator decorator) {
-      super(decorator, "traceId");
-    }
-
-    @Override boolean update(TraceContext context, @Nullable String previous) {
-      return update(previous, context.traceIdString());
-    }
-  }
-
-  static final class ParentSpanIdUpdater extends Updater {
-    ParentSpanIdUpdater(CorrelationFieldScopeDecorator decorator) {
-      super(decorator, "parentId");
-    }
-
-    @Override boolean update(TraceContext context, @Nullable String previous) {
-      return updateNullable(previous, context.parentIdString());
-    }
-  }
-
-  static final class SpanIdUpdater extends Updater {
-    SpanIdUpdater(CorrelationFieldScopeDecorator decorator) {
-      super(decorator, "spanId");
-    }
-
-    @Override boolean update(TraceContext context, @Nullable String previous) {
-      return update(previous, context.spanIdString());
-    }
-  }
-
-  static final class SampledUpdater extends Updater {
-    SampledUpdater(CorrelationFieldScopeDecorator decorator) {
-      super(decorator, "sampled");
-    }
-
-    @Override boolean update(TraceContext context, @Nullable String previous) {
-      Boolean sampled = context.sampled();
-      return updateNullable(previous, sampled != null ? sampled.toString() : null);
-    }
-  }
-
-  static abstract class Updater {
-    final CorrelationFieldScopeDecorator decorator;
-    final String field;
-
-    Updater(CorrelationFieldScopeDecorator decorator, String field) {
-      this.decorator = decorator;
-      this.field = field;
-    }
-
-    /** Returns true if there was a change to the correlation field. */
-    abstract boolean update(TraceContext context, @Nullable String previous);
-
-    boolean update(@Nullable String previous, String current) {
-      if (!current.equals(previous)) {
-        decorator.put(field, current);
-        return true;
+  enum TraceContextGetter implements Propagation.Getter<TraceContext, String> {
+    TRACE_ID() {
+      @Override public String get(TraceContext context, String key) {
+        return context.traceIdString();
       }
-      return false;
-    }
+    },
+    PARENT_ID() {
+      @Override public String get(TraceContext context, String key) {
+        return context.parentIdString();
+      }
+    },
+    SPAN_ID() {
+      @Override public String get(TraceContext context, String key) {
+        return context.spanIdString();
+      }
+    },
+    SAMPLED() {
+      @Override public String get(TraceContext context, String key) {
+        Boolean sampled = context.sampled();
+        return sampled != null ? sampled.toString() : null;
+      }
+    },
+    EXTRA_FIELD() {
+      final Class<? extends PropagationFields<String, String>> propagationType =
+        InternalPropagation.instance.extraPropagationFieldsType();
 
-    boolean updateNullable(@Nullable String previous, @Nullable String current) {
-      if (current != null) {
-        return update(previous, current);
-      } else if (previous != null) {
-        decorator.remove(field);
-        return true;
-      } else {
-        return false;
+      @Override public String get(TraceContext context, String key) {
+        return PropagationFields.get(context, key, propagationType);
       }
     }
   }
@@ -197,12 +182,4 @@ public abstract class CorrelationFieldScopeDecorator implements ScopeDecorator {
 
   /** Removes the correlation property of the specified name */
   protected abstract void remove(String key);
-
-  final void replace(String key, @Nullable String value) {
-    if (value != null) {
-      put(key, value);
-    } else {
-      remove(key);
-    }
-  }
 }

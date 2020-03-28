@@ -46,6 +46,17 @@ public final class ThreadContextScopeDecorator extends CorrelationFieldScopeDeco
 
   /** @since 5.11 */
   public static final class Builder extends CorrelationFieldScopeDecorator.Builder<Builder> {
+    /** {@inheritDoc} */
+    @Override public Builder removeField(String fieldName) {
+      return super.removeField(fieldName);
+    }
+
+    /** {@inheritDoc} */
+    @Override public Builder addExtraField(String fieldName) {
+      return super.addExtraField(fieldName);
+    }
+
+    /** {@inheritDoc} */
     @Override public ScopeDecorator build() {
       return new ThreadContextScopeDecorator(this);
     }
