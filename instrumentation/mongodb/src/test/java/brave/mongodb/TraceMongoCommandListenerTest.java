@@ -14,9 +14,7 @@
 package brave.mongodb;
 
 import brave.Span;
-import brave.internal.Nullable;
 import brave.propagation.ThreadLocalSpan;
-import com.mongodb.MongoException;
 import com.mongodb.ServerAddress;
 import com.mongodb.connection.ClusterId;
 import com.mongodb.connection.ConnectionDescription;
@@ -24,6 +22,7 @@ import com.mongodb.connection.ServerId;
 import com.mongodb.event.CommandFailedEvent;
 import com.mongodb.event.CommandStartedEvent;
 import com.mongodb.event.CommandSucceededEvent;
+import java.util.Arrays;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonElement;
@@ -34,12 +33,9 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import java.util.Arrays;
-
 import static brave.mongodb.TraceMongoCommandListener.getNonEmptyBsonString;
 import static brave.mongodb.TraceMongoCommandListener.getSpanName;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -71,23 +67,28 @@ public class TraceMongoCommandListenerTest {
   }
 
   @Test public void getCollectionName_notStringCommandArgument() {
-    assertThat(listener.getCollectionName(new BsonDocument("find", BsonBoolean.TRUE), "find")).isNull();
+    assertThat(
+      listener.getCollectionName(new BsonDocument("find", BsonBoolean.TRUE), "find")).isNull();
   }
 
   @Test public void getCollectionName_emptyStringCommandArgument() {
-    assertThat(listener.getCollectionName(new BsonDocument("find", new BsonString("  ")), "find")).isNull();
+    assertThat(
+      listener.getCollectionName(new BsonDocument("find", new BsonString("  ")), "find")).isNull();
   }
 
   @Test public void getCollectionName_notAllowListedCommand() {
-    assertThat(listener.getCollectionName(new BsonDocument("cmd", new BsonString(" bar ")), "cmd")).isNull();
+    assertThat(
+      listener.getCollectionName(new BsonDocument("cmd", new BsonString(" bar ")), "cmd")).isNull();
   }
 
   @Test public void getCollectionName_allowListedCommand() {
-    assertThat(listener.getCollectionName(new BsonDocument("find", new BsonString(" bar ")), "find")).isEqualTo("bar");
+    assertThat(listener.getCollectionName(new BsonDocument("find", new BsonString(" bar ")),
+      "find")).isEqualTo("bar");
   }
 
   @Test public void getCollectionName_collectionFieldOnly() {
-    assertThat(listener.getCollectionName(new BsonDocument("collection", new BsonString(" bar ")), "find")).isEqualTo("bar");
+    assertThat(listener.getCollectionName(new BsonDocument("collection", new BsonString(" bar ")),
+      "find")).isEqualTo("bar");
   }
 
   @Test public void getCollectionName_allowListedCommandAndCollectionField() {
@@ -103,7 +104,8 @@ public class TraceMongoCommandListenerTest {
       new BsonElement("collection", new BsonString("coll")),
       new BsonElement("cmd", new BsonString("bar"))
     ));
-    assertThat(listener.getCollectionName(command, "cmd")).isEqualTo("coll"); // collection field wins
+    assertThat(listener.getCollectionName(command, "cmd")).isEqualTo(
+      "coll"); // collection field wins
   }
 
   @Test public void getNonEmptyBsonString_null() {
@@ -179,22 +181,6 @@ public class TraceMongoCommandListenerTest {
     verifyNoMoreInteractions(threadLocalSpan);
   }
 
-  @Test public void commandFailed_nullThrowable() {
-    setupCommandStartedMocks();
-    listener.commandStarted(createCommandStartedEvent());
-
-    when(threadLocalSpan.remove()).thenReturn(span);
-    when(span.error(any(MongoException.class))).thenReturn(span);
-
-    listener.commandFailed(createCommandFailedEvent(null));
-
-    verifyCommandStartedMocks();
-    verify(threadLocalSpan).remove();
-    verify(span).error(any(MongoException.class));
-    verify(span).finish();
-    verifyNoMoreInteractions(threadLocalSpan);
-  }
-
   @Test public void commandFailed_normal() {
     setupCommandStartedMocks();
 
@@ -258,7 +244,7 @@ public class TraceMongoCommandListenerTest {
     );
   }
 
-  CommandFailedEvent createCommandFailedEvent(@Nullable Throwable throwable) {
+  CommandFailedEvent createCommandFailedEvent(Throwable throwable) {
     return new CommandFailedEvent(
       1,
       createConnectionDescription(),

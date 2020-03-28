@@ -16,7 +16,6 @@ package brave.mongodb;
 import brave.Span;
 import brave.internal.Nullable;
 import brave.propagation.ThreadLocalSpan;
-import com.mongodb.MongoException;
 import com.mongodb.MongoSocketException;
 import com.mongodb.connection.ConnectionDescription;
 import com.mongodb.connection.ConnectionId;
@@ -24,26 +23,26 @@ import com.mongodb.event.CommandFailedEvent;
 import com.mongodb.event.CommandListener;
 import com.mongodb.event.CommandStartedEvent;
 import com.mongodb.event.CommandSucceededEvent;
+import java.net.InetSocketAddress;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 
-import java.net.InetSocketAddress;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-
 /**
- * A MongoDB command listener that will report via Brave how long each command takes and other information about the
- * commands.
+ * A MongoDB command listener that will report via Brave how long each command takes and other
+ * information about the commands.
  *
  * See <a href="https://github.com/openzipkin/brave/blob/master/instrumentation/mongodb/RATIONALE.md">RATIONALE.md</a>
  * for implementation notes.
  */
 final class TraceMongoCommandListener implements CommandListener {
   // See https://docs.mongodb.com/manual/reference/command for the command reference
-  static final Set<String> COMMANDS_WITH_COLLECTION_NAME = new HashSet<>(Arrays.asList("aggregate", "count", "distinct",
-    "mapReduce", "geoSearch", "delete", "find", "findAndModify", "insert", "update", "collMod", "compact",
-    "convertToCapped", "create", "createIndexes", "drop", "dropIndexes", "killCursors", "listIndexes", "reIndex"));
+  static final Set<String> COMMANDS_WITH_COLLECTION_NAME = new LinkedHashSet<>(Arrays.asList(
+    "aggregate", "count", "distinct", "mapReduce", "geoSearch", "delete", "find", "findAndModify",
+    "insert", "update", "collMod", "compact", "convertToCapped", "create", "createIndexes", "drop",
+    "dropIndexes", "killCursors", "listIndexes", "reIndex"));
 
   final ThreadLocalSpan threadLocalSpan;
 
@@ -85,7 +84,8 @@ final class TraceMongoCommandListener implements CommandListener {
       }
 
       try {
-        InetSocketAddress socketAddress = connectionDescription.getServerAddress().getSocketAddress();
+        InetSocketAddress socketAddress =
+          connectionDescription.getServerAddress().getSocketAddress();
         span.remoteIpAndPort(socketAddress.getAddress().getHostAddress(), socketAddress.getPort());
       } catch (MongoSocketException ignored) {
 
@@ -104,8 +104,7 @@ final class TraceMongoCommandListener implements CommandListener {
   @Override public void commandFailed(CommandFailedEvent event) {
     Span span = threadLocalSpan.remove();
     if (span == null) return;
-    Throwable throwable = event.getThrowable();
-    span.error(throwable == null ? new MongoException("Command failed but no throwable was reported") : throwable);
+    span.error(event.getThrowable());
     span.finish();
   }
 
@@ -121,7 +120,8 @@ final class TraceMongoCommandListener implements CommandListener {
   }
 
   /**
-   * @return trimmed string from {@code bsonValue} or null if the trimmed string was empty or the value wasn't a string
+   * @return trimmed string from {@code bsonValue} or null if the trimmed string was empty or the
+   * value wasn't a string
    */
   @Nullable static String getNonEmptyBsonString(BsonValue bsonValue) {
     if (bsonValue == null || !bsonValue.isString()) return null;

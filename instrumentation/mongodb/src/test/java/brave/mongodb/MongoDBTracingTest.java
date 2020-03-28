@@ -31,28 +31,21 @@ public class MongoDBTracingTest {
 
   @Test public void create_buildsWithDefaults() {
     MongoDBTracing mongoDBTracing = MongoDBTracing.create(tracing);
+
     assertThat(mongoDBTracing).extracting("tracing").isEqualTo(tracing);
   }
 
   @Test public void newBuilder_setsValuesCorrectly() {
-    MongoDBTracing mongoDBTracing = MongoDBTracing.newBuilder(tracing)
-      .build();
-    assertThat(mongoDBTracing).extracting("tracing").isEqualTo(tracing);
-  }
+    MongoDBTracing mongoDBTracing = MongoDBTracing.newBuilder(tracing).build();
 
-  @Test public void toBuilder_setsValuesCorrectly() {
-    MongoDBTracing.Builder builder = MongoDBTracing.newBuilder(tracing)
-      .build()
-      .toBuilder();
-    assertThat(builder).extracting("tracing").isEqualTo(tracing);
+    assertThat(mongoDBTracing).extracting("tracing").isEqualTo(tracing);
   }
 
   @Test public void commandListener_returnsTraceMongoCommandListener() {
     Tracer tracer = mock(Tracer.class);
     when(tracing.tracer()).thenReturn(tracer);
-    CommandListener listener = MongoDBTracing.newBuilder(tracing)
-      .build()
-      .commandListener();
+
+    CommandListener listener = MongoDBTracing.newBuilder(tracing).build().commandListener();
     assertThat(listener).isInstanceOf(TraceMongoCommandListener.class);
     assertThat(listener).extracting("threadLocalSpan").extracting("tracer").isEqualTo(tracer);
   }
