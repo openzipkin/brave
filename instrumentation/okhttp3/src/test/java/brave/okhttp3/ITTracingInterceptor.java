@@ -14,10 +14,10 @@
 package brave.okhttp3;
 
 import brave.test.http.ITHttpAsyncClient;
-import brave.test.util.AssertableCallback;
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Dispatcher;
@@ -67,15 +67,15 @@ public class ITTracingInterceptor extends ITHttpAsyncClient<Call.Factory> {
   }
 
   @Override
-  protected void getAsync(Call.Factory client, String path, AssertableCallback<Integer> callback) {
+  protected void get(Call.Factory client, String path, BiConsumer<Integer, Throwable> callback) {
     client.newCall(new Request.Builder().url(url(path)).build())
       .enqueue(new Callback() {
         @Override public void onFailure(Call call, IOException e) {
-          callback.onError(e);
+          callback.accept(null, e);
         }
 
         @Override public void onResponse(Call call, Response response) {
-          callback.onSuccess(response.code());
+          callback.accept(response.code(), null);
         }
       });
   }

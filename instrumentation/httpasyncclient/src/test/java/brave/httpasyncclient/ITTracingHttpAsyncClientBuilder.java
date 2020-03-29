@@ -14,7 +14,6 @@
 package brave.httpasyncclient;
 
 import brave.test.http.ITHttpAsyncClient;
-import brave.test.util.AssertableCallback;
 import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.CancellationException;
@@ -22,6 +21,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BiConsumer;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.apache.http.HttpRequestInterceptor;
@@ -108,20 +108,20 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
   }
 
   @Override
-  protected void getAsync(CloseableHttpAsyncClient client, String path,
-    AssertableCallback<Integer> callback) {
+  protected void get(CloseableHttpAsyncClient client, String path,
+    BiConsumer<Integer, Throwable> callback) {
     HttpGet get = new HttpGet(URI.create(url(path)));
     client.execute(get, new FutureCallback<HttpResponse>() {
       @Override public void completed(HttpResponse res) {
-        callback.onSuccess(res.getStatusLine().getStatusCode());
+        callback.accept(res.getStatusLine().getStatusCode(), null);
       }
 
       @Override public void failed(Exception ex) {
-        callback.onError(ex);
+        callback.accept(null, ex);
       }
 
       @Override public void cancelled() {
-        callback.onError(new CancellationException());
+        callback.accept(null, new CancellationException());
       }
     });
   }

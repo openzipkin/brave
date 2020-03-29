@@ -14,9 +14,9 @@
 package brave.jaxrs2;
 
 import brave.test.http.ITHttpAsyncClient;
-import brave.test.util.AssertableCallback;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.InvocationCallback;
@@ -46,17 +46,17 @@ public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
   }
 
   @Override
-  protected void getAsync(Client client, String path, AssertableCallback<Integer> callback) {
+  protected void get(Client client, String path, BiConsumer<Integer, Throwable> callback) {
     client.target(url(path))
       .request(MediaType.TEXT_PLAIN_TYPE)
       .async()
       .get(new InvocationCallback<Response>() {
         @Override public void completed(Response response) {
-          callback.onSuccess(response.getStatus());
+          callback.accept(response.getStatus(), null);
         }
 
         @Override public void failed(Throwable throwable) {
-          callback.onError(throwable);
+          callback.accept(null, throwable);
         }
       });
   }

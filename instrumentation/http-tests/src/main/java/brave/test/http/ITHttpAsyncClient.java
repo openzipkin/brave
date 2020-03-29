@@ -20,6 +20,7 @@ import brave.test.util.AssertableCallback;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import okhttp3.mockwebserver.MockResponse;
 import org.junit.Test;
 import zipkin2.Span;
@@ -34,11 +35,13 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
    * implementation coerces a 500 code without an exception as an error, you should call the success
    * callback directly.
    *
-   * <p>One of success or failure callbacks must be invoked even on unexpected scenarios. For
+   * <p>Invoke the callback with one of success or failure even in unexpected scenarios. For
    * example, if there is a cancelation that didn't result in an error, invoke {@link
-   * AssertableCallback#onError(Throwable)} with your own {@link CancellationException}.
+   * BiConsumer#accept(Object, Object)} with your own {@link CancellationException}.
+   *
+   * @param callback accepts the status code or the error invoking the request
    */
-  protected abstract void getAsync(C client, String path, AssertableCallback<Integer> callback);
+  protected abstract void get(C client, String path, BiConsumer<Integer, Throwable> callback);
 
   /**
    * This tests that the parent is determined at the time the request was made, not when the request
@@ -53,8 +56,8 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
 
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
-      getAsync(client, "/items/1", items1);
-      getAsync(client, "/items/2", items2);
+      get(client, "/items/1", items1);
+      get(client, "/items/2", items2);
     }
 
     try (Scope scope = currentTraceContext.newScope(null)) {
@@ -91,7 +94,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
 
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
-      getAsync(client, "/foo", callback);
+      get(client, "/foo", callback);
     }
 
     callback.join(); // ensures listener ran
@@ -109,7 +112,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     AtomicReference<TraceContext> invocationContext = new AtomicReference<>();
     callback.setListener(() -> invocationContext.set(currentTraceContext.get()));
 
-    getAsync(client, "/foo", callback);
+    get(client, "/foo", callback);
 
     callback.join(); // ensures listener ran
     assertThat(invocationContext.get()).isNull();
@@ -121,7 +124,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     int expectedStatusCode = 400;
     server.enqueue(new MockResponse().setResponseCode(expectedStatusCode));
 
-    getAsync(client, "/foo", callback);
+    get(client, "/foo", callback);
 
     takeRequest();
 
