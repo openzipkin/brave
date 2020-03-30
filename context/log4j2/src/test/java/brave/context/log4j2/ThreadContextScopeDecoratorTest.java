@@ -25,18 +25,16 @@ import org.apache.logging.log4j.ThreadContext;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ThreadContextScopeDecoratorTest extends CurrentTraceContextTest {
-
-  @Override protected Class<? extends Supplier<CurrentTraceContext>> currentSupplier() {
-    return CurrentSupplier.class;
+  @Override protected Class<? extends Supplier<CurrentTraceContext.Builder>> builderSupplier() {
+    return BuilderSupplier.class;
   }
 
-  static class CurrentSupplier implements Supplier<CurrentTraceContext> {
-    @Override public CurrentTraceContext get() {
+  static class BuilderSupplier implements Supplier<CurrentTraceContext.Builder> {
+    @Override public CurrentTraceContext.Builder get() {
       return ThreadLocalCurrentTraceContext.newBuilder()
         .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
           .addExtraField(EXTRA_FIELD)
-          .build())
-        .build();
+          .build());
     }
   }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -26,23 +26,18 @@ import static brave.context.log4j12.MDCScopeDecoratorTest.assumeMDCWorks;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class MDCCurrentTraceContextTest extends CurrentTraceContextTest {
-
   public MDCCurrentTraceContextTest() {
     assumeMDCWorks();
   }
 
-  @Override protected Class<? extends Supplier<CurrentTraceContext>> currentSupplier() {
-    return CurrentSupplier.class;
+  @Override protected Class<? extends Supplier<CurrentTraceContext.Builder>> builderSupplier() {
+    return BuilderSupplier.class;
   }
 
-  static class CurrentSupplier implements Supplier<CurrentTraceContext> {
-    @Override public CurrentTraceContext get() {
-      return MDCCurrentTraceContext.create();
+  static class BuilderSupplier implements Supplier<CurrentTraceContext.Builder> {
+    @Override public CurrentTraceContext.Builder get() {
+      return new MDCCurrentTraceContext.Builder(CurrentTraceContext.Default.create());
     }
-  }
-
-  @Test public void is_inheritable() throws Exception {
-    super.is_inheritable(currentTraceContext);
   }
 
   @Test(expected = ComparisonFailure.class) // Log4J 1.2.x MDC is inheritable by default

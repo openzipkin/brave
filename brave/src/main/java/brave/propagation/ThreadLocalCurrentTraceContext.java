@@ -39,11 +39,11 @@ import brave.internal.Nullable;
  */
 public class ThreadLocalCurrentTraceContext extends CurrentTraceContext { // not final for backport
   public static CurrentTraceContext create() {
-    return new Builder().build();
+    return new Builder(DEFAULT).build();
   }
 
   public static Builder newBuilder() {
-    return new Builder();
+    return new Builder(DEFAULT);
   }
 
   /**
@@ -59,15 +59,18 @@ public class ThreadLocalCurrentTraceContext extends CurrentTraceContext { // not
 
   /** @since 5.11 */ // overridden for covariance
   public static final class Builder extends CurrentTraceContext.Builder {
+    final ThreadLocal<TraceContext> local;
+
+    Builder(ThreadLocal<TraceContext> local) {
+      this.local = local;
+    }
+
     @Override public Builder addScopeDecorator(ScopeDecorator scopeDecorator) {
       return (Builder) super.addScopeDecorator(scopeDecorator);
     }
 
     @Override public ThreadLocalCurrentTraceContext build() {
-      return new ThreadLocalCurrentTraceContext(this, DEFAULT);
-    }
-
-    Builder() {
+      return new ThreadLocalCurrentTraceContext(this);
     }
   }
 
@@ -76,13 +79,10 @@ public class ThreadLocalCurrentTraceContext extends CurrentTraceContext { // not
   @SuppressWarnings("ThreadLocalUsage") // intentional: to support multiple Tracer instances
   final ThreadLocal<TraceContext> local;
 
-  ThreadLocalCurrentTraceContext(
-    CurrentTraceContext.Builder builder,
-    ThreadLocal<TraceContext> local
-  ) {
+  ThreadLocalCurrentTraceContext(Builder builder) {
     super(builder);
-    if (local == null) throw new NullPointerException("local == null");
-    this.local = local;
+    if (builder.local == null) throw new NullPointerException("local == null");
+    local = builder.local;
   }
 
   @Override public TraceContext get() {

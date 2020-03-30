@@ -133,7 +133,7 @@ public abstract class CorrelationFieldScopeDecoratorBuilder<B extends Correlatio
     }
 
     @Override public Scope decorateScope(TraceContext traceContext, Scope scope) {
-      if (scope == Scope.NOOP) return scope;
+      if (scope == Scope.NOOP) return scope; // we only scope fields constant in the context
 
       String previousValue = context.get(name);
       if (!update(traceContext, getter, name, previousValue)) {
@@ -167,7 +167,7 @@ public abstract class CorrelationFieldScopeDecoratorBuilder<B extends Correlatio
     }
 
     @Override public Scope decorateScope(TraceContext traceContext, Scope scope) {
-      if (scope == Scope.NOOP) return scope;
+      if (scope == Scope.NOOP) return scope; // we only scope fields constant in the context
 
       String[] previousValues = new String[names.length];
       boolean changed = false;

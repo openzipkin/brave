@@ -55,8 +55,8 @@ public class StrictScopeDecoratorTest {
   }
 
   @Test public void doesntDecorateNoop() {
-    assertThat(decorator.decorateScope(context, Scope.NOOP))
-      .isSameAs(Scope.NOOP);
+    assertThat(decorator.decorateScope(context, Scope.NOOP)).isSameAs(Scope.NOOP);
+    assertThat(decorator.decorateScope(null, Scope.NOOP)).isSameAs(Scope.NOOP);
     decorator.close(); // doesn't error
   }
 

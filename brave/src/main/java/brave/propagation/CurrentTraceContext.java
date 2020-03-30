@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -67,9 +67,9 @@ public abstract class CurrentTraceContext {
    * Sets the current span in scope until the returned object is closed. It is a programming error
    * to drop or never close the result. Using try-with-resources is preferred for this reason.
    *
-   * @param currentSpan span to place into scope or null to clear the scope
+   * @param context span to place into scope or null to clear the scope
    */
-  public abstract Scope newScope(@Nullable TraceContext currentSpan);
+  public abstract Scope newScope(@Nullable TraceContext context);
 
   final List<ScopeDecorator> scopeDecorators;
 
@@ -100,11 +100,14 @@ public abstract class CurrentTraceContext {
    *     return decorateScope(currentSpan, result);
    *   }
    * }</pre>
+   *
+   * @param scope {@link Scope#NOOP} if the prior context was equal to the {@code context}
+   * parameter.
    */
-  protected Scope decorateScope(@Nullable TraceContext currentSpan, Scope scope) {
+  protected Scope decorateScope(@Nullable TraceContext context, Scope scope) {
     int length = scopeDecorators.size();
     for (int i = 0; i < length; i++) {
-      scope = scopeDecorators.get(i).decorateScope(currentSpan, scope);
+      scope = scopeDecorators.get(i).decorateScope(context, scope);
     }
     return scope;
   }
@@ -132,16 +135,13 @@ public abstract class CurrentTraceContext {
    * equivalent. Due to details of propagation, other data like parent ID are not considered in
    * equivalence checks.
    *
-   * @param currentSpan span to place into scope or null to clear the scope
+   * @param context span to place into scope or null to clear the scope
    * @return a new scope object or {@link Scope#NOOP} if the input is already the case
    */
-  public Scope maybeScope(@Nullable TraceContext currentSpan) {
-    TraceContext currentScope = get();
-    if (currentSpan == null) {
-      if (currentScope == null) return Scope.NOOP;
-      return newScope(null);
-    }
-    return currentSpan.equals(currentScope) ? Scope.NOOP : newScope(currentSpan);
+  public Scope maybeScope(@Nullable TraceContext context) {
+    TraceContext current = get();
+    if (equals(current, context)) return decorateScope(context, Scope.NOOP);
+    return newScope(context);
   }
 
   /** A span remains in the scope it was bound to until close is called. */
@@ -170,7 +170,11 @@ public abstract class CurrentTraceContext {
    * @since 5.2
    */
   public interface ScopeDecorator {
-    Scope decorateScope(@Nullable TraceContext currentSpan, Scope scope);
+    /**
+     * @param context null implies the scope should be cleared
+     * @param scope {@link Scope#NOOP} if the former decoration resulted in no change.
+     */
+    Scope decorateScope(@Nullable TraceContext context, Scope scope);
   }
 
   /**
@@ -198,7 +202,7 @@ public abstract class CurrentTraceContext {
 
     /** Uses a non-inheritable static thread local */
     public static CurrentTraceContext create() {
-      return new ThreadLocalCurrentTraceContext(new Builder(), DEFAULT);
+      return ThreadLocalCurrentTraceContext.create();
     }
 
     /**
@@ -215,7 +219,7 @@ public abstract class CurrentTraceContext {
     }
 
     Default() {
-      super(new Builder(), INHERITABLE);
+      super(new Builder(INHERITABLE));
     }
   }
 
@@ -283,5 +287,9 @@ public abstract class CurrentTraceContext {
       }
     }
     return new CurrentTraceContextExecutorService();
+  }
+
+  static boolean equals(@Nullable TraceContext a, @Nullable TraceContext b) {
+    return a == null ? b == null : a.equals(b); // Java 6 can't use Objects.equals()
   }
 }
