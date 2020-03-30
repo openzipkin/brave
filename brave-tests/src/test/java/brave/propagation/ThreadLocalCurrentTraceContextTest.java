@@ -20,9 +20,8 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ThreadLocalCurrentTraceContextTest extends CurrentTraceContextTest {
-
-  @Override protected Class<? extends Supplier<CurrentTraceContext>> currentSupplier() {
-    return CurrentSupplier.class;
+  @Override protected Class<? extends Supplier<CurrentTraceContext.Builder>> builderSupplier() {
+    return BuilderSupplier.class;
   }
 
   /** Since the default thread-local is static, this helps code avoid leaks made by others. */
@@ -36,9 +35,9 @@ public class ThreadLocalCurrentTraceContextTest extends CurrentTraceContextTest 
     assertThat(currentTraceContext.get()).isNull();
   }
 
-  static class CurrentSupplier implements Supplier<CurrentTraceContext> {
-    @Override public CurrentTraceContext get() {
-      return ThreadLocalCurrentTraceContext.newBuilder().build();
+  static class BuilderSupplier implements Supplier<CurrentTraceContext.Builder> {
+    @Override public CurrentTraceContext.Builder get() {
+      return ThreadLocalCurrentTraceContext.newBuilder();
     }
   }
 }

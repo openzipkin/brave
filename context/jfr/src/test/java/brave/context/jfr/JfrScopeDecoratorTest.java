@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,6 +15,7 @@ package brave.context.jfr;
 
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
@@ -40,6 +41,7 @@ public class JfrScopeDecoratorTest {
   @Rule public TemporaryFolder folder = new TemporaryFolder();
 
   ExecutorService wrappedExecutor = Executors.newSingleThreadExecutor();
+  ScopeDecorator decorator = JfrScopeDecorator.create();
   CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.newBuilder()
     .addScopeDecorator(StrictScopeDecorator.create())
     .addScopeDecorator(JfrScopeDecorator.create())
@@ -76,6 +78,11 @@ public class JfrScopeDecoratorTest {
         tuple("0000000000000001", "0000000000000001", "0000000000000002"),
         tuple("0000000000000002", null, "0000000000000003")
       );
+  }
+
+  @Test public void doesntDecorateNoop() {
+    assertThat(decorator.decorateScope(context, Scope.NOOP)).isSameAs(Scope.NOOP);
+    assertThat(decorator.decorateScope(null, Scope.NOOP)).isSameAs(Scope.NOOP);
   }
 
   /**

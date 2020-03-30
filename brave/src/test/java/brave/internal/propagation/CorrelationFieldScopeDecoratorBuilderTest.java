@@ -63,7 +63,7 @@ public class CorrelationFieldScopeDecoratorBuilderTest {
     ExtraFieldPropagation.set(context, "user-id", "romeo");
   }
 
-  @Test public void noop() {
+  @Test public void doesntDecorateNoop() {
     assertThat(decorator.decorateScope(context, Scope.NOOP)).isSameAs(Scope.NOOP);
     assertThat(onlyExtraFieldDecorator.decorateScope(context, Scope.NOOP)).isSameAs(Scope.NOOP);
     assertThat(withExtraFieldDecorator.decorateScope(context, Scope.NOOP)).isSameAs(Scope.NOOP);

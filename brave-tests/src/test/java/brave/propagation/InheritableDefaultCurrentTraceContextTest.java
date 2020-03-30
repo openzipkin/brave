@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,26 +16,29 @@ package brave.propagation;
 import brave.test.propagation.CurrentTraceContextTest;
 import java.util.function.Supplier;
 import org.junit.Before;
+import org.junit.ComparisonFailure;
 import org.junit.Test;
 
-public class DefaultCurrentTraceContextTest extends CurrentTraceContextTest {
+import static brave.propagation.CurrentTraceContext.Default.INHERITABLE;
 
-  @Override protected Class<? extends Supplier<CurrentTraceContext>> currentSupplier() {
-    return CurrentSupplier.class;
+public class InheritableDefaultCurrentTraceContextTest extends CurrentTraceContextTest {
+  @Override protected Class<? extends Supplier<CurrentTraceContext.Builder>> builderSupplier() {
+    return BuilderSupplier.class;
   }
 
-  static class CurrentSupplier implements Supplier<CurrentTraceContext> {
-    @Override public CurrentTraceContext get() {
-      return CurrentTraceContext.Default.create();
+  static class BuilderSupplier implements Supplier<CurrentTraceContext.Builder> {
+    @Override public CurrentTraceContext.Builder get() {
+      return new ThreadLocalCurrentTraceContext.Builder(INHERITABLE);
     }
   }
 
-  @Test public void is_inheritable() throws Exception {
-    super.is_inheritable(CurrentTraceContext.Default.inheritable());
+  @Test(expected = ComparisonFailure.class)
+  public void isnt_inheritable() throws Exception {
+    super.isnt_inheritable();
   }
 
   @Before public void ensureNoOtherTestsTaint() {
-    CurrentTraceContext.Default.INHERITABLE.set(null);
+    INHERITABLE.set(null);
     CurrentTraceContext.Default.DEFAULT.set(null);
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -23,12 +23,13 @@ package brave.propagation;
  */
 @Deprecated
 public final class StrictCurrentTraceContext extends ThreadLocalCurrentTraceContext {
-  static final CurrentTraceContext.Builder SCOPE_DECORATING_BUILDER =
-    ThreadLocalCurrentTraceContext.newBuilder().addScopeDecorator(new StrictScopeDecorator());
+  static Builder strictBuilder() {
+    return new Builder(new ThreadLocal<>()).addScopeDecorator(new StrictScopeDecorator());
+  }
 
   public StrictCurrentTraceContext() { // Preserve historical public ctor
     // intentionally not inheritable to ensure instrumentation propagation doesn't accidentally work
     // intentionally not static to make explicit when instrumentation need per thread semantics
-    super(SCOPE_DECORATING_BUILDER, new ThreadLocal<>());
+    super(strictBuilder());
   }
 }

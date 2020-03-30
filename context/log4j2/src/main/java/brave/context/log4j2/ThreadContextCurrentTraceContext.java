@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,7 +15,6 @@ package brave.context.log4j2;
 
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import org.apache.logging.log4j.ThreadContext;
 
@@ -27,32 +26,44 @@ import org.apache.logging.log4j.ThreadContext;
  */
 @Deprecated
 public final class ThreadContextCurrentTraceContext extends CurrentTraceContext {
-  static final CurrentTraceContext.Builder SCOPE_DECORATING_BUILDER =
-    ThreadLocalCurrentTraceContext.newBuilder()
-      .addScopeDecorator(ThreadContextScopeDecorator.create());
-
   public static ThreadContextCurrentTraceContext create() {
     return create(CurrentTraceContext.Default.inheritable());
   }
 
   public static ThreadContextCurrentTraceContext create(CurrentTraceContext delegate) {
     if (delegate == null) throw new NullPointerException("delegate == null");
-    return new ThreadContextCurrentTraceContext(delegate);
+    return new Builder(delegate).build();
+  }
+
+  static final class Builder extends CurrentTraceContext.Builder {
+    final CurrentTraceContext delegate;
+
+    Builder(CurrentTraceContext delegate) {
+      this.delegate = delegate;
+      addScopeDecorator(ThreadContextScopeDecorator.create());
+    }
+
+    @Override public ThreadContextCurrentTraceContext build() {
+      return new ThreadContextCurrentTraceContext(this);
+    }
   }
 
   final CurrentTraceContext delegate;
 
-  ThreadContextCurrentTraceContext(CurrentTraceContext delegate) {
-    super(SCOPE_DECORATING_BUILDER);
-    this.delegate = delegate;
+  ThreadContextCurrentTraceContext(Builder builder) {
+    super(builder);
+    delegate = builder.delegate;
   }
 
   @Override public TraceContext get() {
     return delegate.get();
   }
 
-  @Override public Scope newScope(@Nullable TraceContext currentSpan) {
-    Scope scope = delegate.newScope(currentSpan);
-    return decorateScope(currentSpan, scope);
+  @Override public Scope newScope(@Nullable TraceContext context) {
+    return decorateScope(context, delegate.newScope(context));
+  }
+
+  @Override public Scope maybeScope(TraceContext context) {
+    return decorateScope(context, delegate.maybeScope(context));
   }
 }

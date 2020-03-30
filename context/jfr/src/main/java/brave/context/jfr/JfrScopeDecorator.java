@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -53,14 +53,16 @@ public final class JfrScopeDecorator implements ScopeDecorator {
     return new JfrScopeDecorator();
   }
 
-  @Override public Scope decorateScope(@Nullable TraceContext currentSpan, Scope scope) {
+  @Override public Scope decorateScope(@Nullable TraceContext context, Scope scope) {
+    if (scope == Scope.NOOP) return scope; // we only scope fields constant in the context
+
     ScopeEvent event = new ScopeEvent();
     if (!event.isEnabled()) return scope;
 
-    if (currentSpan != null) {
-      event.traceId = currentSpan.traceIdString();
-      event.parentId = currentSpan.parentIdString();
-      event.spanId = currentSpan.spanIdString();
+    if (context != null) {
+      event.traceId = context.traceIdString();
+      event.parentId = context.parentIdString();
+      event.spanId = context.spanIdString();
     }
 
     event.begin();

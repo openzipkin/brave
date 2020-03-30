@@ -49,13 +49,17 @@ public abstract class CurrentTraceContextTest {
   protected final TraceContext unsampledContext =
     TraceContext.newBuilder().traceId(2L).spanId(2L).sampled(false).build();
 
-  protected abstract Class<? extends Supplier<CurrentTraceContext>> currentSupplier();
+  protected abstract Class<? extends Supplier<CurrentTraceContext.Builder>> builderSupplier();
 
   protected CurrentTraceContextTest() {
-    currentTraceContext = newInstance(currentSupplier(), getClass().getClassLoader()).get();
+    currentTraceContext = newBuilder().build();
   }
 
   protected void verifyImplicitContext(@Nullable TraceContext context) {
+  }
+
+  private CurrentTraceContext.Builder newBuilder() {
+    return newInstance(builderSupplier(), getClass().getClassLoader()).get();
   }
 
   @Test public void currentSpan_defaultsToNull() {
@@ -91,6 +95,42 @@ public abstract class CurrentTraceContextTest {
         assertThat(currentTraceContext.get())
           .isEqualTo(differentExtraField);
         verifyImplicitContext(differentExtraField);
+      }
+    }
+  }
+
+  @Test public void newScope_decoratesWithDifferentScope() {
+    Scope differentScope = () -> {
+    };
+
+    CurrentTraceContext decoratesWithDifferentScope = newBuilder()
+      .addScopeDecorator((context, scope) -> differentScope).build();
+
+    try (Scope scope = decoratesWithDifferentScope.newScope(context)) {
+      assertThat(scope).isSameAs(differentScope);
+    }
+
+    try (Scope scope = decoratesWithDifferentScope.newScope(null)) {
+      assertThat(scope).isSameAs(differentScope);
+    }
+  }
+
+  @Test public void maybeScope_decoratesWithDifferentScope() {
+    Scope differentScope = () -> {
+    };
+
+    CurrentTraceContext decoratesWithDifferentScope = newBuilder()
+      .addScopeDecorator((context, scope) -> differentScope).build();
+
+    try (Scope noop = Scope.NOOP) {
+      try (Scope scope = decoratesWithDifferentScope.maybeScope(context)) {
+        assertThat(scope).isSameAs(differentScope);
+      }
+    }
+
+    try (Scope noop = Scope.NOOP) {
+      try (Scope scope = decoratesWithDifferentScope.maybeScope(null)) {
+        assertThat(scope).isSameAs(differentScope);
       }
     }
   }
@@ -235,8 +275,7 @@ public abstract class CurrentTraceContextTest {
     Callable<?> callable;
     try (Scope scope = currentTraceContext.newScope(context)) {
       callable = currentTraceContext.wrap(() -> {
-        assertThat(currentTraceContext.get())
-          .isEqualTo(context);
+        assertThat(currentTraceContext.get()).isEqualTo(context);
         verifyImplicitContext(context);
         return true;
       });
@@ -291,20 +330,22 @@ public abstract class CurrentTraceContextTest {
   }
 
   @Test public void unloadable_unused() {
-    assertRunIsUnloadableWithSupplier(Unused.class, currentSupplier());
+    assertRunIsUnloadableWithSupplier(Unused.class, builderSupplier());
   }
 
-  static class Unused extends ClassLoaders.ConsumerRunnable<CurrentTraceContext> {
-    @Override public void accept(CurrentTraceContext currentTraceContext) {
+  static class Unused extends ClassLoaders.ConsumerRunnable<CurrentTraceContext.Builder> {
+    @Override public void accept(CurrentTraceContext.Builder builder) {
+      builder.build();
     }
   }
 
   @Test public void unloadable_afterScopeClose() {
-    assertRunIsUnloadableWithSupplier(ClosedScope.class, currentSupplier());
+    assertRunIsUnloadableWithSupplier(ClosedScope.class, builderSupplier());
   }
 
-  static class ClosedScope extends ClassLoaders.ConsumerRunnable<CurrentTraceContext> {
-    @Override public void accept(CurrentTraceContext current) {
+  static class ClosedScope extends ClassLoaders.ConsumerRunnable<CurrentTraceContext.Builder> {
+    @Override public void accept(CurrentTraceContext.Builder builder) {
+      CurrentTraceContext current = builder.build();
       try (Scope ws = current.newScope(TraceContext.newBuilder().traceId(1L).spanId(2L).build())) {
       }
     }
@@ -317,7 +358,7 @@ public abstract class CurrentTraceContextTest {
   @SuppressWarnings("CheckReturnValue")
   @Test public void notUnloadable_whenScopeLeaked() {
     try {
-      assertRunIsUnloadableWithSupplier(LeakedScope.class, currentSupplier());
+      assertRunIsUnloadableWithSupplier(LeakedScope.class, builderSupplier());
       failBecauseExceptionWasNotThrown(AssertionError.class);
     } catch (AssertionError e) {
       // clear the leaked scope so other tests don't break
@@ -325,9 +366,9 @@ public abstract class CurrentTraceContextTest {
     }
   }
 
-  static class LeakedScope extends ClassLoaders.ConsumerRunnable<CurrentTraceContext> {
-    @Override public void accept(CurrentTraceContext current) {
-      current.newScope(TraceContext.newBuilder().traceId(1L).spanId(2L).build());
+  static class LeakedScope extends ClassLoaders.ConsumerRunnable<CurrentTraceContext.Builder> {
+    @Override public void accept(CurrentTraceContext.Builder builder) {
+      builder.build().newScope(TraceContext.newBuilder().traceId(1L).spanId(2L).build());
     }
   }
 }
