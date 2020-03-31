@@ -38,9 +38,11 @@ public final class Lists {
   }
 
   static boolean isImmutable(List<Object> extra) {
-    if (extra == Collections.emptyList()) return true;
+    assert extra.size() > 1;  // Handled by caller.
     // avoid copying datastructure by trusting certain names.
     String simpleName = extra.getClass().getSimpleName();
+    // We don't need to check EMPTY_LIST or SingletonList here since our only caller handles them
+    // without type-checking.
     return simpleName.startsWith("Unmodifiable")
       || simpleName.contains("Immutable");
   }
