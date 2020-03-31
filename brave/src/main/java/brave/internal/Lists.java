@@ -29,19 +29,19 @@ public final class Lists {
     return mutable;
   }
 
-  public static List<Object> ensureImmutable(List<Object> extra) {
-    if (isImmutable(extra)) return extra;
+  public static List<Object> ensureImmutable(List<Object> list) {
+    if (list.isEmpty()) return Collections.emptyList();
     // Faster to make a copy than check the type to see if it is already a singleton list
-    if (extra.size() == 1) return Collections.singletonList(extra.get(0));
-    return Collections.unmodifiableList(new ArrayList<>(extra));
+    if (list.size() == 1) return Collections.singletonList(list.get(0));
+    if (isImmutable(list)) return list;
+    return Collections.unmodifiableList(new ArrayList<>(list));
   }
 
   static boolean isImmutable(List<Object> extra) {
-    if (extra == Collections.EMPTY_LIST) return true;
+    if (extra == Collections.emptyList()) return true;
     // avoid copying datastructure by trusting certain names.
     String simpleName = extra.getClass().getSimpleName();
-    return simpleName.equals("SingletonList")
-      || simpleName.startsWith("Unmodifiable")
+    return simpleName.startsWith("Unmodifiable")
       || simpleName.contains("Immutable");
   }
 
