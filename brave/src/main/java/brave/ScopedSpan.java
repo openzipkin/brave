@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -37,43 +37,60 @@ import brave.propagation.TraceContext;
  * always the same. Also, this type is intended for in-process synchronous code. Do not leak this
  * onto another thread: it is not thread-safe. For advanced features or remote commands, use {@link
  * Span} instead.
+ *
+ * @since 4.19
  */
-public abstract class ScopedSpan {
-
+public abstract class ScopedSpan implements SpanCustomizer {
   /**
    * When true, no recording will take place, so no data is reported on finish. However, the trace
    * context is in scope until {@link #finish()} is called.
+   *
+   * @since 4.19
    */
   public abstract boolean isNoop();
 
-  /** Returns the trace context associated with this span */
+  /**
+   * Returns the trace context associated with this span
+   *
+   * @since 4.19
+   */
   // This api is exposed as there's always a context in scope by definition, and the context is
   // needed for methods like ExtraFieldPropagation.set
   public abstract TraceContext context();
 
   /**
-   * Associates an event that explains latency with the current system time.
+   * {@inheritDoc}
    *
-   * @param value A short tag indicating the event, like "finagle.retry"
+   * @since 5.11
    */
-  public abstract ScopedSpan annotate(String value);
+  @Override public abstract ScopedSpan name(String name);
 
   /**
-   * Tags give your span context for search, viewing and analysis. For example, a key
-   * "your_app.version" would let you lookup spans by version. A tag "sql.query" isn't searchable,
-   * but it can help in debugging when viewing a trace.
+   * {@inheritDoc}
    *
-   * @param key Name used to lookup spans, such as "your_app.version".
-   * @param value String value, cannot be <code>null</code>.
+   * @since 4.19
    */
-  public abstract ScopedSpan tag(String key, String value);
+  @Override public abstract ScopedSpan tag(String key, String value);
 
-  /** Adds tags depending on the configured {@link Tracing#errorParser() error parser} */
+  /**
+   * {@inheritDoc}
+   *
+   * @since 4.19
+   */
+  @Override public abstract ScopedSpan annotate(String value);
+
+  /**
+   * Adds tags depending on the configured {@link Tracing#errorParser() error parser}   *
+   *
+   * @since 4.19
+   */
   public abstract ScopedSpan error(Throwable throwable);
 
   /**
    * Closes the {@link CurrentTraceContext#newScope(TraceContext) scope} associated with this span,
    * then reports the span complete, assigning the most precise duration possible.
+   *
+   * @since 4.19
    */
   public abstract void finish();
 

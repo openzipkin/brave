@@ -793,6 +793,17 @@ public class TracerTest {
       .isPositive();
   }
 
+  @Test public void startScopedSpan_overrideName() {
+    ScopedSpan scoped = tracer.startScopedSpan("foo");
+    try {
+      scoped.name("bar");
+    } finally {
+      scoped.finish();
+    }
+
+    assertThat(spans.get(0).name()).isEqualTo("bar");
+  }
+
   @Test public void useSpanAfterFinished_doesNotCauseBraveFlush() {
     simulateInProcessPropagation(tracer, tracer);
     GarbageCollectors.blockOnGC();
