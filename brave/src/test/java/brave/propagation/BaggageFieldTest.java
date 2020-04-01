@@ -14,6 +14,7 @@
 package brave.propagation;
 
 import brave.Tracing;
+import brave.internal.PropagationFields;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext.Extractor;
 import java.util.Collections;
@@ -22,6 +23,7 @@ import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 public class BaggageFieldTest {
   static final BaggageField REQUEST_ID = BaggageField.newBuilder("requestId")
@@ -42,22 +44,107 @@ public class BaggageFieldTest {
 
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
   TraceContext emptyContext = factory.decorate(context);
+  TraceContextOrSamplingFlags extraction = TraceContextOrSamplingFlags.create(emptyContext);
   TraceContext requestIdContext =
     context.toBuilder().extra(requestIdExtraction.extra()).build();
 
-  @Test public void getAll_decoratedExtraction() {
-    assertThat(BaggageField.getAll(emptyExtraction))
-      .containsExactly(REQUEST_ID, AMZN_TRACE_ID);
+  @Test public void builder() {
+    assertThat(BaggageField.create("Name").name()).isEqualTo("Name");
+    assertThat(BaggageField.create("Name").remoteNames()).containsExactly("name");
+
+    assertThat(
+      BaggageField.newBuilder("clearRemoteNames").clearRemoteNames().build().remoteNames()
+    ).isEmpty();
+
+    assertThat(
+      BaggageField.newBuilder("addRemoteName").addRemoteName("second").build().remoteNames()
+    ).containsExactly("addremotename", "second");
+
+    assertThat(BaggageField.create("foo").readOnly()).isFalse();
+    assertThat(
+      BaggageField.newBuilder("readOnly").readOnly().build().readOnly()
+    ).isTrue();
+
+    assertThat(BaggageField.create("foo").flushOnUpdate()).isFalse();
+    assertThat(
+      BaggageField.newBuilder("flushOnUpdate").flushOnUpdate().build().flushOnUpdate()
+    ).isTrue();
   }
 
-  @Test public void getByName_exists() {
-    assertThat(BaggageField.getByName(emptyContext, REQUEST_ID.name()))
-      .isSameAs(REQUEST_ID);
+  @Test public void internalValueAccessor() {
+    assertThat(BaggageField.create("foo").valueAccessor)
+      .isSameAs(BaggageField.ValueFromExtra.INSTANCE);
+
+    BaggageField.ValueAccessor valueAccessor = mock(BaggageField.ValueAccessor.class);
+    assertThat(
+      BaggageField.newBuilder("valueAccessor")
+        .internalValueAccessor(valueAccessor)
+        .build().valueAccessor
+    ).isSameAs(valueAccessor);
+  }
+
+  @Test public void illegalCombinations() {
+    BaggageField.Builder builder = BaggageField.newBuilder("illegal")
+      .readOnly()
+      .flushOnUpdate();
+
+    assertThatThrownBy(builder::build)
+      .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test public void getAll_extracted() {
+    assertThat(BaggageField.getAll(emptyExtraction))
+      .containsExactly(REQUEST_ID, AMZN_TRACE_ID)
+      .containsExactlyElementsOf(BaggageField.getAll(extraction));
+  }
+
+  @Test public void getAll() {
+    assertThat(BaggageField.getAll(emptyContext))
+      .containsExactly(REQUEST_ID, AMZN_TRACE_ID);
+
+    try (Tracing tracing = Tracing.newBuilder().build();
+         Scope ws = tracing.currentTraceContext().newScope(emptyContext)) {
+      assertThat(BaggageField.getAll())
+        .containsExactly(REQUEST_ID, AMZN_TRACE_ID);
+    }
+  }
+
+  @Test public void getAll_doesntExist() {
+    assertThat(BaggageField.getAll(TraceContextOrSamplingFlags.EMPTY)).isEmpty();
+    assertThat(BaggageField.getAll(context)).isEmpty();
+    assertThat(BaggageField.getAll()).isEmpty();
+
+    try (Tracing tracing = Tracing.newBuilder().build();
+         Scope ws = tracing.currentTraceContext().newScope(null)) {
+      assertThat(BaggageField.getAll()).isEmpty();
+    }
   }
 
   @Test public void getByName_doesntExist() {
-    assertThat(BaggageField.getByName(emptyContext, "robots"))
-      .isNull();
+    assertThat(BaggageField.getByName(emptyContext, "robots")).isNull();
+    assertThat(BaggageField.getByName("robots")).isNull();
+
+    try (Tracing tracing = Tracing.newBuilder().build();
+         Scope ws = tracing.currentTraceContext().newScope(null)) {
+      assertThat(BaggageField.getByName(REQUEST_ID.name())).isNull();
+    }
+  }
+
+  @Test public void getByName() {
+    assertThat(BaggageField.getByName(emptyContext, REQUEST_ID.name()))
+      .isSameAs(REQUEST_ID);
+
+    try (Tracing tracing = Tracing.newBuilder().build();
+         Scope ws = tracing.currentTraceContext().newScope(emptyContext)) {
+      assertThat(BaggageField.getByName(REQUEST_ID.name()))
+        .isSameAs(REQUEST_ID);
+    }
+  }
+
+  @Test public void getByName_extracted() {
+    assertThat(BaggageField.getByName(emptyExtraction, REQUEST_ID.name()))
+      .isSameAs(REQUEST_ID)
+      .isSameAs(BaggageField.getByName(extraction, REQUEST_ID.name()));
   }
 
   @Test public void getByName_invalid() {
@@ -222,5 +309,33 @@ public class BaggageFieldTest {
   @Test public void updateValue_extracted_invalid() {
     assertThatThrownBy(() -> REQUEST_ID.updateValue((TraceContextOrSamplingFlags) null, null))
       .isInstanceOf(NullPointerException.class);
+  }
+
+  @Test public void toString_onlyHasName() {
+    assertThat(BaggageField.create("Foo"))
+      .hasToString("BaggageField{Foo}"); // case preserved as that's the field name
+  }
+
+  /**
+   * Ensures only lower-case name comparison is used in equals and hashCode. This allows {@link
+   * BaggagePropagation} to deduplicate and {@link PropagationFields} to use these as map keys.
+   */
+  @Test public void equalsAndHashCode() {
+    // same field are equivalent
+    BaggageField field = BaggageField.create("foo");
+    assertThat(field).isEqualTo(field);
+    assertThat(field).hasSameHashCodeAs(field);
+
+    // same values are equivalent
+    BaggageField sameParameters = BaggageField.create("foo");
+    BaggageField sameName = BaggageField.newBuilder("foo").addRemoteName("extra").build();
+    assertThat(field).isEqualTo(sameParameters);
+    assertThat(field).isEqualTo(sameName);
+    assertThat(field).hasSameHashCodeAs(sameParameters);
+    assertThat(field).hasSameHashCodeAs(sameName);
+
+    // different values are not equivalent
+    assertThat(field).isNotEqualTo(BaggageField.create("bar"));
+    assertThat(field.hashCode()).isNotEqualTo(BaggageField.create("bar").hashCode());
   }
 }

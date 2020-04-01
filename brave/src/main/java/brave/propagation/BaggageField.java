@@ -114,10 +114,6 @@ public final class BaggageField {
     return new Builder(name);
   }
 
-  public Builder toBuilder() {
-    return new Builder(this);
-  }
-
   /**
    * Gets any fields in the in given trace context.
    *
@@ -165,13 +161,21 @@ public final class BaggageField {
   @Nullable public static BaggageField getByName(TraceContext context, String name) {
     name = validateName(name);
     PredefinedBaggageFields fields = context.findExtra(PredefinedBaggageFields.class);
-    if (fields == null) return null;
-    for (BaggageField field : fields.fields) {
-      if (name.equals(field.name())) {
-        return field;
-      }
-    }
-    return null;
+    return getByName(fields, name);
+  }
+
+  /**
+   * Looks up the field by {@code name}, useful for when you do not have a reference to it. In
+   * general, {@link BaggageField}s should be referenced directly as constants where possible.
+   *
+   * @since 5.11
+   */
+  @Nullable public static BaggageField getByName(TraceContextOrSamplingFlags extracted,
+    String name) {
+    if (extracted == null) throw new NullPointerException("extracted == null");
+    if (extracted.context() != null) return getByName(extracted.context(), name);
+    PredefinedBaggageFields fields = findExtra(PredefinedBaggageFields.class, extracted.extra());
+    return getByName(fields, name);
   }
 
   /**
@@ -198,21 +202,6 @@ public final class BaggageField {
     Builder(String name) {
       this.name = validateName(name);
       remoteNames.add(this.name.toLowerCase(Locale.ROOT));
-    }
-
-    Builder(Builder builder) {
-      this.name = builder.name;
-      this.valueAccessor = builder.valueAccessor;
-      this.remoteNames.addAll(builder.remoteNames);
-      this.readOnly = builder.readOnly;
-      this.flushOnUpdate = builder.flushOnUpdate;
-    }
-
-    Builder(BaggageField baggageField) {
-      this.name = baggageField.name;
-      this.remoteNames.addAll(asList(baggageField.remoteNames));
-      this.readOnly = baggageField.readOnly;
-      this.flushOnUpdate = baggageField.flushOnUpdate;
     }
 
     /**
@@ -447,7 +436,7 @@ public final class BaggageField {
   }
 
   @Override public String toString() {
-    return getClass().getSimpleName() + "{" + name + "}";
+    return "BaggageField{" + name + "}";
   }
 
   /** Returns true for any baggage field with the same name (case insensitive). */
@@ -502,5 +491,15 @@ public final class BaggageField {
       if (fields == null) return null;
       return fields.get(field);
     }
+  }
+
+  @Nullable static BaggageField getByName(PredefinedBaggageFields fields, String name) {
+    if (fields == null) return null;
+    for (BaggageField field : fields.fields) {
+      if (name.equals(field.name())) {
+        return field;
+      }
+    }
+    return null;
   }
 }
