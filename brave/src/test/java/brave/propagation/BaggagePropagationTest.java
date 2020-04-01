@@ -23,6 +23,7 @@ import org.junit.Test;
 import static brave.propagation.BaggagePropagation.newFactoryBuilder;
 import static brave.propagation.Propagation.KeyFactory.STRING;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 
 public class BaggagePropagationTest {
@@ -61,6 +62,16 @@ public class BaggagePropagationTest {
   @Test public void newFactory_noFields() {
     assertThat(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY).build())
       .isSameAs(B3Propagation.FACTORY);
+  }
+
+  @Test public void newFactory_sharingRemoteName() {
+    BaggagePropagation.FactoryBuilder builder = newFactoryBuilder(B3Propagation.FACTORY);
+    builder.addField(BaggageField.newBuilder("userName").addRemoteName("baggage").build());
+    builder.addField(BaggageField.newBuilder("userId").addRemoteName("baggage").build());
+
+    assertThatThrownBy(builder::build)
+      .isInstanceOf(UnsupportedOperationException.class)
+      .hasMessage("[userName, userId] have the same remote name: baggage");
   }
 
   @Test public void inject_baggage() {

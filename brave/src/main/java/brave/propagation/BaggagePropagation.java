@@ -15,8 +15,11 @@ package brave.propagation;
 
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 /**
@@ -70,6 +73,24 @@ public class BaggagePropagation<K> implements Propagation<K> {
     /** Returns the delegate if there are no fields to propagate. */
     public Propagation.Factory build() {
       if (fields.isEmpty()) return delegate;
+
+      // check for duplicate remote names
+      Map<String, Set<String>> remoteNameToFields = new LinkedHashMap<>();
+      for (BaggageField field : fields) {
+        for (String remoteName : field.remoteNames()) {
+          Set<String> fields = remoteNameToFields.get(remoteName);
+          if (fields == null) remoteNameToFields.put(remoteName, fields = new LinkedHashSet<>());
+          fields.add(field.name());
+        }
+      }
+
+      for (Entry<String, Set<String>> entry : remoteNameToFields.entrySet()) {
+        if (entry.getValue().size() > 1) {
+          throw new UnsupportedOperationException( // Later, we will support this!
+            entry.getValue() + " have the same remote name: " + entry.getKey());
+        }
+      }
+
       return new Factory(delegate, fields.toArray(new BaggageField[0]));
     }
   }
