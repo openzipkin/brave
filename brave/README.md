@@ -852,7 +852,7 @@ Tracing tracing = Tracing.newBuilder()
   @After public void close() {
     Tracing current = Tracing.current();
     if (current != null) current.close();
-    currentTraceContext.clear();
+    currentTraceContext.close();
   }
 ```
 
