@@ -15,7 +15,11 @@ package brave;
 
 import brave.handler.MutableSpan;
 
-/** This is a simplified type used for parsing errors. It only allows annotations or tags. */
+/**
+ * This is a simplified type used for parsing errors. It only allows annotations or tags.
+ *
+ * @see Tags#ERROR
+ */
 // This implementation works with SpanCustomizer, MutableSpan and ScopedSpan, which don't share a
 // common interface, yet both support tag and annotations.
 public class ErrorParser {

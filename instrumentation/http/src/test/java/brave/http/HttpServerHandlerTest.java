@@ -16,6 +16,7 @@ package brave.http;
 import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracing;
+import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
@@ -42,6 +43,7 @@ import static org.mockito.Mockito.when;
 @RunWith(MockitoJUnitRunner.class)
 public class HttpServerHandlerTest {
   List<zipkin2.Span> spans = new ArrayList<>();
+  TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(1L).sampled(true).build();
 
   HttpTracing httpTracing;
   HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
@@ -116,6 +118,8 @@ public class HttpServerHandlerTest {
 
   @Test public void handleSend_finishesSpanEvenIfUnwrappedNull() {
     brave.Span span = mock(brave.Span.class);
+    when(span.context()).thenReturn(context);
+    when(span.customizer()).thenReturn(span);
 
     handler.handleSend(mock(HttpServerResponse.class), null, span);
 
@@ -128,6 +132,7 @@ public class HttpServerHandlerTest {
 
   @Test public void handleSend_finishesSpanEvenIfUnwrappedNull_withError() {
     brave.Span span = mock(brave.Span.class);
+    when(span.context()).thenReturn(context);
     when(span.customizer()).thenReturn(span);
 
     Exception error = new RuntimeException("peanuts");

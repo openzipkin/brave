@@ -30,7 +30,7 @@ For example, to add a non-default tag for HTTP clients, you can do this:
 httpTracing = httpTracing.toBuilder()
     .clientRequestParser((req, context, span) -> {
       HttpClientRequestParser.DEFAULT.parse(req, context, span);
-      span.tag("http.url", req.url()); // add the url in addition to defaults
+      HttpTags.URL.tag(req, context, span); // add the url in addition to defaults
     })
     .build();
 

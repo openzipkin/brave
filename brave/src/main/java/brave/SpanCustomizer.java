@@ -17,18 +17,11 @@ package brave;
  * Simple interface users can customize a span with. For example, this can add custom tags useful in
  * looking up spans.
  *
- * <p>This type is safer to expose directly to users than {@link Span} or {@link ScopedSpan}, as it
- * has no hooks that can affect the span lifecycle.
+ * <h3>Usage notes</h3>
+ * This type is safer to expose directly to users than {@link Span}, as it has no hooks that can
+ * affect the span lifecycle.
  *
- * <p>While unnecessary when tagging constants, guard potentially expensive operations on the
- * {@link NoopSpanCustomizer} type.
- *
- * <p>Ex.
- * <pre>{@code
- * if (!(customizer instanceof NoopSpanCustomizer)) {
- *   customizer.tag("summary", computeSummary());
- * }
- * }</pre>
+ * @see Tag
  */
 // Note: this is exposed to users. We cannot add methods to this until Java 8 is required or we do a
 // major version bump
@@ -45,8 +38,22 @@ public interface SpanCustomizer {
    * "your_app.version" would let you lookup spans by version. A tag "sql.query" isn't searchable,
    * but it can help in debugging when viewing a trace.
    *
+   * <p><em>Note:</em>To guard potentially expensive parsing, implement {@link Tag} instead, which
+   * avoids parsing into a no-op span.
+   *
+   * <p>Ex.
+   * <pre>{@code
+   * SUMMARY_TAG = new Tag<Summarizer>("summary") {
+   *   @Override protected String parseValue(Summarizer input, TraceContext context) {
+   *     return input.computeSummary();
+   *   }
+   * }
+   * SUMMARY_TAG.tag(span);
+   * }</pre>
+   *
    * @param key Name used to lookup spans, such as "your_app.version".
    * @param value String value, cannot be <code>null</code>.
+   * @see Tag#tag(Object, SpanCustomizer)
    */
   SpanCustomizer tag(String key, String value);
 

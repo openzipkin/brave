@@ -22,6 +22,7 @@ import brave.http.HttpClientParser;
 import brave.http.HttpRequest;
 import brave.http.HttpResponseParser;
 import brave.http.HttpRuleSampler;
+import brave.http.HttpTags;
 import brave.http.HttpTracing;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.ExtraFieldPropagation;
@@ -214,7 +215,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     closeClient(client);
     httpTracing = httpTracing.toBuilder()
       .clientResponseParser((response, context, span) -> {
-        span.tag("http.url", response.request().url()); // just the path is tagged by default
+        HttpTags.URL.tag(response.request(), span); // just the path is tagged by default
       })
       .build();
 
@@ -233,7 +234,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     httpTracing = httpTracing.toBuilder()
       .clientRequestParser((request, context, span) -> {
         span.name(request.method().toLowerCase() + " " + request.path());
-        span.tag("http.url", request.url()); // just the path is tagged by default
+        HttpTags.URL.tag(request, span); // just the path is tagged by default
         span.tag("request_customizer.is_span", (span instanceof brave.Span) + "");
       })
       .clientResponseParser((response, context, span) -> {

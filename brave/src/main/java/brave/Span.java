@@ -18,7 +18,7 @@ import brave.propagation.TraceContext;
 import zipkin2.Endpoint;
 
 /**
- * Used to model the latency of an operation.
+ * Subtype of {@link SpanCustomizer} which can capture latency and remote context of an operation.
  *
  * Here's a typical example of synchronous tracing from perspective of the span:
  * <pre>{@code
@@ -37,8 +37,9 @@ import zipkin2.Endpoint;
  *
  * <p>This captures duration of {@link #start()} until {@link #finish()} is called.
  *
- * <p>Note: All methods return {@linkplain Span} for chaining, but the instance is always the same.
- * Also, when only tracing in-process operations, consider {@link ScopedSpan}: a simpler api.
+ * <h3>Usage notes</h3>
+ * All methods return {@linkplain Span} for chaining, but the instance is always the same. Also,
+ * when only tracing in-process operations, consider {@link ScopedSpan}: a simpler api.
  */
 // Design note: this does not require a builder as the span is mutable anyway. Having a single
 // mutation interface is less code to maintain. Those looking to prepare a span before starting it

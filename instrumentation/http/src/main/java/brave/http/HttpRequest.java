@@ -57,6 +57,8 @@ public abstract class HttpRequest extends Request {
    * <p>It is part of the <a href="https://tools.ietf.org/html/rfc7231#section-4.1">HTTP RFC</a>
    * that an HTTP method is case-sensitive. Do not downcase results. If you do, not only will
    * integration tests fail, but you will surprise any consumers who expect compliant results.
+   *
+   * @see HttpTags#METHOD
    */
   public abstract String method();
 
@@ -69,6 +71,7 @@ public abstract class HttpRequest extends Request {
    *
    * @see #url()
    * @see HttpResponse#route()
+   * @see HttpTags#PATH
    */
   @Nullable public abstract String path();
 
@@ -83,6 +86,7 @@ public abstract class HttpRequest extends Request {
    * needed.
    *
    * @see HttpRequest#path()
+   * @see HttpTags#ROUTE
    * @since 5.10
    */
   @Nullable public String route() {
@@ -97,6 +101,7 @@ public abstract class HttpRequest extends Request {
    *
    * @see #path()
    * @see HttpResponse#route()
+   * @see HttpTags#URL
    */
   @Nullable public abstract String url();
 
