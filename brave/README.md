@@ -433,9 +433,9 @@ Setup your tracing instance with allowed fields:
 ```java
 REQUEST_ID = BaggageField.create("x-vcap-request-id");
 COUNTRY_CODE = BaggageField.newBuilder("countryCode").clearRemoteNames()
-                           .addKey("baggage-country-code").build();
+                           .addRemoteName("baggage-country-code").build();
 USER_ID = BaggageField.newBuilder("userId").clearRemoteNames()
-                      .addKey("baggage-user-id").build();
+                      .addRemoteName("baggage-user-id").build();
 
 tracingBuilder.propagationFactory(
     BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
