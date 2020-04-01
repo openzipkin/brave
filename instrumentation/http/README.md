@@ -137,7 +137,7 @@ http route for metrics, coerce empty to constants like "redirected" or
 "not_found" with the http status. Knowing the difference between not
 found and redirected can be a simple intrusion detection signal. The
 default span name policy uses constants when a route isn't known for
-reasons including sharing the span name as a metrics correlation field.
+reasons including sharing the span name as a metrics baggage field.
 
 # Developing new instrumentation
 

@@ -17,11 +17,11 @@ package brave.propagation;
  * This allows configuration plugins to collaborate on building an instance of {@link
  * CorrelationScopeDecorator}.
  *
- * <p>For example, a customizer can {@linkplain CorrelationScopeDecorator.Builder#addField(CorrelationField)
- * configure a correlation field} without instantiating the {@link CorrelationScopeDecorator.Builder).
+ * <p>For example, a customizer can {@linkplain CorrelationScopeDecorator.Builder#addField(BaggageField)
+ * configure a baggage field} without instantiating the {@link CorrelationScopeDecorator.Builder).
  *
- * <p>This also allows one object to customize both {@link CorrelationScopeDecorator correlation
- * integration} and {@linkplain BaggagePropagation baggage}, by implementing both customizer
+ * <p>This also allows one object to customize both {@linkplain BaggagePropagation baggage}
+ * and {@link CorrelationScopeDecorator correlation integration}, by implementing both customizer
  * interfaces.
  *
  * <h3>Integration examples</h3>

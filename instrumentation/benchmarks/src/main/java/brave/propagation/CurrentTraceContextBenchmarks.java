@@ -42,7 +42,7 @@ public class CurrentTraceContextBenchmarks {
   static final CurrentTraceContext log4j2OnlyTraceId = ThreadLocalCurrentTraceContext.newBuilder()
     .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
       .clearFields()
-      .addField(CorrelationFields.TRACE_ID)
+      .addField(BaggageFields.TRACE_ID)
       .build())
     .build();
   static final CurrentTraceContext log4j2OnlyBaggage = ThreadLocalCurrentTraceContext.newBuilder()

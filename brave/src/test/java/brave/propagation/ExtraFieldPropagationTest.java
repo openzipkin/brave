@@ -77,7 +77,7 @@ public class ExtraFieldPropagationTest {
     ExtraFieldPropagation.Factory factory =
       (ExtraFieldPropagation.Factory) ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
         "X-FOO");
-    assertThat(factory.fields).extracting(CorrelationField::name)
+    assertThat(factory.fields).extracting(BaggageField::name)
       .containsExactly("x-foo");
   }
 
@@ -85,7 +85,7 @@ public class ExtraFieldPropagationTest {
     ExtraFieldPropagation.Factory factory =
       (ExtraFieldPropagation.Factory) ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
         " x-foo  ");
-    assertThat(factory.fields).extracting(CorrelationField::name)
+    assertThat(factory.fields).extracting(BaggageField::name)
       .containsExactly("x-foo");
   }
 

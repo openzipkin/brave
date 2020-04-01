@@ -13,6 +13,7 @@
  */
 package brave.propagation;
 
+import brave.Tracing;
 import brave.internal.Nullable;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -38,8 +39,8 @@ import static java.util.Arrays.asList;
  * #getByName(TraceContext, String)}.
  *
  * <h3>Local Usage</h3>
- * Baggage fields are also {@linkplain CorrelationField correlation fields}. As long as a field is
- * configured with {@link BaggagePropagation}, local reads and updates are possible in-process.
+ * As long as a field is configured with {@link BaggagePropagation}, local reads and updates are
+ * possible in-process.
  *
  * <p>You can also integrate baggage with other correlated contexts such as logging:
  * <pre>{@code
@@ -89,8 +90,9 @@ import static java.util.Arrays.asList;
  *
  * @see BaggagePropagation
  * @see CorrelationScopeDecorator
+ * @since 5.11
  */
-public final class BaggageField extends CorrelationField.Updatable {
+public final class BaggageField {
   /**
    * Creates a field that is referenced the same in-process as it is on the wire. For example, the
    * name "x-vcap-request-id" would be set as-is including the prefix.
@@ -116,7 +118,11 @@ public final class BaggageField extends CorrelationField.Updatable {
     return new Builder(this);
   }
 
-  /** Gets any fields in the in given trace context. */
+  /**
+   * Gets any fields in the in given trace context.
+   *
+   * @since 5.11
+   */
   public static List<BaggageField> getAll(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
     PredefinedBaggageFields fields = context.findExtra(PredefinedBaggageFields.class);
@@ -127,6 +133,8 @@ public final class BaggageField extends CorrelationField.Updatable {
   /**
    * Gets any fields in the in the {@linkplain TraceContext.Extractor#extract(Object) extracted
    * result}.
+   *
+   * @since 5.11
    */
   public static List<BaggageField> getAll(TraceContextOrSamplingFlags extracted) {
     if (extracted == null) throw new NullPointerException("extracted == null");
@@ -140,6 +148,8 @@ public final class BaggageField extends CorrelationField.Updatable {
    * Like {@link #getAll(TraceContext)} except against the current trace context.
    *
    * <p>Prefer {@link #getAll(TraceContext)} if you have a reference to the trace context.
+   *
+   * @since 5.11
    */
   @Nullable public static List<BaggageField> getAll() {
     TraceContext context = currentTraceContext();
@@ -149,6 +159,8 @@ public final class BaggageField extends CorrelationField.Updatable {
   /**
    * Looks up the field by {@code name}, useful for when you do not have a reference to it. In
    * general, {@link BaggageField}s should be referenced directly as constants where possible.
+   *
+   * @since 5.11
    */
   @Nullable public static BaggageField getByName(TraceContext context, String name) {
     name = validateName(name);
@@ -167,6 +179,8 @@ public final class BaggageField extends CorrelationField.Updatable {
    *
    * <p>Prefer {@link #getByName(TraceContext, String)} if you have a reference to the trace
    * context.
+   *
+   * @since 5.11
    */
   @Nullable public static BaggageField getByName(String name) {
     name = validateName(name);
@@ -178,7 +192,8 @@ public final class BaggageField extends CorrelationField.Updatable {
   public static class Builder {
     final String name;
     final Set<String> remoteNames = new LinkedHashSet<>();
-    boolean flushOnUpdate = false;
+    ValueAccessor valueAccessor = ValueFromExtra.INSTANCE;
+    boolean flushOnUpdate = false, readOnly = false;
 
     Builder(String name) {
       this.name = validateName(name);
@@ -187,13 +202,17 @@ public final class BaggageField extends CorrelationField.Updatable {
 
     Builder(Builder builder) {
       this.name = builder.name;
+      this.valueAccessor = builder.valueAccessor;
       this.remoteNames.addAll(builder.remoteNames);
+      this.readOnly = builder.readOnly;
       this.flushOnUpdate = builder.flushOnUpdate;
     }
 
     Builder(BaggageField baggageField) {
       this.name = baggageField.name;
       this.remoteNames.addAll(asList(baggageField.remoteNames));
+      this.readOnly = baggageField.readOnly;
+      this.flushOnUpdate = baggageField.flushOnUpdate;
     }
 
     /**
@@ -234,7 +253,16 @@ public final class BaggageField extends CorrelationField.Updatable {
     }
 
     /**
-     * @see CorrelationField.Updatable#flushOnUpdate()
+     * @see BaggageField#readOnly()
+     * @since 5.11
+     */
+    public Builder readOnly() {
+      this.readOnly = true;
+      return this;
+    }
+
+    /**
+     * @see BaggageField#flushOnUpdate()
      * @since 5.11
      */
     public Builder flushOnUpdate() {
@@ -244,17 +272,46 @@ public final class BaggageField extends CorrelationField.Updatable {
 
     /** @since 5.11 */
     public BaggageField build() {
+      if (readOnly && flushOnUpdate) {
+        throw new IllegalArgumentException("a field cannot be both readOnly and flushOnUpdate");
+      }
       return new BaggageField(this);
+    }
+
+    Builder internalValueAccessor(ValueAccessor valueAccessor) {
+      this.valueAccessor = valueAccessor;
+      return this;
     }
   }
 
+  final String name, lcName;
+  final ValueAccessor valueAccessor;
   final String[] remoteNames; // for faster iteration
   final List<String> remoteNameList;
+  final boolean readOnly, flushOnUpdate;
 
-  BaggageField(Builder builder) {
-    super(builder.name, builder.flushOnUpdate);
+  BaggageField(Builder builder) { // sealed to this package
+    name = builder.name;
+    lcName = name.toLowerCase(Locale.ROOT);
+    valueAccessor = builder.valueAccessor;
+    readOnly = builder.readOnly;
+    flushOnUpdate = builder.flushOnUpdate;
     remoteNames = builder.remoteNames.toArray(new String[0]);
     remoteNameList = Collections.unmodifiableList(asList(remoteNames));
+  }
+
+  /**
+   * The non-empty name of the field. Ex "userId".
+   *
+   * <p>For example, if using log correlation and with field named "userId", the {@linkplain
+   * #getValue(TraceContext) value} becomes the log variable {@code %{userId}} when the span is next
+   * made current.
+   *
+   * @see CorrelationScopeDecorator
+   * @since 5.11
+   */
+  public final String name() {
+    return name;
   }
 
   /**
@@ -262,30 +319,45 @@ public final class BaggageField extends CorrelationField.Updatable {
    *
    * <p>The result may not be the same as the one {@link TraceContext.Extractor#extract(Object)
    * extracted} from the incoming context because {@link #updateValue(String)} can override it.
+   *
+   * @since 5.11
    */
   @Nullable public String getValue(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
-    return getValue(context.extra());
+    return valueAccessor.get(this, context);
+  }
+
+  /**
+   * Like {@link #getValue(TraceContext)} except against the current trace context.
+   *
+   * <p>Prefer {@link #getValue(TraceContext)} if you have a reference to the trace context.
+   *
+   * @since 5.11
+   */
+  @Nullable public String getValue() {
+    TraceContext context = currentTraceContext();
+    return context != null ? getValue(context) : null;
   }
 
   /**
    * Like {@link #getValue(TraceContext)} except for use cases that precede a span. For example, a
    * {@linkplain TraceContextOrSamplingFlags#traceIdContext() trace ID context}.
+   *
+   * @since 5.11
    */
   @Nullable public String getValue(TraceContextOrSamplingFlags extracted) {
     if (extracted == null) throw new NullPointerException("extracted == null");
-    return getValue(extra(extracted));
+    return valueAccessor.get(this, extracted);
   }
 
-  String getValue(List<Object> extra) {
-    PredefinedBaggageFields fields = findExtra(PredefinedBaggageFields.class, extra);
-    if (fields == null) return null;
-    return fields.get(this);
-  }
-
-  /** Updates the value of the this field, or ignores if not configured. */
-  @Override public void updateValue(TraceContext context, @Nullable String value) {
+  /**
+   * Updates the value of the this field, or ignores if {@link #readOnly or} not configured.
+   *
+   * @since 5.11
+   */
+  public void updateValue(TraceContext context, @Nullable String value) {
     if (context == null) throw new NullPointerException("context == null");
+    if (readOnly) return;
     updateValue(context.extra(), value);
   }
 
@@ -293,9 +365,12 @@ public final class BaggageField extends CorrelationField.Updatable {
    * Like {@link #updateValue(TraceContextOrSamplingFlags, String)} except for use cases that
    * precede a span. For example, a {@linkplain TraceContextOrSamplingFlags#traceIdContext() trace
    * ID context}.
+   *
+   * @since 5.11
    */
   public void updateValue(TraceContextOrSamplingFlags extracted, @Nullable String value) {
     if (extracted == null) throw new NullPointerException("extracted == null");
+    if (readOnly) return;
     updateValue(extra(extracted), value);
   }
 
@@ -303,7 +378,61 @@ public final class BaggageField extends CorrelationField.Updatable {
     PredefinedBaggageFields fields = findExtra(PredefinedBaggageFields.class, extra);
     if (fields == null) return;
     fields.put(this, value);
-    if (flushOnUpdate) CorrelationFieldFlushScope.flush(this, value);
+    if (flushOnUpdate) BaggageFieldFlushScope.flush(this, value);
+  }
+
+  /**
+   * Like {@link #updateValue(TraceContext, String)} except against the current trace context.
+   *
+   * <p>Prefer {@link #updateValue(TraceContext, String)} if you have a reference to the trace
+   * context.
+   *
+   * @since 5.11
+   */
+  public void updateValue(String value) {
+    if (readOnly) return;
+    TraceContext context = currentTraceContext();
+    if (context != null) updateValue(context, value);
+  }
+
+  /**
+   * When true, updates to this field are ignored.
+   *
+   * @since 5.11
+   */
+  public final boolean readOnly() {
+    return readOnly;
+  }
+
+  /**
+   * When true, updates made via {@linkplain #updateValue(TraceContext, String)} flush immediately
+   * to the correlation context.
+   *
+   * <p>This is useful for callbacks that have a void return. Ex.
+   * <pre>{@code
+   * @SendTo(SourceChannels.OUTPUT)
+   * public void timerMessageSource() {
+   *   // Assume BUSINESS_PROCESS is an updatable field
+   *   BUSINESS_PROCESS.updateValue("accounting");
+   *   // Assuming a Log4j context, the expression %{bp} will show "accounting" in businessCode()
+   *   businessCode();
+   * }
+   * }</pre>
+   *
+   * <h3>Appropriate Usage</h3>
+   * This has a significant performance impact as it requires even {@link
+   * CurrentTraceContext#maybeScope(TraceContext)} to always track values.
+   *
+   * <p>Most fields do not change in the scope of a {@link TraceContext}. For example, standard
+   * fields such as {@link BaggageFields#SPAN_ID the span ID} and {@linkplain
+   * BaggageFields#constant(String, String) constants} such as env variables do not need to be
+   * tracked. Even field value updates do not necessarily need to be flushed to the underlying
+   * correlation context, as they will apply on the next scope operation.
+   *
+   * @since 5.11
+   */
+  public final boolean flushOnUpdate() {
+    return flushOnUpdate;
   }
 
   /**
@@ -311,12 +440,67 @@ public final class BaggageField extends CorrelationField.Updatable {
    * names. By default this includes only the lowercase variant of the {@link #name()}.
    *
    * @see BaggagePropagation#keys()
+   * @since 5.11
    */
   public List<String> remoteNames() {
     return remoteNameList;
   }
 
+  @Override public String toString() {
+    return getClass().getSimpleName() + "{" + name + "}";
+  }
+
+  /** Returns true for any baggage field with the same name (case insensitive). */
+  @Override public final boolean equals(Object o) {
+    if (o == this) return true;
+    if (!(o instanceof BaggageField)) return false;
+    return lcName.equals(((BaggageField) o).lcName);
+  }
+
+  /** Returns the same value for any baggage field with the same name (case insensitive). */
+  @Override public final int hashCode() {
+    return lcName.hashCode();
+  }
+
+  static String validateName(String name) {
+    if (name == null) throw new NullPointerException("name == null");
+    name = name.trim();
+    if (name.isEmpty()) throw new IllegalArgumentException("name is empty");
+    return name;
+  }
+
+  @Nullable static TraceContext currentTraceContext() {
+    Tracing tracing = Tracing.current();
+    return tracing != null ? tracing.currentTraceContext().get() : null;
+  }
+
   static List<Object> extra(TraceContextOrSamplingFlags extracted) {
     return extracted.context() != null ? extracted.context().extra() : extracted.extra();
+  }
+
+  /** Internal type that allows baggage accessors for defined fields in the Trace context. */
+  interface ValueAccessor {
+    String get(BaggageField field, TraceContextOrSamplingFlags extracted);
+
+    String get(BaggageField field, TraceContext context);
+  }
+
+  enum ValueFromExtra implements ValueAccessor {
+    INSTANCE;
+
+    @Override public String get(BaggageField field, TraceContextOrSamplingFlags extracted) {
+      if (extracted.context() != null) return get(field, extracted.context());
+      return get(field, extracted.extra());
+    }
+
+    @Override public String get(BaggageField field, TraceContext context) {
+      return get(field, context.extra());
+    }
+
+    static String get(BaggageField field, List<Object> extra) {
+      PredefinedBaggageFields fields = findExtra(PredefinedBaggageFields.class, extra);
+      if (fields == null) return null;
+      return fields.get(field);
+    }
   }
 }

@@ -15,20 +15,19 @@ package brave.propagation;
 
 import brave.internal.CorrelationContext;
 import brave.internal.Nullable;
-import brave.propagation.CorrelationField.Updatable;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
- * Synchronizes fields such as {@link CorrelationFields#TRACE_ID} with a correlation context, such
- * as logging through decoration of a scope. A maximum of 32 fields are supported.
+ * Synchronizes fields such as {@link BaggageFields#TRACE_ID} with a correlation context, such as
+ * logging through decoration of a scope. A maximum of 32 fields are supported.
  *
  * <p>Setup example:
  * <pre>{@code
  * // Add the field "region", so it can be used as a log expression %X{region}
- * CLOUD_REGION = CorrelationFields.constant("region", System.getEnv("CLOUD_REGION"));
+ * CLOUD_REGION = BaggageFields.constant("region", System.getEnv("CLOUD_REGION"));
  * decorator = MDCScopeDecorator.newBuilder()
  *                              .addField(CLOUD_REGION)
  *                              .build();
@@ -59,29 +58,29 @@ import java.util.Set;
  * <p>By default, field updates only apply during {@linkplain CorrelationScopeDecorator scope
  * decoration}. This means values set do not flush immediately to the underlying correlation
  * context. Rather, they are scheduled for the next scope operation as a way to control overhead.
- * {@link Updatable#flushOnUpdate()} overrides this.
+ * {@link BaggageField#flushOnUpdate()} overrides this.
  *
- * @see CorrelationField
+ * @see BaggageField
  * @since 5.11
  */
 public abstract class CorrelationScopeDecorator implements ScopeDecorator {
-  /** Defaults to {@link CorrelationFields#TRACE_ID} and {@link CorrelationFields#SPAN_ID}. */
+  /** Defaults to {@link BaggageFields#TRACE_ID} and {@link BaggageFields#SPAN_ID}. */
   // do not define newBuilder or create() here as it will mask subtypes
   public static abstract class Builder {
     final CorrelationContext context;
-    final Set<CorrelationField> fields = new LinkedHashSet<>();
+    final Set<BaggageField> fields = new LinkedHashSet<>();
 
     /** Internal constructor used by subtypes. */
     protected Builder(CorrelationContext context) {
       if (context == null) throw new NullPointerException("context == null");
       this.context = context;
-      fields.add(CorrelationFields.TRACE_ID);
-      fields.add(CorrelationFields.SPAN_ID);
+      fields.add(BaggageFields.TRACE_ID);
+      fields.add(BaggageFields.SPAN_ID);
     }
 
     /**
-     * Invoke this to clear fields so that you can {@linkplain #addField(CorrelationField) add the
-     * ones you need}.
+     * Invoke this to clear fields so that you can {@linkplain #addField(BaggageField) add the ones
+     * you need}.
      *
      * <p>Defaults may include a field you aren't using, such as "parentId". For best
      * performance, only include the fields you use in your correlation expressions (such as log
@@ -95,7 +94,7 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
     }
 
     /** @since 5.11 */
-    public Builder addField(CorrelationField field) {
+    public Builder addField(BaggageField field) {
       if (field == null) throw new NullPointerException("field == null");
       if (field.name() == null) throw new NullPointerException("field.name() == null");
       if (field.name().isEmpty()) throw new NullPointerException("field.name() isEmpty");
@@ -103,12 +102,12 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
       return this;
     }
 
-    /** @throws IllegalArgumentException if no correlation fields were added. */
+    /** @throws IllegalArgumentException if no baggage fields were added. */
     public final CorrelationScopeDecorator build() {
       int fieldCount = fields.size();
-      if (fieldCount == 0) throw new IllegalArgumentException("no correlation fields");
+      if (fieldCount == 0) throw new IllegalArgumentException("no baggage fields");
       if (fieldCount == 1) return new Single(context, fields.iterator().next());
-      if (fieldCount > 32) throw new IllegalArgumentException("over 32 correlation fields");
+      if (fieldCount > 32) throw new IllegalArgumentException("over 32 baggage fields");
       return new Multiple(context, fields);
     }
   }
@@ -120,14 +119,11 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
   }
 
   static final class Single extends CorrelationScopeDecorator {
-    final CorrelationField field;
-    final boolean fieldUpdatable, flushOnUpdate;
+    final BaggageField field;
 
-    Single(CorrelationContext context, CorrelationField field) {
+    Single(CorrelationContext context, BaggageField field) {
       super(context);
       this.field = field;
-      this.fieldUpdatable = field instanceof Updatable;
-      this.flushOnUpdate = fieldUpdatable && ((Updatable) field).flushOnUpdate();
     }
 
     @Override public Scope decorateScope(@Nullable TraceContext traceContext, Scope scope) {
@@ -135,45 +131,44 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
       String currentValue = traceContext != null ? field.getValue(traceContext) : null;
 
       boolean dirty = false;
-      if (scope != Scope.NOOP || fieldUpdatable) {
+      if (scope != Scope.NOOP || !field.readOnly()) {
         dirty = !equal(valueToRevert, currentValue);
         if (dirty) update(context, field, currentValue);
       }
 
-      if (!dirty && !flushOnUpdate) return scope;
+      if (!dirty && !field.flushOnUpdate()) return scope;
 
       // If there was or could be a value update, we need to track values to revert.
-      CorrelationFieldUpdateScope updateScope =
-        new CorrelationFieldUpdateScope.Single(scope, context, field, valueToRevert, dirty);
-      return flushOnUpdate ? new CorrelationFieldFlushScope(updateScope) : updateScope;
+      BaggageFieldUpdateScope updateScope =
+        new BaggageFieldUpdateScope.Single(scope, context, field, valueToRevert, dirty);
+      return field.flushOnUpdate() ? new BaggageFieldFlushScope(updateScope) : updateScope;
     }
   }
 
   static final class Multiple extends CorrelationScopeDecorator {
-    final CorrelationField[] fields;
+    final BaggageField[] fields;
 
-    Multiple(CorrelationContext context, Set<CorrelationField> correlationFields) {
+    Multiple(CorrelationContext context, Set<BaggageField> baggageFields) {
       super(context);
-      fields = correlationFields.toArray(new CorrelationField[0]);
+      fields = baggageFields.toArray(new BaggageField[0]);
     }
 
     @Override public Scope decorateScope(@Nullable TraceContext traceContext, Scope scope) {
       int dirty = 0, flushOnUpdate = 0;
       String[] valuesToRevert = new String[fields.length];
       for (int i = 0; i < fields.length; i++) {
-        CorrelationField field = fields[i];
-        boolean fieldUpdatable = field instanceof Updatable;
+        BaggageField field = fields[i];
         String valueToRevert = context.get(field.name());
         String currentValue = traceContext != null ? field.getValue(traceContext) : null;
 
-        if (scope != Scope.NOOP || fieldUpdatable) {
+        if (scope != Scope.NOOP || !field.readOnly()) {
           if (!equal(valueToRevert, currentValue)) {
             update(context, field, currentValue);
             dirty = setBit(dirty, i);
           }
         }
 
-        if (fieldUpdatable && ((Updatable) field).flushOnUpdate()) {
+        if (field.flushOnUpdate()) {
           flushOnUpdate = setBit(flushOnUpdate, i);
         }
 
@@ -183,13 +178,13 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
       if (dirty == 0 && flushOnUpdate == 0) return scope;
 
       // If there was or could be a value update, we need to track values to revert.
-      CorrelationFieldUpdateScope updateScope =
-        new CorrelationFieldUpdateScope.Multiple(scope, context, fields, valuesToRevert, dirty);
-      return flushOnUpdate != 0 ? new CorrelationFieldFlushScope(updateScope) : updateScope;
+      BaggageFieldUpdateScope updateScope =
+        new BaggageFieldUpdateScope.Multiple(scope, context, fields, valuesToRevert, dirty);
+      return flushOnUpdate != 0 ? new BaggageFieldFlushScope(updateScope) : updateScope;
     }
   }
 
-  static void update(CorrelationContext context, CorrelationField field, @Nullable String value) {
+  static void update(CorrelationContext context, BaggageField field, @Nullable String value) {
     if (value != null) {
       context.put(field.name(), value);
     } else {

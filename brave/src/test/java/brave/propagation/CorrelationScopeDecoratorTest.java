@@ -53,7 +53,7 @@ public class CorrelationScopeDecoratorTest {
   ScopeDecorator decorator = new TestBuilder().build();
   ScopeDecorator onlyTraceIdDecorator = new TestBuilder()
     .clearFields()
-    .addField(CorrelationFields.TRACE_ID)
+    .addField(BaggageFields.TRACE_ID)
     .build();
   ScopeDecorator onlyBaggageFieldDecorator = new TestBuilder()
     .clearFields()

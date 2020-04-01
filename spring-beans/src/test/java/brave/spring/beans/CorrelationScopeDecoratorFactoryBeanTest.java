@@ -13,7 +13,7 @@
  */
 package brave.spring.beans;
 
-import brave.propagation.CorrelationFields;
+import brave.propagation.BaggageFields;
 import brave.propagation.CorrelationScopeCustomizer;
 import brave.propagation.CorrelationScopeDecorator;
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -65,7 +65,7 @@ public class CorrelationScopeDecoratorFactoryBeanTest {
 
     assertThat(context.getBean("correlationDecorator", CorrelationScopeDecorator.class))
       .extracting("fields").asInstanceOf(InstanceOfAssertFactories.ARRAY)
-      .containsExactly(CorrelationFields.TRACE_ID, CorrelationFields.SPAN_ID);
+      .containsExactly(BaggageFields.TRACE_ID, BaggageFields.SPAN_ID);
   }
 
   @Test public void fields() {
@@ -76,8 +76,8 @@ public class CorrelationScopeDecoratorFactoryBeanTest {
       + "  </property>\n"
       + "  <property name=\"fields\">\n"
       + "    <list>\n"
-      + "      <util:constant static-field=\"brave.propagation.CorrelationFields.TRACE_ID\"/>\n"
-      + "      <util:constant static-field=\"brave.propagation.CorrelationFields.SPAN_ID\"/>\n"
+      + "      <util:constant static-field=\"brave.propagation.BaggageFields.TRACE_ID\"/>\n"
+      + "      <util:constant static-field=\"brave.propagation.BaggageFields.SPAN_ID\"/>\n"
       + "    </list>\n"
       + "  </property>"
       + "</bean>"
@@ -85,7 +85,7 @@ public class CorrelationScopeDecoratorFactoryBeanTest {
 
     assertThat(context.getBean("correlationDecorator", CorrelationScopeDecorator.class))
       .extracting("fields").asInstanceOf(InstanceOfAssertFactories.ARRAY)
-      .containsExactly(CorrelationFields.TRACE_ID, CorrelationFields.SPAN_ID);
+      .containsExactly(BaggageFields.TRACE_ID, BaggageFields.SPAN_ID);
   }
 
   public static final CorrelationScopeCustomizer

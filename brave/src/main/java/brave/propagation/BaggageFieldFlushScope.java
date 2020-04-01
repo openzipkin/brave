@@ -14,7 +14,6 @@
 package brave.propagation;
 
 import brave.internal.CorrelationContext;
-import brave.propagation.CorrelationField.Updatable;
 import brave.propagation.CurrentTraceContext.Scope;
 import java.util.ArrayDeque;
 import java.util.LinkedHashSet;
@@ -24,11 +23,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static brave.propagation.CorrelationScopeDecorator.equal;
 import static brave.propagation.CorrelationScopeDecorator.update;
 
-/** Sets up thread locals if they are needed to support {@link Updatable#flushOnUpdate()} */
-final class CorrelationFieldFlushScope extends AtomicBoolean implements Scope {
-  final CorrelationFieldUpdateScope updateScope;
+/** Sets up thread locals if they are needed to support {@link BaggageField#flushOnUpdate()} */
+final class BaggageFieldFlushScope extends AtomicBoolean implements Scope {
+  final BaggageFieldUpdateScope updateScope;
 
-  CorrelationFieldFlushScope(CorrelationFieldUpdateScope updateScope) {
+  BaggageFieldFlushScope(BaggageFieldUpdateScope updateScope) {
     this.updateScope = updateScope;
     pushCurrentUpdateScope(updateScope);
   }
@@ -47,12 +46,12 @@ final class CorrelationFieldFlushScope extends AtomicBoolean implements Scope {
    * <p>Overhead here occurs on the calling thread. Ex. the one that calls {@link
    * BaggageField#updateValue(String)}.
    */
-  static void flush(Updatable field, String value) {
+  static void flush(BaggageField field, String value) {
     assert field.flushOnUpdate();
 
     Set<CorrelationContext> syncedContexts = new LinkedHashSet<>();
     for (Object o : updateScopeStack()) {
-      CorrelationFieldUpdateScope next = ((CorrelationFieldUpdateScope) o);
+      BaggageFieldUpdateScope next = ((BaggageFieldUpdateScope) o);
 
       // Since this is a static method, it could be called with different tracers on the stack.
       // This synchronizes the context if we haven't already.
@@ -79,11 +78,11 @@ final class CorrelationFieldFlushScope extends AtomicBoolean implements Scope {
     return stack;
   }
 
-  static void pushCurrentUpdateScope(CorrelationFieldUpdateScope updateScope) {
+  static void pushCurrentUpdateScope(BaggageFieldUpdateScope updateScope) {
     updateScopeStack().push(updateScope);
   }
 
-  static void popCurrentUpdateScope(CorrelationFieldUpdateScope expected) {
+  static void popCurrentUpdateScope(BaggageFieldUpdateScope expected) {
     Object popped = updateScopeStack().pop();
     assert equal(popped, expected) :
       "Misalignment: popped updateScope " + popped + " !=  expected " + expected;

@@ -14,8 +14,8 @@
 package brave.context.log4j12;
 
 import brave.internal.CorrelationContext;
+import brave.propagation.BaggageFields;
 import brave.propagation.CorrelationScopeDecorator;
-import brave.propagation.CorrelationFields;
 import brave.propagation.CurrentTraceContext;
 import org.apache.log4j.MDC;
 
@@ -40,8 +40,8 @@ public final class MDCScopeDecorator {
   static final CurrentTraceContext.ScopeDecorator INSTANCE = new Builder().build();
 
   /**
-   * Returns a singleton that configures {@link CorrelationFields#TRACE_ID} and {@link
-   * CorrelationFields#SPAN_ID}.
+   * Returns a singleton that configures {@link BaggageFields#TRACE_ID} and {@link
+   * BaggageFields#SPAN_ID}.
    *
    * @since 5.11
    */
@@ -50,8 +50,8 @@ public final class MDCScopeDecorator {
   }
 
   /**
-   * Returns a builder that configures {@link CorrelationFields#TRACE_ID} and {@link
-   * CorrelationFields#SPAN_ID}.
+   * Returns a builder that configures {@link BaggageFields#TRACE_ID} and {@link
+   * BaggageFields#SPAN_ID}.
    *
    * @since 5.11
    */
@@ -60,9 +60,8 @@ public final class MDCScopeDecorator {
   }
 
   /**
-   * Returns a scope decorator that configures {@link CorrelationFields#TRACE_ID}, {@link
-   * CorrelationFields#PARENT_ID}, {@link CorrelationFields#SPAN_ID} and {@link
-   * CorrelationFields#SAMPLED}
+   * Returns a scope decorator that configures {@link BaggageFields#TRACE_ID}, {@link
+   * BaggageFields#PARENT_ID}, {@link BaggageFields#SPAN_ID} and {@link BaggageFields#SAMPLED}
    *
    * @since 5.2
    * @deprecated since 5.11 use {@link #get()} or {@link #newBuilder()}
@@ -70,10 +69,10 @@ public final class MDCScopeDecorator {
   @Deprecated public static CurrentTraceContext.ScopeDecorator create() {
     return new Builder()
       .clearFields()
-      .addField(CorrelationFields.TRACE_ID)
-      .addField(CorrelationFields.PARENT_ID)
-      .addField(CorrelationFields.SPAN_ID)
-      .addField(CorrelationFields.SAMPLED)
+      .addField(BaggageFields.TRACE_ID)
+      .addField(BaggageFields.PARENT_ID)
+      .addField(BaggageFields.SPAN_ID)
+      .addField(BaggageFields.SAMPLED)
       .build();
   }
 

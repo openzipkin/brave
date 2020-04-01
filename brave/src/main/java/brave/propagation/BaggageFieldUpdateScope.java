@@ -15,7 +15,6 @@ package brave.propagation;
 
 import brave.internal.CorrelationContext;
 import brave.internal.Nullable;
-import brave.propagation.CorrelationField.Updatable;
 import brave.propagation.CurrentTraceContext.Scope;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -24,11 +23,11 @@ import static brave.propagation.CorrelationScopeDecorator.isSet;
 import static brave.propagation.CorrelationScopeDecorator.setBit;
 import static brave.propagation.CorrelationScopeDecorator.update;
 
-/** Handles reverting potentially late value updates to correlation fields. */
-abstract class CorrelationFieldUpdateScope extends AtomicBoolean implements Scope {
+/** Handles reverting potentially late value updates to baggage fields. */
+abstract class BaggageFieldUpdateScope extends AtomicBoolean implements Scope {
   CorrelationContext context;
 
-  CorrelationFieldUpdateScope(CorrelationContext context) {
+  BaggageFieldUpdateScope(CorrelationContext context) {
     this.context = context;
   }
 
@@ -36,18 +35,18 @@ abstract class CorrelationFieldUpdateScope extends AtomicBoolean implements Scop
    * Called after a field value is flushed to the underlying context. Only take action if the input
    * field is current being tracked.
    */
-  abstract void handleUpdate(Updatable field, @Nullable String value);
+  abstract void handleUpdate(BaggageField field, @Nullable String value);
 
-  static final class Single extends CorrelationFieldUpdateScope {
+  static final class Single extends BaggageFieldUpdateScope {
     final Scope delegate;
-    final CorrelationField trackedField;
+    final BaggageField trackedField;
     final @Nullable String valueToRevert;
     boolean dirty;
 
     Single(
       Scope delegate,
       CorrelationContext context,
-      CorrelationField trackedField,
+      BaggageField trackedField,
       @Nullable String valueToRevert,
       boolean dirty
     ) {
@@ -65,22 +64,22 @@ abstract class CorrelationFieldUpdateScope extends AtomicBoolean implements Scop
       if (dirty) update(context, trackedField, valueToRevert);
     }
 
-    @Override void handleUpdate(Updatable field, String value) {
+    @Override void handleUpdate(BaggageField field, String value) {
       if (!this.trackedField.equals(field)) return;
       if (!equal(value, valueToRevert)) dirty = true;
     }
   }
 
-  static final class Multiple extends CorrelationFieldUpdateScope {
+  static final class Multiple extends BaggageFieldUpdateScope {
     final Scope delegate;
-    final CorrelationField[] fields;
+    final BaggageField[] fields;
     final String[] valuesToRevert;
     int dirty;
 
     Multiple(
       Scope delegate,
       CorrelationContext context,
-      CorrelationField[] fields,
+      BaggageField[] fields,
       String[] valuesToRevert,
       int dirty
     ) {
@@ -101,7 +100,7 @@ abstract class CorrelationFieldUpdateScope extends AtomicBoolean implements Scop
       }
     }
 
-    @Override void handleUpdate(Updatable field, String value) {
+    @Override void handleUpdate(BaggageField field, String value) {
       for (int i = 0; i < fields.length; i++) {
         if (fields[i].equals(field)) {
           if (!equal(value, valuesToRevert[i])) dirty = setBit(dirty, i);

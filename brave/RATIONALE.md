@@ -1,11 +1,11 @@
 # brave rationale
 
-## CorrelationFieldScopeDecorator
+## CorrelationScopeDecorator
 
-### Why hold the initial value when `Updatable.flushOnUpdate()`?
+### Why hold the initial value when `BaggageField.flushOnUpdate()`?
 
 The value read at the beginning of a scope is currently held when there's a
-chance the field can be updated later (`Updatable.flushOnUpdate()`). This is
+chance the field can be updated later (`BaggageField.flushOnUpdate()`). This is
 because users generally expect data to be "cleaned up" when a scope completes,
 even if it was written mid-scope.
 

@@ -459,7 +459,7 @@ String countryCode = COUNTRY_CODE.tag(span);
 ```
 
 #### Local Usage
-Baggage fields are also `CorrelationField`s. As long as a field is configured with
+Baggage fields are also `BaggageField`s. As long as a field is configured with
 `BaggagePropagation`, local reads and updates are possible in-process.
 
 You can also integrate baggage with other correlated contexts such as logging:

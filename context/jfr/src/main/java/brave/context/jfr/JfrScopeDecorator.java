@@ -14,7 +14,7 @@
 package brave.context.jfr;
 
 import brave.internal.Nullable;
-import brave.propagation.CorrelationFields;
+import brave.propagation.BaggageFields;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import brave.propagation.TraceContext;
@@ -43,8 +43,8 @@ public final class JfrScopeDecorator implements ScopeDecorator {
   static final ScopeDecorator INSTANCE = new JfrScopeDecorator();
 
   /**
-   * Returns a singleton that configures {@link CorrelationFields#TRACE_ID} and {@link
-   * CorrelationFields#SPAN_ID}.
+   * Returns a singleton that configures {@link BaggageFields#TRACE_ID} and {@link
+   * BaggageFields#SPAN_ID}.
    *
    * @since 5.11
    */

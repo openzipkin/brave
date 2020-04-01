@@ -13,7 +13,7 @@
  */
 package brave.spring.beans;
 
-import brave.propagation.CorrelationField;
+import brave.propagation.BaggageField;
 import brave.propagation.CorrelationScopeCustomizer;
 import brave.propagation.CorrelationScopeDecorator;
 import java.util.List;
@@ -22,14 +22,14 @@ import org.springframework.beans.factory.FactoryBean;
 /** Spring XML config does not support chained builders. This converts accordingly */
 public class CorrelationScopeDecoratorFactoryBean implements FactoryBean {
   CorrelationScopeDecorator.Builder builder;
-  List<CorrelationField> fields;
+  List<BaggageField> fields;
   List<CorrelationScopeCustomizer> customizers;
 
   @Override public CorrelationScopeDecorator getObject() {
     if (builder == null) throw new NullPointerException("builder == null");
     if (fields != null) {
       builder.clearFields();
-      for (CorrelationField field : fields) {
+      for (BaggageField field : fields) {
         builder.addField(field);
       }
     }
@@ -51,7 +51,7 @@ public class CorrelationScopeDecoratorFactoryBean implements FactoryBean {
     this.builder = builder;
   }
 
-  public void setFields(List<CorrelationField> fields) {
+  public void setFields(List<BaggageField> fields) {
     this.fields = fields;
   }
 

@@ -39,7 +39,7 @@ import java.util.Set;
  * );
  *
  * // later, you can tag that country code
- * TODO: Tags.CorrelationField.tag(COUNTRY_CODE, span);
+ * Tags.BAGGAGE_FIELD.tag(COUNTRY_CODE, span);
  * }</pre>
  *
  * @since 5.11

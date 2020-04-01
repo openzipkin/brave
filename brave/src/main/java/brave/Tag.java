@@ -55,6 +55,11 @@ public abstract class Tag<I> {
    */
   @Nullable protected abstract String parseValue(I input, @Nullable TraceContext context);
 
+  /** Overrides the tag key based on the input */
+  protected String key(I input) {
+    return key;
+  }
+
   /**
    * Tags the value parsed from the {@code input}.
    *
@@ -129,14 +134,27 @@ public abstract class Tag<I> {
   }
 
   final void tag(Object span, I input, @Nullable TraceContext context) {
-    String value;
+    String key = null;
+    String value = null;
+    Throwable error = null;
+
+    // Defensively call the only protected methods
     try {
+      key = key(input);
       value = parseValue(input, context);
     } catch (Throwable e) {
+      error = e;
       propagateIfFatal(e);
-      Platform.get().log("Error parsing tag value of input %s", input, e);
+    }
+
+    if (key == null || key.isEmpty()) {
+      Platform.get().log("Error parsing tag key of input %s", input, error);
+      return;
+    } else if (error != null) {
+      Platform.get().log("Error parsing tag value of input %s", input, error);
       return;
     }
+
     if (value == null) return;
     if (span instanceof SpanCustomizer) {
       ((SpanCustomizer) span).tag(key, value);

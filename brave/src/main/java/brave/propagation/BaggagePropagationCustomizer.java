@@ -21,8 +21,8 @@ package brave.propagation;
  * add a baggage field} without affecting the {@link BaggagePropagation#newFactoryBuilder(Propagation.Factory)
  * trace propagation format}.
  *
- * <p>This also allows one object to customize both {@link CorrelationScopeDecorator correlation
- * integration} and {@linkplain BaggagePropagation baggage}, by implementing both customizer
+ * <p>This also allows one object to customize both {@linkplain BaggagePropagation baggage}
+ * and {@link CorrelationScopeDecorator correlation integration}, by implementing both customizer
  * interfaces.
  *
  * <h3>Integration examples</h3>

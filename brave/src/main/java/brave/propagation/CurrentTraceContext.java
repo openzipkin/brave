@@ -164,8 +164,8 @@ public abstract class CurrentTraceContext {
   }
 
   /**
-   * Use this to add features such as thread checks or log correlation fields when a scope is
-   * created or closed.
+   * Use this to add features such as thread checks or log correlation when a scope is created or
+   * closed.
    *
    * <p>While decoration technically occurs with {@link #newScope(TraceContext)} or
    * {@link #maybeScope(TraceContext)}, many tools use these underneath. For example, {@link
