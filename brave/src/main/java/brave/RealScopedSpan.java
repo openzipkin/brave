@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -21,7 +21,6 @@ import brave.propagation.TraceContext;
 
 /** This wraps the public api and guards access to a mutable span. */
 final class RealScopedSpan extends ScopedSpan {
-
   final TraceContext context;
   final Scope scope;
   final MutableSpan state;
@@ -53,13 +52,18 @@ final class RealScopedSpan extends ScopedSpan {
     return context;
   }
 
-  @Override public ScopedSpan annotate(String value) {
-    state.annotate(clock.currentTimeMicroseconds(), value);
+  @Override public ScopedSpan name(String name) {
+    state.name(name);
     return this;
   }
 
   @Override public ScopedSpan tag(String key, String value) {
     state.tag(key, value);
+    return this;
+  }
+
+  @Override public ScopedSpan annotate(String value) {
+    state.annotate(clock.currentTimeMicroseconds(), value);
     return this;
   }
 
