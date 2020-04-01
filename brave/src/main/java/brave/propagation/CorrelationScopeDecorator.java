@@ -18,7 +18,6 @@ import brave.internal.Nullable;
 import brave.propagation.CorrelationField.Updatable;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
-import java.util.ArrayDeque;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -120,21 +119,6 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
     this.context = context;
   }
 
-  // Users generally expect data to be "cleaned up" when a scope completes, even if it was written
-  // mid-scope. Ex. https://github.com/spring-cloud/spring-cloud-sleuth/issues/1416
-  //
-  // This means we cannot return a no-op scope based on if we detect no change when comparing
-  // values up front. Hence, we save off the first value and revert when a scope closes. If a late
-  // update changed the value mid-scope, it will reverted.
-  static void update(
-    CorrelationContext context, CorrelationField field, @Nullable String newValue) {
-    if (newValue != null) {
-      context.put(field.name(), newValue);
-    } else {
-      context.remove(field.name());
-    }
-  }
-
   static final class Single extends CorrelationScopeDecorator {
     final CorrelationField field;
     final boolean fieldUpdatable, flushOnUpdate;
@@ -156,109 +140,12 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
         if (dirty) update(context, field, currentValue);
       }
 
-      // If there was or could be a value update, we need to track the value to revert.
-      if (dirty || flushOnUpdate) {
-        return new SingleCorrelationFieldScope(scope, context, field, valueToRevert, dirty);
-      }
+      if (!dirty && !flushOnUpdate) return scope;
 
-      return scope;
-    }
-  }
-
-  static abstract class CorrelationFieldScope implements Scope {
-    final Scope delegate;
-    final CorrelationContext context;
-
-    CorrelationFieldScope(Scope delegate, CorrelationContext context) {
-      this.delegate = delegate;
-      this.context = context;
-      pushCurrentFieldUpdater(this);
-    }
-
-    @Override public void close() {
-      delegate.close();
-      popCurrentFieldUpdater(this);
-    }
-
-    /** Called after {@link #handleUpdate ) for a flushed field. */
-    abstract void handleUpdate(Updatable field, String value);
-  }
-
-  static final ThreadLocal<ArrayDeque<Object>> currentFieldUpdaterStack = new ThreadLocal<>();
-
-  /**
-   * Handles a flush by synchronizing the correlation context followed by signaling each stacked
-   * scope about a potential field update.
-   *
-   * <p>Overhead here occurs on the calling thread. Ex. the one that calls {@link
-   * BaggageField#updateValue(String)}.
-   */
-  static void flush(Updatable field, String value) {
-    assert field.flushOnUpdate();
-
-    Set<CorrelationContext> syncedContexts = new LinkedHashSet<>();
-    for (Object o : currentFieldUpdaterStack()) {
-      CorrelationFieldScope next = ((CorrelationFieldScope) o);
-
-      // Since this is a static method, it could be called with different tracers on the stack.
-      // This synchronizes the context if we haven't already.
-      if (!syncedContexts.contains(next.context)) {
-        if (!equal(next.context.get(field.name()), value)) {
-          update(next.context, field, value);
-        }
-        syncedContexts.add(next.context);
-      }
-
-      // Now, signal the current scope in case it has a value change
-      next.handleUpdate(field, value);
-    }
-  }
-
-  static void popCurrentFieldUpdater(CorrelationFieldScope expected) {
-    Object popped = currentFieldUpdaterStack().pop();
-    assert equal(popped, expected) :
-      "Misalignment: popped updater " + popped + " !=  expected " + expected;
-  }
-
-  static ArrayDeque<Object> currentFieldUpdaterStack() {
-    ArrayDeque<Object> stack = currentFieldUpdaterStack.get();
-    if (stack == null) {
-      stack = new ArrayDeque<>();
-      currentFieldUpdaterStack.set(stack);
-    }
-    return stack;
-  }
-
-  static void pushCurrentFieldUpdater(CorrelationFieldScope updater) {
-    currentFieldUpdaterStack().push(updater);
-  }
-
-  static final class SingleCorrelationFieldScope extends CorrelationFieldScope {
-    final CorrelationField field;
-    final @Nullable String valueToRevert;
-    boolean dirty;
-
-    SingleCorrelationFieldScope(
-      Scope delegate,
-      CorrelationContext context,
-      CorrelationField field,
-      @Nullable String valueToRevert,
-      boolean dirty
-    ) {
-      super(delegate, context);
-      this.field = field;
-      this.valueToRevert = valueToRevert;
-      this.dirty = dirty;
-    }
-
-    @Override public void close() {
-      super.close();
-      if (dirty) CorrelationScopeDecorator.update(context, field, valueToRevert);
-    }
-
-    @Override void handleUpdate(Updatable field, String value) {
-      if (!this.field.equals(field)) return;
-      if (!equal(value, valueToRevert)) dirty = true;
+      // If there was or could be a value update, we need to track values to revert.
+      CorrelationFieldUpdateScope updateScope =
+        new CorrelationFieldUpdateScope.Single(scope, context, field, valueToRevert, dirty);
+      return flushOnUpdate ? new CorrelationFieldFlushScope(updateScope) : updateScope;
     }
   }
 
@@ -293,47 +180,27 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
         valuesToRevert[i] = valueToRevert;
       }
 
-      // If there was or could be a value update, we need to track the value to revert.
-      if (dirty != 0 || flushOnUpdate != 0) {
-        return new MultipleCorrelationFieldScope(scope, context, fields, valuesToRevert, dirty);
-      }
+      if (dirty == 0 && flushOnUpdate == 0) return scope;
 
-      return scope;
+      // If there was or could be a value update, we need to track values to revert.
+      CorrelationFieldUpdateScope updateScope =
+        new CorrelationFieldUpdateScope.Multiple(scope, context, fields, valuesToRevert, dirty);
+      return flushOnUpdate != 0 ? new CorrelationFieldFlushScope(updateScope) : updateScope;
     }
   }
 
-  static final class MultipleCorrelationFieldScope extends CorrelationFieldScope {
-    final CorrelationField[] fields;
-    final String[] valuesToRevert;
-    int dirty;
-
-    MultipleCorrelationFieldScope(
-      Scope delegate,
-      CorrelationContext context,
-      CorrelationField[] fields,
-      String[] valuesToRevert,
-      int dirty
-    ) {
-      super(delegate, context);
-      this.fields = fields;
-      this.valuesToRevert = valuesToRevert;
-      this.dirty = dirty;
-    }
-
-    @Override public void close() {
-      super.close();
-      for (int i = 0; i < fields.length; i++) {
-        if (isSet(dirty, i)) update(context, fields[i], valuesToRevert[i]);
-      }
-    }
-
-    @Override void handleUpdate(Updatable field, String value) {
-      for (int i = 0; i < fields.length; i++) {
-        if (fields[i].equals(field)) {
-          if (!equal(value, valuesToRevert[i])) dirty = set(dirty, i);
-          return;
-        }
-      }
+  // Users generally expect data to be "cleaned up" when a scope completes, even if it was written
+  // mid-scope. Ex. https://github.com/spring-cloud/spring-cloud-sleuth/issues/1416
+  //
+  // This means we cannot return a no-op scope based on if we detect no change when comparing
+  // values up front. Hence, we save off the first value and revert when a scope closes. If a late
+  // update changed the value mid-scope, it will reverted.
+  static void update(CorrelationContext context, CorrelationField field,
+    @Nullable String newValue) {
+    if (newValue != null) {
+      context.put(field.name(), newValue);
+    } else {
+      context.remove(field.name());
     }
   }
 

@@ -303,7 +303,7 @@ public final class BaggageField extends CorrelationField.Updatable {
     PredefinedBaggageFields fields = findExtra(PredefinedBaggageFields.class, extra);
     if (fields == null) return;
     fields.put(this, value);
-    if (flushOnUpdate) CorrelationScopeDecorator.flush(this, value);
+    if (flushOnUpdate) CorrelationFieldFlushScope.flush(this, value);
   }
 
   /**
