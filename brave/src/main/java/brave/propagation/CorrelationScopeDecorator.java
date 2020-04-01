@@ -189,16 +189,9 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
     }
   }
 
-  // Users generally expect data to be "cleaned up" when a scope completes, even if it was written
-  // mid-scope. Ex. https://github.com/spring-cloud/spring-cloud-sleuth/issues/1416
-  //
-  // This means we cannot return a no-op scope based on if we detect no change when comparing
-  // values up front. Hence, we save off the first value and revert when a scope closes. If a late
-  // update changed the value mid-scope, it will reverted.
-  static void update(CorrelationContext context, CorrelationField field,
-    @Nullable String newValue) {
-    if (newValue != null) {
-      context.put(field.name(), newValue);
+  static void update(CorrelationContext context, CorrelationField field, @Nullable String value) {
+    if (value != null) {
+      context.put(field.name(), value);
     } else {
       context.remove(field.name());
     }
