@@ -41,11 +41,10 @@ public class BaggagePropagationFactoryBeanTest {
     );
 
     assertThat(context.getBean("propagationFactory", Propagation.Factory.class))
-      .extracting("delegate")
       .isEqualTo(B3Propagation.FACTORY);
   }
 
-  @Test public void propagationFactory() {
+  @Test public void propagationFactory_noFields() {
     context = new XmlBeans(""
       + "<bean id=\"propagationFactory\" class=\"brave.spring.beans.BaggagePropagationFactoryBean\">\n"
       + "  <property name=\"propagationFactory\">\n"
@@ -55,7 +54,6 @@ public class BaggagePropagationFactoryBeanTest {
     );
 
     assertThat(context.getBean("propagationFactory", Propagation.Factory.class))
-      .extracting("delegate")
       .isEqualTo(B3SinglePropagation.FACTORY);
   }
 
@@ -63,7 +61,7 @@ public class BaggagePropagationFactoryBeanTest {
     context = new XmlBeans(""
       + "<bean id=\"userId\" class=\"brave.spring.beans.BaggageFieldFactoryBean\">\n"
       + "  <property name=\"name\" value=\"userId\"/>\n"
-      + "</bean>", ""
+      + "</bean>"
       + "<bean id=\"propagationFactory\" class=\"brave.spring.beans.BaggagePropagationFactoryBean\">\n"
       + "  <property name=\"fields\">\n"
       + "    <list>\n"
@@ -78,6 +76,28 @@ public class BaggagePropagationFactoryBeanTest {
       .asInstanceOf(InstanceOfAssertFactories.ARRAY)
       .usingFieldByFieldElementComparator()
       .containsExactly(BaggageField.create("userId"));
+  }
+
+  @Test public void propagationFactory() {
+    context = new XmlBeans(""
+      + "<bean id=\"userId\" class=\"brave.spring.beans.BaggageFieldFactoryBean\">\n"
+      + "  <property name=\"name\" value=\"userId\"/>\n"
+      + "</bean>"
+      + "<bean id=\"propagationFactory\" class=\"brave.spring.beans.BaggagePropagationFactoryBean\">\n"
+      + "  <property name=\"propagationFactory\">\n"
+      + "    <util:constant static-field=\"brave.propagation.B3SinglePropagation.FACTORY\"/>\n"
+      + "  </property>\n"
+      + "  <property name=\"fields\">\n"
+      + "    <list>\n"
+      + "      <ref bean=\"userId\"/>\n"
+      + "    </list>\n"
+      + "  </property>"
+      + "</bean>"
+    );
+
+    assertThat(context.getBean("propagationFactory", Propagation.Factory.class))
+      .extracting("delegate")
+      .isEqualTo(B3SinglePropagation.FACTORY);
   }
 
   public static final BaggagePropagationCustomizer

@@ -55,11 +55,15 @@ Here's an advanced example, which propagates the request-scoped header "x-vcap-r
 with trace headers:
 
 ```xml
+  <bean id="userId" class="brave.spring.beans.BaggageFieldFactoryBean">
+    <property name="name" value="userId"/>
+  </bean>
+
   <bean id="propagationFactory" class="brave.spring.beans.BaggagePropagationFactoryBean">
     <property name="fields">
-       <bean class=\"brave.spring.beans.BaggageFieldFactoryBean\">
-          <property name=\"name\" value=\"x-vcap-request-id\"/>
-       </bean>
+      <list>
+        <ref bean="userId"/>
+      </list>
     </property>
   </bean>
 
