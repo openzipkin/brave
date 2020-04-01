@@ -52,6 +52,7 @@ public final class StrictCurrentTraceContext extends CurrentTraceContext impleme
     @Override public Builder addScopeDecorator(ScopeDecorator scopeDecorator) {
       if (scopeDecorator instanceof StrictScopeDecorator) {
         strictScopeDecorator = (StrictScopeDecorator) scopeDecorator;
+        return this;
       }
       return (Builder) super.addScopeDecorator(scopeDecorator);
     }
