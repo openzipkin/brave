@@ -124,6 +124,7 @@ public class TagTest {
 
     tag.tag(input, scopedSpan);
 
+    verify(scopedSpan).isNoop();
     verify(scopedSpan).context();
     verify(parseValue).apply(input, context);
     verifyNoMoreInteractions(parseValue); // doesn't parse twice
@@ -136,6 +137,7 @@ public class TagTest {
 
     tag.tag(input, scopedSpan);
 
+    verify(scopedSpan).isNoop();
     verify(scopedSpan).context();
     verify(parseValue).apply(input, context);
     verifyNoMoreInteractions(parseValue); // doesn't parse twice
@@ -155,6 +157,7 @@ public class TagTest {
 
     tag.tag(input, scopedSpan);
 
+    verify(scopedSpan).isNoop();
     verify(scopedSpan).context();
     verify(parseValue).apply(input, context);
     verifyNoMoreInteractions(parseValue); // doesn't parse twice

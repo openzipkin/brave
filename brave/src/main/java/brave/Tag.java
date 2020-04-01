@@ -37,7 +37,6 @@ import static brave.internal.Throwables.propagateIfFatal;
  *
  * @see Tags
  * @see SpanCustomizer#tag(String, String)
- * @see ScopedSpan#tag(String, String)
  * @see MutableSpan#tag(String, String)
  * @since 5.11
  */
@@ -50,14 +49,38 @@ public abstract class Tag<I> {
    * Override to change what data from the input are parsed into the span modeling it. Any
    * exceptions will be logged and ignored.
    *
-   * @return possibly nullable result. Note: empty string is a valid tag value!
+   * @return The result to add as a span tag. {@code null} means no tag will be added. Note: empty
+   * string is a valid tag value!
    * @since 5.11
    */
   @Nullable protected abstract String parseValue(I input, @Nullable TraceContext context);
 
   /**
-   * {@linkplain SpanCustomizer#tag(String, String) Tags} the value parsed from the {@code input}
-   * when non-null and the span is not no-op.
+   * Tags the value parsed from the {@code input}.
+   *
+   * @since 5.11
+   */
+  public final void tag(I input, ScopedSpan span) {
+    if (input == null) throw new NullPointerException("input == null");
+    if (span == null) throw new NullPointerException("span == null");
+    if (span.isNoop()) return;
+    tag(span, input, span.context());
+  }
+
+  /**
+   * Tags the value parsed from the {@code input}.
+   *
+   * @since 5.11
+   */
+  public final void tag(I input, Span span) {
+    if (input == null) throw new NullPointerException("input == null");
+    if (span == null) throw new NullPointerException("span == null");
+    if (span.isNoop()) return;
+    tag(span, input, span.context());
+  }
+
+  /**
+   * Tags the value parsed from the {@code input}.
    *
    * @since 5.11
    */
@@ -71,28 +94,19 @@ public abstract class Tag<I> {
   }
 
   /**
-   * {@linkplain SpanCustomizer#tag(String, String) Tags} the value parsed from the {@code input}
-   * when non-null and the span is not no-op.
+   * Tags the value parsed from the {@code input}.
    *
    * @since 5.11
    */
   public final void tag(I input, SpanCustomizer span) {
     if (input == null) throw new NullPointerException("input == null");
     if (span == null) throw new NullPointerException("span == null");
-    TraceContext context = null;
-    if (span instanceof Span) {
-      Span asSpan = (Span) span;
-      if (asSpan.isNoop()) return;
-      context = asSpan.context();
-    } else if (span == NoopSpanCustomizer.INSTANCE) {
-      return;
-    }
-    tag(span, input, context);
+    if (span == NoopSpanCustomizer.INSTANCE) return;
+    tag(span, input, null);
   }
 
   /**
-   * {@linkplain MutableSpan#tag(String, String) Tags} the value parsed from the {@code input} when
-   * non-null.
+   * Tags the value parsed from the {@code input}.
    *
    * @see FinishedSpanHandler#handle(TraceContext, MutableSpan)
    * @since 5.11
