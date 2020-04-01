@@ -17,6 +17,7 @@ import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.propagation.B3SinglePropagation;
 import brave.propagation.Propagation;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.util.ArrayList;
@@ -46,7 +47,9 @@ public class TracingTest {
    * sampled status, and be missing a parent when their parent tracer is in noop.
    */
   @Test public void setNoop_dropsDataButDoesntAffectSampling() {
-    try (Tracing tracing = Tracing.newBuilder().spanReporter(spans::add).build()) {
+    try (Tracing tracing = Tracing.newBuilder()
+      .currentTraceContext(StrictCurrentTraceContext.create())
+      .spanReporter(spans::add).build()) {
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
 
       tracing.setNoop(true);

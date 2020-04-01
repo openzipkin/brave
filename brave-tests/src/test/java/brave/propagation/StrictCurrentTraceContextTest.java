@@ -27,7 +27,7 @@ public class StrictCurrentTraceContextTest extends CurrentTraceContextTest {
 
   static class BuilderSupplier implements Supplier<CurrentTraceContext.Builder> {
     @Override public CurrentTraceContext.Builder get() {
-      return StrictCurrentTraceContext.strictBuilder();
+      return new StrictCurrentTraceContext.Builder();
     }
   }
 

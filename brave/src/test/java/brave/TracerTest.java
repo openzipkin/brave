@@ -23,7 +23,7 @@ import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
-import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
@@ -50,7 +50,7 @@ public class TracerTest {
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).shared(true).build();
   List<zipkin2.Span> spans = new ArrayList<>();
   Propagation.Factory propagationFactory = B3Propagation.FACTORY;
-  CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.create();
+  CurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   Tracer tracer = Tracing.newBuilder()
     .spanReporter(new Reporter<zipkin2.Span>() {
       @Override public void report(zipkin2.Span span) {

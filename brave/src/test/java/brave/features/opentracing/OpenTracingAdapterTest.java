@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,8 +16,6 @@ package brave.features.opentracing;
 import brave.Tracing;
 import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
-import brave.propagation.StrictScopeDecorator;
-import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import io.opentracing.propagation.Format;
 import io.opentracing.propagation.TextMapAdapter;
@@ -39,9 +37,6 @@ import static org.assertj.core.data.MapEntry.entry;
 public class OpenTracingAdapterTest {
   List<zipkin2.Span> spans = new ArrayList<>();
   Tracing brave = Tracing.newBuilder()
-    .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-      .addScopeDecorator(StrictScopeDecorator.create())
-      .build())
     .propagationFactory(ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "client-id"))
     .spanReporter(spans::add).build();
 

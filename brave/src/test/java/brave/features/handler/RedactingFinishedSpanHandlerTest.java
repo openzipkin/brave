@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,6 +20,7 @@ import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.handler.MutableSpan.AnnotationUpdater;
 import brave.handler.MutableSpan.TagUpdater;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -86,6 +87,7 @@ public class RedactingFinishedSpanHandlerTest {
   };
 
   Tracing tracing = Tracing.newBuilder()
+    .currentTraceContext(StrictCurrentTraceContext.create())
     .addFinishedSpanHandler(redacter)
     .addFinishedSpanHandler(markFinished)
     .spanReporter(spans::add)

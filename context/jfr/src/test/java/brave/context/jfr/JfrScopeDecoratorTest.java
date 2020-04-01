@@ -16,8 +16,7 @@ package brave.context.jfr;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
-import brave.propagation.StrictScopeDecorator;
-import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import java.nio.file.Path;
 import java.util.List;
@@ -42,8 +41,7 @@ public class JfrScopeDecoratorTest {
 
   ExecutorService wrappedExecutor = Executors.newSingleThreadExecutor();
   ScopeDecorator decorator = JfrScopeDecorator.create();
-  CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.newBuilder()
-    .addScopeDecorator(StrictScopeDecorator.create())
+  CurrentTraceContext currentTraceContext = StrictCurrentTraceContext.newBuilder()
     .addScopeDecorator(JfrScopeDecorator.create())
     .build();
 
