@@ -245,7 +245,7 @@ public class Tracer {
    * Creates a trace context object holding the below fields. When fields such as span ID are
    * absent, they will be backfilled. Then, any missing state managed by the tracer are applied,
    * such as the "local root". Finally, decoration hooks apply to ensure any propagation state are
-   * added to the "extra" section of the result. This supports functionality like extra field
+   * added to the "extra" section of the result. This supports functionality like baggage
    * propagation.
    *
    * <p>All parameters except span ID can be empty in the case of a new root span.
@@ -256,7 +256,7 @@ public class Tracer {
    * @param localRootId Zero is a new local root. Otherwise, {@link TraceContext#localRootId()}.
    * @param parentId Same as {@link TraceContext#parentIdAsLong()}.
    * @param spanId When non-zero this is a shared span. See {@link TraceContext#spanId()}.
-   * @param extra Any incoming {@link TraceContext#extra() extra fields}.
+   * @param extra Any additional {@link TraceContext#extra() propagated state}.
    * @return a decorated, sampled context with local root information applied.
    */
   TraceContext decorateContext(

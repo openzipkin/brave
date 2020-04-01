@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,7 +14,7 @@
 package brave.features.opentracing;
 
 import brave.Tracing;
-import brave.propagation.ExtraFieldPropagation;
+import brave.propagation.BaggageField;
 import brave.propagation.Propagation;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.Propagation.Setter;
@@ -121,8 +121,11 @@ final class BraveTracer implements Tracer {
 
     TextMapExtractorAdaptor(Propagation<String> propagation) {
       allPropagationKeys = lowercaseSet(propagation.keys());
-      if (propagation instanceof ExtraFieldPropagation) {
-        allPropagationKeys.addAll(((ExtraFieldPropagation<String>) propagation).extraKeys());
+      // When baggage is configured, even an empty context contains field metadata
+      TraceContextOrSamplingFlags emptyExtraction =
+        propagation.extractor((c, k) -> null).extract(Boolean.TRUE);
+      for (BaggageField baggageField : BaggageField.getAll(emptyExtraction)) {
+        allPropagationKeys.addAll(baggageField.remoteNames());
       }
       delegate = propagation.extractor(LC_MAP_GETTER);
     }

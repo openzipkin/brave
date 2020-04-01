@@ -15,7 +15,6 @@ package brave.jersey.server;
 
 import brave.Tracer;
 import brave.http.HttpTracing;
-import brave.propagation.ExtraFieldPropagation;
 import javax.ws.rs.GET;
 import javax.ws.rs.OPTIONS;
 import javax.ws.rs.Path;
@@ -26,7 +25,7 @@ import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.Response;
 import org.glassfish.jersey.server.ManagedAsync;
 
-import static brave.test.ITRemote.EXTRA_KEY;
+import static brave.test.ITRemote.BAGGAGE_FIELD;
 import static brave.test.http.ITHttpServer.NOT_READY_ISE;
 
 @Path("")
@@ -51,7 +50,7 @@ public class TestResource {
   @GET
   @Path("extra")
   public Response extra() {
-    return Response.ok(ExtraFieldPropagation.get(EXTRA_KEY)).build();
+    return Response.ok(BAGGAGE_FIELD.getValue()).build();
   }
 
   @GET

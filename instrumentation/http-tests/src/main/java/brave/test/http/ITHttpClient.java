@@ -25,7 +25,6 @@ import brave.http.HttpRuleSampler;
 import brave.http.HttpTags;
 import brave.http.HttpTracing;
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
@@ -118,32 +117,32 @@ public abstract class ITHttpClient<C> extends ITRemote {
     assertChildOf(extracted, parent);
   }
 
-  @Test public void propagatesExtra() throws IOException {
+  @Test public void propagatesBaggage() throws IOException {
     server.enqueue(new MockResponse());
 
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
-      ExtraFieldPropagation.set(parent, EXTRA_KEY, "joey");
+      BAGGAGE_FIELD.updateValue(parent, "joey");
       get(client, "/foo");
     }
 
     TraceContext extracted = extract(takeRequest());
-    assertThat(ExtraFieldPropagation.get(extracted, EXTRA_KEY)).isEqualTo("joey");
+    assertThat(BAGGAGE_FIELD.getValue(extracted)).isEqualTo("joey");
 
     reporter.takeRemoteSpan(Span.Kind.CLIENT);
   }
 
-  @Test public void propagatesExtra_unsampled() throws IOException {
+  @Test public void propagatesBaggage_unsampled() throws IOException {
     server.enqueue(new MockResponse());
 
     TraceContext parent = newTraceContext(SamplingFlags.NOT_SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
-      ExtraFieldPropagation.set(parent, EXTRA_KEY, "joey");
+      BAGGAGE_FIELD.updateValue(parent, "joey");
       get(client, "/foo");
     }
 
     TraceContext extracted = extract(takeRequest());
-    assertThat(ExtraFieldPropagation.get(extracted, EXTRA_KEY)).isEqualTo("joey");
+    assertThat(BAGGAGE_FIELD.getValue(extracted)).isEqualTo("joey");
   }
 
   @Test public void customSampler() throws IOException {

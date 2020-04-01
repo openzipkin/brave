@@ -25,10 +25,8 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.SamplerFunction;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
-import java.util.Map;
 import java.util.Set;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -136,9 +134,8 @@ public final class KafkaTracing {
     this.producerInjector = propagation.injector(KafkaProducerRequest::setHeader);
     this.consumerInjector = propagation.injector(KafkaConsumerRequest::setHeader);
     this.propagationKeys = new LinkedHashSet<>(propagation.keys());
-    // When Extra Fields or similar are in use, the result != TraceContextOrSamplingFlags.EMPTY
-    this.emptyExtraction = propagation.<Map<String, String>>extractor(Map::get)
-      .extract(Collections.emptyMap());
+    // When baggage or similar is in use, the result != TraceContextOrSamplingFlags.EMPTY
+    this.emptyExtraction = propagation.extractor((c, k) -> null).extract(Boolean.TRUE);
     this.producerSampler = messagingTracing.producerSampler();
     this.consumerSampler = messagingTracing.consumerSampler();
     this.remoteServiceName = builder.remoteServiceName;

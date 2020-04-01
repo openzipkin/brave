@@ -26,8 +26,8 @@ import zipkin2.reporter.Reporter;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFields<K, V>>
-  extends ExtraFactoryTest<P, PropagationFieldsFactory<K, V, P>> {
+public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFields<K, V>,
+  F extends PropagationFieldsFactory<K, V, P>> extends ExtraFactoryTest<P, F> {
   protected final K keyOne, keyTwo;
   protected final V valueOne, valueTwo, valueThree;
 
@@ -37,6 +37,10 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
     this.valueOne = valueOne;
     this.valueTwo = valueTwo;
     this.valueThree = valueThree;
+  }
+
+  protected String name(K key) {
+    return key.toString();
   }
 
   @Test public void contextsAreIndependent() {
@@ -78,10 +82,10 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
       PropagationFields<K, V> fields1 = (PropagationFields<K, V>) context1.extra().get(0);
       PropagationFields<K, V> fields2 = (PropagationFields<K, V>) context2.extra().get(0);
 
-      // we have the same span ID, so we should couple our extra fields
+      // we have the same span ID, so we should couple our propagation fields
       assertThat(fields1).isSameAs(fields2);
 
-      // we no longer have the same span ID, so we should decouple our extra fields
+      // we no longer have the same span ID, so we should decouple our propagation fields
       TraceContext context3 = tracing.tracer().newChild(context1).context();
       PropagationFields fields3 = (PropagationFields) context3.extra().get(0);
 
@@ -104,8 +108,8 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
    * state from an incoming message. Another example is where there is a span in scope due to a leak
    * such as from using {@link CurrentTraceContext.Default#inheritable()}.
    *
-   * <p>When we are only extracting extra fields, the state should merge as opposed to creating
-   * duplicate copies of {@link PropagationFields}.
+   * <p>When we are only extracting propagation fields, the state should merge as opposed to
+   * creating duplicate copies of {@link PropagationFields}.
    */
   @Test public void nextSpanMergesExtraWithImplicitParent_hasFields() {
     try (Tracing tracing = withNoopSpanReporter()) {
@@ -128,8 +132,8 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
           .hasSize(1);
         PropagationFields<K, V> fields = ((PropagationFields<K, V>) context1.extra().get(0));
         assertThat(fields.toMap()).containsExactly(
-          entry(keyOne, valueTwo),
-          entry(keyTwo, valueThree)
+          entry(name(keyOne), valueTwo),
+          entry(name(keyTwo), valueThree)
         );
         assertThat(fields).extracting("traceId", "spanId")
           .containsExactly(context1.traceId(), context1.spanId());
@@ -139,7 +143,7 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
     }
   }
 
-  @Test public void nextSpanExtraWithImplicitParent_butNoImplicitExtraFields() {
+  @Test public void nextSpanExtraWithImplicitParent_butNoImplicitBaggageFields() {
     try (Tracing tracing = withNoopSpanReporter()) {
 
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
@@ -158,7 +162,7 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
 
         PropagationFields<K, V> fields = ((PropagationFields<K, V>) context1.extra().get(0));
         assertThat(fields.toMap())
-          .containsEntry(keyTwo, valueThree);
+          .containsEntry(name(keyTwo), valueThree);
         assertThat(fields).extracting("traceId", "spanId")
           .containsExactly(context1.traceId(), context1.spanId());
       } finally {
@@ -167,7 +171,7 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
     }
   }
 
-  @Test public void nextSpanExtraWithImplicitParent_butNoExtractedExtraFields() {
+  @Test public void nextSpanExtraWithImplicitParent_butNoExtractedBaggageFields() {
     try (Tracing tracing = withNoopSpanReporter()) {
 
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
@@ -185,7 +189,7 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
 
         PropagationFields<K, V> fields = ((PropagationFields<K, V>) context1.extra().get(0));
         assertThat(fields.toMap())
-          .containsEntry(keyOne, valueOne);
+          .containsEntry(name(keyOne), valueOne);
         assertThat(fields).extracting("traceId", "spanId")
           .containsExactly(context1.traceId(), context1.spanId());
       } finally {
@@ -201,6 +205,16 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
 
     assertThat(PropagationFields.get(context, keyTwo, factory.type()))
       .isEqualTo(valueThree);
+  }
+
+  @Test public void put_null_removes() {
+    TraceContext context =
+      propagationFactory.decorate(TraceContext.newBuilder().traceId(1).spanId(2).build());
+    PropagationFields.put(context, keyTwo, valueThree, factory.type());
+    PropagationFields.put(context, keyTwo, null, factory.type());
+
+    assertThat(PropagationFields.get(context, keyTwo, factory.type()))
+      .isNull();
   }
 
   @Test public void get_null_if_not_set() {
@@ -233,7 +247,7 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
 
     assertThat(fields.toMap())
       .hasSize(1)
-      .containsEntry(keyTwo, valueThree);
+      .containsEntry(name(keyTwo), valueThree);
   }
 
   @Test public void toMap_two() {
@@ -243,8 +257,8 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
 
     assertThat(fields.toMap())
       .hasSize(2)
-      .containsEntry(keyOne, valueOne)
-      .containsEntry(keyTwo, valueThree);
+      .containsEntry(name(keyOne), valueOne)
+      .containsEntry(name(keyTwo), valueThree);
   }
 
   @Test public void toString_one() {
@@ -252,7 +266,7 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
     fields.put(keyTwo, valueThree);
 
     assertThat(fields.toString())
-      .contains("{" + keyTwo + "=" + valueThree + "}");
+      .contains("{" + name(keyTwo) + "=" + valueThree + "}");
   }
 
   @Test public void toString_two() {
@@ -261,7 +275,7 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
     fields.put(keyTwo, valueThree);
 
     assertThat(fields.toString())
-      .contains("{" + keyOne + "=" + valueOne + ", " + keyTwo + "=" + valueThree + "}");
+      .contains("{" + name(keyOne) + "=" + valueOne + ", " + name(keyTwo) + "=" + valueThree + "}");
   }
 
   /** Ensures we don't accidentally use console logging, which is default */

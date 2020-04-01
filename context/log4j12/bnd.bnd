@@ -1,4 +1,4 @@
-# We use brave.internal.Nullable and brave.internal.propagation.CorrelationFieldScopeDecorator
+# We use brave.internal.Nullable and brave.propagation.CorrelationScopeDecorator
 Import-Package: \
   !brave.internal*,\
   *

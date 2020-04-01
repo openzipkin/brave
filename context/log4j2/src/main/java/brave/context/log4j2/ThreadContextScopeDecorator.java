@@ -13,67 +13,91 @@
  */
 package brave.context.log4j2;
 
-import brave.internal.propagation.CorrelationFieldScopeDecoratorBuilder;
-import brave.propagation.CurrentTraceContext.ScopeDecorator;
+import brave.internal.CorrelationContext;
+import brave.propagation.CorrelationScopeDecorator;
+import brave.propagation.CorrelationFields;
+import brave.propagation.CurrentTraceContext;
 import org.apache.logging.log4j.ThreadContext;
 
 /**
- * Adds {@linkplain ThreadContext} properties "traceId", "parentId", "spanId" and "sampled" when a
- * {@link brave.Tracer#currentSpan() span is current}. "traceId" and "spanId" are used in log
- * correlation. "parentId" is used for scenarios such as log parsing that reconstructs the trace
- * tree. "sampled" is used as a hint that a span found in logs might be in Zipkin.
+ * Creates a {@link CorrelationScopeDecorator} for Log4j 2 {@linkplain ThreadContext Thread
+ * Context}.
  *
  * <p>Ex.
  * <pre>{@code
  * tracing = Tracing.newBuilder()
  *                  .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
- *                    .addScopeDecorator(ThreadContextScopeDecorator.create())
+ *                    .addScopeDecorator(ThreadContextScopeDecorator.get())
  *                    .build()
  *                  )
  *                  ...
  *                  .build();
  * }</pre>
+ *
+ * @see CorrelationScopeDecorator
  */
 public final class ThreadContextScopeDecorator {
-  /** @since 5.11 */
-  public static Builder newBuilder() {
+  static final CurrentTraceContext.ScopeDecorator INSTANCE = new Builder().build();
+
+  /**
+   * Returns a singleton that configures {@link CorrelationFields#TRACE_ID} and {@link
+   * CorrelationFields#SPAN_ID}.
+   *
+   * @since 5.11
+   */
+  public static CurrentTraceContext.ScopeDecorator get() {
+    return INSTANCE;
+  }
+
+  /**
+   * Returns a builder that configures {@link CorrelationFields#TRACE_ID} and {@link
+   * CorrelationFields#SPAN_ID}.
+   *
+   * @since 5.11
+   */
+  public static CorrelationScopeDecorator.Builder newBuilder() {
     return new Builder();
   }
 
-  public static ScopeDecorator create() {
-    return new Builder().build();
+  /**
+   * Returns a scope decorator that configures {@link CorrelationFields#TRACE_ID}, {@link
+   * CorrelationFields#PARENT_ID}, {@link CorrelationFields#SPAN_ID} and {@link
+   * CorrelationFields#SAMPLED}
+   *
+   * @since 5.2
+   * @deprecated since 5.11 use {@link #get()} or {@link #newBuilder()}
+   */
+  @Deprecated public static CurrentTraceContext.ScopeDecorator create() {
+    return new Builder()
+      .clearFields()
+      .addField(CorrelationFields.TRACE_ID)
+      .addField(CorrelationFields.PARENT_ID)
+      .addField(CorrelationFields.SPAN_ID)
+      .addField(CorrelationFields.SAMPLED)
+      .build();
   }
 
-  /** @since 5.11 */
-  public static final class Builder extends CorrelationFieldScopeDecoratorBuilder<Builder> {
-    /** {@inheritDoc} */
-    @Override public Builder removeField(String fieldName) {
-      return super.removeField(fieldName);
-    }
-
-    /** {@inheritDoc} */
-    @Override public Builder addExtraField(String fieldName) {
-      return super.addExtraField(fieldName);
-    }
-
-    enum ThreadContextImpl implements Context {
-      INSTANCE;
-
-      @Override public String get(String name) {
-        return ThreadContext.get(name);
-      }
-
-      @Override public void put(String name, String value) {
-        ThreadContext.put(name, value);
-      }
-
-      @Override public void remove(String name) {
-        ThreadContext.remove(name);
-      }
-    }
-
+  static final class Builder extends CorrelationScopeDecorator.Builder {
     Builder() {
-      super(ThreadContextImpl.INSTANCE);
+      super(ThreadContextCorrelationContext.INSTANCE);
+    }
+  }
+
+  // TODO: see if we can read/write directly to skip some overhead similar to
+  // https://github.com/census-instrumentation/opencensus-java/blob/2903747aca08b1e2e29da35c5527ff046918e562/contrib/log_correlation/log4j2/src/main/java/io/opencensus/contrib/logcorrelation/log4j2/OpenCensusTraceContextDataInjector.java
+  enum ThreadContextCorrelationContext implements CorrelationContext {
+    INSTANCE;
+
+    @Override public String get(String name) {
+      return ThreadContext.get(name);
+    }
+
+    @Override public void put(String name, String value) {
+      ThreadContext.put(name, value);
+    }
+
+    @Override public void remove(String name) {
+      ThreadContext.remove(name);
     }
   }
 }

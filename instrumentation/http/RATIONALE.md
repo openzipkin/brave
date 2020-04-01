@@ -93,6 +93,6 @@ These also fixes a few problems noticed in practice with `HttpParser`:
 ## The `TraceContext` parameter of `HttpRequestParser` and `HttpResponseParser`
 
 The `TraceContext` parameter of the parsers provides advanced data handling,
-such as `ExtraFieldPropagation.get(context, "field-name")`. This is explicitly
+such as `BaggagePropagation.get(context, "field-name")`. This is explicitly
 passed to avoid reliance on expensive span scoping which no longer occurs
 around parse events.

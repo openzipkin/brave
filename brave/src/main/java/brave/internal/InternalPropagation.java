@@ -69,7 +69,4 @@ public abstract class InternalPropagation {
 
   /** {@link brave.propagation.TraceContext} is immutable so you need to read the result */
   public abstract TraceContext withFlags(TraceContext context, int flags);
-
-  /** Allows access to an intentionally package-private type. */
-  public abstract Class<? extends PropagationFields<String, String>> extraPropagationFieldsType();
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,25 +19,15 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class MapPropagationFieldsTest extends PropagationFieldsFactoryTest<String, String, Extra> {
+public class MapPropagationFieldsTest
+  extends PropagationFieldsFactoryTest<String, String, Extra, Factory> {
+
   public MapPropagationFieldsTest() {
     super("one", "two", "1", "2", "3");
   }
 
-  @Override protected PropagationFieldsFactory<String, String, Extra> newFactory() {
-    return new PropagationFieldsFactory<String, String, Extra>() {
-      @Override public Class<Extra> type() {
-        return Extra.class;
-      }
-
-      @Override public Extra create() {
-        return new Extra();
-      }
-
-      @Override protected Extra create(Extra parent) {
-        return new Extra(parent);
-      }
-    };
+  @Override protected Factory newFactory() {
+    return new Factory();
   }
 
   @Test public void put_allows_arbitrary_field() {
@@ -71,6 +61,20 @@ public class MapPropagationFieldsTest extends PropagationFieldsFactoryTest<Strin
 
     assertThatThrownBy(() -> fields.values.put(keyOne, "b"))
       .isInstanceOf(UnsupportedOperationException.class);
+  }
+}
+
+final class Factory extends PropagationFieldsFactory<String, String, Extra> {
+  @Override public Class<Extra> type() {
+    return Extra.class;
+  }
+
+  @Override public Extra create() {
+    return new Extra();
+  }
+
+  @Override protected Extra create(Extra parent) {
+    return new Extra(parent);
   }
 }
 

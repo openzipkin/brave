@@ -372,19 +372,26 @@ extractor = tracing.propagation().extractor(Request::getHeader);
 span = tracer.nextSpan(extractor.extract(request));
 ```
 
-### Propagating extra fields
+### Propagating baggage
+Sometimes you need to propagate additional fields, such as a request ID or an alternate trace
+context.
 
-Sometimes you need to propagate extra fields, such as a request ID or an alternate trace context.
-For example, if you are in a Cloud Foundry environment, you might want to pass the request ID:
-
+For example, if you have a need to know the a specific request's country code, you can
+propagate it through the trace as an HTTP header with the same name:
 ```java
-// when you initialize the builder, define the extra field you want to propagate
+// Configure your baggage field
+COUNTRY_CODE = BaggageField.create("country-code");
+
+// When you initialize the builder, add the baggage you want to propagate
 tracingBuilder.propagationFactory(
-  ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "x-vcap-request-id")
+  BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+                    .addField(COUNTRY_CODE)
+                    .build()
 );
 
-// later, you can tag that request ID or use it in log correlation
-requestId = ExtraFieldPropagation.get("x-vcap-request-id");
+// Later, you can retrieve that country code in any of the services handling the trace
+// and add it as a span tag or do any other processing you want with it.
+countryCode = COUNTRY_CODE.get(context);
 ```
 
 #### Appropriate usage
@@ -404,43 +411,72 @@ Amazon Web Services environment, but not reporting data to X-Ray. To ensure X-Ra
 correctly, pass-through its tracing header like so.
 
 ```java
+OTHER_TRACE_ID = BaggageField.create("x-amzn-trace-id");
+
 tracingBuilder.propagationFactory(
-  ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "x-amzn-trace-id")
+  BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+                    .addField(OTHER_TRACE_ID)
+                    .build()
 );
 ```
 
-#### Prefixed fields
+#### Customizing remote names
 
-You can also prefix fields, if they follow a common pattern. For example, the following will
-propagate the field "x-vcap-request-id" as-is, but send the fields "country-code" and "user-id"
-on the wire as "baggage-country-code" and "baggage-user-id" respectively.
+By default the name used as a propagation key (header) is the same as the lowercase variant of
+the field name. You can override this using the builder.
+
+For example, the following will propagate the field "x-vcap-request-id" as-is, but send the
+fields "countryCode" and "userId" on the wire as "baggage-country-code" and "baggage-user-id"
+respectively.
 
 Setup your tracing instance with allowed fields:
 ```java
+REQUEST_ID = BaggageField.create("x-vcap-request-id");
+COUNTRY_CODE = BaggageField.newBuilder("countryCode").clearRemoteNames()
+                           .addKey("baggage-country-code").build();
+USER_ID = BaggageField.newBuilder("userId").clearRemoteNames()
+                      .addKey("baggage-user-id").build();
+
 tracingBuilder.propagationFactory(
-  ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
-                       .addField("x-vcap-request-id")
-                       .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
-                       .build()
+    BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+                      .addField(REQUEST_ID)
+                      .addField(COUNTRY_CODE)
+                      .addField(USER_ID).build())
 );
 ```
 
-Later, you can call below to affect the country code of the current trace context
+Later, you can call below to affect the country code of the current trace context:
 ```java
-ExtraFieldPropagation.set("country-code", "FO");
-String countryCode = ExtraFieldPropagation.get("country-code");
+COUNTRY_CODE.updateValue("FO");
+String countryCode = COUNTRY_CODE.get();
 ```
 
-Or, if you have a reference to a trace context, use it explicitly
+Or, if you have a reference to a trace context, it is more efficient to use it explicitly:
 ```java
-ExtraFieldPropagation.set(span.context(), "country-code", "FO");
-String countryCode = ExtraFieldPropagation.get(span.context(), "country-code");
+COUNTRY_CODE.updateValue(span.context(), "FO");
+String countryCode = COUNTRY_CODE.get(span.context());
+String countryCode = COUNTRY_CODE.tag(span);
 ```
 
-#### Redacting fields
+#### Local Usage
+Baggage fields are also `CorrelationField`s. As long as a field is configured with
+`BaggagePropagation`, local reads and updates are possible in-process.
 
-You may have some fields that you would like to propagate in-process, but not downstream to other
-hosts. Use `.addRedactedField()` to indicate a field which should not be injected into headers.
+You can also integrate baggage with other correlated contexts such as logging:
+```java
+AMZN_TRACE_ID = BaggageField.newBuilder("x-amzn-trace-id").build();
+
+// Allow logging patterns like %X{traceId} %X{x-amzn-trace-id}
+decorator = MDCScopeDecorator.newBuilder()
+                             .addField(AMZN_TRACE_ID).build();
+
+tracingBuilder.propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+                                                    .addField(AMZN_TRACE_ID)
+                                                    .build())
+              .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+                                                                 .addScopeDecorator(decorator)
+                                                                 .build())
+```
 
 ### Extracting a propagated context
 The `TraceContext.Extractor<C>` reads trace identifiers and sampling status
@@ -509,10 +545,10 @@ will create the union type `TraceContextOrSamplingFlags` with one of the followi
 * `TraceIdContext` if a trace ID was present, but not span IDs.
 * `SamplingFlags` if no identifiers were present
 
-Some `Propagation` implementations carry extra data from point of extraction (ex reading incoming
+Some `Propagation` implementations carry extra state from point of extraction (ex reading incoming
 headers) to injection (ex writing outgoing headers). For example, it might carry a request ID. When
-implementations have extra data, here's how they handle it.
-* If a `TraceContext` was extracted, add the extra data as `TraceContext.extra()`
+implementations have extra state, here's how they handle it.
+* If a `TraceContext` was extracted, add the extra state as `TraceContext.extra()`
 * Otherwise, add it as `TraceContextOrSamplingFlags.extra()`, which `Tracer.nextSpan` handles.
 
 ## Handling Finished Spans
@@ -790,9 +826,8 @@ context with [our decorator](../context/log4j2/README.md):
 ```java
 tracing = Tracing.newBuilder()
     .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-       .addScopeDecorator(ThreadContextScopeDecorator.create())
-       .build()
-    )
+       .addScopeDecorator(ThreadContextScopeDecorator.get())
+       .build())
     ...
     .build();
 ```

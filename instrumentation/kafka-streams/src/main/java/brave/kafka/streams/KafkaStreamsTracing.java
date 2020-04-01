@@ -23,10 +23,8 @@ import brave.propagation.Propagation;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
-import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import org.apache.kafka.common.header.Header;
@@ -51,7 +49,6 @@ import org.apache.kafka.streams.processor.ProcessorSupplier;
 
 /** Use this class to decorate Kafka Stream Topologies and enable Tracing. */
 public final class KafkaStreamsTracing {
-
   final KafkaTracing kafkaTracing;
   final Tracer tracer;
   final Extractor<Headers> extractor;
@@ -61,16 +58,15 @@ public final class KafkaStreamsTracing {
 
   KafkaStreamsTracing(Builder builder) { // intentionally hidden constructor
     this.kafkaTracing = builder.kafkaTracing.toBuilder()
-        .singleRootSpanOnReceiveBatch(builder.singleRootSpanOnReceiveBatch)
-        .build();
+      .singleRootSpanOnReceiveBatch(builder.singleRootSpanOnReceiveBatch)
+      .build();
     this.tracer = kafkaTracing.messagingTracing().tracing().tracer();
     Propagation<String> propagation = kafkaTracing.messagingTracing().tracing().propagation();
     this.extractor = propagation.extractor(KafkaStreamsPropagation.GETTER);
     this.injector = propagation.injector(KafkaStreamsPropagation.SETTER);
     this.propagationKeys = new LinkedHashSet<>(propagation.keys());
-    // When Extra Fields or similar are in use, the result != TraceContextOrSamplingFlags.EMPTY
-    this.emptyExtraction = propagation.<Map<String, String>>extractor(Map::get)
-      .extract(Collections.emptyMap());
+    // When Baggage or similar are in use, the result != TraceContextOrSamplingFlags.EMPTY
+    this.emptyExtraction = propagation.extractor((c, k) -> null).extract(Boolean.TRUE);
   }
 
   public static KafkaStreamsTracing create(Tracing tracing) {
@@ -289,8 +285,8 @@ public final class KafkaStreamsTracing {
   }
 
   /**
-   * Create a flatMap transformer, similar to {@link KStream#flatMap(KeyValueMapper)}, where its mapper
-   * action will be recorded in a new span with the indicated name.
+   * Create a flatMap transformer, similar to {@link KStream#flatMap(KeyValueMapper)}, where its
+   * mapper action will be recorded in a new span with the indicated name.
    *
    * <p>Simple example using Kafka Streams DSL:
    * <pre>{@code
@@ -300,7 +296,8 @@ public final class KafkaStreamsTracing {
    *        .to(outputTopic);
    * }</pre>
    */
-  public <K, V, KR, VR> TransformerSupplier<K, V, Iterable<KeyValue<KR, VR>>> flatMap(String spanName,
+  public <K, V, KR, VR> TransformerSupplier<K, V, Iterable<KeyValue<KR, VR>>> flatMap(
+    String spanName,
     KeyValueMapper<K, V, Iterable<KeyValue<KR, VR>>> mapper) {
     return new TracingTransformerSupplier<>(this, spanName, () ->
       new AbstractTracingTransformer<K, V, Iterable<KeyValue<KR, VR>>>() {
@@ -488,9 +485,9 @@ public final class KafkaStreamsTracing {
     /**
      * Controls the sharing of a {@code poll} span for incoming spans with no trace context.
      *
-     * <p>If true, all the spans received in a poll batch that do not have trace-context will be added
-     * to a single new {@code poll} root span. Otherwise, a {@code poll} span will be created for
-     * each such message.
+     * <p>If true, all the spans received in a poll batch that do not have trace-context will be
+     * added to a single new {@code poll} root span. Otherwise, a {@code poll} span will be created
+     * for each such message.
      *
      * @since 5.10
      */

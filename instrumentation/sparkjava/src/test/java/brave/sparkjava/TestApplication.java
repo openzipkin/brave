@@ -14,18 +14,17 @@
 package brave.sparkjava;
 
 import brave.Tracing;
-import brave.propagation.ExtraFieldPropagation;
 import spark.Spark;
 import spark.servlet.SparkApplication;
 
-import static brave.test.ITRemote.EXTRA_KEY;
+import static brave.test.ITRemote.BAGGAGE_FIELD;
 import static brave.test.http.ITHttpServer.NOT_READY_ISE;
 
 public class TestApplication implements SparkApplication {
   @Override public void init() {
     Spark.options("/", (req, res) -> "");
     Spark.get("/foo", (req, res) -> "bar");
-    Spark.get("/extra", (req, res) -> ExtraFieldPropagation.get(EXTRA_KEY));
+    Spark.get("/baggage", (req, res) -> BAGGAGE_FIELD.getValue());
     Spark.get("/badrequest", (req, res) -> {
       res.status(400);
       return res;

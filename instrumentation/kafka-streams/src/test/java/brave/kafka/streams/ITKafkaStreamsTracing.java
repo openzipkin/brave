@@ -15,7 +15,6 @@ package brave.kafka.streams;
 
 import brave.kafka.clients.KafkaTracing;
 import brave.messaging.MessagingTracing;
-import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.TraceContext;
 import com.github.charithe.kafka.EphemeralKafkaBroker;
 import com.github.charithe.kafka.KafkaJunitRule;
@@ -310,14 +309,12 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
       .transformValues(kafkaStreamsTracing.peek("transform1", (o, o2) -> {
         TraceContext context = currentTraceContext.get();
-        String userId = ExtraFieldPropagation.get(context, EXTRA_KEY);
-        assertThat(userId).isEqualTo("user1");
-        ExtraFieldPropagation.set(context, EXTRA_KEY, "user2");
+        assertThat(BAGGAGE_FIELD.getValue(context)).isEqualTo("user1");
+        BAGGAGE_FIELD.updateValue(context, "user2");
       }))
       .transformValues(kafkaStreamsTracing.peek("transform2", (s, s2) -> {
         TraceContext context = currentTraceContext.get();
-        String userId = ExtraFieldPropagation.get(context, EXTRA_KEY);
-        assertThat(userId).isEqualTo("user2");
+        assertThat(BAGGAGE_FIELD.getValue(context)).isEqualTo("user2");
       }))
       .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
@@ -325,7 +322,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     KafkaStreams streams = buildKafkaStreams(topology);
 
     ProducerRecord<String, String> record = new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE);
-    record.headers().add(EXTRA_KEY, "user1".getBytes());
+    record.headers().add(BAGGAGE_FIELD.name(), "user1".getBytes());
     send(record);
 
     waitForStreamToRun(streams);

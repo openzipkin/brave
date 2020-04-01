@@ -15,7 +15,6 @@ package brave.context.slf4j;
 
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.test.propagation.CurrentTraceContextTest;
@@ -32,35 +31,19 @@ public class MDCScopeDecoratorTest extends CurrentTraceContextTest {
   static class BuilderSupplier implements Supplier<CurrentTraceContext.Builder> {
     @Override public CurrentTraceContext.Builder get() {
       return ThreadLocalCurrentTraceContext.newBuilder()
-        .addScopeDecorator(MDCScopeDecorator.newBuilder()
-          .addExtraField(EXTRA_FIELD)
-          .build());
+        .addScopeDecorator(MDCScopeDecorator.newBuilder().addField(BAGGAGE_FIELD).build());
     }
   }
 
   @Override protected void verifyImplicitContext(@Nullable TraceContext context) {
     if (context != null) {
-      assertThat(MDC.get("traceId"))
-        .isEqualTo(context.traceIdString());
-      assertThat(MDC.get("parentId"))
-        .isEqualTo(context.parentIdString());
-      assertThat(MDC.get("spanId"))
-        .isEqualTo(context.spanIdString());
-      assertThat(MDC.get("sampled"))
-        .isEqualTo(context.sampled() != null ? context.sampled().toString() : null);
-      assertThat(MDC.get(EXTRA_FIELD))
-        .isEqualTo(ExtraFieldPropagation.get(context, EXTRA_FIELD));
+      assertThat(MDC.get("traceId")).isEqualTo(context.traceIdString());
+      assertThat(MDC.get("spanId")).isEqualTo(context.spanIdString());
+      assertThat(MDC.get(BAGGAGE_FIELD.name())).isEqualTo(BAGGAGE_FIELD.getValue(context));
     } else {
-      assertThat(MDC.get("traceId"))
-        .isNull();
-      assertThat(MDC.get("parentId"))
-        .isNull();
-      assertThat(MDC.get("spanId"))
-        .isNull();
-      assertThat(MDC.get("sampled"))
-        .isNull();
-      assertThat(MDC.get(EXTRA_FIELD))
-        .isNull();
+      assertThat(MDC.get("traceId")).isNull();
+      assertThat(MDC.get("spanId")).isNull();
+      assertThat(MDC.get(BAGGAGE_FIELD.name())).isNull();
     }
   }
 }

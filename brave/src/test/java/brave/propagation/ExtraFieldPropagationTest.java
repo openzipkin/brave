@@ -15,7 +15,6 @@ package brave.propagation;
 
 import brave.Tracing;
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.ExtraFieldPropagation.Extra;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -30,6 +29,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 
+/**
+ * This has a lot of repetition with {@link BaggagePropagationTest} to ensure we don't break old
+ * signatures
+ */
 public class ExtraFieldPropagationTest {
   String awsTraceId =
     "Root=1-67891233-abcdef012345678912345678;Parent=463ac35c9f6413ad;Sampled=1";
@@ -71,18 +74,18 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void downcasesNames() {
-    ExtraFieldPropagation.RealFactory factory =
-      (ExtraFieldPropagation.RealFactory) ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
+    ExtraFieldPropagation.Factory factory =
+      (ExtraFieldPropagation.Factory) ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
         "X-FOO");
-    assertThat(factory.fieldNames)
+    assertThat(factory.fields).extracting(CorrelationField::name)
       .containsExactly("x-foo");
   }
 
   @Test public void trimsNames() {
-    ExtraFieldPropagation.RealFactory factory =
-      (ExtraFieldPropagation.RealFactory) ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
+    ExtraFieldPropagation.Factory factory =
+      (ExtraFieldPropagation.Factory) ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
         " x-foo  ");
-    assertThat(factory.fieldNames)
+    assertThat(factory.fields).extracting(CorrelationField::name)
       .containsExactly("x-foo");
   }
 
@@ -118,10 +121,10 @@ public class ExtraFieldPropagationTest {
 
   @Test public void emptyFields_disallowed() {
     assertThatThrownBy(() -> ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, ""))
-      .hasMessage("fieldNames[0] is empty");
+      .hasMessage("fieldName is empty");
 
     assertThatThrownBy(() -> ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, asList("")))
-      .hasMessage("fieldNames[0] is empty");
+      .hasMessage("fieldName is empty");
 
     assertThatThrownBy(() -> newFactoryBuilder(B3Propagation.FACTORY).addField("").build())
       .hasMessage("fieldName is empty");
@@ -131,7 +134,7 @@ public class ExtraFieldPropagationTest {
 
     assertThatThrownBy(
       () -> newFactoryBuilder(B3Propagation.FACTORY).addPrefixedFields("foo", asList("")).build())
-      .hasMessage("fieldNames[0] is empty");
+      .hasMessage("fieldName is empty");
   }
 
   // We formerly enforced presence of field names in the factory's factory method
@@ -195,8 +198,8 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void inject_extra() {
-    Extra extra = context.findExtra(Extra.class);
-    extra.put("x-vcap-request-id", uuid);
+    PredefinedBaggageFields extra = context.findExtra(PredefinedBaggageFields.class);
+    extra.put(BaggageField.create("x-vcap-request-id"), uuid);
 
     injector.inject(context, carrier);
 
@@ -204,9 +207,9 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void inject_two() {
-    Extra extra = context.findExtra(Extra.class);
-    extra.put("x-vcap-request-id", uuid);
-    extra.put("x-amzn-trace-id", awsTraceId);
+    PredefinedBaggageFields extra = context.findExtra(PredefinedBaggageFields.class);
+    extra.put(BaggageField.create("x-vcap-request-id"), uuid);
+    extra.put(BaggageField.create("x-amzn-trace-id"), awsTraceId);
 
     injector.inject(context, carrier);
 
@@ -222,9 +225,9 @@ public class ExtraFieldPropagationTest {
       .build();
     initialize();
 
-    Extra extra = context.findExtra(Extra.class);
-    extra.put("x-vcap-request-id", uuid);
-    extra.put("country-code", "FO");
+    PredefinedBaggageFields extra = context.findExtra(PredefinedBaggageFields.class);
+    extra.put(BaggageField.create("x-vcap-request-id"), uuid);
+    extra.put(BaggageField.create("country-code"), "FO");
 
     injector.inject(context, carrier);
 
@@ -243,7 +246,7 @@ public class ExtraFieldPropagationTest {
     assertThat(extracted.context().extra())
       .hasSize(1);
 
-    Extra extra = (Extra) extracted.context().extra().get(0);
+    PredefinedBaggageFields extra = (PredefinedBaggageFields) extracted.context().extra().get(0);
     assertThat(extra.toMap())
       .containsEntry("x-amzn-trace-id", awsTraceId);
   }
@@ -259,7 +262,7 @@ public class ExtraFieldPropagationTest {
     assertThat(extracted.context().extra())
       .hasSize(1);
 
-    Extra extra = (Extra) extracted.context().extra().get(0);
+    PredefinedBaggageFields extra = (PredefinedBaggageFields) extracted.context().extra().get(0);
     assertThat(extra.toMap())
       .containsEntry("x-amzn-trace-id", awsTraceId)
       .containsEntry("x-vcap-request-id", uuid);
@@ -282,7 +285,7 @@ public class ExtraFieldPropagationTest {
     assertThat(extracted.context().extra())
       .hasSize(1);
 
-    Extra extra = (Extra) extracted.context().extra().get(0);
+    PredefinedBaggageFields extra = (PredefinedBaggageFields) extracted.context().extra().get(0);
     assertThat(extra.toMap())
       .containsEntry("country-code", "FO")
       .containsEntry("x-vcap-request-id", uuid);
@@ -358,7 +361,6 @@ public class ExtraFieldPropagationTest {
       .isEqualTo("12345");
   }
 
-  /** Redaction only applies outbound. Inbound parsing should be unaffected */
   @Test public void extract_redactedField() {
     factory = newFactoryBuilder(B3Propagation.FACTORY)
       .addRedactedField("userid")
@@ -372,8 +374,9 @@ public class ExtraFieldPropagationTest {
 
     context = extractor.extract(carrier).context();
 
+    // Redaction also effects inbound propagation
     assertThat(ExtraFieldPropagation.get(context, "userid"))
-      .isEqualTo("bob");
+      .isNull();
     assertThat(ExtraFieldPropagation.get(context, "sessionid"))
       .isEqualTo("12345");
   }
@@ -411,7 +414,7 @@ public class ExtraFieldPropagationTest {
     injector.inject(context, carrier);
 
     // NOTE: the labels are downcased
-    assertThat(carrier).containsExactly(
+    assertThat(carrier).containsOnly(
       entry("b3", B3SingleFormat.writeB3SingleFormat(context)),
       entry("userid", "bob"),
       entry("sessionid", "12345"),

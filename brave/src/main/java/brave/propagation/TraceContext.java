@@ -180,10 +180,10 @@ public final class TraceContext extends SamplingFlags {
   }
 
   /**
-   * Returns an {@linkplain #extra() extra} of the given type if present or null if not.
+   * Returns a {@linkplain #extra() propagated state} of the given type if present or null if not.
    *
-   * <p>Note: it is the responsibility of {@link Propagation.Factory#decorate(TraceContext)}
-   * to consolidate extra fields. If it doesn't, there could be multiple instance of a given type
+   * <p>Note: It is the responsibility of {@link Propagation.Factory#decorate(TraceContext)}
+   * to consolidate elements. If it doesn't, there could be multiple instances of a given type
    * and this can break logic.
    */
   public @Nullable <T> T findExtra(Class<T> type) {

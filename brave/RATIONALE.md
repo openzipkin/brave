@@ -1,0 +1,3 @@
+# brave rationale
+
+## CorrelationFieldScopeDecorator

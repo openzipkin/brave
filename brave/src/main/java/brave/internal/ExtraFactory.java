@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -74,6 +74,9 @@ public abstract class ExtraFactory<E> {
       extra.add(first);
       extra.add(createExtraAndClaim(traceId, spanId));
       return contextWithExtra(context, Collections.unmodifiableList(extra));
+    } else if (consolidated != null) {
+      extra = ensureMutable(extra);
+      extra.set(0, consolidated);
     }
 
     // If we get here, we have at least one extra, but don't yet know if we need to create
@@ -99,6 +102,7 @@ public abstract class ExtraFactory<E> {
         i--;
       }
     }
+
     if (consolidated == null) {
       consolidated = createExtraAndClaim(traceId, spanId);
       extra = ensureMutable(extra);

@@ -56,7 +56,7 @@ public abstract class ScopedSpan implements SpanCustomizer {
    * @since 4.19
    */
   // This api is exposed as there's always a context in scope by definition, and the context is
-  // needed for methods like ExtraFieldPropagation.set
+  // needed for methods like BaggageField.updateValue
   public abstract TraceContext context();
 
   /**

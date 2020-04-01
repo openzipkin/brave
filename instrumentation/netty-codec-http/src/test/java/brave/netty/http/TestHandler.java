@@ -14,7 +14,6 @@
 package brave.netty.http;
 
 import brave.http.HttpTracing;
-import brave.propagation.ExtraFieldPropagation;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -28,7 +27,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpUtil;
 import java.io.IOException;
 
-import static brave.test.ITRemote.EXTRA_KEY;
+import static brave.test.ITRemote.BAGGAGE_FIELD;
 import static io.netty.handler.codec.http.HttpHeaderNames.CONNECTION;
 import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_LENGTH;
 import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE;
@@ -60,8 +59,8 @@ class TestHandler extends ChannelInboundHandlerAdapter {
         content = null;
       } else if (path.equals("/foo")) {
         content = "bar";
-      } else if (path.equals("/extra")) {
-        content = ExtraFieldPropagation.get(EXTRA_KEY);
+      } else if (path.equals("/baggage")) {
+        content = BAGGAGE_FIELD.getValue();
       } else if (path.equals("/child")) {
         httpTracing.tracing().tracer().nextSpan().name("child").start().finish();
         content = "happy";
