@@ -17,14 +17,15 @@ import brave.internal.CorrelationContext;
 import brave.internal.Nullable;
 import brave.propagation.CorrelationField.Updatable;
 import brave.propagation.CurrentTraceContext.Scope;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static brave.propagation.CorrelationScopeDecorator.equal;
 import static brave.propagation.CorrelationScopeDecorator.isSet;
-import static brave.propagation.CorrelationScopeDecorator.set;
+import static brave.propagation.CorrelationScopeDecorator.setBit;
 import static brave.propagation.CorrelationScopeDecorator.update;
 
 /** Handles reverting potentially late value updates to correlation fields. */
-abstract class CorrelationFieldUpdateScope implements Scope {
+abstract class CorrelationFieldUpdateScope extends AtomicBoolean implements Scope {
   CorrelationContext context;
 
   CorrelationFieldUpdateScope(CorrelationContext context) {
@@ -58,6 +59,8 @@ abstract class CorrelationFieldUpdateScope implements Scope {
     }
 
     @Override public void close() {
+      // don't duplicate work if called multiple times.
+      if (!compareAndSet(false, true)) return;
       delegate.close();
       if (dirty) update(context, trackedField, valueToRevert);
     }
@@ -89,6 +92,9 @@ abstract class CorrelationFieldUpdateScope implements Scope {
     }
 
     @Override public void close() {
+      // don't duplicate work if called multiple times.
+      if (!compareAndSet(false, true)) return;
+
       delegate.close();
       for (int i = 0; i < fields.length; i++) {
         if (isSet(dirty, i)) update(context, fields[i], valuesToRevert[i]);
@@ -98,7 +104,7 @@ abstract class CorrelationFieldUpdateScope implements Scope {
     @Override void handleUpdate(Updatable field, String value) {
       for (int i = 0; i < fields.length; i++) {
         if (fields[i].equals(field)) {
-          if (!equal(value, valuesToRevert[i])) dirty = set(dirty, i);
+          if (!equal(value, valuesToRevert[i])) dirty = setBit(dirty, i);
           return;
         }
       }

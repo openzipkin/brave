@@ -11,18 +11,11 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.internal.propagation;
+package brave.propagation;
 
 import brave.internal.CorrelationContext;
-import brave.propagation.B3Propagation;
-import brave.propagation.BaggageField;
-import brave.propagation.BaggagePropagation;
-import brave.propagation.CorrelationFields;
-import brave.propagation.CorrelationScopeDecorator;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
-import brave.propagation.Propagation;
-import brave.propagation.TraceContext;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -130,6 +123,66 @@ public class CorrelationScopeDecoratorTest {
       map.put(LOCAL_BAGGAGE_FIELD.name(), "abcd");
 
       assertThat(decorator.decorateScope(context, Scope.NOOP)).isNotSameAs(Scope.NOOP);
+    }
+  }
+
+  @Test public void doesntRevertMultipleTimes_singleField() {
+    BAGGAGE_FIELD.updateValue(context, "romeo");
+    map.put(BAGGAGE_FIELD.name(), "romeo");
+
+    try (Scope s = onlyBaggageFieldDecorator.decorateScope(null, Scope.NOOP)) {
+      assertThat(map).isEmpty();
+      s.close();
+      assertThat(map).isNotEmpty();
+      map.clear();
+
+      s.close();
+      assertThat(map).isEmpty(); // didn't revert again
+    }
+
+    map.put(FLUSHABLE_BAGGAGE_FIELD.name(), "excel");
+    FLUSHABLE_BAGGAGE_FIELD.updateValue(context, "excel");
+
+    try (Scope s = onlyFlushableBaggageFieldDecorator.decorateScope(null, mock(Scope.class))) {
+      assertThat(map).isEmpty();
+      s.close();
+      assertThat(map).isNotEmpty();
+      map.clear();
+
+      s.close();
+      assertThat(map).isEmpty(); // didn't revert again
+    }
+  }
+
+  @Test public void doesntRevertMultipleTimes_multipleFields() {
+    BAGGAGE_FIELD.updateValue(context, "romeo");
+    BAGGAGE_FIELD_2.updateValue(context, "FO");
+    LOCAL_BAGGAGE_FIELD.updateValue(context, "abcd");
+    map.put(BAGGAGE_FIELD_2.name(), "FO");
+    map.put(LOCAL_BAGGAGE_FIELD.name(), "abcd");
+    map.put(BAGGAGE_FIELD.name(), "romeo");
+
+    try (Scope s = withBaggageFieldsDecorator.decorateScope(null, Scope.NOOP)) {
+      assertThat(map).isEmpty();
+      s.close();
+      assertThat(map).isNotEmpty();
+      map.clear();
+
+      s.close();
+      assertThat(map).isEmpty(); // didn't revert again
+    }
+
+    map.put(FLUSHABLE_BAGGAGE_FIELD.name(), "excel");
+    FLUSHABLE_BAGGAGE_FIELD.updateValue(context, "excel");
+
+    try (Scope s = withFlushableBaggageFieldDecorator.decorateScope(null, mock(Scope.class))) {
+      assertThat(map).isEmpty();
+      s.close();
+      assertThat(map).isNotEmpty();
+      map.clear();
+
+      s.close();
+      assertThat(map).isEmpty(); // didn't revert again
     }
   }
 

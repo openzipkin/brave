@@ -19,12 +19,13 @@ import brave.propagation.CurrentTraceContext.Scope;
 import java.util.ArrayDeque;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static brave.propagation.CorrelationScopeDecorator.equal;
 import static brave.propagation.CorrelationScopeDecorator.update;
 
 /** Sets up thread locals if they are needed to support {@link Updatable#flushOnUpdate()} */
-final class CorrelationFieldFlushScope implements Scope {
+final class CorrelationFieldFlushScope extends AtomicBoolean implements Scope {
   final CorrelationFieldUpdateScope updateScope;
 
   CorrelationFieldFlushScope(CorrelationFieldUpdateScope updateScope) {
@@ -33,6 +34,8 @@ final class CorrelationFieldFlushScope implements Scope {
   }
 
   @Override public void close() {
+    // don't allow misalignment when close is called multiple times.
+    if (!compareAndSet(false, true)) return;
     popCurrentUpdateScope(updateScope);
     updateScope.close();
   }

@@ -169,12 +169,12 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
         if (scope != Scope.NOOP || fieldUpdatable) {
           if (!equal(valueToRevert, currentValue)) {
             update(context, field, currentValue);
-            dirty = set(dirty, i);
+            dirty = setBit(dirty, i);
           }
         }
 
         if (fieldUpdatable && ((Updatable) field).flushOnUpdate()) {
-          flushOnUpdate = set(flushOnUpdate, i);
+          flushOnUpdate = setBit(flushOnUpdate, i);
         }
 
         valuesToRevert[i] = valueToRevert;
@@ -204,7 +204,7 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
     }
   }
 
-  static int set(int bitset, int i) {
+  static int setBit(int bitset, int i) {
     return bitset | (1 << i);
   }
 
