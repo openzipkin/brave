@@ -26,7 +26,7 @@ import brave.propagation.TraceContext;
  * httpTracing = httpTracing.toBuilder()
  *   .clientRequestParser((request, context, span) -> {
  *     span.name(spanName(adapter, request)); // default span name
- *     span.tag("http.url", request.url()); // the whole url, not just the path
+ *     HttpTags.URL.tag(req, context, span); // the whole url, not just the path
  *   }).build();
  * }</pre>
  *
@@ -62,9 +62,8 @@ public interface HttpRequestParser {
     @Override public void parse(HttpRequest req, TraceContext context, SpanCustomizer span) {
       String name = spanName(req, context);
       if (name != null) span.name(name);
-      span.tag("http.method", req.method());
-      String path = req.path();
-      if (path != null) span.tag("http.path", path);
+      HttpTags.METHOD.tag(req, context, span);
+      HttpTags.PATH.tag(req, context, span);
     }
 
     /**

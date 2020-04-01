@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,6 +14,7 @@
 package brave.handler;
 
 import brave.Span;
+import brave.Tag;
 import brave.Tracer;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.TraceContext;
@@ -67,6 +68,7 @@ public abstract class FinishedSpanHandler {
    * @return true retains the span, and should almost always be used. false drops the span, making
    * it invisible to later handlers such as Zipkin.
    * @see #supportsOrphans() If you are scrubbing personal information, consider supporting orphans.
+   * @see Tag#tag(Object, TraceContext, MutableSpan)
    */
   public abstract boolean handle(TraceContext context, MutableSpan span);
 

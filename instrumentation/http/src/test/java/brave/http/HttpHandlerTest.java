@@ -59,6 +59,7 @@ public class HttpHandlerTest {
 
   @Test public void handleStart_parsesTagsWithCustomizer() {
     brave.Span span = mock(brave.Span.class);
+    when(span.context()).thenReturn(context);
     brave.SpanCustomizer spanCustomizer = mock(brave.SpanCustomizer.class);
     when(request.spanKind()).thenReturn(Span.Kind.SERVER);
     when(request.method()).thenReturn("GET");

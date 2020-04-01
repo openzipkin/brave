@@ -14,6 +14,7 @@
 package brave.handler;
 
 import brave.Span.Kind;
+import brave.Tag;
 import brave.Tracer;
 import brave.internal.IpLiteral;
 import brave.internal.Nullable;
@@ -258,7 +259,10 @@ public final class MutableSpan implements Cloneable {
     return result;
   }
 
-  /** @see brave.Span#tag(String, String) */
+  /**
+   * @see brave.Span#tag(String, String)
+   * @see Tag#tag(Object, TraceContext, MutableSpan)
+   */
   public void tag(String key, String value) {
     if (key == null) throw new NullPointerException("key == null");
     if (key.isEmpty()) throw new IllegalArgumentException("key is empty");

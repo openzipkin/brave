@@ -261,6 +261,7 @@ public final class JmsTracing {
   void tagQueueOrTopic(MessagingRequest request, SpanCustomizer span) {
     String channelName = request.channelName();
     if (channelName == null) return;
+    // TODO: TAG
 
     String channelKind = request.channelKind();
     if ("queue".equals(channelKind)) {

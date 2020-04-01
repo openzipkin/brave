@@ -20,6 +20,9 @@ import brave.Tracing;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 
+import static brave.http.HttpTags.STATUS_CODE;
+import static brave.http.HttpTags.statusCodeString;
+
 /**
  * Use this to control the response data recorded for an {@link TraceContext#sampledLocal() sampled
  * HTTP client or server span}.
@@ -29,8 +32,7 @@ import brave.propagation.TraceContext;
  * httpTracing = httpTracing.toBuilder()
  *   .clientResponseParser((response, context, span) -> {
  *     HttpResponseParser.DEFAULT.parse(response, context, span);
- *     int statusCode = response != null ? response.statusCode() : 0;
- *     if (statusCode > 0) span.tag("http.status_code", String.valueOf(statusCode));
+ *     HttpTags.STATUS_CODE.tag(response, context, span);
  *   }).build();
  * }</pre>
  *
@@ -78,18 +80,11 @@ public interface HttpResponseParser {
         statusCode = response.statusCode();
         String nameFromRoute = spanNameFromRoute(response, statusCode);
         if (nameFromRoute != null) span.name(nameFromRoute);
-        String maybeStatus = maybeStatusAsString(statusCode, 299);
-        if (maybeStatus != null) span.tag("http.status_code", maybeStatus);
+        if (statusCode < 200 || statusCode > 299) { // not success code
+          STATUS_CODE.tag(response, context, span);
+        }
       }
       error(statusCode, response.error(), span);
-    }
-
-    /** The intent of this is to by default add "http.status_code", when not a success code */
-    @Nullable String maybeStatusAsString(int statusCode, int upperRange) {
-      if (statusCode != 0 && (statusCode < 200 || statusCode > upperRange)) {
-        return String.valueOf(statusCode);
-      }
-      return null;
     }
 
     @Nullable static String spanNameFromRoute(HttpResponse response, int statusCode) {
@@ -124,7 +119,7 @@ public interface HttpResponseParser {
       // success range. 1xx-3xx are not errors. It is endpoint-specific if client codes like 404 are
       // in fact errors. That's why this is overridable.
       if (httpStatus < 100 || httpStatus > 399) {
-        span.tag("error", String.valueOf(httpStatus));
+        span.tag("error", statusCodeString(httpStatus));
       }
     }
 

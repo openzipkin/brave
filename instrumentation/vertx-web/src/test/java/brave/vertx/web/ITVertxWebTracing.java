@@ -15,6 +15,7 @@ package brave.vertx.web;
 
 import brave.Tracing;
 import brave.http.HttpRequestParser;
+import brave.http.HttpTags;
 import brave.propagation.ExtraFieldPropagation;
 import brave.test.http.ITHttpServer;
 import io.vertx.core.Handler;
@@ -139,7 +140,7 @@ public class ITVertxWebTracing extends ITHttpServer {
   void handlesReroute(String path) throws IOException {
     httpTracing = httpTracing.toBuilder().serverRequestParser((request, context, span) -> {
       HttpRequestParser.DEFAULT.parse(request, context, span);
-      span.tag("http.url", request.url()); // just the path is logged by default
+      HttpTags.URL.tag(request, span); // just the path is logged by default
     }).build();
     init();
 

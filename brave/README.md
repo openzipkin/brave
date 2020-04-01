@@ -109,6 +109,22 @@ version.
 span.tag("clnt/finagle.version", "6.36.0");
 ```
 
+The `Tag` type is a helper that works with all variants of `Span`. For
+common or expensive tags, consider implementing `Tag` or re-using a
+built-in one.
+
+Here's an example of a potentially expensive tag:
+```java
+SUMMARY_TAG = new Tag<Summarizer>("summary") {
+  @Override protected String parseValue(Summarizer input, TraceContext context) {
+    return input.computeSummary();
+  }
+}
+
+// This works for any variant of span
+SUMMARY_TAG.tag(summarizer, span);
+```
+
 When exposing the ability to customize spans to third parties, prefer
 `brave.SpanCustomizer` as opposed to `brave.Span`. The former is simpler to
 understand and test, and doesn't tempt users with span lifecycle hooks.

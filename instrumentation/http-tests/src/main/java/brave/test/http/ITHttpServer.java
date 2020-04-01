@@ -22,6 +22,7 @@ import brave.http.HttpRequestParser;
 import brave.http.HttpResponseParser;
 import brave.http.HttpRuleSampler;
 import brave.http.HttpServerParser;
+import brave.http.HttpTags;
 import brave.http.HttpTracing;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.ExtraFieldPropagation;
@@ -244,7 +245,7 @@ public abstract class ITHttpServer extends ITRemote {
   @Test public void readsRequestAtResponseTime() throws IOException {
     httpTracing = httpTracing.toBuilder()
       .serverResponseParser((response, context, span) -> {
-        span.tag("http.url", response.request().url()); // just the path is tagged by default
+        HttpTags.URL.tag(response.request(), span); // just the path is tagged by default
       })
       .build();
     init();
@@ -260,7 +261,7 @@ public abstract class ITHttpServer extends ITRemote {
     httpTracing = httpTracing.toBuilder()
       .serverRequestParser((request, context, span) -> {
         span.name(request.method().toLowerCase() + " " + request.path());
-        span.tag("http.url", request.url()); // just the path is tagged by default
+        HttpTags.URL.tag(request, span); // just the path is tagged by default
         span.tag("request_customizer.is_span", (span instanceof brave.Span) + "");
       })
       .serverResponseParser((response, context, span) -> {
@@ -380,7 +381,7 @@ public abstract class ITHttpServer extends ITRemote {
 
   final HttpRequestParser addHttpUrlTag = (request, context, span) -> {
     HttpRequestParser.DEFAULT.parse(request, context, span);
-    span.tag("http.url", request.url()); // just the path is tagged by default
+    HttpTags.URL.tag(request, span); // just the path is tagged by default
   };
 
   /** If http route is supported, then the span name should include it */

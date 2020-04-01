@@ -146,6 +146,8 @@ public class HttpClientHandlerTest {
 
   @Test public void handleReceive_finishesSpanEvenIfUnwrappedNull() {
     brave.Span span = mock(brave.Span.class);
+    when(span.context()).thenReturn(context);
+    when(span.customizer()).thenReturn(span);
 
     handler.handleReceive(mock(HttpClientResponse.class), null, span);
 
@@ -158,6 +160,7 @@ public class HttpClientHandlerTest {
 
   @Test public void handleReceive_finishesSpanEvenIfUnwrappedNull_withError() {
     brave.Span span = mock(brave.Span.class);
+    when(span.context()).thenReturn(context);
     when(span.customizer()).thenReturn(span);
 
     Exception error = new RuntimeException("peanuts");
