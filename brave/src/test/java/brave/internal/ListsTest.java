@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -57,20 +57,25 @@ public class ListsTest {
       .isSameAs(list);
   }
 
-  @Test public void ensureImmutable_doesntCopySingletonList() {
+  @Test public void ensureImmutable_returnsEmptyListForMutableInput() {
+    List<Object> list = new ArrayList<>();
+    assertThat(Lists.ensureImmutable(list)).isSameAs(Collections.emptyList());
+  }
+
+  @Test public void ensureImmutable_singletonListStaysSingleton() {
     List<Object> list = Collections.singletonList("foo");
-    assertThat(Lists.ensureImmutable(list))
-      .isSameAs(list);
+    assertThat(Lists.ensureImmutable(list).getClass().getSimpleName())
+      .isEqualTo("SingletonList");
   }
 
   @Test public void ensureImmutable_doesntCopyUnmodifiableList() {
-    List<Object> list = Collections.unmodifiableList(Arrays.asList("foo"));
+    List<Object> list = Collections.unmodifiableList(Arrays.asList("foo", "bar"));
     assertThat(Lists.ensureImmutable(list))
       .isSameAs(list);
   }
 
   @Test public void ensureImmutable_doesntCopyImmutableList() {
-    List<Object> list = ImmutableList.of("foo");
+    List<Object> list = ImmutableList.of("foo", "bar");
     assertThat(Lists.ensureImmutable(list))
       .isSameAs(list);
   }

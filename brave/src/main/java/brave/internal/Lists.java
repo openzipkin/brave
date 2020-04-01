@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -29,19 +29,21 @@ public final class Lists {
     return mutable;
   }
 
-  public static List<Object> ensureImmutable(List<Object> extra) {
-    if (isImmutable(extra)) return extra;
+  public static List<Object> ensureImmutable(List<Object> list) {
+    if (list.isEmpty()) return Collections.emptyList();
     // Faster to make a copy than check the type to see if it is already a singleton list
-    if (extra.size() == 1) return Collections.singletonList(extra.get(0));
-    return Collections.unmodifiableList(new ArrayList<>(extra));
+    if (list.size() == 1) return Collections.singletonList(list.get(0));
+    if (isImmutable(list)) return list;
+    return Collections.unmodifiableList(new ArrayList<>(list));
   }
 
   static boolean isImmutable(List<Object> extra) {
-    if (extra == Collections.EMPTY_LIST) return true;
+    assert extra.size() > 1;  // Handled by caller.
     // avoid copying datastructure by trusting certain names.
     String simpleName = extra.getClass().getSimpleName();
-    return simpleName.equals("SingletonList")
-      || simpleName.startsWith("Unmodifiable")
+    // We don't need to check EMPTY_LIST or SingletonList here since our only caller handles them
+    // without type-checking.
+    return simpleName.startsWith("Unmodifiable")
       || simpleName.contains("Immutable");
   }
 
