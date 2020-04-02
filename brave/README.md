@@ -365,7 +365,7 @@ Tags.BAGGAGE_FIELD.tag(COUNTRY_CODE, span);
 
 You can also integrate baggage with other correlated contexts such as logging:
 ```java
-AMZN_TRACE_ID = BaggageField.newBuilder("x-amzn-trace-id").build();
+AMZN_TRACE_ID = BaggageField.create("x-amzn-trace-id");
 
 // Allow logging patterns like %X{traceId} %X{x-amzn-trace-id}
 decorator = MDCScopeDecorator.newBuilder()

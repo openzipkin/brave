@@ -60,8 +60,8 @@ public class BaggagePropagationFactoryBeanTest {
 
   @Test public void fields() {
     context = new XmlBeans(""
-      + "<bean id=\"userId\" class=\"brave.spring.beans.BaggageFieldFactoryBean\">\n"
-      + "  <property name=\"name\" value=\"userId\"/>\n"
+      + "<bean id=\"userId\" class=\"brave.baggage.BaggageField\" factory-method=\"create\">\n"
+      + "  <constructor-arg><value>userId</value></constructor-arg>\n"
       + "</bean>\n"
       + "<bean id=\"propagationFactory\" class=\"brave.spring.beans.BaggagePropagationFactoryBean\">\n"
       + "  <property name=\"fields\">\n"
@@ -83,8 +83,8 @@ public class BaggagePropagationFactoryBeanTest {
 
   @Test public void remoteFields() {
     context = new XmlBeans(""
-      + "<bean id=\"userId\" class=\"brave.spring.beans.BaggageFieldFactoryBean\">\n"
-      + "  <property name=\"name\" value=\"userId\"/>\n"
+      + "<bean id=\"userId\" class=\"brave.baggage.BaggageField\" factory-method=\"create\">\n"
+      + "  <constructor-arg><value>userId</value></constructor-arg>\n"
       + "</bean>\n"
       + "<bean id=\"propagationFactory\" class=\"brave.spring.beans.BaggagePropagationFactoryBean\">\n"
       + "  <property name=\"remoteFields\">\n"
@@ -114,8 +114,8 @@ public class BaggagePropagationFactoryBeanTest {
 
   @Test public void remoteFields_defaultKeyName() {
     context = new XmlBeans(""
-      + "<bean id=\"userId\" class=\"brave.spring.beans.BaggageFieldFactoryBean\">\n"
-      + "  <property name=\"name\" value=\"userId\"/>\n"
+      + "<bean id=\"userId\" class=\"brave.baggage.BaggageField\" factory-method=\"create\">\n"
+      + "  <constructor-arg><value>userId</value></constructor-arg>\n"
       + "</bean>\n"
       + "<bean id=\"propagationFactory\" class=\"brave.spring.beans.BaggagePropagationFactoryBean\">\n"
       + "  <property name=\"remoteFields\">\n"
@@ -139,8 +139,8 @@ public class BaggagePropagationFactoryBeanTest {
 
   @Test public void propagationFactory() {
     context = new XmlBeans(""
-      + "<bean id=\"userId\" class=\"brave.spring.beans.BaggageFieldFactoryBean\">\n"
-      + "  <property name=\"name\" value=\"userId\"/>\n"
+      + "<bean id=\"userId\" class=\"brave.baggage.BaggageField\" factory-method=\"create\">\n"
+      + "  <constructor-arg><value>userId</value></constructor-arg>\n"
       + "</bean>\n"
       + "<bean id=\"propagationFactory\" class=\"brave.spring.beans.BaggagePropagationFactoryBean\">\n"
       + "  <property name=\"propagationFactory\">\n"

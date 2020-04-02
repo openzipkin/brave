@@ -18,7 +18,7 @@ import brave.baggage.BaggageField;
 public class CorrelationField {
   BaggageField field;
   String name;
-  boolean dirty;
+  boolean dirty, flushOnUpdate;
 
   public void setField(BaggageField field) {
     this.field = field;
@@ -30,5 +30,9 @@ public class CorrelationField {
 
   public void setDirty(boolean dirty) {
     this.dirty = dirty;
+  }
+
+  public void setFlushOnUpdate(boolean flushOnUpdate) {
+    this.flushOnUpdate = flushOnUpdate;
   }
 }

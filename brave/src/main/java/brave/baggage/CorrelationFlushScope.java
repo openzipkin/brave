@@ -22,11 +22,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static brave.baggage.CorrelationScopeDecorator.equal;
 
-/** Sets up thread locals if they are needed to support {@link BaggageField#flushOnUpdate()} */
-final class CorrrelationFlushScope extends AtomicBoolean implements Scope {
+/**
+ * Sets up thread locals if they are needed to support {@link CorrelationScopeDecorator.Builder#addFlushOnUpdateName(String)}
+ */
+final class CorrelationFlushScope extends AtomicBoolean implements Scope {
   final CorrelationUpdateScope updateScope;
 
-  CorrrelationFlushScope(CorrelationUpdateScope updateScope) {
+  CorrelationFlushScope(CorrelationUpdateScope updateScope) {
     this.updateScope = updateScope;
     pushCurrentUpdateScope(updateScope);
   }
@@ -46,8 +48,6 @@ final class CorrrelationFlushScope extends AtomicBoolean implements Scope {
    * BaggageField#updateValue(String)}.
    */
   static void flush(BaggageField field, String value) {
-    assert field.flushOnUpdate();
-
     Set<CorrelationContext> syncedContexts = new LinkedHashSet<>();
     for (Object o : updateScopeStack()) {
       CorrelationUpdateScope next = ((CorrelationUpdateScope) o);

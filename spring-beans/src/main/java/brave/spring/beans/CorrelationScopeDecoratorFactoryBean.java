@@ -35,6 +35,7 @@ public class CorrelationScopeDecoratorFactoryBean implements FactoryBean {
         if (name == null) name = field.field.name().toLowerCase(Locale.ROOT);
         builder.addField(field.field, name);
         if (field.dirty) builder.addDirtyName(name);
+        if (field.flushOnUpdate) builder.addFlushOnUpdateName(name);
       }
     }
     if (customizers != null) {

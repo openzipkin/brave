@@ -16,6 +16,7 @@ package brave.spring.beans;
 import brave.baggage.BaggageFields;
 import brave.baggage.CorrelationScopeCustomizer;
 import brave.baggage.CorrelationScopeDecorator;
+import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.After;
 import org.junit.Test;
@@ -80,15 +81,23 @@ public class CorrelationScopeDecoratorFactoryBeanTest {
       + "      <bean class=\"brave.spring.beans.CorrelationField\">\n"
       + "        <property name=\"field\" ref=\"traceId\"/>\n"
       + "        <property name=\"name\" value=\"X-B3-TraceId\"/>\n"
+      + "        <property name=\"dirty\" value=\"true\"/>\n"
+      + "        <property name=\"flushOnUpdate\" value=\"true\"/>\n"
       + "      </bean>\n"
       + "    </list>\n"
       + "  </property>\n"
       + "</bean>"
     );
 
-    assertThat(context.getBean("correlationDecorator", CorrelationScopeDecorator.class))
-      .extracting("field")
+    ScopeDecorator decorator = context.getBean("correlationDecorator", ScopeDecorator.class);
+    assertThat(decorator).extracting("field")
       .isEqualTo(BaggageFields.TRACE_ID);
+    assertThat(decorator).extracting("name")
+      .isEqualTo("X-B3-TraceId");
+    assertThat(decorator).extracting("dirty")
+      .isEqualTo(true);
+    assertThat(decorator).extracting("flushOnUpdate")
+      .isEqualTo(true);
   }
 
   public static final CorrelationScopeCustomizer

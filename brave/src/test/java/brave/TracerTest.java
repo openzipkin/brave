@@ -48,7 +48,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
 public class TracerTest {
-  static final BaggageField BAGGAGE_FIELD = BaggageField.newBuilder("user-id").build();
+  static final BaggageField BAGGAGE_FIELD = BaggageField.create("user-id");
 
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).shared(true).build();
   List<zipkin2.Span> spans = new ArrayList<>();

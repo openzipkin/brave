@@ -18,7 +18,6 @@ import brave.baggage.BaggagePropagation.BaggageFieldWithKeyNames;
 import brave.internal.InternalBaggage;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
-import brave.propagation.CurrentTraceContext;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
@@ -65,7 +64,7 @@ import java.util.Set;
  *
  * <p>You can also integrate baggage with other correlated contexts such as logging:
  * <pre>{@code
- * AMZN_TRACE_ID = BaggageField.newBuilder("x-amzn-trace-id").build();
+ * AMZN_TRACE_ID = BaggageField.create("x-amzn-trace-id");
  *
  * // Allow logging patterns like %X{traceId} %X{x-amzn-trace-id}
  * decorator = MDCScopeDecorator.newBuilder()
@@ -109,15 +108,7 @@ public final class BaggageField {
    * @since 5.11
    */
   public static BaggageField create(String name) {
-    return new Builder(name).build();
-  }
-
-  /**
-   * @param name See {@link #name()}
-   * @since 5.11
-   */
-  public static Builder newBuilder(String name) {
-    return new Builder(name);
+    return new BaggageField(name, BaggageContext.EXTRA);
   }
 
   /**
@@ -187,68 +178,13 @@ public final class BaggageField {
     return getByName(currentTraceContext(), name);
   }
 
-  /** @since 5.11 */
-  public static class Builder {
-    final String name;
-    BaggageContext context = BaggageContext.EXTRA;
-    boolean flushOnUpdate = false;
-
-    Builder(String name) {
-      this.name = validateName(name);
-    }
-
-    /**
-     * When true, updates made via {@linkplain #updateValue(TraceContext, String)} flush immediately
-     * to the correlation context.
-     *
-     * <p>This is useful for callbacks that have a void return. Ex.
-     * <pre>{@code
-     * @SendTo(SourceChannels.OUTPUT)
-     * public void timerMessageSource() {
-     *   // Assume BUSINESS_PROCESS is an updatable field
-     *   BUSINESS_PROCESS.updateValue("accounting");
-     *   // Assuming a Log4j context, the expression %{bp} will show "accounting" in businessCode()
-     *   businessCode();
-     * }
-     * }</pre>
-     *
-     * <h3>Appropriate Usage</h3>
-     * This has a significant performance impact as it requires even {@link
-     * CurrentTraceContext#maybeScope(TraceContext)} to always track values.
-     *
-     * <p>Most fields do not change in the scope of a {@link TraceContext}. For example, standard
-     * fields such as {@link BaggageFields#SPAN_ID the span ID} and {@linkplain
-     * BaggageFields#constant(String, String) constants} such as env variables do not need to be
-     * tracked. Even field value updates do not necessarily need to be flushed to the underlying
-     * correlation context, as they will apply on the next scope operation.
-     *
-     * @since 5.11
-     */
-    public Builder flushOnUpdate() {
-      this.flushOnUpdate = true;
-      return this;
-    }
-
-    /** @since 5.11 */
-    public BaggageField build() {
-      return new BaggageField(this);
-    }
-
-    Builder internalContext(BaggageContext context) {
-      this.context = context;
-      return this;
-    }
-  }
-
   final String name, lcName;
   final BaggageContext context;
-  final boolean flushOnUpdate;
 
-  BaggageField(Builder builder) { // sealed to this package
-    name = builder.name;
-    lcName = name.toLowerCase(Locale.ROOT);
-    context = builder.context;
-    flushOnUpdate = builder.flushOnUpdate;
+  BaggageField(String name, BaggageContext context) { // sealed to this package
+    this.name = validateName(name);
+    this.lcName = name.toLowerCase(Locale.ROOT);
+    this.context = context;
   }
 
   /**
@@ -308,8 +244,8 @@ public final class BaggageField {
    */
   public void updateValue(@Nullable TraceContext context, @Nullable String value) {
     if (context == null) return;
-    if (this.context.updateValue(this, context, value) && flushOnUpdate) {
-      CorrrelationFlushScope.flush(this, value);
+    if (this.context.updateValue(this, context, value)) {
+      CorrelationFlushScope.flush(this, value);
     }
   }
 
@@ -322,8 +258,8 @@ public final class BaggageField {
    */
   public void updateValue(TraceContextOrSamplingFlags extracted, @Nullable String value) {
     if (extracted == null) throw new NullPointerException("extracted == null");
-    if (context.updateValue(this, extracted, value) && flushOnUpdate) {
-      CorrrelationFlushScope.flush(this, value);
+    if (context.updateValue(this, extracted, value)) {
+      CorrelationFlushScope.flush(this, value);
     }
   }
 
@@ -337,10 +273,6 @@ public final class BaggageField {
    */
   public void updateValue(String value) {
     updateValue(currentTraceContext(), value);
-  }
-
-  public final boolean flushOnUpdate() {
-    return flushOnUpdate;
   }
 
   @Override public String toString() {

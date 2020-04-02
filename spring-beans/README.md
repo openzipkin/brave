@@ -10,7 +10,6 @@ Bean Factories exist for the following types:
 * HttpTracingFactoryBean - for HTTP tagging and sampling policy
 * MessagingTracingFactoryBean - for messaging tagging and sampling policy
 * CurrentTraceContextFactoryBean - to integrate decorators such as correlation.
-* BaggageFieldFactoryBean - for setting up additional propagation fields, like "customer-id"
 * BaggagePropagationFactoryBean - for propagating baggage fields in process and over headers
 * CorrelationScopeDecoratorFactoryBean -  for scope decorations such as MDC (logging) field correlation
 

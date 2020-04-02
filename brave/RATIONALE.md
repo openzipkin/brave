@@ -9,7 +9,7 @@ chance the field can be updated later:
 
 * `CorrelationScopeDecorator.Builder.addDirtyName()`
   * Always revert because someone else could have changed it (ex via `MDC`)
-* `BaggageField.flushOnUpdate()`
+* `CorrelationScopeDecorator.Builder.addFlushOnUpdateName()`
   * Revert if only when we changed it (ex via `BaggageField.updateValue()`)
 
 This is because users generally expect data to be "cleaned up" when a scope

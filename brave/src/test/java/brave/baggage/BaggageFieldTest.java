@@ -50,24 +50,13 @@ public class BaggageFieldTest {
   TraceContext requestIdContext =
     context.toBuilder().extra(requestIdExtraction.extra()).build();
 
-  @Test public void builder() {
-    assertThat(BaggageField.create("Name").name()).isEqualTo("Name");
-    assertThat(BaggageField.create("foo").flushOnUpdate()).isFalse();
-    assertThat(
-      BaggageField.newBuilder("flushOnUpdate").flushOnUpdate().build().flushOnUpdate()
-    ).isTrue();
-  }
-
   @Test public void internalStorage() {
     assertThat(BaggageField.create("foo").context)
       .isSameAs(BaggageContext.EXTRA);
 
     BaggageContext context = mock(BaggageContext.class);
-    assertThat(
-      BaggageField.newBuilder("context")
-        .internalContext(context)
-        .build().context
-    ).isSameAs(context);
+    assertThat(new BaggageField("context", context).context)
+      .isSameAs(context);
   }
 
   @Test public void getAll_extracted() {
@@ -299,12 +288,9 @@ public class BaggageFieldTest {
     assertThat(field).isEqualTo(field);
     assertThat(field).hasSameHashCodeAs(field);
 
-    // same values are equivalent
-    BaggageField sameParameters = BaggageField.create("foo");
-    BaggageField sameName = BaggageField.newBuilder("foo").flushOnUpdate().build();
-    assertThat(field).isEqualTo(sameParameters);
+    // different case format is equivalent
+    BaggageField sameName = BaggageField.create("fOo");
     assertThat(field).isEqualTo(sameName);
-    assertThat(field).hasSameHashCodeAs(sameParameters);
     assertThat(field).hasSameHashCodeAs(sameName);
 
     // different values are not equivalent

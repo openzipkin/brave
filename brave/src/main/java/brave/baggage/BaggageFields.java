@@ -42,8 +42,7 @@ public final class BaggageFields {
    * @see TraceContext#traceIdString()
    * @since 5.11
    */
-  public static final BaggageField TRACE_ID = BaggageField.newBuilder("traceId")
-    .internalContext(new TraceId()).build();
+  public static final BaggageField TRACE_ID = new BaggageField("traceId", new TraceId());
 
   static final class TraceId extends BaggageContext.ReadOnly {
     @Override public String getValue(BaggageField field, TraceContextOrSamplingFlags extracted) {
@@ -63,8 +62,7 @@ public final class BaggageFields {
    * @see TraceContext#parentIdString()
    * @since 5.11
    */
-  public static final BaggageField PARENT_ID = BaggageField.newBuilder("parentId")
-    .internalContext(new ParentId()).build();
+  public static final BaggageField PARENT_ID = new BaggageField("parentId", new ParentId());
 
   static final class ParentId extends BaggageContext.ReadOnly {
     @Override public String getValue(BaggageField field, TraceContextOrSamplingFlags extracted) {
@@ -83,8 +81,7 @@ public final class BaggageFields {
    * @see TraceContext#spanIdString()
    * @since 5.11
    */
-  public static final BaggageField SPAN_ID = BaggageField.newBuilder("spanId")
-    .internalContext(new SpanId()).build();
+  public static final BaggageField SPAN_ID = new BaggageField("spanId", new SpanId());
 
   static final class SpanId extends BaggageContext.ReadOnly {
     @Override public String getValue(BaggageField field, TraceContextOrSamplingFlags extracted) {
@@ -105,8 +102,7 @@ public final class BaggageFields {
    * @see TraceContext#sampled()
    * @since 5.11
    */
-  public static final BaggageField SAMPLED = BaggageField.newBuilder("sampled")
-    .internalContext(new Sampled()).build();
+  public static final BaggageField SAMPLED = new BaggageField("sampled", new Sampled());
 
   static final class Sampled extends BaggageContext.ReadOnly {
     @Override public String getValue(BaggageField field, TraceContextOrSamplingFlags extracted) {
@@ -133,8 +129,7 @@ public final class BaggageFields {
    * @since 5.11
    */
   public static BaggageField constant(String name, @Nullable String value) {
-    if (name == null) throw new NullPointerException("name == null");
-    return BaggageField.newBuilder(name).internalContext(new Constant(value)).build();
+    return new BaggageField(name, new Constant(value));
   }
 
   static final class Constant extends BaggageContext.ReadOnly {
