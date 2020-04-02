@@ -15,9 +15,10 @@ package brave.spring.beans;
 
 import brave.baggage.BaggageField;
 
-public class MappedBaggageField {
+public class CorrelationField {
   BaggageField field;
   String name;
+  boolean dirty;
 
   public void setField(BaggageField field) {
     this.field = field;
@@ -25,5 +26,9 @@ public class MappedBaggageField {
 
   public void setName(String name) {
     this.name = name;
+  }
+
+  public void setDirty(boolean dirty) {
+    this.dirty = dirty;
   }
 }

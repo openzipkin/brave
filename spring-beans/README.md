@@ -79,9 +79,9 @@ Here's an example of adding only the trace ID as the correlation property "X-B3-
   <property name="builder">
     <bean class="brave.context.log4j12.MDCScopeDecorator" factory-method="newBuilder"/>
   </property>
-  <property name="mappedFields">
+  <property name="fields">
     <list>
-      <bean class="brave.spring.beans.MappedBaggageField">
+      <bean class="brave.spring.beans.CorrelationField">
         <property name="field" ref="traceId"/>
         <property name="name" value="X-B3-TraceId"/>
       </bean>

@@ -13,31 +13,28 @@
  */
 package brave.spring.beans;
 
-import brave.baggage.BaggageField;
 import brave.baggage.CorrelationScopeCustomizer;
 import brave.baggage.CorrelationScopeDecorator;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import java.util.List;
+import java.util.Locale;
 import org.springframework.beans.factory.FactoryBean;
 
 /** Spring XML config does not support chained builders. This converts accordingly */
 public class CorrelationScopeDecoratorFactoryBean implements FactoryBean {
   CorrelationScopeDecorator.Builder builder;
-  List<BaggageField> fields;
-  List<MappedBaggageField> mappedFields;
+  List<CorrelationField> fields;
   List<CorrelationScopeCustomizer> customizers;
 
   @Override public ScopeDecorator getObject() {
     if (builder == null) throw new NullPointerException("builder == null");
-    if (fields != null || mappedFields != null) builder.clear();
     if (fields != null) {
-      for (BaggageField field : fields) {
-        builder.addField(field);
-      }
-    }
-    if (mappedFields != null) {
-      for (MappedBaggageField mappedFields : mappedFields) {
-        builder.addField(mappedFields.field, mappedFields.name);
+      builder.clear();
+      for (CorrelationField field : fields) {
+        String name = field.name;
+        if (name == null) name = field.field.name().toLowerCase(Locale.ROOT);
+        builder.addField(field.field, name);
+        if (field.dirty) builder.addDirtyName(name);
       }
     }
     if (customizers != null) {
@@ -58,12 +55,8 @@ public class CorrelationScopeDecoratorFactoryBean implements FactoryBean {
     this.builder = builder;
   }
 
-  public void setFields(List<BaggageField> fields) {
+  public void setFields(List<CorrelationField> fields) {
     this.fields = fields;
-  }
-
-  public void setMappedFields(List<MappedBaggageField> mappedFields) {
-    this.mappedFields = mappedFields;
   }
 
   public void setCustomizers(List<CorrelationScopeCustomizer> customizers) {
