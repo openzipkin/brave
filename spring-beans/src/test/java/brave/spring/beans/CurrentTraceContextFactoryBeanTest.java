@@ -15,7 +15,7 @@ package brave.spring.beans;
 
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContextCustomizer;
-import java.util.List;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.After;
 import org.junit.Test;
 
@@ -44,7 +44,8 @@ public class CurrentTraceContextFactoryBeanTest {
 
     assertThat(context.getBean("currentTraceContext", CurrentTraceContext.class))
       .extracting("scopeDecorators")
-      .satisfies(e -> assertThat((List) e).isNotEmpty());
+      .asInstanceOf(InstanceOfAssertFactories.ARRAY)
+      .isNotEmpty();
   }
 
   public static final CurrentTraceContextCustomizer
