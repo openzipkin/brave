@@ -70,7 +70,7 @@ public final class MDCScopeDecorator {
    */
   @Deprecated public static CurrentTraceContext.ScopeDecorator create() {
     return new Builder()
-      .clearFields()
+      .clear()
       .addField(BaggageFields.TRACE_ID)
       .addField(BaggageFields.PARENT_ID)
       .addField(BaggageFields.SPAN_ID)

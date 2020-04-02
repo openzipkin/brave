@@ -31,6 +31,13 @@ abstract class BaggageFieldUpdateScope extends AtomicBoolean implements Scope {
   }
 
   /**
+   * Called to get the name of the field, before it is flushed to the underlying context.
+   *
+   * @return the name used for this field, or null if not configured.
+   */
+  @Nullable abstract String name(BaggageField field);
+
+  /**
    * Called after a field value is flushed to the underlying context. Only take action if the input
    * field is current being tracked.
    */
@@ -38,20 +45,23 @@ abstract class BaggageFieldUpdateScope extends AtomicBoolean implements Scope {
 
   static final class Single extends BaggageFieldUpdateScope {
     final Scope delegate;
-    final BaggageField trackedField;
+    final BaggageField field;
+    final String name;
     final @Nullable String valueToRevert;
     boolean dirty;
 
     Single(
       Scope delegate,
       CorrelationContext context,
-      BaggageField trackedField,
+      BaggageField field,
+      String name,
       @Nullable String valueToRevert,
       boolean dirty
     ) {
       super(context);
       this.delegate = delegate;
-      this.trackedField = trackedField;
+      this.field = field;
+      this.name = name;
       this.valueToRevert = valueToRevert;
       this.dirty = dirty;
     }
@@ -60,11 +70,15 @@ abstract class BaggageFieldUpdateScope extends AtomicBoolean implements Scope {
       // don't duplicate work if called multiple times.
       if (!compareAndSet(false, true)) return;
       delegate.close();
-      if (dirty) context.update(trackedField.name, valueToRevert);
+      if (dirty) context.update(name, valueToRevert);
+    }
+
+    @Override String name(BaggageField field) {
+      return name;
     }
 
     @Override void handleUpdate(BaggageField field, String value) {
-      if (!this.trackedField.equals(field)) return;
+      if (!this.field.equals(field)) return;
       if (!equal(value, valueToRevert)) dirty = true;
     }
   }
@@ -72,6 +86,7 @@ abstract class BaggageFieldUpdateScope extends AtomicBoolean implements Scope {
   static final class Multiple extends BaggageFieldUpdateScope {
     final Scope delegate;
     final BaggageField[] fields;
+    final String[] names;
     final String[] valuesToRevert;
     int dirty;
 
@@ -79,12 +94,14 @@ abstract class BaggageFieldUpdateScope extends AtomicBoolean implements Scope {
       Scope delegate,
       CorrelationContext context,
       BaggageField[] fields,
+      String[] names,
       String[] valuesToRevert,
       int dirty
     ) {
       super(context);
       this.delegate = delegate;
       this.fields = fields;
+      this.names = names;
       this.valuesToRevert = valuesToRevert;
       this.dirty = dirty;
     }
@@ -95,8 +112,17 @@ abstract class BaggageFieldUpdateScope extends AtomicBoolean implements Scope {
 
       delegate.close();
       for (int i = 0; i < fields.length; i++) {
-        if (isSet(dirty, i)) context.update(fields[i].name, valuesToRevert[i]);
+        if (isSet(dirty, i)) context.update(names[i], valuesToRevert[i]);
       }
+    }
+
+    @Override String name(BaggageField field) {
+      for (int i = 0; i < fields.length; i++) {
+        if (fields[i].equals(field)) {
+          return names[i];
+        }
+      }
+      return null;
     }
 
     @Override void handleUpdate(BaggageField field, String value) {

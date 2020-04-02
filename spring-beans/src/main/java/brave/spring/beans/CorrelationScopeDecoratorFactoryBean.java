@@ -16,6 +16,7 @@ package brave.spring.beans;
 import brave.baggage.BaggageField;
 import brave.baggage.CorrelationScopeCustomizer;
 import brave.baggage.CorrelationScopeDecorator;
+import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import java.util.List;
 import org.springframework.beans.factory.FactoryBean;
 
@@ -23,14 +24,20 @@ import org.springframework.beans.factory.FactoryBean;
 public class CorrelationScopeDecoratorFactoryBean implements FactoryBean {
   CorrelationScopeDecorator.Builder builder;
   List<BaggageField> fields;
+  List<MappedBaggageField> mappedFields;
   List<CorrelationScopeCustomizer> customizers;
 
-  @Override public CorrelationScopeDecorator getObject() {
+  @Override public ScopeDecorator getObject() {
     if (builder == null) throw new NullPointerException("builder == null");
+    if (fields != null || mappedFields != null) builder.clear();
     if (fields != null) {
-      builder.clearFields();
       for (BaggageField field : fields) {
         builder.addField(field);
+      }
+    }
+    if (mappedFields != null) {
+      for (MappedBaggageField mappedFields : mappedFields) {
+        builder.addField(mappedFields.field, mappedFields.name);
       }
     }
     if (customizers != null) {
@@ -39,8 +46,8 @@ public class CorrelationScopeDecoratorFactoryBean implements FactoryBean {
     return builder.build();
   }
 
-  @Override public Class<? extends CorrelationScopeDecorator> getObjectType() {
-    return CorrelationScopeDecorator.class;
+  @Override public Class<? extends ScopeDecorator> getObjectType() {
+    return ScopeDecorator.class;
   }
 
   @Override public boolean isSingleton() {
@@ -53,6 +60,10 @@ public class CorrelationScopeDecoratorFactoryBean implements FactoryBean {
 
   public void setFields(List<BaggageField> fields) {
     this.fields = fields;
+  }
+
+  public void setMappedFields(List<MappedBaggageField> mappedFields) {
+    this.mappedFields = mappedFields;
   }
 
   public void setCustomizers(List<CorrelationScopeCustomizer> customizers) {

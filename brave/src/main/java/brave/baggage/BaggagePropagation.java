@@ -102,7 +102,7 @@ public class BaggagePropagation<K> implements Propagation<K> {
      * @since 5.11
      */
     public Map<BaggageField, Set<String>> fieldToKeyNames() {
-      return Collections.unmodifiableMap(fieldToKeyNames);
+      return Collections.unmodifiableMap(new LinkedHashMap<>(fieldToKeyNames));
     }
 
     /**
@@ -171,7 +171,12 @@ public class BaggagePropagation<K> implements Propagation<K> {
         allKeyNames.add(lcName);
         lcKeyNames.add(lcName);
       }
-      if (lcKeyNames.isEmpty()) lcKeyNames.add(field.lcName);
+
+      if (lcKeyNames.isEmpty()) { // add the default name
+        allKeyNames.add(field.lcName);
+        lcKeyNames.add(field.lcName);
+      }
+
       fieldToKeyNames.put(field, Collections.unmodifiableSet(lcKeyNames));
       return this;
     }

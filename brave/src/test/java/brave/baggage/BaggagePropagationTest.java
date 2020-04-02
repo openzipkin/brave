@@ -22,6 +22,7 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import org.junit.Before;
 import org.junit.Test;
@@ -76,6 +77,22 @@ public class BaggagePropagationTest {
     assertThatThrownBy(() -> builder.addRemoteField(BaggageField.create("userId"), "baggage"))
       .isInstanceOf(IllegalArgumentException.class)
       .hasMessage("Propagation key already in use: baggage");
+  }
+
+  @Test public void name_clear_and_add() {
+    BaggagePropagation.FactoryBuilder builder = newFactoryBuilder(B3Propagation.FACTORY);
+    builder.addRemoteField(vcapRequestId, "request-id", "request_id");
+    builder.addRemoteField(amznTraceId).build();
+
+    Map<BaggageField, Set<String>> saved = builder.fieldToKeyNames();
+    builder.clear();
+    saved.forEach(builder::addRemoteField);
+
+    assertThat(builder)
+      .usingRecursiveComparison()
+      .isEqualTo(newFactoryBuilder(B3Propagation.FACTORY)
+        .addRemoteField(vcapRequestId, "request-id", "request_id")
+        .addRemoteField(amznTraceId));
   }
 
   @Test public void inject_baggage() {

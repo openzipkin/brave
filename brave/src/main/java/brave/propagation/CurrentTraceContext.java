@@ -18,8 +18,6 @@ import brave.Tracing;
 import brave.internal.Nullable;
 import java.io.Closeable;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -53,6 +51,7 @@ public abstract class CurrentTraceContext {
      */
     public Builder addScopeDecorator(ScopeDecorator scopeDecorator) {
       if (scopeDecorator == null) throw new NullPointerException("scopeDecorator == null");
+      if (scopeDecorator == ScopeDecorator.NOOP) return this;
       this.scopeDecorators.add(scopeDecorator);
       return this;
     }
@@ -71,14 +70,14 @@ public abstract class CurrentTraceContext {
    */
   public abstract Scope newScope(@Nullable TraceContext context);
 
-  final List<ScopeDecorator> scopeDecorators;
+  final ScopeDecorator[] scopeDecorators;
 
   protected CurrentTraceContext() {
-    this.scopeDecorators = Collections.emptyList();
+    this.scopeDecorators = new ScopeDecorator[0];
   }
 
   protected CurrentTraceContext(Builder builder) {
-    this.scopeDecorators = new ArrayList<>(builder.scopeDecorators);
+    this.scopeDecorators = builder.scopeDecorators.toArray(new ScopeDecorator[0]);
   }
 
   /**
@@ -105,9 +104,8 @@ public abstract class CurrentTraceContext {
    * parameter.
    */
   protected Scope decorateScope(@Nullable TraceContext context, Scope scope) {
-    int length = scopeDecorators.size();
-    for (int i = 0; i < length; i++) {
-      scope = scopeDecorators.get(i).decorateScope(context, scope);
+    for (ScopeDecorator scopeDecorator : scopeDecorators) {
+      scope = scopeDecorator.decorateScope(context, scope);
     }
     return scope;
   }
@@ -176,6 +174,21 @@ public abstract class CurrentTraceContext {
    * @since 5.2
    */
   public interface ScopeDecorator {
+    /**
+     * Use this when configuration results in no decoration needed.
+     *
+     * @since 5.11
+     */
+    ScopeDecorator NOOP = new ScopeDecorator() {
+      @Override public Scope decorateScope(TraceContext context, Scope scope) {
+        return scope;
+      }
+
+      @Override public String toString() {
+        return "NoopScopeDecorator";
+      }
+    };
+
     /**
      * @param context null implies the scope should be cleared
      * @param scope {@link Scope#NOOP} if the former decoration resulted in no change.
