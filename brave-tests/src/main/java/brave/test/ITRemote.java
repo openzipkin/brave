@@ -18,12 +18,10 @@ import brave.propagation.B3Propagation;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
-import brave.propagation.StrictScopeDecorator;
-import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Rule;
 import org.junit.rules.DisableOnDebug;
 import org.junit.rules.TestName;
@@ -39,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * thread than main (which does the assertions).
  *
  * <p><pre><ul>
- *   <li>{@link StrictScopeDecorator} double-checks threads don't leak contexts</li>
+ *   <li>{@link StrictCurrentTraceContext} double-checks threads don't leak contexts</li>
  *   <li>{@link TestSpanReporter} helps avoid race conditions or accidental errors</li>
  * </ul></pre>
  */
@@ -70,13 +68,8 @@ public abstract class ITRemote {
     return tracing.propagationFactory().decorate(result);
   }
 
-  final StrictScopeDecorator strictScopeDecorator = StrictScopeDecorator.create();
-
   // field because this allows subclasses to initialize a field Tracing
-  protected final ThreadLocalCurrentTraceContext currentTraceContext =
-    ThreadLocalCurrentTraceContext.newBuilder()
-      .addScopeDecorator(strictScopeDecorator)
-      .build();
+  protected final StrictCurrentTraceContext currentTraceContext = new StrictCurrentTraceContext();
 
   protected final Propagation.Factory propagationFactory =
     ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, EXTRA_KEY);
@@ -89,11 +82,6 @@ public abstract class ITRemote {
       .propagationFactory(propagationFactory)
       .currentTraceContext(currentTraceContext)
       .sampler(sampler);
-  }
-
-  /** Ensure any leaks present were caused by code invoked in the current method */
-  @Before public void clearThreadLocal() {
-    currentTraceContext.clear();
   }
 
   /**
@@ -121,7 +109,7 @@ public abstract class ITRemote {
 
   /** Override to control scope leak enforcement. */
   protected void checkForLeakedScopes() {
-    strictScopeDecorator.close();
+    currentTraceContext.close();
   }
 
   // Assertions below here can eventually move to a new type

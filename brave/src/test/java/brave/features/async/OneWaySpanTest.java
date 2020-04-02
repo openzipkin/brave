@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,8 +15,7 @@ package brave.features.async;
 
 import brave.Span;
 import brave.Tracing;
-import brave.propagation.StrictScopeDecorator;
-import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
@@ -48,16 +47,12 @@ public class OneWaySpanTest {
   /** Use different tracers for client and server as usually they are on different hosts. */
   Tracing clientTracing = Tracing.newBuilder()
     .localServiceName("client")
-    .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-      .addScopeDecorator(StrictScopeDecorator.create())
-      .build())
+    .currentTraceContext(StrictCurrentTraceContext.create())
     .spanReporter(spans::add)
     .build();
   Tracing serverTracing = Tracing.newBuilder()
     .localServiceName("server")
-    .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-      .addScopeDecorator(StrictScopeDecorator.create())
-      .build())
+    .currentTraceContext(StrictCurrentTraceContext.create())
     .spanReporter(spans::add)
     .build();
 

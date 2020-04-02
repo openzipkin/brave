@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,8 +15,7 @@ package brave.context.rxjava2;
 
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.StrictScopeDecorator;
-import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import io.reactivex.Completable;
 import io.reactivex.CompletableObserver;
@@ -67,9 +66,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * CurrentTraceContextAssemblyTrackingTest} so they don't get lost!
  */
 public class CurrentTraceContextAssemblyTrackingMatrixTest {
-  CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.newBuilder()
-    .addScopeDecorator(StrictScopeDecorator.create())
-    .build();
+  CurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   CurrentTraceContext throwingCurrentTraceContext = new CurrentTraceContext() {
     @Override public TraceContext get() {
       return subscribeContext;

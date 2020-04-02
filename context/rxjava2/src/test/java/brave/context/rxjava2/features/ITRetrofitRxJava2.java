@@ -16,8 +16,7 @@ package brave.context.rxjava2.features;
 import brave.context.rxjava2.CurrentTraceContextAssemblyTracking;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.StrictScopeDecorator;
-import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import io.reactivex.Completable;
 import io.reactivex.Flowable;
@@ -50,9 +49,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /** This tests that propagation isn't lost when passing through an untraced system. */
 public class ITRetrofitRxJava2 {
   TraceContext context1 = TraceContext.newBuilder().traceId(1L).spanId(1L).build();
-  CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.newBuilder()
-    .addScopeDecorator(StrictScopeDecorator.create())
-    .build();
+  CurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   CurrentTraceContextAssemblyTracking contextTracking;
 
   @Rule public MockWebServer server = new MockWebServer();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  */
 package brave;
 
-import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.propagation.StrictCurrentTraceContext;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.After;
@@ -24,10 +24,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 public class CurrentSpanCustomizerTest {
-
   List<zipkin2.Span> spans = new ArrayList<>();
   Tracing tracing = Tracing.newBuilder()
-    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
+    .currentTraceContext(StrictCurrentTraceContext.create())
     .spanReporter(spans::add)
     .build();
   CurrentSpanCustomizer spanCustomizer = CurrentSpanCustomizer.create(tracing);

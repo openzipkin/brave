@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,6 +16,7 @@ package brave.features.sampler;
 import brave.ScopedSpan;
 import brave.Tracer;
 import brave.Tracing;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.sampler.DeclarativeSampler;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
@@ -54,6 +55,7 @@ public class AspectJSamplerTest {
 
   @Before public void clear() {
     tracing.set(Tracing.newBuilder()
+      .currentTraceContext(StrictCurrentTraceContext.create())
       .spanReporter(spans::add)
       .sampler(new Sampler() {
         @Override public boolean isSampled(long traceId) {

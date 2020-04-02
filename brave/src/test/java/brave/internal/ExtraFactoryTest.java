@@ -17,6 +17,7 @@ import brave.ScopedSpan;
 import brave.Tracing;
 import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import java.util.List;
 import org.junit.Before;
@@ -27,7 +28,6 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ExtraFactoryTest<E, F extends ExtraFactory<E>> {
-
   protected F factory;
   protected Propagation.Factory propagationFactory;
   protected TraceContext context;
@@ -92,6 +92,7 @@ public abstract class ExtraFactoryTest<E, F extends ExtraFactory<E>> {
   @Test public void toSpan_selfLinksContext() {
     try (Tracing t = Tracing.newBuilder()
       .spanReporter(Reporter.NOOP)
+      .currentTraceContext(StrictCurrentTraceContext.create())
       .propagationFactory(propagationFactory)
       .build()) {
       ScopedSpan parent = t.tracer().startScopedSpan("parent");

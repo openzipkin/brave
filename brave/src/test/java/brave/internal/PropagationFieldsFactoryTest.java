@@ -17,6 +17,7 @@ import brave.ScopedSpan;
 import brave.Tracing;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.SamplingFlags;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import org.junit.Test;
@@ -266,6 +267,7 @@ public abstract class PropagationFieldsFactoryTest<K, V, P extends PropagationFi
   /** Ensures we don't accidentally use console logging, which is default */
   Tracing withNoopSpanReporter() {
     return Tracing.newBuilder()
+      .currentTraceContext(StrictCurrentTraceContext.create())
       .spanReporter(Reporter.NOOP)
       .propagationFactory(propagationFactory)
       .build();

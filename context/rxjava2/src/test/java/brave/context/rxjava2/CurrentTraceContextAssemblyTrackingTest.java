@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,8 +16,7 @@ package brave.context.rxjava2;
 import brave.context.rxjava2.CurrentTraceContextAssemblyTracking.SavedHooks;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.StrictScopeDecorator;
-import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import hu.akarnokd.rxjava2.debug.RxJavaAssemblyException;
 import hu.akarnokd.rxjava2.debug.RxJavaAssemblyTracking;
@@ -33,9 +32,7 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class CurrentTraceContextAssemblyTrackingTest {
-  CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.newBuilder()
-    .addScopeDecorator(StrictScopeDecorator.create())
-    .build();
+  CurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   TraceContext assemblyContext = TraceContext.newBuilder().traceId(1L).spanId(1L).build();
 
   @Before public void setup() {

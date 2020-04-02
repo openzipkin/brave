@@ -797,7 +797,7 @@ tracing = Tracing.newBuilder()
     .build();
 ```
 
-Besides logging, other tools are available. [StrictScopeDecorator](src/main/java/brave/propagation/StrictScopeDecorator.java) can
+Besides logging, other tools are available. [StrictCurrentTraceContext](src/main/java/brave/propagation/StrictCurrentTraceContext.java) can
 help find out when code is not closing scopes properly. This can be
 useful when writing or diagnosing custom instrumentation.
 
@@ -818,7 +818,7 @@ expensive and more precise `System.nanoTime()` function.
 
 ## Troubleshooting instrumentation
 Instrumentation problems can lead to scope leaks and orphaned data. When
-testing instrumentation, use [StrictScopeDecorator](src/main/java/brave/propagation/StrictScopeDecorator.java), as it will throw
+testing instrumentation, use [StrictCurrentTraceContext](src/main/java/brave/propagation/StrictCurrentTraceContext.java), as it will throw
 errors on known scoping problems.
 
 If you see data with the annotation `brave.flush`, you may have an
@@ -836,24 +836,23 @@ When writing unit tests, there are a few tricks that will make bugs
 easier to find:
 
 * Report spans into a concurrent queue, so you can read them in tests
-* Use `StrictScopeDecorator` to reveal subtle thread-related propagation bugs
+* Use `StrictCurrentTraceContext` to reveal subtle thread-related propagation bugs
 * Unconditionally cleanup `Tracing.current()`, to prevent leaks
 
 Here's an example setup for your unit test fixture:
 ```java
 ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
 
+StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create()
 Tracing tracing = Tracing.newBuilder()
-                 .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-                   .addScopeDecorator(StrictScopeDecorator.create())
-                   .build()
-                 )
+                 .currentTraceContext(currentTraceContext)
                  .spanReporter(spans::add)
                  .build();
 
   @After public void close() {
     Tracing current = Tracing.current();
     if (current != null) current.close();
+    currentTraceContext.close();
   }
 ```
 
