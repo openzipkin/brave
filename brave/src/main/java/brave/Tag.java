@@ -90,9 +90,8 @@ public abstract class Tag<I> {
    * @since 5.11
    */
   // ex void parse(HttpRequest request, TraceContext context, SpanCustomizer span);
-  public final void tag(I input, TraceContext context, SpanCustomizer span) {
+  public final void tag(I input, @Nullable TraceContext context, SpanCustomizer span) {
     if (input == null) throw new NullPointerException("input == null");
-    if (context == null) throw new NullPointerException("context == null");
     if (span == null) throw new NullPointerException("span == null");
     if (span == NoopSpanCustomizer.INSTANCE) return;
     tag(span, input, context);
@@ -116,7 +115,7 @@ public abstract class Tag<I> {
    * @see FinishedSpanHandler#handle(TraceContext, MutableSpan)
    * @since 5.11
    */
-  public final void tag(I input, TraceContext context, MutableSpan span) {
+  public final void tag(I input, @Nullable TraceContext context, MutableSpan span) {
     if (input == null) throw new NullPointerException("input == null");
     if (span == null) throw new NullPointerException("span == null");
     tag(span, input, context);

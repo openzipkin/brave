@@ -21,6 +21,8 @@ import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -202,6 +204,17 @@ public class TagTest {
     verifyNoMoreInteractions(customizer);
   }
 
+  @Test public void tag_customizer_withNullContext() {
+    when(parseValue.apply(eq(input), isNull())).thenReturn("value");
+
+    tag.tag(input, null, customizer);
+
+    verify(parseValue).apply(input, null);
+    verifyNoMoreInteractions(parseValue); // doesn't parse twice
+    verify(customizer).tag("key", "value");
+    verifyNoMoreInteractions(customizer); // doesn't tag twice
+  }
+
   @Test public void tag_customizer_withContext() {
     when(parseValue.apply(input, context)).thenReturn("value");
 
@@ -246,6 +259,19 @@ public class TagTest {
     tag.tag(input, context, mutableSpan);
 
     verify(parseValue).apply(input, context);
+    verifyNoMoreInteractions(parseValue); // doesn't parse twice
+
+    MutableSpan expected = new MutableSpan();
+    expected.tag("key", "value");
+    assertThat(mutableSpan).isEqualToComparingFieldByField(expected);
+  }
+
+  @Test public void tag_mutableSpan_nullContext() {
+    when(parseValue.apply(eq(input), isNull())).thenReturn("value");
+
+    tag.tag(input, null, mutableSpan);
+
+    verify(parseValue).apply(input, null);
     verifyNoMoreInteractions(parseValue); // doesn't parse twice
 
     MutableSpan expected = new MutableSpan();

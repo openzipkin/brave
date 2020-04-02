@@ -125,12 +125,16 @@ public class BaggageFieldTest {
       .isSameAs(BaggageField.getByName(extraction, REQUEST_ID.name()));
   }
 
+  @Test public void getByName_context_null() {
+    // permits unguarded use of CurrentTraceContext.get()
+    assertThat(BaggageField.getByName((TraceContext) null, "foo"))
+      .isNull();
+  }
+
   @Test public void getByName_invalid() {
-    assertThatThrownBy(() -> BaggageField.getByName(null))
-      .isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(() -> BaggageField.getByName(""))
+    assertThatThrownBy(() -> BaggageField.getByName(context, ""))
       .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> BaggageField.getByName("    "))
+    assertThatThrownBy(() -> BaggageField.getByName(context, "    "))
       .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -184,8 +188,9 @@ public class BaggageFieldTest {
   }
 
   @Test public void getValue_context_null() {
-    assertThatThrownBy(() -> REQUEST_ID.getValue((TraceContext) null))
-      .isInstanceOf(NullPointerException.class);
+    // permits unguarded use of CurrentTraceContext.get()
+    assertThat(REQUEST_ID.getValue((TraceContext) null))
+      .isNull();
   }
 
   @Test public void getValue_extracted_exists() {
@@ -252,8 +257,8 @@ public class BaggageFieldTest {
   }
 
   @Test public void updateValue_context_null() {
-    assertThatThrownBy(() -> REQUEST_ID.updateValue((TraceContext) null, null))
-      .isInstanceOf(NullPointerException.class);
+    // permits unguarded use of CurrentTraceContext.get()
+    REQUEST_ID.updateValue((TraceContext) null, null);
   }
 
   @Test public void updateValue_extracted_exists() {

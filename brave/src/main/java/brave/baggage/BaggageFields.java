@@ -48,7 +48,7 @@ public final class BaggageFields {
   static final class TraceIdStorage extends BaggageContext.ReadOnly {
     @Override public String getValue(BaggageField field, TraceContextOrSamplingFlags extracted) {
       if (extracted.context() != null) return getValue(field, extracted.context());
-      if (extracted.traceIdContext() != null) extracted.traceIdContext().traceIdString();
+      if (extracted.traceIdContext() != null) return extracted.traceIdContext().traceIdString();
       return null;
     }
 

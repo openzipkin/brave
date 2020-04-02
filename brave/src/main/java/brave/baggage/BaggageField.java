@@ -125,8 +125,8 @@ public final class BaggageField {
    *
    * @since 5.11
    */
-  public static List<BaggageField> getAll(TraceContext context) {
-    if (context == null) throw new NullPointerException("context == null");
+  public static List<BaggageField> getAll(@Nullable TraceContext context) {
+    if (context == null) return Collections.emptyList();
     return BaggageContext.Extra.getAll(context);
   }
 
@@ -149,8 +149,7 @@ public final class BaggageField {
    * @since 5.11
    */
   @Nullable public static List<BaggageField> getAll() {
-    TraceContext context = currentTraceContext();
-    return context != null ? getAll(context) : Collections.emptyList();
+    return getAll(currentTraceContext());
   }
 
   /**
@@ -159,9 +158,9 @@ public final class BaggageField {
    *
    * @since 5.11
    */
-  @Nullable public static BaggageField getByName(TraceContext context, String name) {
-    if (context == null) throw new NullPointerException("context == null");
-    return BaggageContext.Extra.getByName(context, name);
+  @Nullable public static BaggageField getByName(@Nullable TraceContext context, String name) {
+    if (context == null) return null;
+    return BaggageContext.Extra.getByName(context, validateName(name));
   }
 
   /**
@@ -173,7 +172,7 @@ public final class BaggageField {
   @Nullable public static BaggageField getByName(TraceContextOrSamplingFlags extracted,
     String name) {
     if (extracted == null) throw new NullPointerException("extracted == null");
-    return BaggageContext.Extra.getByName(extracted, name);
+    return BaggageContext.Extra.getByName(extracted, validateName(name));
   }
 
   /**
@@ -185,9 +184,7 @@ public final class BaggageField {
    * @since 5.11
    */
   @Nullable public static BaggageField getByName(String name) {
-    name = validateName(name);
-    TraceContext context = currentTraceContext();
-    return context != null ? getByName(context, name) : null;
+    return getByName(currentTraceContext(), name);
   }
 
   /** @since 5.11 */
@@ -277,8 +274,8 @@ public final class BaggageField {
    *
    * @since 5.11
    */
-  @Nullable public String getValue(TraceContext context) {
-    if (context == null) throw new NullPointerException("context == null");
+  @Nullable public String getValue(@Nullable TraceContext context) {
+    if (context == null) return null;
     return this.context.getValue(this, context);
   }
 
@@ -290,8 +287,7 @@ public final class BaggageField {
    * @since 5.11
    */
   @Nullable public String getValue() {
-    TraceContext context = currentTraceContext();
-    return context != null ? getValue(context) : null;
+    return getValue(currentTraceContext());
   }
 
   /**
@@ -310,8 +306,8 @@ public final class BaggageField {
    *
    * @since 5.11
    */
-  public void updateValue(TraceContext context, @Nullable String value) {
-    if (context == null) throw new NullPointerException("context == null");
+  public void updateValue(@Nullable TraceContext context, @Nullable String value) {
+    if (context == null) return;
     if (this.context.updateValue(this, context, value) && flushOnUpdate) {
       BaggageFieldFlushScope.flush(this, value);
     }
@@ -340,8 +336,7 @@ public final class BaggageField {
    * @since 5.11
    */
   public void updateValue(String value) {
-    TraceContext context = currentTraceContext();
-    if (context != null) updateValue(context, value);
+    updateValue(currentTraceContext(), value);
   }
 
   public final boolean flushOnUpdate() {
