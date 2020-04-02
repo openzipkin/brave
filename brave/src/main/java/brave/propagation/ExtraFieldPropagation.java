@@ -21,12 +21,15 @@ import brave.propagation.TraceContext.Injector;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+
+import static java.util.Collections.unmodifiableList;
 
 /** @deprecated Since 5.11 use {@link BaggagePropagation} */
 @Deprecated public class ExtraFieldPropagation<K> implements Propagation<K> {
@@ -57,9 +60,9 @@ import java.util.Set;
   @Deprecated public static final class FactoryBuilder {
     final Propagation.Factory delegate;
     final BaggagePropagation.FactoryBuilder baggageFactory;
-    final Set<String> names = new LinkedHashSet<>();
+    // Updates could be out-of-order in the old impl so we track everything until build()
     final Set<String> redactedNames = new LinkedHashSet<>();
-    final Map<String, Set<String>> nameToPrefixes = new LinkedHashMap<>();
+    final Map<String, Set<String>> nameToKeyNames = new LinkedHashMap<>();
 
     FactoryBuilder(Propagation.Factory delegate) {
       this.delegate = delegate;
@@ -68,28 +71,27 @@ import java.util.Set;
 
     /**
      * @deprecated Since 5.11,  use {@link BaggagePropagation.FactoryBuilder#addField(BaggageField)}
-     * with a baggage field built with {@link BaggageField.Builder#clearRemoteNames()}.
      */
     @Deprecated public FactoryBuilder addRedactedField(String fieldName) {
       fieldName = validateFieldName(fieldName);
-      names.add(fieldName);
       redactedNames.add(fieldName);
+      nameToKeyNames.put(fieldName, Collections.emptySet());
       return this;
     }
 
     /**
-     * @deprecated Since 5.11, use {@link BaggagePropagation.FactoryBuilder#addField(BaggageField)}
-     * with {@link BaggageField.Builder#create(String)}.
+     * @deprecated Since 5.11, use {@link BaggagePropagation.FactoryBuilder#addRemoteField(BaggageField,
+     * String...)}.
      */
     @Deprecated public FactoryBuilder addField(String fieldName) {
-      names.add(validateFieldName(fieldName));
+      fieldName = validateFieldName(fieldName);
+      addKeyName(fieldName, fieldName);
       return this;
     }
 
     /**
-     * @deprecated Since 5.11, use {@link BaggagePropagation.FactoryBuilder#addField(BaggageField)}
-     * with a baggage field built with {@link BaggageField.Builder#clearRemoteNames()} and
-     * {@linkplain BaggageField.Builder#addRemoteName(String) add the prefixed name explicitly}.
+     * @deprecated Since 5.11, use {@link BaggagePropagation.FactoryBuilder#addRemoteField(BaggageField,
+     * Iterable)}
      */
     @Deprecated public FactoryBuilder addPrefixedFields(String prefix, Collection<String> names) {
       if (prefix == null) throw new NullPointerException("prefix == null");
@@ -97,50 +99,30 @@ import java.util.Set;
       if (names == null) throw new NullPointerException("names == null");
       for (String name : names) {
         name = validateFieldName(name);
-        Set<String> prefixes = nameToPrefixes.get(name);
-        if (prefixes == null) nameToPrefixes.put(name, prefixes = new LinkedHashSet<>());
-        prefixes.add(prefix);
+        addKeyName(name, prefix + name);
       }
       return this;
     }
 
-    Set<BaggageField> convertDeprecated() {
-      Set<String> remainingNames = new LinkedHashSet<>(names);
-      Set<BaggageField> result = new LinkedHashSet<>();
-      for (Map.Entry<String, Set<String>> entry : nameToPrefixes.entrySet()) {
-        String name = entry.getKey();
-        if (redactedNames.contains(name)) continue;
-
-        BaggageField.Builder builder = BaggageField.newBuilder(name);
-        // If we didn't add the name directly, we should only add prefixed names.
-        if (!remainingNames.remove(name)) builder.clearRemoteNames();
-        for (String prefix : entry.getValue()) {
-          builder.addRemoteName(prefix + name);
-        }
-        result.add(builder.build());
-      }
-
-      for (String name : remainingNames) {
-        BaggageField.Builder builder = BaggageField.newBuilder(name);
-        if (redactedNames.contains(name)) builder.clearRemoteNames();
-        result.add(builder.build());
-      }
-      return result;
+    void addKeyName(String name, String keyName) {
+      Set<String> keyNames = nameToKeyNames.get(name);
+      if (keyNames == null) nameToKeyNames.put(name, keyNames = new LinkedHashSet<>());
+      keyNames.add(keyName);
     }
 
     /** Returns a wrapper of the delegate if there are no fields to propagate. */
     public Factory build() {
-      Set<BaggageField> fields = convertDeprecated();
-      fields.addAll(baggageFactory.fields()); // clobbering deprecated config is ok
-      BaggageField[] fieldsArray = fields.toArray(new BaggageField[0]);
-      if (fieldsArray.length == 0) {
-        return new Factory(delegate, fieldsArray);
+      Set<String> extraKeyNames = new LinkedHashSet<>();
+      for (Map.Entry<String, Set<String>> entry : nameToKeyNames.entrySet()) {
+        BaggageField field = BaggageField.create(entry.getKey());
+        if (redactedNames.contains(field.name())) {
+          baggageFactory.addField(field);
+        } else {
+          extraKeyNames.addAll(entry.getValue());
+          baggageFactory.addRemoteField(field, entry.getValue());
+        }
       }
-      baggageFactory.clear();
-      for (BaggageField field : fields) {
-        baggageFactory.addField(field);
-      }
-      return new Factory(baggageFactory.build(), fieldsArray);
+      return new Factory(baggageFactory.build(), extraKeyNames.toArray(new String[0]));
     }
   }
 
@@ -216,21 +198,17 @@ import java.util.Set;
   /** @deprecated Since 5.11 use {@link Propagation.Factory} */
   public static class Factory extends Propagation.Factory {
     final Propagation.Factory delegate;
-    final BaggageField[] fields;
+    final String[] extraKeyNames;
 
-    Factory(Propagation.Factory delegate, BaggageField[] fields) {
+    Factory(Propagation.Factory delegate, String[] extraKeyNames) {
       this.delegate = delegate;
-      this.fields = fields;
+      this.extraKeyNames = extraKeyNames;
     }
 
     @Override public <K> ExtraFieldPropagation<K> create(Propagation.KeyFactory<K> keyFactory) {
-      List<K> keys = new ArrayList<>();
-      for (BaggageField field : fields) {
-        for (String remoteName : field.remoteNames()) {
-          keys.add(keyFactory.create(remoteName));
-        }
-      }
-      return new ExtraFieldPropagation<>(delegate.create(keyFactory), keys);
+      List<K> extraKeys = new ArrayList<>();
+      for (String extraKeyName : extraKeyNames) extraKeys.add(keyFactory.create(extraKeyName));
+      return new ExtraFieldPropagation<>(delegate.create(keyFactory), unmodifiableList(extraKeys));
     }
 
     @Override public boolean supportsJoin() {
@@ -254,7 +232,13 @@ import java.util.Set;
     this.extraKeys = extraKeys;
   }
 
-  /** @deprecated Since 5.11 use {@link BaggageField#getAll(TraceContext)} */
+  /**
+   * Returns the extra keys this component can extract. This result is lowercase and does not
+   * include any {@link #keys() trace context keys}.
+   *
+   * @deprecated Since 5.11 do not use this, as it was only added for OpenTracing. brave-opentracing
+   * works around this.
+   */
   @Deprecated public List<K> extraKeys() {
     return extraKeys;
   }

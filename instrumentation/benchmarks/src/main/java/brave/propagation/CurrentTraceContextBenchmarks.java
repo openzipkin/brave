@@ -58,11 +58,10 @@ public class CurrentTraceContextBenchmarks {
     .build();
 
   static final Propagation.Factory baggageFactory =
-    BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY).addField(BAGGAGE_FIELD).build();
+    BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY).addRemoteField(BAGGAGE_FIELD).build();
 
   static final CurrentTraceContext log4j2Baggage = ThreadLocalCurrentTraceContext.newBuilder()
-    .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
-      .addField(BAGGAGE_FIELD).build())
+    .addScopeDecorator(ThreadContextScopeDecorator.newBuilder().addField(BAGGAGE_FIELD).build())
     .build();
 
   static final TraceContext context = baggageFactory.decorate(TraceContext.newBuilder()

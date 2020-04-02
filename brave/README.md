@@ -320,6 +320,113 @@ Span nextSpan(final Request input) {
 
 Note: the above is the basis for the built-in [http sampler](../instrumentation/http)
 
+
+## Baggage
+Sometimes you need to propagate additional fields, such as a request ID or an alternate trace
+context.
+
+For example, if you have a need to know the a specific request's country code, you can
+propagate it through the trace as an HTTP header with the same name:
+```java
+// Configure your baggage field
+COUNTRY_CODE = BaggageField.create("country-code");
+
+// When you initialize the builder, add the baggage you want to propagate
+tracingBuilder.propagationFactory(
+  BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+                    .addRemoteField(COUNTRY_CODE)
+                    .build()
+);
+
+// Later, you can retrieve that country code in any of the services handling the trace
+// and add it as a span tag or do any other processing you want with it.
+countryCode = COUNTRY_CODE.get(context);
+```
+
+### Using `BaggageField`
+As long as a field is configured with `BaggagePropagation`, local reads and
+updates are possible in-process.
+
+Ex. once added to `BaggagePropagation`, you can call below to affect the country code
+of the current trace context:
+```java
+COUNTRY_CODE.updateValue("FO");
+String countryCode = COUNTRY_CODE.get();
+```
+
+Or, if you have a reference to a trace context, it is more efficient to use it explicitly:
+```java
+COUNTRY_CODE.updateValue(span.context(), "FO");
+String countryCode = COUNTRY_CODE.get(span.context());
+Tags.BAGGAGE_FIELD.tag(COUNTRY_CODE, span);
+```
+
+### Correlation
+
+You can also integrate baggage with other correlated contexts such as logging:
+```java
+AMZN_TRACE_ID = BaggageField.newBuilder("x-amzn-trace-id").build();
+
+// Allow logging patterns like %X{traceId} %X{x-amzn-trace-id}
+decorator = MDCScopeDecorator.newBuilder()
+                             .addField(AMZN_TRACE_ID).build();
+
+tracingBuilder.propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+                                                    .addRemoteField(AMZN_TRACE_ID)
+                                                    .build())
+              .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+                                                                 .addScopeDecorator(decorator)
+                                                                 .build())
+```
+
+### Appropriate usage
+
+Brave is an infrastructure library: you will create lock-in if you expose its apis into
+business code. Prefer exposing your own types for utility functions that use this class as this
+will insulate you from lock-in.
+
+While it may seem convenient, do not use this for security context propagation as it was not
+designed for this use case. For example, anything placed in here can be accessed by any code in
+the same classloader!
+
+### Passing through alternate trace contexts
+
+You may also need to propagate an second trace context transparently. For example, when in an
+Amazon Web Services environment, but not reporting data to X-Ray. To ensure X-Ray can co-exist
+correctly, pass-through its tracing header like so.
+
+```java
+OTHER_TRACE_ID = BaggageField.create("x-amzn-trace-id");
+
+tracingBuilder.propagationFactory(
+  BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+                    .addRemoteField(OTHER_TRACE_ID)
+                    .build()
+);
+```
+
+### Customizing remote names
+
+By default, the name used as a propagation key (header) by `addRemoteField()` is the same as
+the lowercase variant of the field name. You can override this by supplying different key
+names. Note: they will be lower-cased.
+
+For example, the following will propagate the field "x-vcap-request-id" as-is, but send the
+fields "countryCode" and "userId" on the wire as "baggage-country-code" and "baggage-user-id"
+respectively.
+```java
+REQUEST_ID = BaggageField.create("x-vcap-request-id");
+COUNTRY_CODE = BaggageField.create("countryCode");
+USER_ID = BaggageField.create("userId");
+
+tracingBuilder.propagationFactory(
+    BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+                      .addRemoteField(REQUEST_ID)
+                      .addRemoteField(COUNTRY_CODE, "baggage-country-code")
+                      .addRemoteField(USER_ID, "baggage-user-id").build())
+);
+```
+
 ## Propagation
 Propagation is needed to ensure activity originating from the same root
 are collected together in the same trace. The most common propagation
@@ -370,112 +477,6 @@ extractor = tracing.propagation().extractor(Request::getHeader);
 
 // when a server receives a request, it joins or starts a new trace
 span = tracer.nextSpan(extractor.extract(request));
-```
-
-### Propagating baggage
-Sometimes you need to propagate additional fields, such as a request ID or an alternate trace
-context.
-
-For example, if you have a need to know the a specific request's country code, you can
-propagate it through the trace as an HTTP header with the same name:
-```java
-// Configure your baggage field
-COUNTRY_CODE = BaggageField.create("country-code");
-
-// When you initialize the builder, add the baggage you want to propagate
-tracingBuilder.propagationFactory(
-  BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-                    .addField(COUNTRY_CODE)
-                    .build()
-);
-
-// Later, you can retrieve that country code in any of the services handling the trace
-// and add it as a span tag or do any other processing you want with it.
-countryCode = COUNTRY_CODE.get(context);
-```
-
-#### Appropriate usage
-
-Brave is an infrastructure library: you will create lock-in if you expose its apis into
-business code. Prefer exposing your own types for utility functions that use this class as this
-will insulate you from lock-in.
-
-While it may seem convenient, do not use this for security context propagation as it was not
-designed for this use case. For example, anything placed in here can be accessed by any code in
-the same classloader!
-
-#### Passing through alternate trace contexts
-
-You may also need to propagate an second trace context transparently. For example, when in an
-Amazon Web Services environment, but not reporting data to X-Ray. To ensure X-Ray can co-exist
-correctly, pass-through its tracing header like so.
-
-```java
-OTHER_TRACE_ID = BaggageField.create("x-amzn-trace-id");
-
-tracingBuilder.propagationFactory(
-  BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-                    .addField(OTHER_TRACE_ID)
-                    .build()
-);
-```
-
-#### Customizing remote names
-
-By default the name used as a propagation key (header) is the same as the lowercase variant of
-the field name. You can override this using the builder.
-
-For example, the following will propagate the field "x-vcap-request-id" as-is, but send the
-fields "countryCode" and "userId" on the wire as "baggage-country-code" and "baggage-user-id"
-respectively.
-
-Setup your tracing instance with allowed fields:
-```java
-REQUEST_ID = BaggageField.create("x-vcap-request-id");
-COUNTRY_CODE = BaggageField.newBuilder("countryCode").clearRemoteNames()
-                           .addRemoteName("baggage-country-code").build();
-USER_ID = BaggageField.newBuilder("userId").clearRemoteNames()
-                      .addRemoteName("baggage-user-id").build();
-
-tracingBuilder.propagationFactory(
-    BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-                      .addField(REQUEST_ID)
-                      .addField(COUNTRY_CODE)
-                      .addField(USER_ID).build())
-);
-```
-
-Later, you can call below to affect the country code of the current trace context:
-```java
-COUNTRY_CODE.updateValue("FO");
-String countryCode = COUNTRY_CODE.get();
-```
-
-Or, if you have a reference to a trace context, it is more efficient to use it explicitly:
-```java
-COUNTRY_CODE.updateValue(span.context(), "FO");
-String countryCode = COUNTRY_CODE.get(span.context());
-String countryCode = COUNTRY_CODE.tag(span);
-```
-
-#### Local Usage
-Baggage fields are also `BaggageField`s. As long as a field is configured with
-`BaggagePropagation`, local reads and updates are possible in-process.
-
-You can also integrate baggage with other correlated contexts such as logging:
-```java
-AMZN_TRACE_ID = BaggageField.newBuilder("x-amzn-trace-id").build();
-
-// Allow logging patterns like %X{traceId} %X{x-amzn-trace-id}
-decorator = MDCScopeDecorator.newBuilder()
-                             .addField(AMZN_TRACE_ID).build();
-
-tracingBuilder.propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-                                                    .addField(AMZN_TRACE_ID)
-                                                    .build())
-              .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-                                                                 .addScopeDecorator(decorator)
-                                                                 .build())
 ```
 
 ### Extracting a propagated context
@@ -1095,3 +1096,12 @@ accessor design from [OkHttp](https://github.com/square/okhttp).
 expressed in Brave. We considered their [Reservoir design](https://github.com/aws/aws-xray-sdk-java/blob/2.0.1/aws-xray-recorder-sdk-core/src/main/java/com/amazonaws/xray/strategy/sampling/reservoir/Reservoir.java).
 Our implementation differs as it removes a race condition and attempts
 to be more fair by distributing accept decisions every decisecond.
+
+### Baggage
+The name Baggage was first introduced by Brown University in [Pivot Tracing](https://people.mpi-sws.org/~jcmace/papers/mace2015pivot.pdf)
+as maps, sets and tuples. They then spun baggage out as a standalone component,
+[BaggageContext](https://people.mpi-sws.org/~jcmace/papers/mace2018universal.pdf)
+and considered some of the nuances of making it general purpose. The
+implementations proposed in these papers are different to the implementation
+here, but conceptually the goal is the same: to propagate "arbitrary stuff"
+with a request.

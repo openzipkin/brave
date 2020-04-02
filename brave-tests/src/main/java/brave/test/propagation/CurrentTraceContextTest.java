@@ -41,7 +41,7 @@ public abstract class CurrentTraceContextTest {
   protected static final BaggageField BAGGAGE_FIELD = BaggageField.create("user-id");
 
   Propagation.Factory baggageFactory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-    .addField(BAGGAGE_FIELD).build();
+    .addRemoteField(BAGGAGE_FIELD).build();
 
   protected final CurrentTraceContext currentTraceContext;
   protected final TraceContext context = baggageFactory.decorate(

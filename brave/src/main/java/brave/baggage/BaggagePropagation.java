@@ -18,14 +18,16 @@ import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
+
+import static brave.baggage.BaggageField.validateName;
 
 /**
  * This implements in-process and remote {@linkplain BaggageField baggage} propagation.
@@ -39,7 +41,7 @@ import java.util.Set;
  * // When you initialize the builder, add the baggage you want to propagate
  * tracingBuilder.propagationFactory(
  *   BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
- *                     .addField(COUNTRY_CODE)
+ *                     .addRemoteField(COUNTRY_CODE)
  *                     .build()
  * );
  *
@@ -47,6 +49,33 @@ import java.util.Set;
  * Tags.BAGGAGE_FIELD.tag(COUNTRY_CODE, span);
  * }</pre>
  *
+ * <h3>Customizing propagtion keys</h3>
+ * By default, the name used as a propagation key (header) by {@link
+ * FactoryBuilder#addRemoteField(BaggageField, String...)} is the same as the lowercase variant of
+ * the field name. You can override this by supplying different key names. Note: they will be
+ * lower-cased.
+ *
+ * <p>For example, the following will propagate the field "x-vcap-request-id" as-is, but send the
+ * fields "countryCode" and "userId" on the wire as "baggage-country-code" and "baggage-user-id"
+ * respectively.
+ *
+ * <pre>{@code
+ * REQUEST_ID = BaggageField.create("x-vcap-request-id");
+ * COUNTRY_CODE = BaggageField.create("countryCode");
+ * USER_ID = BaggageField.create("userId");
+ *
+ * tracingBuilder.propagationFactory(
+ *     BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+ *                       .addRemoteField(REQUEST_ID)
+ *                       .addRemoteField(COUNTRY_CODE, "baggage-country-code")
+ *                       .addRemoteField(USER_ID, "baggage-user-id").build())
+ * );
+ * }</pre>
+ *
+ * <p>See {@link BaggageField} for usage examples
+ *
+ * @see BaggageField
+ * @see CorrelationScopeDecorator
  * @since 5.11
  */
 public class BaggagePropagation<K> implements Propagation<K> {
@@ -57,7 +86,8 @@ public class BaggagePropagation<K> implements Propagation<K> {
 
   public static class FactoryBuilder { // not final to backport ExtraFieldPropagation
     final Propagation.Factory delegate;
-    final Set<BaggageField> fields = new LinkedHashSet<>();
+    final Set<String> allKeyNames = new LinkedHashSet<>();
+    final Map<BaggageField, Set<String>> fieldToKeyNames = new LinkedHashMap<>();
 
     FactoryBuilder(Propagation.Factory delegate) {
       if (delegate == null) throw new NullPointerException("delegate == null");
@@ -65,68 +95,116 @@ public class BaggagePropagation<K> implements Propagation<K> {
     }
 
     /**
-     * Returns an immutable copy of the currently configured fields. This allows those who can't
-     * create the builder to reconfigure fields.
+     * Returns an immutable copy of the currently configured fields mapped to names for use in
+     * remote propagation. This allows those who can't create the builder to reconfigure this
+     * builder.
      *
-     * @see #clear()
-     * @see BaggagePropagationCustomizer
      * @since 5.11
      */
-    public List<BaggageField> fields() {
-      return Collections.unmodifiableList(new ArrayList<>(fields));
+    public Map<BaggageField, Set<String>> fieldToKeyNames() {
+      return Collections.unmodifiableMap(fieldToKeyNames);
     }
 
     /**
      * Clears all state. This allows those who can't create the builder to reconfigure fields.
      *
-     * @see #fields()
+     * @see #fieldToKeyNames()
      * @see BaggagePropagationCustomizer
      * @since 5.11
      */
     public FactoryBuilder clear() {
-      fields.clear();
+      allKeyNames.clear();
+      fieldToKeyNames.clear();
+      return this;
+    }
+
+    /**
+     * Adds a {@linkplain BaggageField baggage field}, but does not configure remote propagation.
+     *
+     * @throws IllegalArgumentException if the field was already added
+     * @since 5.11
+     */
+    public FactoryBuilder addField(BaggageField field) {
+      if (field == null) throw new NullPointerException("field == null");
+      if (fieldToKeyNames.containsKey(field)) {
+        throw new IllegalArgumentException(field.name + " already added");
+      }
+      fieldToKeyNames.put(field, Collections.emptySet());
       return this;
     }
 
     /**
      * Adds a {@linkplain BaggageField baggage field} for remote propagation.
      *
+     * <p>When {@code keyNames} are not supplied the field is referenced the same in-process as it
+     * is on the wire. For example, the {@linkplain BaggageField#name() name} "x-vcap-request-id"
+     * would be set as-is including the prefix.
+     *
+     * @param keyNames possibly empty lower-case {@link Propagation#keys() propagation key names}.
+     * @throws IllegalArgumentException if the field was already added or a key name is already in
+     * use.
      * @since 5.11
      */
-    public FactoryBuilder addField(BaggageField field) {
+    public FactoryBuilder addRemoteField(BaggageField field, String... keyNames) {
       if (field == null) throw new NullPointerException("field == null");
-      fields.add(field);
+      if (keyNames == null) throw new NullPointerException("keyNames == null");
+      return addRemoteField(field, Arrays.asList(keyNames));
+    }
+
+    /**
+     * Same as {@link #addRemoteField(BaggageField, String...)}.
+     *
+     * @since 5.11
+     */
+    public FactoryBuilder addRemoteField(BaggageField field, Iterable<String> keyNames) {
+      if (field == null) throw new NullPointerException("field == null");
+      if (keyNames == null) throw new NullPointerException("keyNames == null");
+      if (fieldToKeyNames.containsKey(field)) {
+        throw new IllegalArgumentException(field.name + " already added");
+      }
+      Set<String> lcKeyNames = new LinkedHashSet<>();
+      for (String keyName : keyNames) {
+        String lcName = validateName(keyName).toLowerCase(Locale.ROOT);
+        if (allKeyNames.contains(lcName)) {
+          throw new IllegalArgumentException("Propagation key already in use: " + lcName);
+        }
+        allKeyNames.add(lcName);
+        lcKeyNames.add(lcName);
+      }
+      if (lcKeyNames.isEmpty()) lcKeyNames.add(field.lcName);
+      fieldToKeyNames.put(field, Collections.unmodifiableSet(lcKeyNames));
       return this;
     }
 
     /** Returns the delegate if there are no fields to propagate. */
     public Propagation.Factory build() {
-      if (fields.isEmpty()) return delegate;
+      if (fieldToKeyNames.isEmpty()) return delegate;
 
-      // check for duplicate remote names
-      Map<String, Set<String>> remoteNameToFields = new LinkedHashMap<>();
-      for (BaggageField field : fields) {
-        for (String remoteName : field.remoteNames()) {
-          Set<String> fields = remoteNameToFields.get(remoteName);
-          if (fields == null) remoteNameToFields.put(remoteName, fields = new LinkedHashSet<>());
-          fields.add(field.name());
-        }
+      BaggageFieldWithKeyNames[] fieldWithKeyNames =
+        new BaggageFieldWithKeyNames[fieldToKeyNames.size()];
+      int i = 0;
+      for (Map.Entry<BaggageField, Set<String>> entry : fieldToKeyNames.entrySet()) {
+        fieldWithKeyNames[i++] =
+          new BaggageFieldWithKeyNames(entry.getKey(), entry.getValue().toArray(new String[0]));
       }
-
-      for (Entry<String, Set<String>> entry : remoteNameToFields.entrySet()) {
-        if (entry.getValue().size() > 1) {
-          throw new UnsupportedOperationException( // Later, we will support this!
-            entry.getValue() + " have the same remote name: " + entry.getKey());
-        }
-      }
-
-      return new Factory(delegate, fields.toArray(new BaggageField[0]));
+      return new Factory(delegate, fieldWithKeyNames);
     }
   }
 
-  static class BaggageFieldWithKeys<K> {
+  /** For {@link Propagation.Factory} */
+  static final class BaggageFieldWithKeyNames {
     final BaggageField field;
-    /** Corresponds to {@link BaggageField#remoteNames()} */
+    final String[] keyNames;
+
+    BaggageFieldWithKeyNames(BaggageField field, String[] keyNames) {
+      this.field = field;
+      this.keyNames = keyNames;
+    }
+  }
+
+  /** For {@link Propagation.Factory#create(KeyFactory)} */
+  static final class BaggageFieldWithKeys<K> {
+    final BaggageField field;
     final K[] keys;
 
     BaggageFieldWithKeys(BaggageField field, K[] keys) {
@@ -136,25 +214,29 @@ public class BaggagePropagation<K> implements Propagation<K> {
   }
 
   static final class Factory extends Propagation.Factory {
-    final PredefinedBaggageFields.Factory extraFactory;
     final Propagation.Factory delegate;
+    final BaggageFieldWithKeyNames[] fieldWithKeyNames;
+    final PredefinedBaggageFields.Factory extraFactory;
 
-    Factory(Propagation.Factory delegate, BaggageField[] fields) {
+    Factory(Propagation.Factory delegate, BaggageFieldWithKeyNames[] fieldWithKeyNames) {
       this.delegate = delegate;
+      this.fieldWithKeyNames = fieldWithKeyNames;
+      BaggageField[] fields = new BaggageField[fieldWithKeyNames.length];
+      for (int i = 0; i < fields.length; i++) fields[i] = fieldWithKeyNames[i].field;
       this.extraFactory = new PredefinedBaggageFields.Factory(fields);
     }
 
     @Override
     public final <K> BaggagePropagation<K> create(Propagation.KeyFactory<K> keyFactory) {
+      BaggageFieldWithKeys<K>[] fieldsWithKeys = new BaggageFieldWithKeys[fieldWithKeyNames.length];
       int i = 0;
-      BaggageFieldWithKeys<K>[] fieldsWithKeys =
-        new BaggageFieldWithKeys[extraFactory.fields.length];
-      for (BaggageField field : extraFactory.fields) {
-        K[] keysForField = (K[]) new Object[field.remoteNames.length];
-        for (int j = 0, length = field.remoteNames.length; j < length; j++) {
-          keysForField[j] = keyFactory.create(field.remoteNames[j]);
+      for (BaggageFieldWithKeyNames next : fieldWithKeyNames) {
+        int length = next.keyNames.length;
+        K[] keysForField = (K[]) new Object[next.keyNames.length];
+        for (int j = 0; j < length; j++) {
+          keysForField[j] = keyFactory.create(next.keyNames[j]);
         }
-        fieldsWithKeys[i++] = new BaggageFieldWithKeys<>(field, keysForField);
+        fieldsWithKeys[i++] = new BaggageFieldWithKeys<>(next.field, keysForField);
       }
       return new BaggagePropagation<>(this, keyFactory, fieldsWithKeys);
     }

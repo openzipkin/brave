@@ -73,7 +73,7 @@ public class SparkBenchmarks extends HttpServerBenchmarks {
     SparkTracing sparkTracing = SparkTracing.create(
       Tracing.newBuilder()
         .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-          .addField(BAGGAGE_FIELD).build())
+          .addRemoteField(BAGGAGE_FIELD).build())
         .spanReporter(Reporter.NOOP).build()
     );
 

@@ -60,10 +60,10 @@ with trace headers:
   </bean>
 
   <bean id="propagationFactory" class="brave.spring.beans.BaggagePropagationFactoryBean">
-    <property name="fields">
-      <list>
-        <ref bean="userId"/>
-      </list>
+    <property name="remoteFields">
+      <bean class=\"brave.spring.beans.RemoteBaggageField\">
+        <property name=\"field\" ref=\"userId\"/>
+      </bean>
     </property>
   </bean>
 

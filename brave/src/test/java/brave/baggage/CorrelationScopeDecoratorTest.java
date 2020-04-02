@@ -34,17 +34,16 @@ import static org.mockito.Mockito.mock;
 public class CorrelationScopeDecoratorTest {
   static final BaggageField BAGGAGE_FIELD = BaggageField.create("user-id");
   static final BaggageField BAGGAGE_FIELD_2 = BaggageField.create("country-code");
-  static final BaggageField LOCAL_BAGGAGE_FIELD = BaggageField.newBuilder("serviceId")
-    .clearRemoteNames().build();
+  static final BaggageField LOCAL_BAGGAGE_FIELD = BaggageField.create("serviceId");
   static final BaggageField FLUSHABLE_BAGGAGE_FIELD = BaggageField.newBuilder("bp")
     .flushOnUpdate().build();
   static final Map<String, String> map = new LinkedHashMap<>();
 
   Propagation.Factory baggageFactory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-    .addField(BAGGAGE_FIELD)
-    .addField(BAGGAGE_FIELD_2)
     .addField(LOCAL_BAGGAGE_FIELD)
-    .addField(FLUSHABLE_BAGGAGE_FIELD)
+    .addRemoteField(BAGGAGE_FIELD)
+    .addRemoteField(BAGGAGE_FIELD_2)
+    .addRemoteField(FLUSHABLE_BAGGAGE_FIELD)
     .build();
 
   TraceContext context = baggageFactory.decorate(TraceContext.newBuilder()

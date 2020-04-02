@@ -83,7 +83,7 @@ public class JerseyServerBenchmarks extends HttpServerBenchmarks {
       return new LinkedHashSet<>(asList(new Resource(), TracingApplicationEventListener.create(
         HttpTracing.create(Tracing.newBuilder()
           .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-            .addField(BAGGAGE_FIELD)
+            .addRemoteField(BAGGAGE_FIELD)
             .build())
           .spanReporter(Reporter.NOOP)
           .build())

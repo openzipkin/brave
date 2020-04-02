@@ -74,7 +74,7 @@ public abstract class ITRemote {
 
   protected final Propagation.Factory propagationFactory =
     BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-      .addField(BAGGAGE_FIELD).build();
+      .addRemoteField(BAGGAGE_FIELD).build();
 
   protected Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
 

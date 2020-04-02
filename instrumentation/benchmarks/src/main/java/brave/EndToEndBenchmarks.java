@@ -140,9 +140,9 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
     public TracedBaggage() {
       super(Tracing.newBuilder()
         .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-          .addField(REQUEST_ID)
-          .addField(COUNTRY_CODE)
-          .addField(USER_ID).build())
+          .addRemoteField(REQUEST_ID)
+          .addRemoteField(COUNTRY_CODE)
+          .addRemoteField(USER_ID).build())
         .spanReporter(AsyncReporter.create(new NoopSender()))
         .build());
     }

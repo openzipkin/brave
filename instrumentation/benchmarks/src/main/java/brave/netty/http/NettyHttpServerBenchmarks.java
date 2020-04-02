@@ -64,9 +64,9 @@ public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
     final ChannelDuplexHandler traced = NettyHttpTracing.create(
       Tracing.newBuilder()
         .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-          .addField(REQUEST_ID)
-          .addField(COUNTRY_CODE)
-          .addField(USER_ID).build())
+          .addRemoteField(REQUEST_ID)
+          .addRemoteField(COUNTRY_CODE)
+          .addRemoteField(USER_ID).build())
         .spanReporter(Reporter.NOOP)
         .build()
     ).serverHandler();

@@ -14,22 +14,16 @@
 package brave.spring.beans;
 
 import brave.baggage.BaggageField;
-import java.util.List;
 import org.springframework.beans.factory.FactoryBean;
 
 /** Spring XML config does not support chained builders. This converts accordingly */
 public class BaggageFieldFactoryBean implements FactoryBean {
   String name;
   boolean flushOnUpdate;
-  List<String> remoteNames;
 
   @Override public BaggageField getObject() {
     BaggageField.Builder builder = BaggageField.newBuilder(name);
     if (flushOnUpdate) builder.flushOnUpdate();
-    if (remoteNames != null) {
-      builder.clearRemoteNames();
-      for (String key : remoteNames) builder.addRemoteName(key);
-    }
     return builder.build();
   }
 
@@ -47,9 +41,5 @@ public class BaggageFieldFactoryBean implements FactoryBean {
 
   public void setFlushOnUpdate(boolean flushOnUpdate) {
     this.flushOnUpdate = flushOnUpdate;
-  }
-
-  public void setRemoteNames(List<String> remoteNames) {
-    this.remoteNames = remoteNames;
   }
 }

@@ -30,21 +30,19 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 public class BaggageFieldTest {
-  static final BaggageField REQUEST_ID = BaggageField.newBuilder("requestId")
-    .clearRemoteNames()
-    .addRemoteName("x-vcap-request-id").build();
+  static final BaggageField REQUEST_ID = BaggageField.create("requestId");
   static final BaggageField AMZN_TRACE_ID = BaggageField.create("x-amzn-trace-id");
 
   Propagation.Factory factory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-    .addField(REQUEST_ID)
-    .addField(AMZN_TRACE_ID).build();
+    .addRemoteField(REQUEST_ID, "x-vcap-request-id")
+    .addRemoteField(AMZN_TRACE_ID).build();
   Propagation<String> propagation = factory.create(Propagation.KeyFactory.STRING);
   Extractor<Map<String, String>> extractor = propagation.extractor(Map::get);
 
   TraceContextOrSamplingFlags emptyExtraction = extractor.extract(Collections.emptyMap());
   String requestId = "abcdef";
   TraceContextOrSamplingFlags requestIdExtraction =
-    extractor.extract(Collections.singletonMap(REQUEST_ID.remoteNames().get(0), requestId));
+    extractor.extract(Collections.singletonMap("x-vcap-request-id", requestId));
 
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
   TraceContext emptyContext = factory.decorate(context);
@@ -54,16 +52,6 @@ public class BaggageFieldTest {
 
   @Test public void builder() {
     assertThat(BaggageField.create("Name").name()).isEqualTo("Name");
-    assertThat(BaggageField.create("Name").remoteNames()).containsExactly("name");
-
-    assertThat(
-      BaggageField.newBuilder("clearRemoteNames").clearRemoteNames().build().remoteNames()
-    ).isEmpty();
-
-    assertThat(
-      BaggageField.newBuilder("addRemoteName").addRemoteName("second").build().remoteNames()
-    ).containsExactly("addremotename", "second");
-
     assertThat(BaggageField.create("foo").flushOnUpdate()).isFalse();
     assertThat(
       BaggageField.newBuilder("flushOnUpdate").flushOnUpdate().build().flushOnUpdate()
@@ -146,19 +134,9 @@ public class BaggageFieldTest {
       .isInstanceOf(IllegalArgumentException.class);
   }
 
-  @Test public void downcasesRemoteNames() {
-    assertThat(BaggageField.create("X-FOO").remoteNames())
-      .containsExactly("x-foo");
-  }
-
   @Test public void trimsName() {
     assertThat(BaggageField.create(" x-foo  ").name())
       .isEqualTo("x-foo");
-  }
-
-  @Test public void trimsRemoteName() {
-    assertThat(BaggageField.create(" x-foo  ").remoteNames())
-      .containsExactly("x-foo");
   }
 
   @Test public void create_invalid() {
@@ -318,7 +296,7 @@ public class BaggageFieldTest {
 
     // same values are equivalent
     BaggageField sameParameters = BaggageField.create("foo");
-    BaggageField sameName = BaggageField.newBuilder("foo").addRemoteName("extra").build();
+    BaggageField sameName = BaggageField.newBuilder("foo").flushOnUpdate().build();
     assertThat(field).isEqualTo(sameParameters);
     assertThat(field).isEqualTo(sameName);
     assertThat(field).hasSameHashCodeAs(sameParameters);

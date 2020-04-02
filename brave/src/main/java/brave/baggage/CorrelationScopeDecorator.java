@@ -94,7 +94,10 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
       return this;
     }
 
-    /** @since 5.11 */
+    /**
+     * @see BaggagePropagation.FactoryBuilder#addField(BaggageField)
+     * @since 5.11
+     */
     public Builder addField(BaggageField field) {
       if (field == null) throw new NullPointerException("field == null");
       if (field.name() == null) throw new NullPointerException("field.name() == null");

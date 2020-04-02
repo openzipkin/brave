@@ -25,6 +25,7 @@ import org.springframework.beans.factory.FactoryBean;
 public class BaggagePropagationFactoryBean implements FactoryBean {
   Propagation.Factory propagationFactory = B3Propagation.FACTORY;
   List<BaggageField> fields;
+  List<RemoteBaggageField> remoteFields;
   List<BaggagePropagationCustomizer> customizers;
 
   @Override public Propagation.Factory getObject() {
@@ -32,6 +33,10 @@ public class BaggagePropagationFactoryBean implements FactoryBean {
       BaggagePropagation.newFactoryBuilder(propagationFactory);
     if (fields != null) {
       for (BaggageField field : fields) builder.addField(field);
+    }
+    if (remoteFields != null) {
+      for (RemoteBaggageField remoteField : remoteFields)
+        builder.addRemoteField(remoteField.field, remoteField.keyNames);
     }
     if (customizers != null) {
       for (BaggagePropagationCustomizer customizer : customizers) customizer.customize(builder);
@@ -53,6 +58,10 @@ public class BaggagePropagationFactoryBean implements FactoryBean {
 
   public void setFields(List<BaggageField> fields) {
     this.fields = fields;
+  }
+
+  public void setRemoteFields(List<RemoteBaggageField> remoteFields) {
+    this.remoteFields = remoteFields;
   }
 
   public void setCustomizers(List<BaggagePropagationCustomizer> customizers) {

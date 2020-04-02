@@ -78,15 +78,13 @@ public class ExtraFieldPropagationTest {
   @Test public void downcasesNames() {
     ExtraFieldPropagation.Factory factory =
       ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "X-FOO");
-    assertThat(factory.fields).extracting(BaggageField::name)
-      .containsExactly("x-foo");
+    assertThat(factory.extraKeyNames).containsExactly("x-foo");
   }
 
   @Test public void trimsNames() {
     ExtraFieldPropagation.Factory factory =
       ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, " x-foo  ");
-    assertThat(factory.fields).extracting(BaggageField::name)
-      .containsExactly("x-foo");
+    assertThat(factory.extraKeyNames).containsExactly("x-foo");
   }
 
   @Test(expected = NullPointerException.class) public void rejectsNull() {

@@ -14,17 +14,19 @@
 package brave.baggage;
 
 import brave.Tracing;
+import brave.baggage.BaggagePropagation.BaggageFieldWithKeyNames;
+import brave.internal.InternalBaggage;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-
-import static java.util.Arrays.asList;
 
 /**
  * Defines a trace context scoped field, usually but not always analogous to an HTTP header. Fields
@@ -37,12 +39,26 @@ import static java.util.Arrays.asList;
  * COUNTRY_CODE = BaggageField.create("country-code");
  * }</pre>
  *
- * <p>If you don't have a reference to a baggage field, you can use {@linkplain
- * #getByName(TraceContext, String)}.
- *
- * <h3>Local Usage</h3>
+ * <h3>Usage</h3>
  * As long as a field is configured with {@link BaggagePropagation}, local reads and updates are
  * possible in-process.
+ *
+ * <p>Ex. once added to `BaggagePropagation`, you can call below to affect the country code
+ * of the current trace context:
+ * <pre>{@code
+ *  COUNTRY_CODE.updateValue("FO");
+ *  String countryCode = COUNTRY_CODE.get();
+ * }</pre>
+ *
+ * <p>Or, if you have a reference to a trace context, it is more efficient to use it explicitly:
+ * <pre>{@code
+ *   COUNTRY_CODE.updateValue(span.context(), "FO");
+ *  String countryCode = COUNTRY_CODE.get(span.context());
+ *  Tags.BAGGAGE_FIELD.tag(COUNTRY_CODE, span);
+ * }</pre>
+ *
+ * <p>Correlation</p>
+ *
  *
  * <p>You can also integrate baggage with other correlated contexts such as logging:
  * <pre>{@code
@@ -53,30 +69,12 @@ import static java.util.Arrays.asList;
  *                              .addField(AMZN_TRACE_ID).build();
  *
  * tracingBuilder.propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
- *                                                     .addField(AMZN_TRACE_ID)
+ *                                                     .addRemoteField(AMZN_TRACE_ID)
  *                                                     .build())
  *               .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
  *                                                                  .addScopeDecorator(decorator)
  *                                                                  .build())
  * }</pre>
- *
- * <h3>Customizing remote names</h3>
- * By default the name used for remote propagation (header) is the same as the lowercase variant of
- * the field name. You can override this using the builder.
- *
- * For example, the following will propagate the field "x-vcap-request-id" as-is, but send the
- * fields "countryCode" and "userId" on the wire as "baggage-country-code" and "baggage-user-id"
- * respectively.
- * <pre>{@code
- * REQUEST_ID = BaggageField.create("x-vcap-request-id");
- * COUNTRY_CODE = BaggageField.newBuilder("countryCode").clearRemoteNames()
- *                            .addRemoteName("baggage-country-code").build();
- * USER_ID = BaggageField.newBuilder("userId").clearRemoteNames()
- *                       .addRemoteName("baggage-user-id").build();
- * }</pre>
- *
- * <p><em>Note:</em> Empty remote names is permitted. In this case, the baggage is only available
- * for local correlation purposes.
  *
  * <h3>Appropriate usage</h3>
  * It is generally not a good idea to use the tracing system for application logic or critical code
@@ -95,8 +93,8 @@ import static java.util.Arrays.asList;
  * Tracing</a> as maps, sets and tuples. They then spun baggage out as a standalone component, <a
  * href="https://people.mpi-sws.org/~jcmace/papers/mace2018universal.pdf">BaggageContext</a> and
  * considered some of the nuances of making it general purpose. The implementations proposed in
- * these papers are different to the K-V pair implementation here, but conceptually the goal is the
- * same: to propagate "arbitrary stuff" with a request.
+ * these papers are different to the implementation here, but conceptually the goal is the same: to
+ * propagate "arbitrary stuff" with a request.
  *
  * @see BaggagePropagation
  * @see CorrelationScopeDecorator
@@ -104,10 +102,7 @@ import static java.util.Arrays.asList;
  */
 public final class BaggageField {
   /**
-   * Creates a field that is referenced the same in-process as it is on the wire. For example, the
-   * name "x-vcap-request-id" would be set as-is including the prefix.
-   *
-   * @param name will be lower-cased for remote propagation
+   * @param name See {@link #name()}
    * @since 5.11
    */
   public static BaggageField create(String name) {
@@ -115,9 +110,7 @@ public final class BaggageField {
   }
 
   /**
-   * Creates a builder for the specified {@code name}.
-   *
-   * @param name will be lower-cased for remote propagation
+   * @param name See {@link #name()}
    * @since 5.11
    */
   public static Builder newBuilder(String name) {
@@ -198,49 +191,10 @@ public final class BaggageField {
   public static class Builder {
     final String name;
     BaggageContext context = BaggageContext.EXTRA;
-    final Set<String> remoteNames = new LinkedHashSet<>();
     boolean flushOnUpdate = false;
 
     Builder(String name) {
       this.name = validateName(name);
-      remoteNames.add(this.name.toLowerCase(Locale.ROOT));
-    }
-
-    /**
-     * Invoke this to clear propagated names of this field. You can add alternatives later with
-     * {@link #addRemoteName(String)}. <p>The default propagated name is the lowercase variant of
-     * the field name.
-     *
-     * <p>One use case is prefixing. You may wish to not propagate the plain name of this field,
-     * rather only a prefixed name in hyphen case. For example, the following would make the field
-     * named "userId" propagated only as "baggage-user-id".
-     *
-     * <pre>{@code
-     * USER_ID = BaggageField.newBuilder("userId")
-     *                       .clearRemoteNames()
-     *                       .addRemoteName("baggage-user-id").build();
-     * }</pre>
-     *
-     * <p>Another use case is local-only baggage. When there are no remote names, the field can
-     * still be used in {@link CorrelationScopeDecorator}.
-     *
-     * @since 5.11
-     */
-    public Builder clearRemoteNames() {
-      remoteNames.clear();
-      return this;
-    }
-
-    /**
-     * Adds a {@linkplain #remoteNames() remote name} (header).
-     *
-     * <p>Note: remote names are implicitly lower-cased.
-     *
-     * @since 5.11
-     */
-    public Builder addRemoteName(String remoteName) {
-      remoteNames.add(validateName(remoteName).toLowerCase(Locale.ROOT));
-      return this;
     }
 
     /**
@@ -288,8 +242,6 @@ public final class BaggageField {
 
   final String name, lcName;
   final BaggageContext context;
-  final String[] remoteNames; // for faster iteration
-  final List<String> remoteNameList;
   final boolean flushOnUpdate;
 
   BaggageField(Builder builder) { // sealed to this package
@@ -297,8 +249,6 @@ public final class BaggageField {
     lcName = name.toLowerCase(Locale.ROOT);
     context = builder.context;
     flushOnUpdate = builder.flushOnUpdate;
-    remoteNames = builder.remoteNames.toArray(new String[0]);
-    remoteNameList = Collections.unmodifiableList(asList(remoteNames));
   }
 
   /**
@@ -308,6 +258,7 @@ public final class BaggageField {
    * #getValue(TraceContext) value} becomes the log variable {@code %{userId}} when the span is next
    * made current.
    *
+   * @see #getByName(TraceContext, String)
    * @see CorrelationScopeDecorator
    * @since 5.11
    */
@@ -394,17 +345,6 @@ public final class BaggageField {
     return flushOnUpdate;
   }
 
-  /**
-   * The possibly empty list of names for use in remote propagation. These are typically header
-   * names. By default this includes only the lowercase variant of the {@link #name()}.
-   *
-   * @see BaggagePropagation#keys()
-   * @since 5.11
-   */
-  public List<String> remoteNames() {
-    return remoteNameList;
-  }
-
   @Override public String toString() {
     return "BaggageField{" + name + "}";
   }
@@ -431,5 +371,23 @@ public final class BaggageField {
   @Nullable static TraceContext currentTraceContext() {
     Tracing tracing = Tracing.current();
     return tracing != null ? tracing.currentTraceContext().get() : null;
+  }
+
+  static {
+    InternalBaggage.instance = new InternalBaggage() {
+      @Override public Set<String> allKeyNames(Propagation.Factory factory) {
+        Set<String> allKeyNames = new LinkedHashSet<>();
+        for (String key : factory.create(Propagation.KeyFactory.STRING).keys()) {
+          allKeyNames.add(key.toLowerCase(Locale.ROOT));
+        }
+        if (factory instanceof BaggagePropagation.Factory) {
+          BaggagePropagation.Factory baggageFactory = (BaggagePropagation.Factory) factory;
+          for (BaggageFieldWithKeyNames next : baggageFactory.fieldWithKeyNames) {
+            allKeyNames.addAll(Arrays.asList(next.keyNames));
+          }
+        }
+        return allKeyNames;
+      }
+    };
   }
 }

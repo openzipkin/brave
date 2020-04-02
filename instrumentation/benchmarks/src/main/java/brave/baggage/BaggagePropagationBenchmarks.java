@@ -44,7 +44,7 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 public class BaggagePropagationBenchmarks {
   public static final BaggageField BAGGAGE_FIELD = BaggageField.create("user-id");
   static final Propagation.Factory factory =
-    BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY).addField(BAGGAGE_FIELD).build();
+    BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY).addRemoteField(BAGGAGE_FIELD).build();
   static final Propagation<String> propagation = factory.create(Propagation.KeyFactory.STRING);
   static final Injector<Map<String, String>> injector = propagation.injector(Map::put);
   static final Extractor<Map<String, String>> extractor = propagation.extractor(Map::get);

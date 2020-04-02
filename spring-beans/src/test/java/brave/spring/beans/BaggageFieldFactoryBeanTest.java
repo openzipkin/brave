@@ -37,21 +37,6 @@ public class BaggageFieldFactoryBeanTest {
       .isEqualTo(BaggageField.create("userId"));
   }
 
-  @Test public void local() {
-    context = new XmlBeans(""
-      + "<bean id=\"userId\" class=\"brave.spring.beans.BaggageFieldFactoryBean\">\n"
-      + "  <property name=\"name\" value=\"userId\"/>\n"
-      + "  <property name=\"remoteNames\">\n"
-      + "    <list>\n"
-      + "    </list>\n"
-      + "  </property>"
-      + "</bean>"
-    );
-
-    assertThat(context.getBean("userId", BaggageField.class))
-      .isEqualToComparingFieldByField(BaggageField.newBuilder("userId").clearRemoteNames().build());
-  }
-
   @Test public void flushOnUpdate() {
     context = new XmlBeans(""
       + "<bean id=\"userId\" class=\"brave.spring.beans.BaggageFieldFactoryBean\">\n"
@@ -62,25 +47,5 @@ public class BaggageFieldFactoryBeanTest {
 
     assertThat(context.getBean("userId", BaggageField.class))
       .isEqualToComparingFieldByField(BaggageField.newBuilder("userId").flushOnUpdate().build());
-  }
-
-  @Test public void remoteNames() {
-    context = new XmlBeans(""
-      + "<bean id=\"userId\" class=\"brave.spring.beans.BaggageFieldFactoryBean\">\n"
-      + "  <property name=\"name\" value=\"userId\"/>\n"
-      + "  <property name=\"remoteNames\">\n"
-      + "    <list>\n"
-      + "      <value>baggage_user_id</value>\n"
-      + "      <value>baggage-user-id</value>\n"
-      + "    </list>\n"
-      + "  </property>"
-      + "</bean>"
-    );
-
-    assertThat(context.getBean("userId", BaggageField.class))
-      .isEqualToComparingFieldByField(BaggageField.newBuilder("userId").clearRemoteNames()
-        .addRemoteName("baggage_user_id")
-        .addRemoteName("baggage-user-id").build()
-      );
   }
 }

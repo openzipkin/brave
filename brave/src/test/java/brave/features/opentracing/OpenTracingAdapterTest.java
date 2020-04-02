@@ -41,7 +41,7 @@ public class OpenTracingAdapterTest {
   List<zipkin2.Span> spans = new ArrayList<>();
   Tracing brave = Tracing.newBuilder()
     .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-      .addField(BAGGAGE_FIELD).build())
+      .addRemoteField(BAGGAGE_FIELD).build())
     .spanReporter(spans::add).build();
 
   BraveTracer opentracing = BraveTracer.wrap(brave);

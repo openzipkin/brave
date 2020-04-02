@@ -55,7 +55,7 @@ public class TracerTest {
   Propagation.Factory propagationFactory = B3Propagation.FACTORY;
   CurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   Propagation.Factory baggageFactory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-    .addField(BAGGAGE_FIELD).build();
+    .addRemoteField(BAGGAGE_FIELD).build();
   Tracer tracer = Tracing.newBuilder()
     .spanReporter(new Reporter<zipkin2.Span>() {
       @Override public void report(zipkin2.Span span) {

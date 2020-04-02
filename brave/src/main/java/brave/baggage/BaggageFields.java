@@ -43,7 +43,7 @@ public final class BaggageFields {
    * @since 5.11
    */
   public static final BaggageField TRACE_ID = BaggageField.newBuilder("traceId")
-    .internalContext(new TraceIdStorage()).clearRemoteNames().build();
+    .internalContext(new TraceIdStorage()).build();
 
   static final class TraceIdStorage extends BaggageContext.ReadOnly {
     @Override public String getValue(BaggageField field, TraceContextOrSamplingFlags extracted) {
@@ -64,7 +64,7 @@ public final class BaggageFields {
    * @since 5.11
    */
   public static final BaggageField PARENT_ID = BaggageField.newBuilder("parentId")
-    .internalContext(new ParentIdStorage()).clearRemoteNames().build();
+    .internalContext(new ParentIdStorage()).build();
 
   static final class ParentIdStorage extends BaggageContext.ReadOnly {
     @Override public String getValue(BaggageField field, TraceContextOrSamplingFlags extracted) {
@@ -84,7 +84,7 @@ public final class BaggageFields {
    * @since 5.11
    */
   public static final BaggageField SPAN_ID = BaggageField.newBuilder("spanId")
-    .internalContext(new SpanIdStorage()).clearRemoteNames().build();
+    .internalContext(new SpanIdStorage()).build();
 
   static final class SpanIdStorage extends BaggageContext.ReadOnly {
     @Override public String getValue(BaggageField field, TraceContextOrSamplingFlags extracted) {
@@ -106,7 +106,7 @@ public final class BaggageFields {
    * @since 5.11
    */
   public static final BaggageField SAMPLED = BaggageField.newBuilder("sampled")
-    .internalContext(new SampledStorage()).clearRemoteNames().build();
+    .internalContext(new SampledStorage()).build();
 
   static final class SampledStorage extends BaggageContext.ReadOnly {
     @Override public String getValue(BaggageField field, TraceContextOrSamplingFlags extracted) {
@@ -133,8 +133,7 @@ public final class BaggageFields {
    * @since 5.11
    */
   public static BaggageField constant(String name, @Nullable String value) {
-    return BaggageField.newBuilder(name)
-      .internalContext(new ConstantStorage(value)).clearRemoteNames().build();
+    return BaggageField.newBuilder(name).internalContext(new ConstantStorage(value)).build();
   }
 
   static final class ConstantStorage extends BaggageContext.ReadOnly {

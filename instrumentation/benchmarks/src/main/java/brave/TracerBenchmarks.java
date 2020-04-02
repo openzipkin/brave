@@ -52,7 +52,7 @@ import static brave.propagation.SamplingFlags.NOT_SAMPLED;
 @State(Scope.Benchmark)
 public class TracerBenchmarks {
   Propagation.Factory baggageFactory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-    .addField(BAGGAGE_FIELD).build();
+    .addRemoteField(BAGGAGE_FIELD).build();
 
   TraceContext context =
     TraceContext.newBuilder().traceIdHigh(333L).traceId(444L).spanId(3).sampled(true).build();

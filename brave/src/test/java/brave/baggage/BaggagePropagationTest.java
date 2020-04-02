@@ -39,8 +39,8 @@ public class BaggagePropagationTest {
     "Root=1-67891233-abcdef012345678912345678;Parent=463ac35c9f6413ad;Sampled=1";
   String uuid = "f4308d05-2228-4468-80f6-92a8377ba193";
   Propagation.Factory factory = newFactoryBuilder(B3Propagation.FACTORY)
-    .addField(vcapRequestId)
-    .addField(amznTraceId).build();
+    .addRemoteField(vcapRequestId)
+    .addRemoteField(amznTraceId).build();
 
   Map<String, String> carrier = new LinkedHashMap<>();
   TraceContext.Injector<Map<String, String>> injector;
@@ -72,12 +72,10 @@ public class BaggagePropagationTest {
 
   @Test public void newFactory_sharingRemoteName() {
     BaggagePropagation.FactoryBuilder builder = newFactoryBuilder(B3Propagation.FACTORY);
-    builder.addField(BaggageField.newBuilder("userName").addRemoteName("baggage").build());
-    builder.addField(BaggageField.newBuilder("userId").addRemoteName("baggage").build());
-
-    assertThatThrownBy(builder::build)
-      .isInstanceOf(UnsupportedOperationException.class)
-      .hasMessage("[userName, userId] have the same remote name: baggage");
+    builder.addRemoteField(BaggageField.create("userName"), "baggage");
+    assertThatThrownBy(() -> builder.addRemoteField(BaggageField.create("userId"), "baggage"))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Propagation key already in use: baggage");
   }
 
   @Test public void inject_baggage() {
@@ -134,20 +132,16 @@ public class BaggagePropagationTest {
       .containsEntry(vcapRequestId.name(), uuid);
   }
 
-  @Test public void extract_field_multiple_remote_names() {
+  @Test public void extract_field_multiple_key_names() {
     // switch to case insensitive as this example is about http :P
     carrier = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
-    BaggageField userId = BaggageField.newBuilder("userId")
-      .addRemoteName("baggage-userId")
-      .addRemoteName("baggage_userId").build();
-    BaggageField sessionId = BaggageField.newBuilder("sessionId")
-      .addRemoteName("baggage-sessionId")
-      .addRemoteName("baggage_sessionId").build();
+    BaggageField userId = BaggageField.create("userId");
+    BaggageField sessionId = BaggageField.create("sessionId");
 
     factory = newFactoryBuilder(B3Propagation.FACTORY)
-      .addField(userId)
-      .addField(sessionId)
+      .addRemoteField(userId, "baggage-userId", "baggage_userId")
+      .addRemoteField(sessionId, "baggage-sessionId", "baggage_sessionId")
       .build();
     initialize();
 
@@ -161,14 +155,13 @@ public class BaggagePropagationTest {
     assertThat(sessionId.getValue(context)).isEqualTo("12345");
   }
 
-  @Test public void extract_no_remote_names() {
-    BaggageField userId = BaggageField.newBuilder("userId")
-      .clearRemoteNames().build();
+  @Test public void extract_no_key_names() {
+    BaggageField userId = BaggageField.create("userId");
     BaggageField sessionId = BaggageField.create("sessionId");
 
     factory = newFactoryBuilder(B3Propagation.FACTORY)
       .addField(userId)
-      .addField(sessionId)
+      .addRemoteField(sessionId)
       .build();
     initialize();
 
@@ -183,14 +176,13 @@ public class BaggagePropagationTest {
   }
 
   /** Redaction prevents named fields from being written downstream. */
-  @Test public void inject_redactedField() {
-    BaggageField userId = BaggageField.newBuilder("userId")
-      .clearRemoteNames().build();
+  @Test public void inject_no_key_names() {
+    BaggageField userId = BaggageField.create("userId");
     BaggageField sessionId = BaggageField.create("sessionId");
 
     factory = newFactoryBuilder(B3SinglePropagation.FACTORY)
       .addField(userId)
-      .addField(sessionId)
+      .addRemoteField(sessionId)
       .build();
     initialize();
 
@@ -204,17 +196,13 @@ public class BaggagePropagationTest {
       .containsEntry("sessionid", "12345");
   }
 
-  @Test public void inject_field_multiple_prefixes() {
-    BaggageField userId = BaggageField.newBuilder("userId")
-      .addRemoteName("baggage-userId")
-      .addRemoteName("baggage_userId").build();
-    BaggageField sessionId = BaggageField.newBuilder("sessionId")
-      .addRemoteName("baggage-sessionId")
-      .addRemoteName("baggage_sessionId").build();
+  @Test public void inject_field_multiple_key_names() {
+    BaggageField userId = BaggageField.create("userId");
+    BaggageField sessionId = BaggageField.create("sessionId");
 
     factory = newFactoryBuilder(B3SinglePropagation.FACTORY)
-      .addField(userId)
-      .addField(sessionId)
+      .addRemoteField(userId, "userId", "baggage-userId", "baggage_userId")
+      .addRemoteField(sessionId, "sessionId", "baggage-sessionId", "baggage_sessionId")
       .build();
     initialize();
 
@@ -235,15 +223,10 @@ public class BaggagePropagationTest {
     );
   }
 
-  @Test public void deduplicates() {
-    assertThat(newFactoryBuilder(B3Propagation.FACTORY)
-      .addField(BaggageField.create("userId"))
-      .addField(BaggageField.create("userId"))
-      .build())
-      .usingRecursiveComparison().isEqualTo(
-      newFactoryBuilder(B3Propagation.FACTORY)
-        .addField(BaggageField.create("userId"))
-        .build()
-    );
+  @Test public void dupesNotOk() {
+    BaggagePropagation.FactoryBuilder builder = newFactoryBuilder(B3Propagation.FACTORY)
+      .addRemoteField(BaggageField.create("userId"));
+    assertThatThrownBy(() -> builder.addRemoteField(BaggageField.create("userId")))
+      .isInstanceOf(IllegalArgumentException.class);
   }
 }
