@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,7 +15,9 @@ package brave.propagation;
 
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
+import brave.internal.RecyclableBuffers;
 
+import static brave.internal.HexCodec.toLowerHex;
 import static brave.internal.HexCodec.writeHexLong;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
@@ -38,6 +40,32 @@ public final class TraceIdContext extends SamplingFlags {
   /** Unique 8-byte identifier for a trace, set on all spans within it. */
   public long traceId() {
     return traceId;
+  }
+
+  volatile String traceIdString; // Lazily initialized and cached.
+
+  /**
+   * Returns the hex representation of the span's trace ID
+   *
+   * @since 5.11
+   */
+  public String traceIdString() {
+    String r = traceIdString;
+    if (r == null) {
+      r = toTraceIdString(traceIdHigh, traceId);
+      traceIdString = r;
+    }
+    return r;
+  }
+
+  static String toTraceIdString(long traceIdHigh, long traceId) {
+    if (traceIdHigh != 0) {
+      char[] result = RecyclableBuffers.idBuffer();
+      writeHexLong(result, 0, traceIdHigh);
+      writeHexLong(result, 16, traceId);
+      return new String(result);
+    }
+    return toLowerHex(traceId);
   }
 
   public Builder toBuilder() {

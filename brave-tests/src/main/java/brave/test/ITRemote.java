@@ -15,7 +15,8 @@ package brave.test;
 
 import brave.Tracing;
 import brave.propagation.B3Propagation;
-import brave.propagation.ExtraFieldPropagation;
+import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagation;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.StrictCurrentTraceContext;
@@ -42,7 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ul></pre>
  */
 public abstract class ITRemote {
-  public static final String EXTRA_KEY = "user-id";
+  public static final BaggageField BAGGAGE_FIELD = BaggageField.create("user-id");
 
   /**
    * We use a global rule instead of surefire config as this could be executed in gradle, sbt, etc.
@@ -72,7 +73,8 @@ public abstract class ITRemote {
   protected final StrictCurrentTraceContext currentTraceContext = new StrictCurrentTraceContext();
 
   protected final Propagation.Factory propagationFactory =
-    ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, EXTRA_KEY);
+    BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+      .addRemoteField(BAGGAGE_FIELD).build();
 
   protected Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
 

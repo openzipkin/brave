@@ -25,7 +25,7 @@ import brave.http.HttpServerParser;
 import brave.http.HttpTags;
 import brave.http.HttpTracing;
 import brave.propagation.B3SingleFormat;
-import brave.propagation.ExtraFieldPropagation;
+import brave.baggage.BaggageField;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
@@ -99,23 +99,23 @@ public abstract class ITHttpServer extends ITRemote {
   }
 
   @Test
-  public void readsExtra_newTrace() throws IOException {
-    readsExtra(new Request.Builder());
+  public void readsBaggage_newTrace() throws IOException {
+    readsBaggage(new Request.Builder());
 
     reporter.takeRemoteSpan(Span.Kind.SERVER);
   }
 
-  @Test public void readsExtra_unsampled() throws IOException {
-    readsExtra(new Request.Builder()
+  @Test public void readsBaggage_unsampled() throws IOException {
+    readsBaggage(new Request.Builder()
       .header("X-B3-Sampled", "0"));
 
     // @After will check that nothing is reported
   }
 
-  @Test public void readsExtra_existingTrace() throws IOException {
+  @Test public void readsBaggage_existingTrace() throws IOException {
     String traceId = "463ac35c9f6413ad";
 
-    readsExtra(new Request.Builder()
+    readsBaggage(new Request.Builder()
       .header("X-B3-TraceId", traceId)
       .header("X-B3-SpanId", traceId));
 
@@ -125,13 +125,13 @@ public abstract class ITHttpServer extends ITRemote {
   }
 
   /**
-   * The /extra endpoint should copy the key {@link #EXTRA_KEY} to the response body using {@link
-   * ExtraFieldPropagation#get(String)}.
+   * The /baggage endpoint should copy the value of {@link #BAGGAGE_FIELD} to the response body using
+   * {@link BaggageField#getValue()}.
    */
-  void readsExtra(Request.Builder builder) throws IOException {
-    Request request = builder.url(url("/extra"))
+  void readsBaggage(Request.Builder builder) throws IOException {
+    Request request = builder.url(url("/baggage"))
       // this is the pre-configured key we can pass through
-      .header(EXTRA_KEY, "joey").build();
+      .header(BAGGAGE_FIELD.name(), "joey").build();
 
     Response response = get(request);
     assertThat(response.isSuccessful()).isTrue();

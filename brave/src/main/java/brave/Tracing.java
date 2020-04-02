@@ -13,6 +13,7 @@
  */
 package brave;
 
+import brave.baggage.BaggageField;
 import brave.handler.FinishedSpanHandler;
 import brave.internal.IpLiteral;
 import brave.internal.Nullable;
@@ -22,7 +23,6 @@ import brave.internal.handler.ZipkinFinishedSpanHandler;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
@@ -356,8 +356,8 @@ public abstract class Tracing implements Closeable {
      *
      * <p>The primary use case is to implement a <a href="https://github.com/openzipkin-contrib/zipkin-secondary-sampling">sampling
      * overlay</a>, such as boosting the sample rate for a subset of the network depending on the
-     * value of an {@link ExtraFieldPropagation extra field}. This means that data will report when
-     * either the trace is normally sampled, or secondarily sampled via a custom header.
+     * value of a {@link BaggageField baggage field}. This means that data will report when either
+     * the trace is normally sampled, or secondarily sampled via a custom header.
      *
      * <p>This is simpler than {@link #addFinishedSpanHandler(FinishedSpanHandler)}, because you
      * don't have to duplicate transport mechanics already implemented in the {@link

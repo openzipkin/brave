@@ -14,6 +14,7 @@
 package brave.context.jfr;
 
 import brave.internal.Nullable;
+import brave.baggage.BaggageFields;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import brave.propagation.TraceContext;
@@ -31,7 +32,7 @@ import jdk.jfr.Label;
  * <pre>{@code
  * tracing = Tracing.newBuilder()
  *                  .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
- *                    .addScopeDecorator(JfrScopeDecorator.create())
+ *                    .addScopeDecorator(JfrScopeDecorator.get())
  *                    .build()
  *                  )
  *                  ...
@@ -39,6 +40,17 @@ import jdk.jfr.Label;
  * }</pre>
  */
 public final class JfrScopeDecorator implements ScopeDecorator {
+  static final ScopeDecorator INSTANCE = new JfrScopeDecorator();
+
+  /**
+   * Returns a singleton that configures {@link BaggageFields#TRACE_ID} and {@link
+   * BaggageFields#SPAN_ID}.
+   *
+   * @since 5.11
+   */
+  public static ScopeDecorator get() {
+    return INSTANCE;
+  }
 
   @Category("Zipkin")
   @Label("Scope")
@@ -49,7 +61,8 @@ public final class JfrScopeDecorator implements ScopeDecorator {
     @Label("Span Id") String spanId;
   }
 
-  public static ScopeDecorator create() {
+  /** @deprecated since 5.11 use {@link #get()} */
+  @Deprecated public static ScopeDecorator create() {
     return new JfrScopeDecorator();
   }
 

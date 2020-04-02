@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  */
 package brave.features.opentracing;
 
-import brave.propagation.ExtraFieldPropagation;
+import brave.baggage.BaggageField;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.tag.Tag;
@@ -93,12 +93,15 @@ final class BraveSpan implements io.opentracing.Span {
   }
 
   @Override public io.opentracing.Span setBaggageItem(String key, String value) {
-    ExtraFieldPropagation.set(delegate.context(), key, value);
+    BaggageField field = BaggageField.getByName(delegate.context(), key);
+    if (field == null) return this;
+    field.updateValue(delegate.context(), value);
     return this;
   }
 
   @Override public String getBaggageItem(String key) {
-    return ExtraFieldPropagation.get(delegate.context(), key);
+    BaggageField field = BaggageField.getByName(delegate.context(), key);
+    return field != null ? field.getValue(delegate.context()) : null;
   }
 
   @Override public io.opentracing.Span setOperationName(String operationName) {

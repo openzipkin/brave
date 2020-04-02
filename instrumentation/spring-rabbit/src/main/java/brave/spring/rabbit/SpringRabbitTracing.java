@@ -27,7 +27,6 @@ import brave.sampler.SamplerFunction;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.aopalliance.aop.Advice;
@@ -121,9 +120,8 @@ public final class SpringRabbitTracing {
     this.producerInjector = propagation.injector(MessageProducerRequest.SETTER);
     this.consumerInjector = propagation.injector(MessageConsumerRequest.SETTER);
     this.propagationKeys = propagation.keys().toArray(new String[0]);
-    // When Extra Fields or similar are in use, the result != TraceContextOrSamplingFlags.EMPTY
-    this.emptyExtraction = propagation.<Map<String, String>>extractor(Map::get)
-      .extract(Collections.emptyMap());
+    // When baggage or similar is in use, the result != TraceContextOrSamplingFlags.EMPTY
+    this.emptyExtraction = propagation.extractor((c, k) -> null).extract(Boolean.TRUE);
     this.producerSampler = messagingTracing.producerSampler();
     this.consumerSampler = messagingTracing.consumerSampler();
     this.remoteServiceName = builder.remoteServiceName;

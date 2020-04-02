@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,9 +14,9 @@
 package brave.netty.http;
 
 import brave.Tracing;
+import brave.baggage.BaggagePropagation;
 import brave.http.HttpServerBenchmarks;
 import brave.propagation.B3Propagation;
-import brave.propagation.ExtraFieldPropagation;
 import brave.sampler.Sampler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -34,7 +34,6 @@ import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.util.AttributeKey;
 import io.undertow.servlet.api.DeploymentInfo;
 import java.net.InetSocketAddress;
-import java.util.Arrays;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.runner.Runner;
@@ -42,6 +41,10 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import zipkin2.reporter.Reporter;
+
+import static brave.EndToEndBenchmarks.COUNTRY_CODE;
+import static brave.EndToEndBenchmarks.REQUEST_ID;
+import static brave.EndToEndBenchmarks.USER_ID;
 
 public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
 
@@ -60,15 +63,14 @@ public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
     ).serverHandler();
     final ChannelDuplexHandler traced = NettyHttpTracing.create(
       Tracing.newBuilder()
-        .propagationFactory(ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
-          .addField("x-vcap-request-id")
-          .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
-          .build()
-        )
+        .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+          .addRemoteField(REQUEST_ID)
+          .addRemoteField(COUNTRY_CODE, "baggage-country-code")
+          .addRemoteField(USER_ID, "baggage-user-id").build())
         .spanReporter(Reporter.NOOP)
         .build()
     ).serverHandler();
-    final ChannelDuplexHandler tracedExtra = NettyHttpTracing.create(
+    final ChannelDuplexHandler tracedBaggage = NettyHttpTracing.create(
       Tracing.newBuilder().spanReporter(Reporter.NOOP).build()
     ).serverHandler();
     final ChannelDuplexHandler traced128 = NettyHttpTracing.create(
@@ -87,10 +89,10 @@ public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
       } else if ("/traced".equals(uri)) {
         ctx.channel().attr(URI_ATTRIBUTE).set(uri);
         traced.channelRead(ctx, msg);
-      } else if ("/tracedextra".equals(uri)) {
+      } else if ("/tracedBaggage".equals(uri)) {
         ctx.channel().attr(URI_ATTRIBUTE).set(uri);
-        ExtraFieldPropagation.set("country-code", "FO");
-        tracedExtra.channelRead(ctx, msg);
+        COUNTRY_CODE.updateValue("FO");
+        tracedBaggage.channelRead(ctx, msg);
       } else if ("/traced128".equals(uri)) {
         ctx.channel().attr(URI_ATTRIBUTE).set(uri);
         traced128.channelRead(ctx, msg);
@@ -140,16 +142,13 @@ public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
     return ((InetSocketAddress) ch.localAddress()).getPort();
   }
 
-  @TearDown(Level.Trial) public void closeNetty() throws Exception {
+  @TearDown(Level.Trial) public void closeNetty() {
     if (bossGroup != null) bossGroup.shutdownGracefully();
     if (workerGroup != null) workerGroup.shutdownGracefully();
   }
 
   // Convenience main entry-point
-  public static void main(String[] args) throws RunnerException, InterruptedException {
-    //System.out.println(new NettyHttpServerBenchmarks().initServer());
-    //
-    //Thread.sleep(10 * 1000 * 60);
+  public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
       .include(".*" + NettyHttpServerBenchmarks.class.getSimpleName() + ".*")
       .build();

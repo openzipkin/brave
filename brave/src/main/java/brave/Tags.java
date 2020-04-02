@@ -13,6 +13,7 @@
  */
 package brave;
 
+import brave.baggage.BaggageField;
 import brave.propagation.TraceContext;
 
 /**
@@ -32,6 +33,22 @@ public final class Tags {
       String message = input.getMessage();
       if (message == null) message = input.getClass().getSimpleName();
       return message;
+    }
+  };
+
+  /**
+   * This tags the baggage value using {@link BaggageField#name()} as the key.
+   *
+   * @see BaggageField
+   * @since 5.11
+   */
+  public static final Tag<BaggageField> BAGGAGE_FIELD = new Tag<BaggageField>("baggageField") {
+    @Override protected String key(BaggageField input) {
+      return input.name();
+    }
+
+    @Override protected String parseValue(BaggageField input, TraceContext context) {
+      return input.getValue(context);
     }
   };
 

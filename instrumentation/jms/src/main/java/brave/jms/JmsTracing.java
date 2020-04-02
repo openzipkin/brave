@@ -125,7 +125,7 @@ public final class JmsTracing {
 
   // raw types to avoid accessing JMS 2.0 types unless we are sure they are present
   // Caching here instead of deferring further as there is overhead creating extractors and
-  // injectors, particularly when decorated with extra fields or secondary sampling.
+  // injectors, particularly when decorated with baggage or secondary sampling.
   @Nullable final Extractor jmsProducerExtractor;
   @Nullable final Injector jmsProducerInjector;
 

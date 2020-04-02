@@ -9,8 +9,10 @@ Bean Factories exist for the following types:
 * RpcTracingFactoryBean - for RPC tagging and sampling policy
 * HttpTracingFactoryBean - for HTTP tagging and sampling policy
 * MessagingTracingFactoryBean - for messaging tagging and sampling policy
-* CurrentTraceContextFactoryBean - for scope decorations such as MDC (logging) field correlation
-* ExtraFieldPropagationFactoryBean - for propagating extra fields over headers, like "customer-id"
+* CurrentTraceContextFactoryBean - to integrate decorators such as correlation.
+* BaggageFieldFactoryBean - for setting up additional propagation fields, like "customer-id"
+* BaggagePropagationFactoryBean - for propagating baggage fields in process and over headers
+* CorrelationScopeDecoratorFactoryBean -  for scope decorations such as MDC (logging) field correlation
 
 Here are some example beans using the factories in this module:
 ```xml
@@ -53,11 +55,15 @@ Here's an advanced example, which propagates the request-scoped header "x-vcap-r
 with trace headers:
 
 ```xml
-  <bean id="propagationFactory" class="brave.spring.beans.ExtraFieldPropagationFactoryBean">
-    <property name="fields">
-      <list>
-        <value>x-vcap-request-id</value>
-      </list>
+  <bean id="userId" class="brave.spring.beans.BaggageFieldFactoryBean">
+    <property name="name" value="userId"/>
+  </bean>
+
+  <bean id="propagationFactory" class="brave.spring.beans.BaggagePropagationFactoryBean">
+    <property name="remoteFields">
+      <bean class=\"brave.spring.beans.RemoteBaggageField\">
+        <property name=\"field\" ref=\"userId\"/>
+      </bean>
     </property>
   </bean>
 

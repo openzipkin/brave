@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,11 +14,9 @@
 package brave.spring.webmvc;
 
 import brave.http.HttpServerBenchmarks;
-import brave.propagation.ExtraFieldPropagation;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.ServletInfo;
 import io.undertow.servlet.util.ImmediateInstanceHandle;
-import java.io.IOException;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
@@ -34,6 +32,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
+import static brave.EndToEndBenchmarks.COUNTRY_CODE;
 import static brave.servlet.ServletBenchmarks.addFilterMappings;
 
 public class WebMvcBenchmarks extends HttpServerBenchmarks {
@@ -41,28 +40,28 @@ public class WebMvcBenchmarks extends HttpServerBenchmarks {
   @Controller
   public static class HelloController {
     @RequestMapping("/nottraced")
-    public ResponseEntity<String> nottraced() throws IOException {
+    public ResponseEntity<String> nottraced() {
       return ResponseEntity.ok("hello world");
     }
 
     @RequestMapping("/unsampled")
-    public ResponseEntity<String> unsampled() throws IOException {
+    public ResponseEntity<String> unsampled() {
       return ResponseEntity.ok("hello world");
     }
 
     @RequestMapping("/traced")
-    public ResponseEntity<String> traced() throws IOException {
+    public ResponseEntity<String> traced() {
       return ResponseEntity.ok("hello world");
     }
 
-    @RequestMapping("/tracedextra")
-    public ResponseEntity<String> tracedextra() throws IOException {
-      ExtraFieldPropagation.set("country-code", "FO");
+    @RequestMapping("/tracedBaggage")
+    public ResponseEntity<String> tracedBaggage() {
+      COUNTRY_CODE.updateValue("FO");
       return ResponseEntity.ok("hello world");
     }
 
     @RequestMapping("/traced128")
-    public ResponseEntity<String> traced128() throws IOException {
+    public ResponseEntity<String> traced128() {
       return ResponseEntity.ok("hello world");
     }
   }

@@ -13,12 +13,15 @@
  */
 package brave;
 
+import brave.baggage.BaggageFields;
+import brave.propagation.TraceContext;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /** This only tests things not already covered in {@link TagTest} */
 @RunWith(MockitoJUnitRunner.class)
@@ -35,5 +38,20 @@ public class TagsTest {
     Tags.ERROR.tag(new RuntimeException(), span);
 
     verify(span).tag("error", "RuntimeException");
+  }
+
+  TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
+
+  /** These are not good examples of actual baggage.. just to test the types. */
+  @Test public void baggageField() {
+    Tags.BAGGAGE_FIELD.tag(BaggageFields.TRACE_ID, context, span);
+
+    verify(span).tag("traceId", "0000000000000001");
+  }
+
+  @Test public void baggageField_nullValue() {
+    Tags.BAGGAGE_FIELD.tag(BaggageFields.SAMPLED, context, span);
+
+    verifyNoMoreInteractions(span);
   }
 }

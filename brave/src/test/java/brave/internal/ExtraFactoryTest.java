@@ -19,7 +19,10 @@ import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin2.reporter.Reporter;
@@ -52,35 +55,87 @@ public abstract class ExtraFactoryTest<E, F extends ExtraFactory<E>> {
       .build());
   }
 
-  @Test public void decorate_empty() {
-    assertThat(factory.decorate(contextWithExtra(context, asList(1L))).extra())
-      .containsExactly(1L, factory.create());
-    assertThat(factory.decorate(contextWithExtra(context, asList(1L, 2L))).extra())
-      .containsExactly(1L, 2L, factory.create());
-    assertThat(factory.decorate(contextWithExtra(context, asList(factory.create()))).extra())
-      .containsExactly(factory.create());
-    assertThat(factory.decorate(contextWithExtra(context, asList(factory.create(), 1L))).extra())
-      .containsExactly(factory.create(), 1L);
-    assertThat(factory.decorate(contextWithExtra(context, asList(1L, factory.create()))).extra())
-      .containsExactly(1L, factory.create());
+  @Test public void decorate_makesNewExtra() {
+    Map<List<Object>, List<Object>> inputToExpected = new LinkedHashMap<>();
+    inputToExpected.put(asList(1L), asList(1L, factory.create()));
+    inputToExpected.put(asList(1L, 2L), asList(1L, 2L, factory.create()));
 
-    E claimedBySelf = factory.create();
-    factory.tryToClaim(claimedBySelf, context.traceId(), context.spanId());
-    assertThat(factory.decorate(contextWithExtra(context, asList(claimedBySelf))).extra())
-      .containsExactly(factory.create());
-    assertThat(factory.decorate(contextWithExtra(context, asList(claimedBySelf, 1L))).extra())
-      .containsExactly(factory.create(), 1L);
-    assertThat(factory.decorate(contextWithExtra(context, asList(1L, claimedBySelf))).extra())
-      .containsExactly(1L, factory.create());
+    for (Entry<List<Object>, List<Object>> inputExpected : inputToExpected.entrySet()) {
+      List<Object> actual = decorateAndReturnExtra(context, inputExpected.getKey());
 
+      // doesn't drop the input elements
+      assertThat(actual).containsAll(inputExpected.getKey());
+
+      // adds a new propagation field container and claims it against the current context.
+      assertPropagationFieldsClaimedBy(actual, context);
+    }
+  }
+
+  @Test public void decorate_claimsFields() {
+    Map<List<Object>, List<Object>> inputToExpected = new LinkedHashMap<>();
+    inputToExpected.put(asList(factory.create()), asList(factory.create()));
+    inputToExpected.put(asList(factory.create(), 1L), asList(factory.create(), 1L));
+    inputToExpected.put(asList(1L, factory.create()), asList(1L, factory.create()));
+
+    for (Entry<List<Object>, List<Object>> inputExpected : inputToExpected.entrySet()) {
+      List<Object> actual = decorateAndReturnExtra(context, inputExpected.getKey());
+
+      // Has the same elements
+      assertThat(actual).isEqualTo(inputExpected.getKey());
+
+      // The propagation fields are now claimed by this context
+      assertPropagationFieldsClaimedBy(actual, context);
+    }
+  }
+
+  @Test public void decorate_redundant() {
+    E alreadyClaimed = factory.create();
+    factory.tryToClaim(alreadyClaimed, context.traceId(), context.spanId());
+
+    Map<List<Object>, List<Object>> inputToExpected = new LinkedHashMap<>();
+    inputToExpected.put(asList(alreadyClaimed), asList(factory.create()));
+    inputToExpected.put(asList(alreadyClaimed, 1L), asList(factory.create(), 1L));
+    inputToExpected.put(asList(1L, alreadyClaimed), asList(1L, factory.create()));
+
+    for (Entry<List<Object>, List<Object>> inputExpected : inputToExpected.entrySet()) {
+      List<Object> actual = decorateAndReturnExtra(context, inputExpected.getKey());
+
+      // Verify no unexpected side effects
+      assertThat(actual).isEqualTo(inputExpected.getKey());
+      assertPropagationFieldsClaimedBy(actual, context);
+    }
+  }
+
+  @Test public void decorate_forksWhenFieldsAlreadyClaimed() {
+    TraceContext other = TraceContext.newBuilder().traceId(98L).spanId(99L).build();
     E claimedByOther = factory.create();
-    factory.tryToClaim(claimedBySelf, 99L, 99L);
-    assertThat(factory.decorate(contextWithExtra(context, asList(claimedByOther))).extra())
-      .containsExactly(factory.create());
-    assertThat(factory.decorate(contextWithExtra(context, asList(claimedByOther, 1L))).extra())
-      .containsExactly(factory.create(), 1L);
-    assertThat(factory.decorate(contextWithExtra(context, asList(1L, claimedByOther))).extra())
-      .containsExactly(1L, factory.create());
+    factory.tryToClaim(claimedByOther, other.traceId(), other.spanId());
+
+    Map<List<Object>, List<Object>> inputToExpected = new LinkedHashMap<>();
+    inputToExpected.put(asList(claimedByOther), asList(factory.create()));
+    inputToExpected.put(asList(claimedByOther, 1L), asList(factory.create(), 1L));
+    inputToExpected.put(asList(1L, claimedByOther), asList(1L, factory.create()));
+
+    for (Entry<List<Object>, List<Object>> inputExpected : inputToExpected.entrySet()) {
+      List<Object> actual = decorateAndReturnExtra(context, inputExpected.getKey());
+      assertPropagationFieldsClaimedBy(actual, context);
+      assertEquivalentExtraIgnoringIds(actual, inputExpected.getValue());
+    }
+  }
+
+  static void assertPropagationFieldsClaimedBy(List<Object> actual, TraceContext context) {
+    assertThat(actual)
+      .filteredOn(PropagationFields.class::isInstance)
+      .hasSize(1)
+      .flatExtracting("traceId", "spanId")
+      .containsExactly(context.traceId(), context.spanId());
+  }
+
+  static void assertEquivalentExtraIgnoringIds(List<Object> actual, List<Object> expected) {
+    assertThat(actual)
+      .usingFieldByFieldElementComparator()
+      .usingElementComparatorIgnoringFields("traceId", "spanId")
+      .containsExactlyElementsOf(expected);
   }
 
   @Test public void idempotent() {
@@ -107,6 +162,10 @@ public abstract class ExtraFactoryTest<E, F extends ExtraFactory<E>> {
   }
 
   protected abstract void assertAssociatedWith(E extra, long traceId, long spanId);
+
+  List<Object> decorateAndReturnExtra(TraceContext context, List<Object> key) {
+    return factory.decorate(contextWithExtra(context, key)).extra();
+  }
 
   static TraceContext contextWithExtra(TraceContext context, List<Object> extra) {
     return InternalPropagation.instance.withExtra(context, extra);

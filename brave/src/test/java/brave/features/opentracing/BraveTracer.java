@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,7 +14,8 @@
 package brave.features.opentracing;
 
 import brave.Tracing;
-import brave.propagation.ExtraFieldPropagation;
+import brave.baggage.BaggageField;
+import brave.internal.InternalBaggage;
 import brave.propagation.Propagation;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.Propagation.Setter;
@@ -29,8 +30,6 @@ import io.opentracing.propagation.Format;
 import io.opentracing.propagation.TextMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -50,7 +49,9 @@ final class BraveTracer implements Tracer {
     this.tracing = tracing;
     tracer = tracing.tracer();
     injector = tracing.propagation().injector(TEXT_MAP_SETTER);
-    extractor = new TextMapExtractorAdaptor(tracing.propagation());
+    BaggageField.create("foo"); // ensure the below instance exists
+    Set<String> allKeyNames = InternalBaggage.instance.allKeyNames(tracing.propagationFactory());
+    extractor = new TextMapExtractorAdaptor(tracing.propagation(), allKeyNames);
   }
 
   @Override public ScopeManager scopeManager() {
@@ -116,36 +117,25 @@ final class BraveTracer implements Tracer {
    * <p>See https://github.com/opentracing/opentracing-java/issues/305
    */
   static final class TextMapExtractorAdaptor implements TraceContext.Extractor<TextMap> {
-    final Set<String> allPropagationKeys;
+    final Set<String> allNames;
     final TraceContext.Extractor<Map<String, String>> delegate;
 
-    TextMapExtractorAdaptor(Propagation<String> propagation) {
-      allPropagationKeys = lowercaseSet(propagation.keys());
-      if (propagation instanceof ExtraFieldPropagation) {
-        allPropagationKeys.addAll(((ExtraFieldPropagation<String>) propagation).extraKeys());
-      }
-      delegate = propagation.extractor(LC_MAP_GETTER);
+    TextMapExtractorAdaptor(Propagation<String> propagation, Set<String> allNames) {
+      this.allNames = allNames;
+      this.delegate = propagation.extractor(LC_MAP_GETTER);
     }
 
     /** Performs case-insensitive lookup */
     @Override public TraceContextOrSamplingFlags extract(TextMap entries) {
-      Map<String, String> cache = new LinkedHashMap<>();
+      Map<String, String> cache = new LinkedHashMap<>(); // Cache only the headers we would lookup
       for (Iterator<Map.Entry<String, String>> it = entries.iterator(); it.hasNext(); ) {
         Map.Entry<String, String> next = it.next();
         String inputKey = next.getKey().toLowerCase(Locale.ROOT);
-        if (allPropagationKeys.contains(inputKey)) {
+        if (allNames.contains(inputKey)) {
           cache.put(inputKey, next.getValue());
         }
       }
       return delegate.extract(cache);
     }
-  }
-
-  static Set<String> lowercaseSet(List<String> fields) {
-    Set<String> lcSet = new LinkedHashSet<>();
-    for (String f : fields) {
-      lcSet.add(f.toLowerCase(Locale.ROOT));
-    }
-    return lcSet;
   }
 }

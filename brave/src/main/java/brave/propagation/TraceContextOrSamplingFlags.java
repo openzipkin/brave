@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -39,7 +39,7 @@ import static java.util.Collections.emptyList;
  *   <li>If you have only a trace ID, use {@link #create(TraceIdContext)}</li>
  *   <li>Otherwise, use {@link #create(SamplingFlags)}</li>
  * </ul></pre>
- * <p>If your propagation implementation adds extra data, append it via {@link
+ * <p>If your propagation implementation needs additional state, append it via {@link
  * Builder#addExtra(Object)}.
  *
  *
@@ -100,7 +100,8 @@ public final class TraceContextOrSamplingFlags {
   }
 
   /**
-   * Non-empty when {@link #context} is null: A list of additional data extracted from the carrier.
+   * Non-empty when {@link #context} is null: A list of additional state extracted from the
+   * carrier.
    *
    * @see TraceContext#extra()
    */
@@ -226,7 +227,7 @@ public final class TraceContextOrSamplingFlags {
         }
         result = new TraceContextOrSamplingFlags(type, context, emptyList());
       } else {
-        // make sure the extra data is immutable and unmodifiable
+        // make sure the extra state is immutable and unmodifiable
         result = new TraceContextOrSamplingFlags(type, value, ensureImmutable(extra));
       }
 

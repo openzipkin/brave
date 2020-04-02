@@ -15,7 +15,8 @@ package brave.features.opentracing;
 
 import brave.Tracing;
 import brave.propagation.B3Propagation;
-import brave.propagation.ExtraFieldPropagation;
+import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagation;
 import brave.propagation.TraceContext;
 import io.opentracing.propagation.Format;
 import io.opentracing.propagation.TextMapAdapter;
@@ -35,9 +36,12 @@ import static org.assertj.core.data.MapEntry.entry;
  * the core concepts.
  */
 public class OpenTracingAdapterTest {
+  static final BaggageField BAGGAGE_FIELD = BaggageField.newBuilder("user-id").build();
+
   List<zipkin2.Span> spans = new ArrayList<>();
   Tracing brave = Tracing.newBuilder()
-    .propagationFactory(ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "client-id"))
+    .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+      .addRemoteField(BAGGAGE_FIELD).build())
     .spanReporter(spans::add).build();
 
   BraveTracer opentracing = BraveTracer.wrap(brave);
@@ -78,7 +82,7 @@ public class OpenTracingAdapterTest {
     map.put("X-B3-TraceId", "0000000000000001");
     map.put("X-B3-SpanId", "0000000000000002");
     map.put("X-B3-Sampled", "1");
-    map.put("Client-Id", "sammy");
+    map.put("User-Id", "sammy");
 
     BraveSpanContext openTracingContext =
       opentracing.extract(Format.Builtin.HTTP_HEADERS, new TextMapAdapter(map));
@@ -90,7 +94,7 @@ public class OpenTracingAdapterTest {
         .sampled(true).build());
 
     assertThat(openTracingContext.baggageItems())
-      .containsExactly(entry("client-id", "sammy"));
+      .containsExactly(entry(BAGGAGE_FIELD.name(), "sammy"));
   }
 
   @Test

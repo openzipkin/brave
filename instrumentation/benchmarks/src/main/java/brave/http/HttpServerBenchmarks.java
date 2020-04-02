@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -36,6 +36,8 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
+
+import static brave.baggage.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
 
 @Measurement(iterations = 5, time = 1)
 @Warmup(iterations = 10, time = 1)
@@ -100,17 +102,17 @@ public abstract class HttpServerBenchmarks {
     get("/traced");
   }
 
-  @Benchmark public void tracedExtraServer_get() throws Exception {
-    get("/tracedextra");
+  @Benchmark public void tracedBaggageServer_get() throws Exception {
+    get("/tracedBaggage");
   }
 
   @Benchmark public void tracedCorrelatedServer_get() throws Exception {
     get("/tracedcorrelated");
   }
 
-  @Benchmark public void tracedExtraServer_get_request_id() throws Exception {
-    client.newCall(new Request.Builder().url(baseUrl() + "/tracedextra")
-      .header("x-vcap-request-id", "216a2aea45d08fc9")
+  @Benchmark public void tracedBaggageServer_get_request_id() throws Exception {
+    client.newCall(new Request.Builder().url(baseUrl() + "/tracedBaggage")
+      .header(BAGGAGE_FIELD.name(), "216a2aea45d08fc9")
       .build())
       .execute().body().close();
   }

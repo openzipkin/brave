@@ -63,8 +63,7 @@ public interface Propagation<K> {
     public abstract <K> Propagation<K> create(KeyFactory<K> keyFactory);
 
     /**
-     * Decorates the input such that it can propagate extra data, such as a timestamp or a carrier
-     * for extra fields.
+     * Decorates the input such that it can propagate extra state, such as a timestamp or baggage.
      *
      * <p>Implementations are responsible for data scoping, if relevant. For example, if only
      * global configuration is present, it could suffice to simply ensure that data is present. If
@@ -112,8 +111,8 @@ public interface Propagation<K> {
    *
    * <p><em>Note:</em> Depending on the format, keys returned may not all be mandatory.
    *
-   * <p><em>Note:</em> If your implementation carries "extra fields", such as correlation IDs, do
-   * not return the names of those fields here. If you do, they will be deleted, which can interfere
+   * <p><em>Note:</em> If your implementation carries baggage, such as correlation IDs, do not
+   * return the names of those fields here. If you do, they will be deleted, which can interfere
    * with user headers.
    */
   // The use cases of this are:

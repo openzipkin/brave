@@ -16,7 +16,6 @@ package brave.kafka.clients;
 import brave.Span;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -49,12 +48,12 @@ public class KafkaTracingTest extends ITKafka {
     assertThat(kafkaTracing.nextSpan(fakeRecord)).isNotNull();
   }
 
-  @Test public void nextSpan_should_create_span_with_extra_keys() {
+  @Test public void nextSpan_should_create_span_with_baggage() {
     addB3MultiHeaders(fakeRecord);
-    fakeRecord.headers().add(EXTRA_KEY, "user1".getBytes());
+    fakeRecord.headers().add(BAGGAGE_FIELD.name(), "user1".getBytes());
 
     Span span = kafkaTracing.nextSpan(fakeRecord);
-    assertThat(ExtraFieldPropagation.get(span.context(), EXTRA_KEY)).contains("user1");
+    assertThat(BAGGAGE_FIELD.getValue(span.context())).contains("user1");
   }
 
   @Test public void nextSpan_should_tag_topic_and_key_when_no_incoming_context() {

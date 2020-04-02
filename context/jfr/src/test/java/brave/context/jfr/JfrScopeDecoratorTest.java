@@ -40,9 +40,9 @@ public class JfrScopeDecoratorTest {
   @Rule public TemporaryFolder folder = new TemporaryFolder();
 
   ExecutorService wrappedExecutor = Executors.newSingleThreadExecutor();
-  ScopeDecorator decorator = JfrScopeDecorator.create();
+  ScopeDecorator decorator = JfrScopeDecorator.get();
   CurrentTraceContext currentTraceContext = StrictCurrentTraceContext.newBuilder()
-    .addScopeDecorator(JfrScopeDecorator.create())
+    .addScopeDecorator(JfrScopeDecorator.get())
     .build();
 
   Executor executor = currentTraceContext.executor(wrappedExecutor);

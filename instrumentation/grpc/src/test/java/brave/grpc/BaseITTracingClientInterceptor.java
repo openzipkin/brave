@@ -16,7 +16,6 @@ package brave.grpc;
 import brave.Clock;
 import brave.SpanCustomizer;
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.rpc.RpcRuleSampler;
@@ -119,28 +118,28 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     assertChildOf(extracted, parent);
   }
 
-  @Test public void propagatesExtra() {
+  @Test public void propagatesBaggage() {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
-      ExtraFieldPropagation.set(parent, EXTRA_KEY, "joey");
+      BAGGAGE_FIELD.updateValue(parent, "joey");
       GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
     }
 
     TraceContext extracted = server.takeRequest().context();
-    assertThat(ExtraFieldPropagation.get(extracted, EXTRA_KEY)).isEqualTo("joey");
+    assertThat(BAGGAGE_FIELD.getValue(extracted)).isEqualTo("joey");
 
     reporter.takeRemoteSpan(Span.Kind.CLIENT);
   }
 
-  @Test public void propagatesExtra_unsampled() {
+  @Test public void propagatesBaggage_unsampled() {
     TraceContext parent = newTraceContext(SamplingFlags.NOT_SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
-      ExtraFieldPropagation.set(parent, EXTRA_KEY, "joey");
+      BAGGAGE_FIELD.updateValue(parent, "joey");
       GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
     }
 
     TraceContext extracted = server.takeRequest().context();
-    assertThat(ExtraFieldPropagation.get(extracted, EXTRA_KEY)).isEqualTo("joey");
+    assertThat(BAGGAGE_FIELD.getValue(extracted)).isEqualTo("joey");
   }
 
   /** This prevents confusion as a blocking client should end before, the start of the next span. */

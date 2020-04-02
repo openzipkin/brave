@@ -15,7 +15,6 @@ package brave.propagation;
 
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
-import brave.internal.PropagationFields;
 import java.util.List;
 
 import static brave.internal.InternalPropagation.FLAG_DEBUG;
@@ -50,9 +49,8 @@ public class SamplingFlags {
         return context.withFlags(flags);
       }
 
-      @Override
-      public Class<? extends PropagationFields<String, String>> extraPropagationFieldsType() {
-        return ExtraFieldPropagation.Extra.class;
+      @Override public String[] extraKeyNames(ExtraFieldPropagation.Factory factory) {
+        return factory.extraKeyNames;
       }
     };
   }

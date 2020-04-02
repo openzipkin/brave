@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,7 +14,6 @@
 package brave.jaxrs2;
 
 import brave.http.HttpServerBenchmarks;
-import brave.propagation.ExtraFieldPropagation;
 import io.undertow.Undertow;
 import io.undertow.servlet.api.DeploymentInfo;
 import java.net.InetSocketAddress;
@@ -33,6 +32,7 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
+import static brave.baggage.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
 import static brave.servlet.ServletBenchmarks.addFilterMappings;
 
 public class JaxRs2ServerBenchmarks extends HttpServerBenchmarks {
@@ -54,10 +54,10 @@ public class JaxRs2ServerBenchmarks extends HttpServerBenchmarks {
       return "hello world";
     }
 
-    @GET @Path("/tracedextra")
-    public String tracedextra() {
+    @GET @Path("/tracedBaggage")
+    public String tracedBaggage() {
       // noop if not configured
-      ExtraFieldPropagation.set("country-code", "FO");
+      BAGGAGE_FIELD.updateValue("FO");
       return "hello world";
     }
 

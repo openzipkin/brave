@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,9 +13,9 @@
  */
 package brave;
 
+import brave.baggage.BaggagePropagationCustomizer;
 import brave.handler.FinishedSpanHandler;
 import brave.propagation.CurrentTraceContextCustomizer;
-import brave.propagation.ExtraFieldCustomizer;
 import zipkin2.reporter.Reporter;
 
 /**
@@ -38,8 +38,8 @@ import zipkin2.reporter.Reporter;
  *   <li><a href="https://docs.spring.io/spring/docs/current/spring-framework-reference/core.html#beans-autowired-annotation">Spring Autowired Collections</a></li>
  * </ul></pre>
  *
+ * @see BaggagePropagationCustomizer
  * @see CurrentTraceContextCustomizer
- * @see ExtraFieldCustomizer
  * @since 5.7
  */
 public interface TracingCustomizer {

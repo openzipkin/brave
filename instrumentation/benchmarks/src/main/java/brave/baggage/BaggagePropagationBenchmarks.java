@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -11,11 +11,15 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.propagation;
+package brave.baggage;
 
 import brave.internal.HexCodec;
+import brave.propagation.B3Propagation;
+import brave.propagation.Propagation;
+import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
+import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -37,15 +41,13 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @Fork(3)
 @BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-public class ExtraFieldPropagationBenchmarks {
-  static final Propagation.Factory
-    factory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "x-vcap-request-id");
-  static final Propagation<String> extra = factory.create(Propagation.KeyFactory.STRING);
-  static final Injector<Map<String, String>> extraInjector = extra.injector(Map::put);
-  static final Extractor<Map<String, String>> extraExtractor = extra.extractor(Map::get);
-  static final Propagation<String> redactedExtra = factory.create(Propagation.KeyFactory.STRING);
-  static final Injector<Map<String, String>> redactedInjector = redactedExtra.injector(Map::put);
-  static final Extractor<Map<String, String>> redactedExtractor = redactedExtra.extractor(Map::get);
+public class BaggagePropagationBenchmarks {
+  public static final BaggageField BAGGAGE_FIELD = BaggageField.create("user-id");
+  static final Propagation.Factory factory =
+    BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY).addRemoteField(BAGGAGE_FIELD).build();
+  static final Propagation<String> propagation = factory.create(Propagation.KeyFactory.STRING);
+  static final Injector<Map<String, String>> injector = propagation.injector(Map::put);
+  static final Extractor<Map<String, String>> extractor = propagation.extractor(Map::get);
 
   static final TraceContext context = TraceContext.newBuilder()
     .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef01"))
@@ -56,14 +58,14 @@ public class ExtraFieldPropagationBenchmarks {
 
   static final Map<String, String> incoming = new LinkedHashMap<String, String>() {
     {
-      extraInjector.inject(context, this);
-      put("x-vcap-request-id", "216a2aea45d08fc9");
+      injector.inject(context, this);
+      put(BAGGAGE_FIELD.name(), "216a2aea45d08fc9");
     }
   };
 
-  static final Map<String, String> incomingNoExtra = new LinkedHashMap<String, String>() {
+  static final Map<String, String> incomingNoBaggage = new LinkedHashMap<String, String>() {
     {
-      extraInjector.inject(context, this);
+      injector.inject(context, this);
     }
   };
 
@@ -71,43 +73,26 @@ public class ExtraFieldPropagationBenchmarks {
 
   @Benchmark public void inject() {
     Map<String, String> carrier = new LinkedHashMap<>();
-    extraInjector.inject(context, carrier);
+    injector.inject(context, carrier);
   }
 
   @Benchmark public TraceContextOrSamplingFlags extract() {
-    return extraExtractor.extract(incoming);
+    return extractor.extract(incoming);
   }
 
   @Benchmark public TraceContextOrSamplingFlags extract_nothing() {
-    return extraExtractor.extract(nothingIncoming);
+    return extractor.extract(nothingIncoming);
   }
 
-  @Benchmark public TraceContextOrSamplingFlags extract_no_extra() {
-    return extraExtractor.extract(incomingNoExtra);
-  }
-
-  @Benchmark public void redacted_inject() {
-    Map<String, String> carrier = new LinkedHashMap<>();
-    redactedInjector.inject(context, carrier);
-  }
-
-  @Benchmark public TraceContextOrSamplingFlags redacted_extract() {
-    return redactedExtractor.extract(incoming);
-  }
-
-  @Benchmark public TraceContextOrSamplingFlags redacted_extract_nothing() {
-    return redactedExtractor.extract(nothingIncoming);
-  }
-
-  @Benchmark public TraceContextOrSamplingFlags redacted_extract_no_extra() {
-    return redactedExtractor.extract(incomingNoExtra);
+  @Benchmark public TraceContextOrSamplingFlags extract_no_baggage() {
+    return extractor.extract(incomingNoBaggage);
   }
 
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
       .addProfiler("gc")
-      .include(".*" + ExtraFieldPropagationBenchmarks.class.getSimpleName())
+      .include(".*" + BaggagePropagationBenchmarks.class.getSimpleName())
       .build();
 
     new Runner(opt).run();

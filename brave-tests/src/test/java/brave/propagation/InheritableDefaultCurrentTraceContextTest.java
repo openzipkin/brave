@@ -32,9 +32,13 @@ public class InheritableDefaultCurrentTraceContextTest extends CurrentTraceConte
     }
   }
 
-  @Test(expected = ComparisonFailure.class)
+  @Test(expected = AssertionError.class)
   public void isnt_inheritable() throws Exception {
     super.isnt_inheritable();
+  }
+
+  @Test public void is_inheritable() throws Exception {
+    super.is_inheritable(currentTraceContext);
   }
 
   @Before public void ensureNoOtherTestsTaint() {

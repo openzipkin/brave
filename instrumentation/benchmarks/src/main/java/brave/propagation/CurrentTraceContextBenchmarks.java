@@ -13,6 +13,8 @@
  */
 package brave.propagation;
 
+import brave.baggage.BaggageFields;
+import brave.baggage.BaggagePropagation;
 import brave.context.log4j2.ThreadContextScopeDecorator;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -29,6 +31,8 @@ import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
+import static brave.baggage.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
+
 @Measurement(iterations = 5, time = 1)
 @Warmup(iterations = 10, time = 1)
 @Fork(3)
@@ -39,34 +43,28 @@ public class CurrentTraceContextBenchmarks {
   static final CurrentTraceContext base = ThreadLocalCurrentTraceContext.create();
   static final CurrentTraceContext log4j2OnlyTraceId = ThreadLocalCurrentTraceContext.newBuilder()
     .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
-      .removeField("parentId")
-      .removeField("spanId")
-      .removeField("sampled")
+      .clearFields()
+      .addField(BaggageFields.TRACE_ID)
       .build())
     .build();
-  static final CurrentTraceContext log4j2OnlyExtra = ThreadLocalCurrentTraceContext.newBuilder()
+  static final CurrentTraceContext log4j2OnlyBaggage = ThreadLocalCurrentTraceContext.newBuilder()
     .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
-      .removeField("traceId")
-      .removeField("parentId")
-      .removeField("spanId")
-      .removeField("sampled")
-      .addExtraField("user-id")
+      .clearFields()
+      .addField(BAGGAGE_FIELD)
       .build())
     .build();
   static final CurrentTraceContext log4j2 = ThreadLocalCurrentTraceContext.newBuilder()
-    .addScopeDecorator(ThreadContextScopeDecorator.create())
+    .addScopeDecorator(ThreadContextScopeDecorator.get())
     .build();
 
-  static final ExtraFieldPropagation.Factory extraFactory =
-    ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "user-id");
+  static final Propagation.Factory baggageFactory =
+    BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY).addRemoteField(BAGGAGE_FIELD).build();
 
-  static final CurrentTraceContext log4j2Extra = ThreadLocalCurrentTraceContext.newBuilder()
-    .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
-      .addExtraField("user-id")
-      .build())
+  static final CurrentTraceContext log4j2Baggage = ThreadLocalCurrentTraceContext.newBuilder()
+    .addScopeDecorator(ThreadContextScopeDecorator.newBuilder().addField(BAGGAGE_FIELD).build())
     .build();
 
-  static final TraceContext context = extraFactory.decorate(TraceContext.newBuilder()
+  static final TraceContext context = baggageFactory.decorate(TraceContext.newBuilder()
     .traceId(1L)
     .parentId(2L)
     .spanId(3L)
@@ -74,7 +72,7 @@ public class CurrentTraceContextBenchmarks {
     .build());
 
   static {
-    ExtraFieldPropagation.set(context, "user-id", "romeo");
+    BAGGAGE_FIELD.updateValue(context, "romeo");
   }
 
   final CurrentTraceContext.Scope log4j2Scope = log4j2.newScope(context);
@@ -98,13 +96,13 @@ public class CurrentTraceContextBenchmarks {
     }
   }
 
-  @Benchmark public void newScope_log4j2_onlyExtra() {
-    try (CurrentTraceContext.Scope ws = log4j2OnlyExtra.newScope(context)) {
+  @Benchmark public void newScope_log4j2_onlyBaggage() {
+    try (CurrentTraceContext.Scope ws = log4j2OnlyBaggage.newScope(context)) {
     }
   }
 
-  @Benchmark public void newScope_log4j2_extra() {
-    try (CurrentTraceContext.Scope ws = log4j2Extra.newScope(context)) {
+  @Benchmark public void newScope_log4j2_baggage() {
+    try (CurrentTraceContext.Scope ws = log4j2Baggage.newScope(context)) {
     }
   }
 

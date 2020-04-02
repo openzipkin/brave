@@ -17,7 +17,9 @@ import brave.internal.Nullable;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.ExtraFieldPropagation;
+import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagation;
+import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.test.util.ClassLoaders;
 import java.util.concurrent.Callable;
@@ -36,12 +38,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 public abstract class CurrentTraceContextTest {
-  ExtraFieldPropagation.Factory extraFieldFactory =
-    ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, EXTRA_FIELD);
-  protected static final String EXTRA_FIELD = "user-name";
+  protected static final BaggageField BAGGAGE_FIELD = BaggageField.create("user-id");
+
+  Propagation.Factory baggageFactory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+    .addRemoteField(BAGGAGE_FIELD).build();
 
   protected final CurrentTraceContext currentTraceContext;
-  protected final TraceContext context = extraFieldFactory.decorate(
+  protected final TraceContext context = baggageFactory.decorate(
     TraceContext.newBuilder().traceIdHigh(-1L).traceId(1L).spanId(1L).sampled(true).build()
   );
   protected final TraceContext notYetSampledContext =
@@ -85,16 +88,16 @@ public abstract class CurrentTraceContextTest {
     }
   }
 
-  @Test public void newScope_noticesDifferentExtraField() {
+  @Test public void newScope_noticesDifferentBaggageField() {
     try (Scope scope = currentTraceContext.newScope(context)) {
-      TraceContext differentExtraField = context.toBuilder().build();
-      ExtraFieldPropagation.set(differentExtraField, EXTRA_FIELD, "foo");
+      TraceContext differentBaggageField = context.toBuilder().build();
+      BAGGAGE_FIELD.updateValue(differentBaggageField, "foo");
 
-      try (Scope scope2 = currentTraceContext.newScope(differentExtraField)) {
+      try (Scope scope2 = currentTraceContext.newScope(differentBaggageField)) {
         assertThat(scope2).isNotEqualTo(Scope.NOOP);
         assertThat(currentTraceContext.get())
-          .isEqualTo(differentExtraField);
-        verifyImplicitContext(differentExtraField);
+          .isEqualTo(differentBaggageField);
+        verifyImplicitContext(differentBaggageField);
       }
     }
   }
@@ -299,7 +302,7 @@ public abstract class CurrentTraceContextTest {
     }
   }
 
-  @Test public void attachesSpanInRunnable() throws Exception {
+  @Test public void attachesSpanInRunnable() {
     Runnable runnable;
     try (Scope scope = currentTraceContext.newScope(context)) {
       runnable = currentTraceContext.wrap(() -> {

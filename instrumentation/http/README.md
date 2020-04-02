@@ -59,18 +59,21 @@ overrideSpanName = new HttpRequestParser.Default() {
 Note that span name can be overwritten any time, for example, when
 parsing the response, which is the case when route-based names are used.
 
-This increased performance and allows easier access to extra fields. For
-example, a common request was to add extra fields as tags. This can now
-be done in the parser instead of the FinishedSpanHandler, if desired.
+This increased performance and allows easier access to baggage. For
+example, a common request was to add a baggage as tags. This can now be
+done in the parser instead of the FinishedSpanHandler, if desired.
 
-### Extra fields
-To add extra fields as span tags, use the context parameter like so:
+### Baggage
+To add baggage fields as span tags, use the context parameter like so:
 
 ```java
+public static final BaggageField USER_NAME = BaggageField.create("user-name");
+// Ensure BaggagePropagation configures USER_NAME!
+
 httpTracing = httpTracing.toBuilder()
     .clientRequestParser((req, context, span) -> {
       HttpClientRequestParser.DEFAULT.parse(req, context, span);
-      String userName = ExtraFieldPropagation.get(context, "user-name");
+      String userName = USER_NAME.getValue(context);
       if (userName != null) span.tag("user-name", userName);
     })
     .build();
@@ -134,7 +137,7 @@ http route for metrics, coerce empty to constants like "redirected" or
 "not_found" with the http status. Knowing the difference between not
 found and redirected can be a simple intrusion detection signal. The
 default span name policy uses constants when a route isn't known for
-reasons including sharing the span name as a metrics correlation field.
+reasons including sharing the span name as a metrics baggage field.
 
 # Developing new instrumentation
 

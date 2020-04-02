@@ -1,4 +1,6 @@
 # brave-instrumentation rationale
+Rationale here applies to common decisions made in this directory. See
+[Brave's RATIONALE](../brave/RATIONALE.md) for internal rationale.
 
 ## Calling `Span.finish()` while the context is in scope
 Instrumentation should call `Span.finish()` with the same context in scope as

@@ -15,8 +15,6 @@ package brave.spring.webmvc;
 
 import brave.Tracer;
 import brave.http.HttpTracing;
-import brave.propagation.ExtraFieldPropagation;
-import brave.test.ITRemote;
 import javax.servlet.UnavailableException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -27,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
+import static brave.test.ITRemote.BAGGAGE_FIELD;
 import static brave.test.http.ITServletContainer.NOT_READY_UE;
 
 @Controller class Servlet25TestController {
@@ -46,9 +45,9 @@ import static brave.test.http.ITServletContainer.NOT_READY_UE;
     return new ResponseEntity<>(HttpStatus.OK);
   }
 
-  @RequestMapping(value = "/extra")
-  public ResponseEntity<String> extra() {
-    return new ResponseEntity<>(ExtraFieldPropagation.get(ITRemote.EXTRA_KEY), HttpStatus.OK);
+  @RequestMapping(value = "/baggage")
+  public ResponseEntity<String> baggage() {
+    return new ResponseEntity<>(BAGGAGE_FIELD.getValue(), HttpStatus.OK);
   }
 
   @RequestMapping(value = "/badrequest")

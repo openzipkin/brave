@@ -13,68 +13,91 @@
  */
 package brave.context.log4j12;
 
-import brave.internal.propagation.CorrelationFieldScopeDecoratorBuilder;
-import brave.propagation.CurrentTraceContext.ScopeDecorator;
+import brave.internal.CorrelationContext;
+import brave.internal.Nullable;
+import brave.baggage.BaggageFields;
+import brave.baggage.CorrelationScopeDecorator;
+import brave.propagation.CurrentTraceContext;
 import org.apache.log4j.MDC;
 
 /**
- * Adds {@linkplain MDC} properties "traceId", "parentId", "spanId" and "sampled" when a {@link
- * brave.Tracer#currentSpan() span is current}. "traceId" and "spanId" are used in log correlation.
- * "parentId" is used for scenarios such as log parsing that reconstructs the trace tree. "sampled"
- * is used as a hint that a span found in logs might be in Zipkin.
+ * Creates a {@link CorrelationScopeDecorator} for Log4j 1.2 {@linkplain MDC Mapped Diagnostic
+ * Context (MDC)}.
  *
  * <p>Ex.
  * <pre>{@code
  * tracing = Tracing.newBuilder()
  *                  .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
- *                    .addScopeDecorator(MDCScopeDecorator.create())
+ *                    .addScopeDecorator(MDCScopeDecorator.get())
  *                    .build()
  *                  )
  *                  ...
  *                  .build();
  * }</pre>
+ *
+ * @see CorrelationScopeDecorator
  */
 public final class MDCScopeDecorator {
-  /** @since 5.11 */
-  public static Builder newBuilder() {
+  static final CurrentTraceContext.ScopeDecorator INSTANCE = new Builder().build();
+
+  /**
+   * Returns a singleton that configures {@link BaggageFields#TRACE_ID} and {@link
+   * BaggageFields#SPAN_ID}.
+   *
+   * @since 5.11
+   */
+  public static CurrentTraceContext.ScopeDecorator get() {
+    return INSTANCE;
+  }
+
+  /**
+   * Returns a builder that configures {@link BaggageFields#TRACE_ID} and {@link
+   * BaggageFields#SPAN_ID}.
+   *
+   * @since 5.11
+   */
+  public static CorrelationScopeDecorator.Builder newBuilder() {
     return new Builder();
   }
 
-  public static ScopeDecorator create() {
-    return new Builder().build();
+  /**
+   * Returns a scope decorator that configures {@link BaggageFields#TRACE_ID}, {@link
+   * BaggageFields#PARENT_ID}, {@link BaggageFields#SPAN_ID} and {@link BaggageFields#SAMPLED}
+   *
+   * @since 5.2
+   * @deprecated since 5.11 use {@link #get()} or {@link #newBuilder()}
+   */
+  @Deprecated public static CurrentTraceContext.ScopeDecorator create() {
+    return new Builder()
+      .clearFields()
+      .addField(BaggageFields.TRACE_ID)
+      .addField(BaggageFields.PARENT_ID)
+      .addField(BaggageFields.SPAN_ID)
+      .addField(BaggageFields.SAMPLED)
+      .build();
   }
 
-  /** @since 5.11 */
-  public static final class Builder extends CorrelationFieldScopeDecoratorBuilder<Builder> {
-    /** {@inheritDoc} */
-    @Override public Builder removeField(String fieldName) {
-      return super.removeField(fieldName);
-    }
-
-    /** {@inheritDoc} */
-    @Override public Builder addExtraField(String fieldName) {
-      return super.addExtraField(fieldName);
-    }
-
-    enum MDCContext implements Context {
-      INSTANCE;
-
-      @Override public String get(String name) {
-        Object result = MDC.get(name);
-        return result instanceof String ? (String) result : null;
-      }
-
-      @Override public void put(String name, String value) {
-        MDC.put(name, value);
-      }
-
-      @Override public void remove(String name) {
-        MDC.remove(name);
-      }
-    }
-
+  static final class Builder extends CorrelationScopeDecorator.Builder {
     Builder() {
       super(MDCContext.INSTANCE);
+    }
+  }
+
+  enum MDCContext implements CorrelationContext {
+    INSTANCE;
+
+    @Override public String getValue(String name) {
+      Object result = MDC.get(name);
+      return result instanceof String ? (String) result : null;
+    }
+
+    @Override public boolean update(String name, @Nullable String value) {
+      if (value != null) {
+        MDC.put(name, value);
+      } else {
+        MDC.remove(name);
+      }
+      return true;
     }
   }
 }

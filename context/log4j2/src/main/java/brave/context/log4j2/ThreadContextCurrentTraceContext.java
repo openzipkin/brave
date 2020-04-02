@@ -40,7 +40,7 @@ public final class ThreadContextCurrentTraceContext extends CurrentTraceContext 
 
     Builder(CurrentTraceContext delegate) {
       this.delegate = delegate;
-      addScopeDecorator(ThreadContextScopeDecorator.create());
+      addScopeDecorator(ThreadContextScopeDecorator.get());
     }
 
     @Override public ThreadContextCurrentTraceContext build() {

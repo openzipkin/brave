@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,6 +14,8 @@
 package brave.propagation;
 
 import brave.TracingCustomizer;
+import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationCustomizer;
 
 /**
  * This allows configuration plugins to collaborate on building an instance of {@link
@@ -22,8 +24,8 @@ import brave.TracingCustomizer;
  * <p>For example, a customizer can {@link CurrentTraceContext.Builder#addScopeDecorator(CurrentTraceContext.ScopeDecorator)
  * add a scope decorator} without affecting the the implementation (like thread locals).
  *
- * <p>This also allows one object to customize both {@link ExtraFieldPropagation}, via {@link
- * ExtraFieldCustomizer}, and integration like MDC (log) correlation, by implementing both
+ * <p>This also allows one object to customize both {@link BaggagePropagation}, via {@link
+ * BaggagePropagationCustomizer}, and integration like MDC (log) correlation, by implementing both
  * customizer interfaces.
  *
  * <h3>Integration examples</h3>
@@ -40,7 +42,7 @@ import brave.TracingCustomizer;
  *   <li><a href="https://docs.spring.io/spring/docs/current/spring-framework-reference/core.html#beans-autowired-annotation">Spring Autowired Collections</a></li>
  * </ul></pre>
  *
- * @see ExtraFieldCustomizer
+ * @see BaggagePropagationCustomizer
  * @see TracingCustomizer
  * @since 5.7
  */

@@ -15,12 +15,13 @@ package brave;
 
 import brave.Span.Kind;
 import brave.Tracer.SpanInScope;
+import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagation;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.StrictCurrentTraceContext;
@@ -47,10 +48,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
 public class TracerTest {
+  static final BaggageField BAGGAGE_FIELD = BaggageField.newBuilder("user-id").build();
+
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).shared(true).build();
   List<zipkin2.Span> spans = new ArrayList<>();
   Propagation.Factory propagationFactory = B3Propagation.FACTORY;
   CurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
+  Propagation.Factory baggageFactory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+    .addRemoteField(BAGGAGE_FIELD).build();
   Tracer tracer = Tracing.newBuilder()
     .spanReporter(new Reporter<zipkin2.Span>() {
       @Override public void report(zipkin2.Span span) {
@@ -717,58 +722,58 @@ public class TracerTest {
   }
 
   @Test public void join_getsExtraFromPropagationFactory() {
-    propagationFactory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "service");
+    propagationFactory = baggageFactory;
 
     TraceContext context = tracer.nextSpan().context();
-    ExtraFieldPropagation.set(context, "service", "napkin");
+    BAGGAGE_FIELD.updateValue(context, "napkin");
 
     TraceContext joined = tracer.joinSpan(context).context();
 
-    assertThat(ExtraFieldPropagation.get(joined, "service")).isEqualTo("napkin");
+    assertThat(BAGGAGE_FIELD.getValue(joined)).isEqualTo("napkin");
   }
 
   @Test public void nextSpan_getsExtraFromPropagationFactory() {
-    propagationFactory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "service");
+    propagationFactory = baggageFactory;
 
     Span parent = tracer.nextSpan();
-    ExtraFieldPropagation.set(parent.context(), "service", "napkin");
+    BAGGAGE_FIELD.updateValue(parent.context(), "napkin");
 
     TraceContext nextSpan;
     try (SpanInScope scope = tracer.withSpanInScope(parent)) {
       nextSpan = tracer.nextSpan().context();
     }
 
-    assertThat(ExtraFieldPropagation.get(nextSpan, "service")).isEqualTo("napkin");
+    assertThat(BAGGAGE_FIELD.getValue(nextSpan)).isEqualTo("napkin");
   }
 
   @Test public void newChild_getsExtraFromPropagationFactory() {
-    propagationFactory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "service");
+    propagationFactory = baggageFactory;
 
     TraceContext context = tracer.nextSpan().context();
-    ExtraFieldPropagation.set(context, "service", "napkin");
+    BAGGAGE_FIELD.updateValue(context, "napkin");
 
     TraceContext newChild = tracer.newChild(context).context();
 
-    assertThat(ExtraFieldPropagation.get(newChild, "service")).isEqualTo("napkin");
+    assertThat(BAGGAGE_FIELD.getValue(newChild)).isEqualTo("napkin");
   }
 
   @Test public void startScopedSpanWithParent_getsExtraFromPropagationFactory() {
-    propagationFactory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "service");
+    propagationFactory = baggageFactory;
 
     TraceContext context = tracer.nextSpan().context();
-    ExtraFieldPropagation.set(context, "service", "napkin");
+    BAGGAGE_FIELD.updateValue(context, "napkin");
 
     ScopedSpan scoped = tracer.startScopedSpanWithParent("foo", context);
     scoped.finish();
 
-    assertThat(ExtraFieldPropagation.get(scoped.context(), "service")).isEqualTo("napkin");
+    assertThat(BAGGAGE_FIELD.getValue(scoped.context())).isEqualTo("napkin");
   }
 
   @Test public void startScopedSpan_getsExtraFromPropagationFactory() {
-    propagationFactory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "service");
+    propagationFactory = baggageFactory;
 
     Span parent = tracer.nextSpan();
-    ExtraFieldPropagation.set(parent.context(), "service", "napkin");
+    BAGGAGE_FIELD.updateValue(parent.context(), "napkin");
 
     ScopedSpan scoped;
     try (SpanInScope scope = tracer.withSpanInScope(parent)) {
@@ -776,7 +781,7 @@ public class TracerTest {
       scoped.finish();
     }
 
-    assertThat(ExtraFieldPropagation.get(scoped.context(), "service")).isEqualTo("napkin");
+    assertThat(BAGGAGE_FIELD.getValue(scoped.context())).isEqualTo("napkin");
   }
 
   @Test public void startScopedSpan() {

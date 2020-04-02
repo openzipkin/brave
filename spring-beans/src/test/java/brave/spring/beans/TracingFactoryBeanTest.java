@@ -18,7 +18,7 @@ import brave.ErrorParser;
 import brave.Tracing;
 import brave.TracingCustomizer;
 import brave.handler.FinishedSpanHandler;
-import brave.propagation.ExtraFieldPropagation;
+import brave.propagation.B3SinglePropagation;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
 import org.junit.After;
@@ -201,26 +201,15 @@ public class TracingFactoryBeanTest {
 
   @Test public void propagationFactory() {
     context = new XmlBeans(""
-      + "<bean id=\"propagationFactory\" class=\"brave.propagation.ExtraFieldPropagation\" factory-method=\"newFactory\">\n"
-      + "  <constructor-arg index=\"0\">\n"
-      + "    <util:constant static-field=\"brave.propagation.B3Propagation.FACTORY\"/>\n"
-      + "  </constructor-arg>\n"
-      + "  <constructor-arg index=\"1\">\n"
-      + "    <list>\n"
-      + "      <value>x-vcap-request-id</value>\n"
-      + "      <value>x-amzn-trace-id</value>\n"
-      + "    </list>"
-      + "  </constructor-arg>\n"
-      + "</bean>", ""
       + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
-      + "  <property name=\"propagationFactory\" ref=\"propagationFactory\"/>\n"
+      + "  <property name=\"propagationFactory\">\n"
+      + "    <util:constant static-field=\"brave.propagation.B3SinglePropagation.FACTORY\"/>\n"
+      + "  </property>\n"
       + "</bean>"
     );
 
-    assertThat(context.getBean("tracing", Tracing.class).propagation())
-      .isInstanceOf(ExtraFieldPropagation.class)
-      .extracting("factory.fieldNames")
-      .isEqualToComparingFieldByField(new String[] {"x-vcap-request-id", "x-amzn-trace-id"});
+    assertThat(context.getBean("tracing", Tracing.class).propagationFactory())
+      .isSameAs(B3SinglePropagation.FACTORY);
   }
 
   @Test public void traceId128Bit() {

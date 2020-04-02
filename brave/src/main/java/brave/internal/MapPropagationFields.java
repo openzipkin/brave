@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -59,21 +59,26 @@ public class MapPropagationFields<K, V> extends PropagationFields<K, V> {
     }
   }
 
-  @Override public final void put(K key, V value) {
+  @Override public final boolean put(K key, @Nullable V value) {
     synchronized (this) {
       Map<K, V> values = this.values;
       if (values == null) {
         values = new LinkedHashMap<>();
-        values.put(key, value);
-      } else if (value.equals(values.get(key))) {
-        return;
+        if (value != null) values.put(key, value);
+      } else if (equal(value, values.get(key))) {
+        return false;
       } else {
         // this is the copy-on-write part
         values = new LinkedHashMap<>(values);
-        values.put(key, value);
+        if (value != null) {
+          values.put(key, value);
+        } else {
+          values.remove(key);
+        }
       }
       this.values = Collections.unmodifiableMap(values);
     }
+    return false;
   }
 
   @Override public boolean isEmpty() {
@@ -100,22 +105,13 @@ public class MapPropagationFields<K, V> extends PropagationFields<K, V> {
     }
   }
 
-  @Override public final Map<K, V> toMap() {
+  @Override public final Map<String, V> toMap() {
     Map<K, V> values = this.values;
     if (values == null) return Collections.emptyMap();
-    return values;
-  }
-
-  @Override public int hashCode() { // for unit tests
-    Map<K, V> values = this.values;
-    return values == null ? 0 : values.hashCode();
-  }
-
-  @Override public boolean equals(Object o) { // for unit tests
-    if (o == this) return true;
-    if (!(o instanceof MapPropagationFields)) return false;
-    MapPropagationFields<K, V> that = (MapPropagationFields) o;
-    Map<K, V> values = this.values, thatValues = that.values;
-    return values == null ? thatValues == null : values.equals(thatValues);
+    Map<String, V> result = new LinkedHashMap<>();
+    for (Map.Entry<K, V> entry : values.entrySet()) {
+      result.put(entry.getKey().toString(), entry.getValue());
+    }
+    return result;
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,10 +16,9 @@ package brave;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.propagation.B3Propagation;
+import brave.baggage.BaggagePropagation;
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
-import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.concurrent.TimeUnit;
@@ -41,6 +40,9 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import zipkin2.reporter.Reporter;
 
+import static brave.baggage.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
+import static brave.propagation.SamplingFlags.NOT_SAMPLED;
+
 @Measurement(iterations = 5, time = 1)
 @Warmup(iterations = 10, time = 1)
 @Fork(3)
@@ -49,29 +51,28 @@ import zipkin2.reporter.Reporter;
 @Threads(2)
 @State(Scope.Benchmark)
 public class TracerBenchmarks {
-  Propagation.Factory extraFactory = ExtraFieldPropagation.newFactory(
-    B3Propagation.FACTORY, "x-vcap-request-id");
+  Propagation.Factory baggageFactory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+    .addRemoteField(BAGGAGE_FIELD).build();
 
   TraceContext context =
     TraceContext.newBuilder().traceIdHigh(333L).traceId(444L).spanId(3).sampled(true).build();
-  TraceContext contextExtra = extraFactory.decorate(context);
+  TraceContext contextBaggage = baggageFactory.decorate(context);
   TraceContext unsampledContext =
     TraceContext.newBuilder().traceIdHigh(333L).traceId(444L).spanId(3).sampled(false).build();
-  TraceContext unsampledContextExtra = extraFactory.decorate(unsampledContext);
+  TraceContext unsampledContextBaggage = baggageFactory.decorate(unsampledContext);
   TraceContext sampledLocalContext = unsampledContext.toBuilder().sampledLocal(true).build();
-  TraceContext sampledLocalContextExtra = extraFactory.decorate(sampledLocalContext);
+  TraceContext sampledLocalContextBaggage = baggageFactory.decorate(sampledLocalContext);
   TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(context);
-  TraceContextOrSamplingFlags extractedExtra = TraceContextOrSamplingFlags.create(contextExtra);
-  TraceContextOrSamplingFlags unsampledExtracted =
-    TraceContextOrSamplingFlags.create(SamplingFlags.NOT_SAMPLED);
-  TraceContextOrSamplingFlags unsampledExtractedExtra =
+  TraceContextOrSamplingFlags extractedBaggage = TraceContextOrSamplingFlags.create(contextBaggage);
+  TraceContextOrSamplingFlags unsampledExtracted = TraceContextOrSamplingFlags.create(NOT_SAMPLED);
+  TraceContextOrSamplingFlags unsampledExtractedBaggage =
     TraceContextOrSamplingFlags.newBuilder()
-      .samplingFlags(SamplingFlags.NOT_SAMPLED)
-      .addExtra(contextExtra.extra())
+      .samplingFlags(NOT_SAMPLED)
+      .addExtra(contextBaggage.extra())
       .build();
 
   Tracer tracer;
-  Tracer tracerExtra;
+  Tracer tracerBaggage;
 
   @Setup(Level.Trial) public void init() {
     tracer = Tracing.newBuilder()
@@ -81,9 +82,7 @@ public class TracerBenchmarks {
         }
       })
       .spanReporter(Reporter.NOOP).build().tracer();
-    tracerExtra = Tracing.newBuilder()
-      .propagationFactory(ExtraFieldPropagation.newFactory(
-        B3Propagation.FACTORY, "x-vcap-request-id"))
+    tracerBaggage = Tracing.newBuilder().propagationFactory(baggageFactory)
       .addFinishedSpanHandler(new FinishedSpanHandler() {
         @Override public boolean handle(TraceContext context, MutableSpan span) {
           return true; // anonymous subtype prevents all recording from being no-op
@@ -100,24 +99,24 @@ public class TracerBenchmarks {
     startScopedSpanWithParent(tracer, context);
   }
 
-  @Benchmark public void startScopedSpanWithParent_extra() {
-    startScopedSpanWithParent(tracerExtra, contextExtra);
+  @Benchmark public void startScopedSpanWithParent_baggage() {
+    startScopedSpanWithParent(tracerBaggage, contextBaggage);
   }
 
   @Benchmark public void startScopedSpanWithParent_unsampled() {
     startScopedSpanWithParent(tracer, unsampledContext);
   }
 
-  @Benchmark public void startScopedSpanWithParent_unsampled_extra() {
-    startScopedSpanWithParent(tracerExtra, unsampledContextExtra);
+  @Benchmark public void startScopedSpanWithParent_unsampled_baggage() {
+    startScopedSpanWithParent(tracerBaggage, unsampledContextBaggage);
   }
 
   @Benchmark public void startScopedSpanWithParent_sampledLocal() {
     startScopedSpanWithParent(tracer, sampledLocalContext);
   }
 
-  @Benchmark public void startScopedSpanWithParent_sampledLocal_extra() {
-    startScopedSpanWithParent(tracerExtra, sampledLocalContextExtra);
+  @Benchmark public void startScopedSpanWithParent_sampledLocal_baggage() {
+    startScopedSpanWithParent(tracerBaggage, sampledLocalContextBaggage);
   }
 
   void startScopedSpanWithParent(Tracer tracer, TraceContext context) {
@@ -134,24 +133,24 @@ public class TracerBenchmarks {
     newChildWithSpanInScope(tracer, context);
   }
 
-  @Benchmark public void newChildWithSpanInScope_extra() {
-    newChildWithSpanInScope(tracerExtra, contextExtra);
+  @Benchmark public void newChildWithSpanInScope_baggage() {
+    newChildWithSpanInScope(tracerBaggage, contextBaggage);
   }
 
   @Benchmark public void newChildWithSpanInScope_unsampled() {
     newChildWithSpanInScope(tracer, unsampledContext);
   }
 
-  @Benchmark public void newChildWithSpanInScope_unsampled_extra() {
-    newChildWithSpanInScope(tracerExtra, unsampledContextExtra);
+  @Benchmark public void newChildWithSpanInScope_unsampled_baggage() {
+    newChildWithSpanInScope(tracerBaggage, unsampledContextBaggage);
   }
 
   @Benchmark public void newChildWithSpanInScope_sampledLocal() {
     newChildWithSpanInScope(tracer, sampledLocalContext);
   }
 
-  @Benchmark public void newChildWithSpanInScope_sampledLocal_extra() {
-    newChildWithSpanInScope(tracerExtra, sampledLocalContextExtra);
+  @Benchmark public void newChildWithSpanInScope_sampledLocal_baggage() {
+    newChildWithSpanInScope(tracerBaggage, sampledLocalContextBaggage);
   }
 
   void newChildWithSpanInScope(Tracer tracer, TraceContext context) {
@@ -168,24 +167,24 @@ public class TracerBenchmarks {
     joinWithSpanInScope(tracer, context);
   }
 
-  @Benchmark public void joinWithSpanInScope_extra() {
-    joinWithSpanInScope(tracerExtra, contextExtra);
+  @Benchmark public void joinWithSpanInScope_baggage() {
+    joinWithSpanInScope(tracerBaggage, contextBaggage);
   }
 
   @Benchmark public void joinWithSpanInScope_unsampled() {
     joinWithSpanInScope(tracer, unsampledContext);
   }
 
-  @Benchmark public void joinWithSpanInScope_unsampled_extra() {
-    joinWithSpanInScope(tracerExtra, unsampledContextExtra);
+  @Benchmark public void joinWithSpanInScope_unsampled_baggage() {
+    joinWithSpanInScope(tracerBaggage, unsampledContextBaggage);
   }
 
   @Benchmark public void joinWithSpanInScope_sampledLocal() {
     joinWithSpanInScope(tracer, sampledLocalContext);
   }
 
-  @Benchmark public void joinWithSpanInScope_sampledLocal_extra() {
-    joinWithSpanInScope(tracerExtra, sampledLocalContextExtra);
+  @Benchmark public void joinWithSpanInScope_sampledLocal_baggage() {
+    joinWithSpanInScope(tracerBaggage, sampledLocalContextBaggage);
   }
 
   void joinWithSpanInScope(Tracer tracer, TraceContext context) {
@@ -202,16 +201,16 @@ public class TracerBenchmarks {
     nextWithSpanInScope(tracer, extracted);
   }
 
-  @Benchmark public void nextWithSpanInScope_extra() {
-    nextWithSpanInScope(tracerExtra, extractedExtra);
+  @Benchmark public void nextWithSpanInScope_baggage() {
+    nextWithSpanInScope(tracerBaggage, extractedBaggage);
   }
 
   @Benchmark public void nextWithSpanInScope_unsampled() {
     nextWithSpanInScope(tracer, unsampledExtracted);
   }
 
-  @Benchmark public void nextWithSpanInScope_unsampled_extra() {
-    nextWithSpanInScope(tracerExtra, unsampledExtractedExtra);
+  @Benchmark public void nextWithSpanInScope_unsampled_baggage() {
+    nextWithSpanInScope(tracerBaggage, unsampledExtractedBaggage);
   }
 
   void nextWithSpanInScope(Tracer tracer, TraceContextOrSamplingFlags extracted) {

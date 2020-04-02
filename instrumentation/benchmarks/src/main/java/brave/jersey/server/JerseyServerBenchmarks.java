@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,7 +17,7 @@ import brave.Tracing;
 import brave.http.HttpServerBenchmarks;
 import brave.http.HttpTracing;
 import brave.propagation.B3Propagation;
-import brave.propagation.ExtraFieldPropagation;
+import brave.baggage.BaggagePropagation;
 import brave.sampler.Sampler;
 import io.undertow.servlet.api.DeploymentInfo;
 import java.util.Collections;
@@ -35,6 +35,7 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import zipkin2.reporter.Reporter;
 
+import static brave.baggage.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
 import static io.undertow.servlet.Servlets.servlet;
 import static java.util.Arrays.asList;
 
@@ -43,7 +44,7 @@ public class JerseyServerBenchmarks extends HttpServerBenchmarks {
   public static class Resource {
     @GET @Produces("text/plain; charset=UTF-8") public String get() {
       // noop if not configured
-      ExtraFieldPropagation.set("country-code", "FO");
+      BAGGAGE_FIELD.updateValue("FO");
       return "hello world";
     }
   }
@@ -76,16 +77,14 @@ public class JerseyServerBenchmarks extends HttpServerBenchmarks {
     }
   }
 
-  @ApplicationPath("/tracedextra")
-  public static class TracedExtraApp extends Application {
+  @ApplicationPath("/tracedBaggage")
+  public static class TracedBaggageApp extends Application {
     @Override public Set<Object> getSingletons() {
       return new LinkedHashSet<>(asList(new Resource(), TracingApplicationEventListener.create(
         HttpTracing.create(Tracing.newBuilder()
-          .propagationFactory(ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
-            .addField("x-vcap-request-id")
-            .addPrefixedFields("baggage-", asList("country-code", "user-id"))
-            .build()
-          )
+          .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+            .addRemoteField(BAGGAGE_FIELD)
+            .build())
           .spanReporter(Reporter.NOOP)
           .build())
       )));
@@ -114,10 +113,10 @@ public class JerseyServerBenchmarks extends HttpServerBenchmarks {
         .setLoadOnStartup(1)
         .addInitParam("javax.ws.rs.Application", TracedApp.class.getName())
         .addMapping("/traced"),
-      servlet("TracedExtra", ServletContainer.class)
+      servlet("TracedBaggage", ServletContainer.class)
         .setLoadOnStartup(1)
-        .addInitParam("javax.ws.rs.Application", TracedExtraApp.class.getName())
-        .addMapping("/tracedextra"),
+        .addInitParam("javax.ws.rs.Application", TracedBaggageApp.class.getName())
+        .addMapping("/tracedBaggage"),
       servlet("Traced128", ServletContainer.class)
         .setLoadOnStartup(1)
         .addInitParam("javax.ws.rs.Application", Traced128App.class.getName())

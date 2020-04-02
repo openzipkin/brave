@@ -111,8 +111,9 @@ public final class TestSpanReporter extends TestWatcher implements Reporter<Span
   @Override protected void succeeded(Description description) {
     if (ignoreAnySpans) return;
     try {
-      assertThat(spans.poll(100, TimeUnit.MILLISECONDS))
-        .withFailMessage("Span remaining in queue. Check for redundant reporting")
+      Span span = spans.poll(100, TimeUnit.MILLISECONDS);
+      assertThat(span)
+        .withFailMessage("Span remaining in queue. Check for redundant reporting: %s", span)
         .isNull();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();

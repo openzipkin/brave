@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,8 +20,8 @@ import brave.propagation.Propagation;
 import java.util.List;
 import org.springframework.beans.factory.FactoryBean;
 
-/** Spring XML config does not support chained builders. This converts accordingly */
-public class ExtraFieldPropagationFactoryBean implements FactoryBean {
+/** @deprecated Since 5.11 use {@link BaggageFieldFactoryBean} */
+@Deprecated public class ExtraFieldPropagationFactoryBean implements FactoryBean {
   Propagation.Factory propagationFactory = B3Propagation.FACTORY;
   List<String> fields;
   List<ExtraFieldCustomizer> customizers;

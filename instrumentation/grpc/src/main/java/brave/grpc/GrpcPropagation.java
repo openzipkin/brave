@@ -70,11 +70,11 @@ final class GrpcPropagation<K> implements Propagation<K> {
   }
 
   final Propagation<K> delegate;
-  final TagsFactory extraFactory;
+  final TagsFactory tagsFactory;
 
   GrpcPropagation(Factory factory, KeyFactory<K> keyFactory) {
     this.delegate = factory.delegate.create(keyFactory);
-    this.extraFactory = factory.tagsFactory;
+    this.tagsFactory = factory.tagsFactory;
   }
 
   @Override public List<K> keys() {

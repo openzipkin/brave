@@ -15,7 +15,6 @@ package brave.context.log4j2;
 
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.test.propagation.CurrentTraceContextTest;
@@ -32,35 +31,21 @@ public class ThreadContextScopeDecoratorTest extends CurrentTraceContextTest {
   static class BuilderSupplier implements Supplier<CurrentTraceContext.Builder> {
     @Override public CurrentTraceContext.Builder get() {
       return ThreadLocalCurrentTraceContext.newBuilder()
-        .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
-          .addExtraField(EXTRA_FIELD)
-          .build());
+        .addScopeDecorator(
+          ThreadContextScopeDecorator.newBuilder().addField(BAGGAGE_FIELD).build());
     }
   }
 
   @Override protected void verifyImplicitContext(@Nullable TraceContext context) {
     if (context != null) {
-      assertThat(ThreadContext.get("traceId"))
-        .isEqualTo(context.traceIdString());
-      assertThat(ThreadContext.get("parentId"))
-        .isEqualTo(context.parentIdString());
-      assertThat(ThreadContext.get("spanId"))
-        .isEqualTo(context.spanIdString());
-      assertThat(ThreadContext.get("sampled"))
-        .isEqualTo(context.sampled() != null ? context.sampled().toString() : null);
-      assertThat(ThreadContext.get(EXTRA_FIELD))
-        .isEqualTo(ExtraFieldPropagation.get(context, EXTRA_FIELD));
+      assertThat(ThreadContext.get("traceId")).isEqualTo(context.traceIdString());
+      assertThat(ThreadContext.get("spanId")).isEqualTo(context.spanIdString());
+      assertThat(ThreadContext.get(BAGGAGE_FIELD.name()))
+        .isEqualTo(BAGGAGE_FIELD.getValue(context));
     } else {
-      assertThat(ThreadContext.get("traceId"))
-        .isNull();
-      assertThat(ThreadContext.get("parentId"))
-        .isNull();
-      assertThat(ThreadContext.get("spanId"))
-        .isNull();
-      assertThat(ThreadContext.get("sampled"))
-        .isNull();
-      assertThat(ThreadContext.get(EXTRA_FIELD))
-        .isNull();
+      assertThat(ThreadContext.get("traceId")).isNull();
+      assertThat(ThreadContext.get("spanId")).isNull();
+      assertThat(ThreadContext.get(BAGGAGE_FIELD.name())).isNull();
     }
   }
 }

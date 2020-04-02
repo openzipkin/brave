@@ -17,7 +17,6 @@ import brave.Span;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.Platform;
-import brave.internal.RecyclableBuffers;
 import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.List;
@@ -31,6 +30,7 @@ import static brave.internal.InternalPropagation.FLAG_SAMPLED_LOCAL;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 import static brave.internal.InternalPropagation.FLAG_SHARED;
 import static brave.internal.Lists.ensureImmutable;
+import static brave.propagation.TraceIdContext.toTraceIdString;
 
 /**
  * Contains trace identifiers and sampling data propagated in and out-of-process.
@@ -180,11 +180,11 @@ public final class TraceContext extends SamplingFlags {
   }
 
   /**
-   * Returns an {@linkplain #extra() extra} of the given type if present or null if not.
+   * Returns a {@linkplain #extra() propagated state} of the given type if present or null if not.
    *
-   * <p>Note: it is the responsibility of {@link Propagation.Factory#decorate(TraceContext)}
-   * to consolidate extra fields. If it doesn't, there could be multiple instance of a given type
-   * and this can break logic.
+   * <p>Note: It is the responsibility of {@link Propagation.Factory#decorate(TraceContext)}
+   * to consolidate elements. If it doesn't, there could be multiple instances of a given type and
+   * this can break logic.
    */
   public @Nullable <T> T findExtra(Class<T> type) {
     return findExtra(type, extra);
@@ -200,14 +200,7 @@ public final class TraceContext extends SamplingFlags {
   public String traceIdString() {
     String r = traceIdString;
     if (r == null) {
-      if (traceIdHigh != 0) {
-        char[] result = RecyclableBuffers.idBuffer();
-        writeHexLong(result, 0, traceIdHigh);
-        writeHexLong(result, 16, traceId);
-        r = new String(result);
-      } else {
-        r = toLowerHex(traceId);
-      }
+      r = toTraceIdString(traceIdHigh, traceId);
       traceIdString = r;
     }
     return r;
