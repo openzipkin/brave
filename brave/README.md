@@ -379,6 +379,16 @@ tracingBuilder.propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propaga
                                                                  .build())
 ```
 
+#### Field mapping
+Your log correlation properties may not be the same as the baggage field names. You can
+override them in the builder as needed.
+
+Ex. If your log property is %X{trace-id}, you can do this:
+```java
+builder.clear(); // traceId is a default field!
+builder.addField(BaggageFields.TRACE_ID, "trace-id");
+```
+
 ### Appropriate usage
 
 Brave is an infrastructure library: you will create lock-in if you expose its apis into

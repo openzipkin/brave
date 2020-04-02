@@ -13,12 +13,13 @@
  */
 package brave.test.propagation;
 
+import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagation;
 import brave.internal.Nullable;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.baggage.BaggageField;
-import brave.baggage.BaggagePropagation;
+import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.test.util.ClassLoaders;
@@ -30,6 +31,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.Test;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadableWithSupplier;
@@ -100,6 +102,18 @@ public abstract class CurrentTraceContextTest {
         verifyImplicitContext(differentBaggageField);
       }
     }
+  }
+
+  @Test public void ignoresNoopScopeDecorator() {
+    ScopeDecorator one = (context, scope) -> scope;
+
+    CurrentTraceContext shouldHaveOnlyOne = newBuilder()
+      .addScopeDecorator(ScopeDecorator.NOOP)
+      .addScopeDecorator(one).build();
+
+    assertThat(shouldHaveOnlyOne).extracting("scopeDecorators")
+      .asInstanceOf(InstanceOfAssertFactories.ARRAY)
+      .doesNotContain(ScopeDecorator.NOOP);
   }
 
   @Test public void newScope_decoratesWithDifferentScope() {

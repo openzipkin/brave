@@ -70,3 +70,22 @@ with trace headers:
   <bean id="tracing" class="brave.spring.beans.TracingFactoryBean">
     <property name="propagationFactory" ref="propagationFactory"/>
 ```
+
+Here's an example of adding only the trace ID as the correlation property "X-B3-TraceId":
+
+```xml
+<util:constant id="traceId" static-field="brave.baggage.BaggageFields.TRACE_ID"/>
+<bean id="correlationDecorator" class="brave.spring.beans.CorrelationScopeDecoratorFactoryBean">
+  <property name="builder">
+    <bean class="brave.context.log4j12.MDCScopeDecorator" factory-method="newBuilder"/>
+  </property>
+  <property name="mappedFields">
+    <list>
+      <bean class="brave.spring.beans.MappedBaggageField">
+        <property name="field" ref="traceId"/>
+        <property name="name" value="X-B3-TraceId"/>
+      </bean>
+    </list>
+  </property>
+</bean>
+```

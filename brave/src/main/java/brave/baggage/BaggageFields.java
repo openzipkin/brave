@@ -43,9 +43,9 @@ public final class BaggageFields {
    * @since 5.11
    */
   public static final BaggageField TRACE_ID = BaggageField.newBuilder("traceId")
-    .internalContext(new TraceIdStorage()).build();
+    .internalContext(new TraceId()).build();
 
-  static final class TraceIdStorage extends BaggageContext.ReadOnly {
+  static final class TraceId extends BaggageContext.ReadOnly {
     @Override public String getValue(BaggageField field, TraceContextOrSamplingFlags extracted) {
       if (extracted.context() != null) return getValue(field, extracted.context());
       if (extracted.traceIdContext() != null) return extracted.traceIdContext().traceIdString();
@@ -64,9 +64,9 @@ public final class BaggageFields {
    * @since 5.11
    */
   public static final BaggageField PARENT_ID = BaggageField.newBuilder("parentId")
-    .internalContext(new ParentIdStorage()).build();
+    .internalContext(new ParentId()).build();
 
-  static final class ParentIdStorage extends BaggageContext.ReadOnly {
+  static final class ParentId extends BaggageContext.ReadOnly {
     @Override public String getValue(BaggageField field, TraceContextOrSamplingFlags extracted) {
       if (extracted.context() != null) return getValue(field, extracted.context());
       return null;
@@ -84,9 +84,9 @@ public final class BaggageFields {
    * @since 5.11
    */
   public static final BaggageField SPAN_ID = BaggageField.newBuilder("spanId")
-    .internalContext(new SpanIdStorage()).build();
+    .internalContext(new SpanId()).build();
 
-  static final class SpanIdStorage extends BaggageContext.ReadOnly {
+  static final class SpanId extends BaggageContext.ReadOnly {
     @Override public String getValue(BaggageField field, TraceContextOrSamplingFlags extracted) {
       if (extracted.context() != null) return getValue(field, extracted.context());
       return null;
@@ -106,9 +106,9 @@ public final class BaggageFields {
    * @since 5.11
    */
   public static final BaggageField SAMPLED = BaggageField.newBuilder("sampled")
-    .internalContext(new SampledStorage()).build();
+    .internalContext(new Sampled()).build();
 
-  static final class SampledStorage extends BaggageContext.ReadOnly {
+  static final class Sampled extends BaggageContext.ReadOnly {
     @Override public String getValue(BaggageField field, TraceContextOrSamplingFlags extracted) {
       return getValue(extracted.sampled());
     }
@@ -133,13 +133,14 @@ public final class BaggageFields {
    * @since 5.11
    */
   public static BaggageField constant(String name, @Nullable String value) {
-    return BaggageField.newBuilder(name).internalContext(new ConstantStorage(value)).build();
+    if (name == null) throw new NullPointerException("name == null");
+    return BaggageField.newBuilder(name).internalContext(new Constant(value)).build();
   }
 
-  static final class ConstantStorage extends BaggageContext.ReadOnly {
+  static final class Constant extends BaggageContext.ReadOnly {
     @Nullable final String value;
 
-    ConstantStorage(String value) {
+    Constant(String value) {
       this.value = value;
     }
 

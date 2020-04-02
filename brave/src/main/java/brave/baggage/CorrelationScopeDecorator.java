@@ -18,8 +18,14 @@ import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import brave.propagation.TraceContext;
-import java.util.LinkedHashSet;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeSet;
+
+import static brave.baggage.BaggageField.validateName;
 
 /**
  * Synchronizes fields such as {@link BaggageFields#TRACE_ID} with a correlation context, such as
@@ -55,6 +61,16 @@ import java.util.Set;
  * }
  * }</pre>
  *
+ * <h3>Field mapping</h3>
+ * Your log correlation properties may not be the same as the baggage field names. You can override
+ * them in the builder as needed.
+ *
+ * <p>Ex. If your log property is %X{trace-id}, you can do this:
+ * <pre>{@code
+ * builder.clear(); // traceId is a default field!
+ * builder.addField(BaggageFields.TRACE_ID, "trace-id");
+ * }</pre>
+ *
  * <h3>Visibility</h3>
  * <p>By default, field updates only apply during {@linkplain CorrelationScopeDecorator scope
  * decoration}. This means values set do not flush immediately to the underlying correlation
@@ -69,50 +85,98 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
   // do not define newBuilder or create() here as it will mask subtypes
   public static abstract class Builder {
     final CorrelationContext context;
-    final Set<BaggageField> fields = new LinkedHashSet<>();
+    // Don't allow mixed case of the same name!
+    final Set<String> allNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    final Map<BaggageField, String> fieldToNames = new LinkedHashMap<>();
 
     /** Internal constructor used by subtypes. */
     protected Builder(CorrelationContext context) {
       if (context == null) throw new NullPointerException("context == null");
       this.context = context;
-      fields.add(BaggageFields.TRACE_ID);
-      fields.add(BaggageFields.SPAN_ID);
+      addField(BaggageFields.TRACE_ID);
+      addField(BaggageFields.SPAN_ID);
+    }
+
+    /**
+     * Returns an immutable copy of the currently configured fields mapped to names for use in
+     * correlation. This allows those who can't create the builder to reconfigure this builder.
+     *
+     * @since 5.11
+     */
+    public Map<BaggageField, String> fieldToNames() {
+      return Collections.unmodifiableMap(new LinkedHashMap<>(fieldToNames));
     }
 
     /**
      * Invoke this to clear fields so that you can {@linkplain #addField(BaggageField) add the ones
      * you need}.
      *
-     * <p>Defaults may include a field you aren't using, such as "parentId". For best
-     * performance, only include the fields you use in your correlation expressions (such as log
-     * formats).
+     * <p>Defaults may include a field you aren't using, such as {@link BaggageFields#PARENT_ID}.
+     * For best performance, only include the fields you use in your correlation expressions (such
+     * as log formats).
      *
+     * @see #fieldToNames()
+     * @see CorrelationScopeDecorator
      * @since 5.11
      */
-    public Builder clearFields() {
-      this.fields.clear();
+    public Builder clear() {
+      allNames.clear();
+      fieldToNames.clear();
       return this;
     }
 
     /**
-     * @see BaggagePropagation.FactoryBuilder#addField(BaggageField)
+     * Adds a correlation property into the context with its {@link BaggageField#name()}.
+     *
      * @since 5.11
      */
     public Builder addField(BaggageField field) {
+      return addField(field, field.name);
+    }
+
+    /**
+     * Adds a correlation property into the context with an alternate name.
+     *
+     * <p>For example, if your log correlation needs the name "trace-id", you can do this:
+     * <pre>{@code
+     * builder.clear(); // traceId is a default field!
+     * builder.addField(BaggageFields.TRACE_ID, "trace-id");
+     * }</pre>
+     *
+     * @since 5.11
+     */
+    public Builder addField(BaggageField field, String name) {
       if (field == null) throw new NullPointerException("field == null");
-      if (field.name() == null) throw new NullPointerException("field.name() == null");
-      if (field.name().isEmpty()) throw new NullPointerException("field.name() isEmpty");
-      fields.add(field);
+      if (fieldToNames.containsKey(field)) {
+        throw new IllegalArgumentException("Field already added: " + field.name);
+      }
+
+      name = validateName(name);
+      if (allNames.contains(name)) {
+        throw new IllegalArgumentException("Correlation name already in use: " + name);
+      }
+      allNames.add(name);
+      fieldToNames.put(field, name);
       return this;
     }
 
-    /** @throws IllegalArgumentException if no baggage fields were added. */
-    public final CorrelationScopeDecorator build() {
-      int fieldCount = fields.size();
-      if (fieldCount == 0) throw new IllegalArgumentException("no baggage fields");
-      if (fieldCount == 1) return new Single(context, fields.iterator().next());
+    /** @return {@link ScopeDecorator#NOOP} if no baggage fields were added. */
+    public final ScopeDecorator build() {
+      int fieldCount = fieldToNames.size();
+      if (fieldCount == 0) return ScopeDecorator.NOOP;
+      if (fieldCount == 1) {
+        Entry<BaggageField, String> onlyEntry = fieldToNames.entrySet().iterator().next();
+        return new Single(context, onlyEntry.getKey(), onlyEntry.getValue());
+      }
       if (fieldCount > 32) throw new IllegalArgumentException("over 32 baggage fields");
-      return new Multiple(context, fields);
+      BaggageField[] fields = new BaggageField[fieldCount];
+      String[] names = new String[fieldCount];
+      int i = 0;
+      for (Entry<BaggageField, String> next : fieldToNames.entrySet()) {
+        fields[i] = next.getKey();
+        names[i++] = next.getValue();
+      }
+      return new Multiple(context, fields, names);
     }
   }
 
@@ -124,37 +188,41 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
 
   static final class Single extends CorrelationScopeDecorator {
     final BaggageField field;
+    final String name;
 
-    Single(CorrelationContext context, BaggageField field) {
+    Single(CorrelationContext context, BaggageField field, String name) {
       super(context);
       this.field = field;
+      this.name = name;
     }
 
     @Override public Scope decorateScope(@Nullable TraceContext traceContext, Scope scope) {
-      String valueToRevert = context.getValue(field.name());
+      String valueToRevert = context.getValue(name);
       String currentValue = traceContext != null ? field.getValue(traceContext) : null;
 
       boolean dirty = false;
       if (scope != Scope.NOOP || !readOnly(field)) {
         dirty = !equal(valueToRevert, currentValue);
-        if (dirty) context.update(field.name, currentValue);
+        if (dirty) context.update(name, currentValue);
       }
 
       if (!dirty && !field.flushOnUpdate()) return scope;
 
       // If there was or could be a value update, we need to track values to revert.
       BaggageFieldUpdateScope updateScope =
-        new BaggageFieldUpdateScope.Single(scope, context, field, valueToRevert, dirty);
+        new BaggageFieldUpdateScope.Single(scope, context, field, name, valueToRevert, dirty);
       return field.flushOnUpdate() ? new BaggageFieldFlushScope(updateScope) : updateScope;
     }
   }
 
   static final class Multiple extends CorrelationScopeDecorator {
     final BaggageField[] fields;
+    final String[] names;
 
-    Multiple(CorrelationContext context, Set<BaggageField> baggageFields) {
+    Multiple(CorrelationContext context, BaggageField[] fields, String[] names) {
       super(context);
-      fields = baggageFields.toArray(new BaggageField[0]);
+      this.fields = fields;
+      this.names = names;
     }
 
     @Override public Scope decorateScope(@Nullable TraceContext traceContext, Scope scope) {
@@ -162,12 +230,12 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
       String[] valuesToRevert = new String[fields.length];
       for (int i = 0; i < fields.length; i++) {
         BaggageField field = fields[i];
-        String valueToRevert = context.getValue(field.name());
+        String valueToRevert = context.getValue(names[i]);
         String currentValue = traceContext != null ? field.getValue(traceContext) : null;
 
         if (scope != Scope.NOOP || !readOnly(field)) {
           if (!equal(valueToRevert, currentValue)) {
-            context.update(field.name, currentValue);
+            context.update(names[i], currentValue);
             dirty = setBit(dirty, i);
           }
         }
@@ -183,7 +251,7 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
 
       // If there was or could be a value update, we need to track values to revert.
       BaggageFieldUpdateScope updateScope =
-        new BaggageFieldUpdateScope.Multiple(scope, context, fields, valuesToRevert, dirty);
+        new BaggageFieldUpdateScope.Multiple(scope, context, fields, names, valuesToRevert, dirty);
       return flushOnUpdate != 0 ? new BaggageFieldFlushScope(updateScope) : updateScope;
     }
   }

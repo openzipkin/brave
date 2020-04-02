@@ -51,12 +51,14 @@ final class BaggageFieldFlushScope extends AtomicBoolean implements Scope {
     Set<CorrelationContext> syncedContexts = new LinkedHashSet<>();
     for (Object o : updateScopeStack()) {
       BaggageFieldUpdateScope next = ((BaggageFieldUpdateScope) o);
+      String name = next.name(field);
+      if (name == null) continue;
 
       // Since this is a static method, it could be called with different tracers on the stack.
       // This synchronizes the context if we haven't already.
       if (!syncedContexts.contains(next.context)) {
-        if (!equal(next.context.getValue(field.name()), value)) {
-          next.context.update(field.name, value);
+        if (!equal(next.context.getValue(name), value)) {
+          next.context.update(name, value);
         }
         syncedContexts.add(next.context);
       }
