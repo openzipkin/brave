@@ -14,9 +14,9 @@
 package brave.netty.http;
 
 import brave.Tracing;
+import brave.baggage.BaggagePropagation;
 import brave.http.HttpServerBenchmarks;
 import brave.propagation.B3Propagation;
-import brave.baggage.BaggagePropagation;
 import brave.sampler.Sampler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -65,8 +65,8 @@ public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
       Tracing.newBuilder()
         .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
           .addRemoteField(REQUEST_ID)
-          .addRemoteField(COUNTRY_CODE)
-          .addRemoteField(USER_ID).build())
+          .addRemoteField(COUNTRY_CODE, "baggage-country-code")
+          .addRemoteField(USER_ID, "baggage-user-id").build())
         .spanReporter(Reporter.NOOP)
         .build()
     ).serverHandler();

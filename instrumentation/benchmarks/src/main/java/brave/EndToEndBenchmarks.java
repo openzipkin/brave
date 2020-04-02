@@ -13,14 +13,14 @@
  */
 package brave;
 
+import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagation;
 import brave.context.log4j2.ThreadContextScopeDecorator;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.http.HttpServerBenchmarks;
 import brave.okhttp3.TracingCallFactory;
 import brave.propagation.B3Propagation;
-import brave.baggage.BaggageField;
-import brave.baggage.BaggagePropagation;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
@@ -53,11 +53,8 @@ import static javax.servlet.DispatcherType.REQUEST;
 /** Uses the canonical zipkin frontend-backend app, with the fastest components */
 public class EndToEndBenchmarks extends HttpServerBenchmarks {
   public static final BaggageField REQUEST_ID = BaggageField.create("x-vcap-request-id");
-  public static final BaggageField COUNTRY_CODE = BaggageField.newBuilder("country-code")
-    .clearRemoteNames().addRemoteName("baggage-country-code").build();
-  public static final BaggageField USER_ID = BaggageField.newBuilder("user-id")
-    .clearRemoteNames().addRemoteName("baggage-user-id").build();
-
+  public static final BaggageField COUNTRY_CODE = BaggageField.create("country-code");
+  public static final BaggageField USER_ID = BaggageField.create("user-id");
   static volatile int PORT;
 
   static class HelloServlet extends HttpServlet {
@@ -141,8 +138,8 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
       super(Tracing.newBuilder()
         .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
           .addRemoteField(REQUEST_ID)
-          .addRemoteField(COUNTRY_CODE)
-          .addRemoteField(USER_ID).build())
+          .addRemoteField(COUNTRY_CODE, "baggage-country-code")
+          .addRemoteField(USER_ID, "baggage-user-id").build())
         .spanReporter(AsyncReporter.create(new NoopSender()))
         .build());
     }
