@@ -309,7 +309,7 @@ public final class BaggageField {
   public void updateValue(@Nullable TraceContext context, @Nullable String value) {
     if (context == null) return;
     if (this.context.updateValue(this, context, value) && flushOnUpdate) {
-      BaggageFieldFlushScope.flush(this, value);
+      CorrrelationFlushScope.flush(this, value);
     }
   }
 
@@ -323,7 +323,7 @@ public final class BaggageField {
   public void updateValue(TraceContextOrSamplingFlags extracted, @Nullable String value) {
     if (extracted == null) throw new NullPointerException("extracted == null");
     if (context.updateValue(this, extracted, value) && flushOnUpdate) {
-      BaggageFieldFlushScope.flush(this, value);
+      CorrrelationFlushScope.flush(this, value);
     }
   }
 

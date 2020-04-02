@@ -211,8 +211,9 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
       int i = 0;
       for (Entry<BaggageField, String> next : fieldToNames.entrySet()) {
         fields[i] = next.getKey();
-        names[i++] = next.getValue();
+        names[i] = next.getValue();
         if (dirtyNames.contains(next.getValue())) dirty = setBit(dirty, i);
+        i++;
       }
       return new Multiple(context, fields, names, dirty);
     }
@@ -252,9 +253,9 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
       if (!dirty && !field.flushOnUpdate()) return scope;
 
       // If there was or could be a value update, we need to track values to revert.
-      BaggageFieldUpdateScope updateScope =
-        new BaggageFieldUpdateScope.Single(scope, context, field, name, valueToRevert, dirty);
-      return field.flushOnUpdate() ? new BaggageFieldFlushScope(updateScope) : updateScope;
+      CorrelationUpdateScope updateScope =
+        new CorrelationUpdateScope.Single(scope, context, field, name, valueToRevert, dirty);
+      return field.flushOnUpdate() ? new CorrrelationFlushScope(updateScope) : updateScope;
     }
   }
 
@@ -298,9 +299,9 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
       if (dirty == 0 && flushOnUpdate == 0) return scope;
 
       // If there was or could be a value update, we need to track values to revert.
-      BaggageFieldUpdateScope updateScope =
-        new BaggageFieldUpdateScope.Multiple(scope, context, fields, names, valuesToRevert, dirty);
-      return flushOnUpdate != 0 ? new BaggageFieldFlushScope(updateScope) : updateScope;
+      CorrelationUpdateScope updateScope =
+        new CorrelationUpdateScope.Multiple(scope, context, fields, names, valuesToRevert, dirty);
+      return flushOnUpdate != 0 ? new CorrrelationFlushScope(updateScope) : updateScope;
     }
   }
 

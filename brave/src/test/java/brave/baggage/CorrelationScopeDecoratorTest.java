@@ -20,6 +20,7 @@ import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -134,6 +135,24 @@ public class CorrelationScopeDecoratorTest {
   @Test public void doesntDecorateNoop() {
     assertThat(decorator.decorateScope(context, Scope.NOOP)).isSameAs(Scope.NOOP);
     assertThat(decorator.decorateScope(null, Scope.NOOP)).isSameAs(Scope.NOOP);
+  }
+
+  @Test public void dirtyFieldsMatchScope() {
+    CorrelationUpdateScope.Single scopeOne =
+      (CorrelationUpdateScope.Single) onlyDirtyFieldDecorator.decorateScope(context, Scope.NOOP);
+    assertThat(scopeOne.dirty).isTrue();
+    scopeOne.close();
+
+    CorrelationUpdateScope.Multiple scopeMultiple =
+      (CorrelationUpdateScope.Multiple) withDirtyFieldDecorator.decorateScope(context, Scope.NOOP);
+
+    BitSet bitset = BitSet.valueOf(new long[] {scopeMultiple.dirty});
+    assertThat(scopeMultiple.names)
+      .containsExactly("traceId", "spanId", "dirty");
+
+    assertThat(bitset.get(0)).isFalse();
+    assertThat(bitset.get(1)).isFalse();
+    assertThat(bitset.get(2)).isTrue();
   }
 
   @Test public void decoratesNoop_matchingDirtyField() {
