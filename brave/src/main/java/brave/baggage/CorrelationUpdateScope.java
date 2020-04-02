@@ -23,10 +23,10 @@ import static brave.baggage.CorrelationScopeDecorator.isSet;
 import static brave.baggage.CorrelationScopeDecorator.setBit;
 
 /** Handles reverting potentially late value updates to baggage fields. */
-abstract class BaggageFieldUpdateScope extends AtomicBoolean implements Scope {
+abstract class CorrelationUpdateScope extends AtomicBoolean implements Scope {
   CorrelationContext context;
 
-  BaggageFieldUpdateScope(CorrelationContext context) {
+  CorrelationUpdateScope(CorrelationContext context) {
     this.context = context;
   }
 
@@ -43,7 +43,7 @@ abstract class BaggageFieldUpdateScope extends AtomicBoolean implements Scope {
    */
   abstract void handleUpdate(BaggageField field, @Nullable String value);
 
-  static final class Single extends BaggageFieldUpdateScope {
+  static final class Single extends CorrelationUpdateScope {
     final Scope delegate;
     final BaggageField field;
     final String name;
@@ -83,7 +83,7 @@ abstract class BaggageFieldUpdateScope extends AtomicBoolean implements Scope {
     }
   }
 
-  static final class Multiple extends BaggageFieldUpdateScope {
+  static final class Multiple extends CorrelationUpdateScope {
     final Scope delegate;
     final BaggageField[] fields;
     final String[] names;

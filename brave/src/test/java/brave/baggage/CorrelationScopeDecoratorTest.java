@@ -20,9 +20,11 @@ import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -80,6 +82,15 @@ public class CorrelationScopeDecoratorTest {
     .clear()
     .addField(FLUSHABLE_BAGGAGE_FIELD, "flushed")
     .build();
+  ScopeDecorator withDirtyFieldDecorator = new TestBuilder()
+    .addField(BAGGAGE_FIELD, "dirty")
+    .addDirtyName("dirty")
+    .build();
+  ScopeDecorator onlyDirtyFieldDecorator = new TestBuilder()
+    .clear()
+    .addField(BAGGAGE_FIELD, "dirty")
+    .addDirtyName("dirty")
+    .build();
 
   @Before public void before() {
     map.clear();
@@ -93,20 +104,77 @@ public class CorrelationScopeDecoratorTest {
       .hasMessage("Field already added: bp");
   }
 
-  @Test public void name_clear_and_add() {
+  @Test public void dirtyMustBeAName() {
     CorrelationScopeDecorator.Builder builder = new TestBuilder();
-    Map<BaggageField, String> saved = builder.fieldToNames();
+
+    assertThatThrownBy(() -> builder.addDirtyName("dirty"))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Correlation name not in use: dirty");
+  }
+
+  @Test public void name_clear_and_add() {
+    CorrelationScopeDecorator.Builder builder = new TestBuilder()
+      .addField(BAGGAGE_FIELD, "dirty")
+      .addDirtyName("dirty");
+
+    Map<BaggageField, String> fieldToNames = builder.fieldToNames();
+    Set<String> dirtyNames = builder.dirtyNames();
+
     builder.clear();
-    saved.keySet().forEach(builder::addField);
+
+    fieldToNames.forEach(builder::addField);
+    dirtyNames.forEach(builder::addDirtyName);
 
     assertThat(builder)
       .usingRecursiveComparison()
-      .isEqualTo(new TestBuilder());
+      .isEqualTo(new TestBuilder()
+        .addField(BAGGAGE_FIELD, "dirty")
+        .addDirtyName("dirty"));
   }
 
   @Test public void doesntDecorateNoop() {
     assertThat(decorator.decorateScope(context, Scope.NOOP)).isSameAs(Scope.NOOP);
     assertThat(decorator.decorateScope(null, Scope.NOOP)).isSameAs(Scope.NOOP);
+  }
+
+  @Test public void dirtyFieldsMatchScope() {
+    CorrelationUpdateScope.Single scopeOne =
+      (CorrelationUpdateScope.Single) onlyDirtyFieldDecorator.decorateScope(context, Scope.NOOP);
+    assertThat(scopeOne.dirty).isTrue();
+    scopeOne.close();
+
+    CorrelationUpdateScope.Multiple scopeMultiple =
+      (CorrelationUpdateScope.Multiple) withDirtyFieldDecorator.decorateScope(context, Scope.NOOP);
+
+    BitSet bitset = BitSet.valueOf(new long[] {scopeMultiple.dirty});
+    assertThat(scopeMultiple.names)
+      .containsExactly("traceId", "spanId", "dirty");
+
+    assertThat(bitset.get(0)).isFalse();
+    assertThat(bitset.get(1)).isFalse();
+    assertThat(bitset.get(2)).isTrue();
+  }
+
+  @Test public void decoratesNoop_matchingDirtyField() {
+    BAGGAGE_FIELD.updateValue(context, "romeo");
+    map.put("dirty", "romeo");
+
+    decoratesNoop_dirtyField();
+  }
+
+  @Test public void decoratesNoop_matchingNullDirtyField() {
+    decoratesNoop_dirtyField();
+  }
+
+  /**
+   * All dirty fields should be reverted at the end of the scope, because end-users can interfere
+   * with the underlying context in the middle of the scope. (ex. MDC.put)
+   */
+  void decoratesNoop_dirtyField() {
+    assertThat(withDirtyFieldDecorator.decorateScope(context, Scope.NOOP))
+      .isNotSameAs(Scope.NOOP);
+    assertThat(onlyDirtyFieldDecorator.decorateScope(context, Scope.NOOP))
+      .isNotSameAs(Scope.NOOP);
   }
 
   /** Fields that don't flush inside a s have no value and no value of the underlying context. */

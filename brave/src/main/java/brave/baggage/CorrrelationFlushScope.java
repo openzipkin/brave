@@ -23,10 +23,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static brave.baggage.CorrelationScopeDecorator.equal;
 
 /** Sets up thread locals if they are needed to support {@link BaggageField#flushOnUpdate()} */
-final class BaggageFieldFlushScope extends AtomicBoolean implements Scope {
-  final BaggageFieldUpdateScope updateScope;
+final class CorrrelationFlushScope extends AtomicBoolean implements Scope {
+  final CorrelationUpdateScope updateScope;
 
-  BaggageFieldFlushScope(BaggageFieldUpdateScope updateScope) {
+  CorrrelationFlushScope(CorrelationUpdateScope updateScope) {
     this.updateScope = updateScope;
     pushCurrentUpdateScope(updateScope);
   }
@@ -50,7 +50,7 @@ final class BaggageFieldFlushScope extends AtomicBoolean implements Scope {
 
     Set<CorrelationContext> syncedContexts = new LinkedHashSet<>();
     for (Object o : updateScopeStack()) {
-      BaggageFieldUpdateScope next = ((BaggageFieldUpdateScope) o);
+      CorrelationUpdateScope next = ((CorrelationUpdateScope) o);
       String name = next.name(field);
       if (name == null) continue;
 
@@ -79,11 +79,11 @@ final class BaggageFieldFlushScope extends AtomicBoolean implements Scope {
     return stack;
   }
 
-  static void pushCurrentUpdateScope(BaggageFieldUpdateScope updateScope) {
+  static void pushCurrentUpdateScope(CorrelationUpdateScope updateScope) {
     updateScopeStack().push(updateScope);
   }
 
-  static void popCurrentUpdateScope(BaggageFieldUpdateScope expected) {
+  static void popCurrentUpdateScope(CorrelationUpdateScope expected) {
     Object popped = updateScopeStack().pop();
     assert equal(popped, expected) :
       "Misalignment: popped updateScope " + popped + " !=  expected " + expected;

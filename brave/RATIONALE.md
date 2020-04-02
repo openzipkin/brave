@@ -2,14 +2,20 @@
 
 ## CorrelationScopeDecorator
 
-### Why hold the initial value when `BaggageField.flushOnUpdate()`?
+### Why hold the initial values even when they match?
 
 The value read at the beginning of a scope is currently held when there's a
-chance the field can be updated later (`BaggageField.flushOnUpdate()`). This is
-because users generally expect data to be "cleaned up" when a scope completes,
-even if it was written mid-scope.
+chance the field can be updated later:
 
-Ex. https://github.com/spring-cloud/spring-cloud-sleuth/issues/1416
+* `CorrelationScopeDecorator.Builder.addDirtyName()`
+  * Always revert because someone else could have changed it (ex via `MDC`)
+* `BaggageField.flushOnUpdate()`
+  * Revert if only when we changed it (ex via `BaggageField.updateValue()`)
+
+This is because users generally expect data to be "cleaned up" when a scope
+completes, even if it was written mid-scope.
+
+https://github.com/spring-cloud/spring-cloud-sleuth/issues/1416
 
 If we delayed reading the value, until update, it could be different, due to
 nesting of scopes or out-of-band updates to the correlation context. Hence, we

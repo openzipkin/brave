@@ -70,34 +70,14 @@ public class CorrelationScopeDecoratorFactoryBeanTest {
 
   @Test public void fields() {
     context = new XmlBeans(""
+      + "<util:constant id=\"traceId\" static-field=\"brave.baggage.BaggageFields.TRACE_ID\"/>\n"
       + "<bean id=\"correlationDecorator\" class=\"brave.spring.beans.CorrelationScopeDecoratorFactoryBean\">\n"
       + "  <property name=\"builder\">\n"
       + "    <bean class=\"brave.context.log4j12.MDCScopeDecorator\" factory-method=\"newBuilder\"/>\n"
       + "  </property>\n"
       + "  <property name=\"fields\">\n"
       + "    <list>\n"
-      + "      <util:constant static-field=\"brave.baggage.BaggageFields.TRACE_ID\"/>\n"
-      + "      <util:constant static-field=\"brave.baggage.BaggageFields.SPAN_ID\"/>\n"
-      + "    </list>\n"
-      + "  </property>"
-      + "</bean>"
-    );
-
-    assertThat(context.getBean("correlationDecorator", CorrelationScopeDecorator.class))
-      .extracting("fields").asInstanceOf(InstanceOfAssertFactories.ARRAY)
-      .containsExactly(BaggageFields.TRACE_ID, BaggageFields.SPAN_ID);
-  }
-
-  @Test public void mappedFields() {
-    context = new XmlBeans(""
-      + "<util:constant id=\"traceId\" static-field=\"brave.baggage.BaggageFields.TRACE_ID\"/>\n"
-      + "<bean id=\"correlationDecorator\" class=\"brave.spring.beans.CorrelationScopeDecoratorFactoryBean\">\n"
-      + "  <property name=\"builder\">\n"
-      + "    <bean class=\"brave.context.log4j12.MDCScopeDecorator\" factory-method=\"newBuilder\"/>\n"
-      + "  </property>\n"
-      + "  <property name=\"mappedFields\">\n"
-      + "    <list>\n"
-      + "      <bean class=\"brave.spring.beans.MappedBaggageField\">\n"
+      + "      <bean class=\"brave.spring.beans.CorrelationField\">\n"
       + "        <property name=\"field\" ref=\"traceId\"/>\n"
       + "        <property name=\"name\" value=\"X-B3-TraceId\"/>\n"
       + "      </bean>\n"

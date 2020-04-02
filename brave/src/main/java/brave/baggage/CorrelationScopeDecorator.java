@@ -20,6 +20,7 @@ import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import brave.propagation.TraceContext;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -87,6 +88,7 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
     final CorrelationContext context;
     // Don't allow mixed case of the same name!
     final Set<String> allNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    final Set<String> dirtyNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     final Map<BaggageField, String> fieldToNames = new LinkedHashMap<>();
 
     /** Internal constructor used by subtypes. */
@@ -98,9 +100,21 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
     }
 
     /**
+     * Returns an immutable copy of the currently configured {@linkplain #addDirtyName(String) dirty
+     * names}. This allows those who can't create the builder to reconfigure this builder.
+     *
+     * @see #clear()
+     * @since 5.11
+     */
+    public Set<String> dirtyNames() {
+      return Collections.unmodifiableSet(new LinkedHashSet<>(dirtyNames));
+    }
+
+    /**
      * Returns an immutable copy of the currently configured fields mapped to names for use in
      * correlation. This allows those who can't create the builder to reconfigure this builder.
      *
+     * @see #clear()
      * @since 5.11
      */
     public Map<BaggageField, String> fieldToNames() {
@@ -121,6 +135,7 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
      */
     public Builder clear() {
       allNames.clear();
+      dirtyNames.clear();
       fieldToNames.clear();
       return this;
     }
@@ -160,23 +175,47 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
       return this;
     }
 
+    /**
+     * Adds a name in the underlying context which is updated directly. The decorator will overwrite
+     * any underlying changes when the scope closes.
+     *
+     * <p>This is used when there are a mix of libraries controlling the same correlation field.
+     * For example, if SLF4J MDC can update the same field name.
+     *
+     * <p>This has a similar performance impact to {@link BaggageField#flushOnUpdate()}, as it
+     * requires tracking the field value even if there's no change detected.
+     *
+     * @since 5.11
+     */
+    public Builder addDirtyName(String name) {
+      name = validateName(name);
+      if (!allNames.contains(name)) {
+        throw new IllegalArgumentException("Correlation name not in use: " + name);
+      }
+      dirtyNames.add(name);
+      return this;
+    }
+
     /** @return {@link ScopeDecorator#NOOP} if no baggage fields were added. */
     public final ScopeDecorator build() {
       int fieldCount = fieldToNames.size();
       if (fieldCount == 0) return ScopeDecorator.NOOP;
       if (fieldCount == 1) {
         Entry<BaggageField, String> onlyEntry = fieldToNames.entrySet().iterator().next();
-        return new Single(context, onlyEntry.getKey(), onlyEntry.getValue());
+        return new Single(context, onlyEntry.getKey(), onlyEntry.getValue(), dirtyNames.size() > 0);
       }
       if (fieldCount > 32) throw new IllegalArgumentException("over 32 baggage fields");
       BaggageField[] fields = new BaggageField[fieldCount];
       String[] names = new String[fieldCount];
+      int dirty = 0;
       int i = 0;
       for (Entry<BaggageField, String> next : fieldToNames.entrySet()) {
         fields[i] = next.getKey();
-        names[i++] = next.getValue();
+        names[i] = next.getValue();
+        if (dirtyNames.contains(next.getValue())) dirty = setBit(dirty, i);
+        i++;
       }
-      return new Multiple(context, fields, names);
+      return new Multiple(context, fields, names, dirty);
     }
   }
 
@@ -189,11 +228,13 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
   static final class Single extends CorrelationScopeDecorator {
     final BaggageField field;
     final String name;
+    final boolean dirtyName;
 
-    Single(CorrelationContext context, BaggageField field, String name) {
+    Single(CorrelationContext context, BaggageField field, String name, boolean dirtyName) {
       super(context);
       this.field = field;
       this.name = name;
+      this.dirtyName = dirtyName;
     }
 
     @Override public Scope decorateScope(@Nullable TraceContext traceContext, Scope scope) {
@@ -206,23 +247,28 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
         if (dirty) context.update(name, currentValue);
       }
 
+      // If the underlying field might be updated, always revert the value
+      if (!dirty && dirtyName) dirty = true;
+
       if (!dirty && !field.flushOnUpdate()) return scope;
 
       // If there was or could be a value update, we need to track values to revert.
-      BaggageFieldUpdateScope updateScope =
-        new BaggageFieldUpdateScope.Single(scope, context, field, name, valueToRevert, dirty);
-      return field.flushOnUpdate() ? new BaggageFieldFlushScope(updateScope) : updateScope;
+      CorrelationUpdateScope updateScope =
+        new CorrelationUpdateScope.Single(scope, context, field, name, valueToRevert, dirty);
+      return field.flushOnUpdate() ? new CorrrelationFlushScope(updateScope) : updateScope;
     }
   }
 
   static final class Multiple extends CorrelationScopeDecorator {
     final BaggageField[] fields;
     final String[] names;
+    final int dirtyNames;
 
-    Multiple(CorrelationContext context, BaggageField[] fields, String[] names) {
+    Multiple(CorrelationContext context, BaggageField[] fields, String[] names, int dirtyNames) {
       super(context);
       this.fields = fields;
       this.names = names;
+      this.dirtyNames = dirtyNames;
     }
 
     @Override public Scope decorateScope(@Nullable TraceContext traceContext, Scope scope) {
@@ -247,12 +293,15 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
         valuesToRevert[i] = valueToRevert;
       }
 
+      // Always revert fields that could be updated in the context directly
+      dirty |= dirtyNames;
+
       if (dirty == 0 && flushOnUpdate == 0) return scope;
 
       // If there was or could be a value update, we need to track values to revert.
-      BaggageFieldUpdateScope updateScope =
-        new BaggageFieldUpdateScope.Multiple(scope, context, fields, names, valuesToRevert, dirty);
-      return flushOnUpdate != 0 ? new BaggageFieldFlushScope(updateScope) : updateScope;
+      CorrelationUpdateScope updateScope =
+        new CorrelationUpdateScope.Multiple(scope, context, fields, names, valuesToRevert, dirty);
+      return flushOnUpdate != 0 ? new CorrrelationFlushScope(updateScope) : updateScope;
     }
   }
 
