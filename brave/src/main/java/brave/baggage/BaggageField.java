@@ -16,9 +16,12 @@ package brave.baggage;
 import brave.Tracing;
 import brave.baggage.BaggagePropagation.BaggageFieldWithKeyNames;
 import brave.internal.InternalBaggage;
+import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
+import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Arrays;
@@ -380,7 +383,11 @@ public final class BaggageField {
         for (String key : factory.create(Propagation.KeyFactory.STRING).keys()) {
           allKeyNames.add(key.toLowerCase(Locale.ROOT));
         }
-        if (factory instanceof BaggagePropagation.Factory) {
+        if (factory instanceof ExtraFieldPropagation.Factory) {
+          SamplingFlags.EMPTY.toString(); // ensure InternalPropagation is wired
+          allKeyNames.addAll(Arrays.asList(InternalPropagation.instance.extraKeyNames(
+            (ExtraFieldPropagation.Factory) factory)));
+        } else if (factory instanceof BaggagePropagation.Factory) {
           BaggagePropagation.Factory baggageFactory = (BaggagePropagation.Factory) factory;
           for (BaggageFieldWithKeyNames next : baggageFactory.fieldWithKeyNames) {
             allKeyNames.addAll(Arrays.asList(next.keyNames));

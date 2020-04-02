@@ -13,35 +13,29 @@
  */
 package brave.internal;
 
+import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagation;
 import brave.propagation.B3SinglePropagation;
 import brave.propagation.ExtraFieldPropagation;
-import brave.propagation.SamplingFlags;
+import brave.propagation.Propagation;
 import org.junit.Test;
 
-import static brave.internal.InternalPropagation.FLAG_SAMPLED;
-import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
-import static brave.internal.InternalPropagation.sampled;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class InternalPropagationTest {
-  @Test public void set_sampled_true() {
-    assertThat(sampled(true, 0))
-      .isEqualTo(FLAG_SAMPLED_SET + FLAG_SAMPLED);
+public class InternalBaggageTest {
+  @Test public void allKeyNames_baggagePropagation() {
+    Propagation.Factory factory = BaggagePropagation.newFactoryBuilder(B3SinglePropagation.FACTORY)
+      .addField(BaggageField.create("redacted"))
+      .addRemoteField(BaggageField.create("user-id"))
+      .addRemoteField(BaggageField.create("session-id")).build();
+    assertThat(InternalBaggage.instance.allKeyNames(factory))
+      .containsExactly("b3", "user-id", "session-id");
   }
 
-  @Test public void set_sampled_false() {
-    assertThat(sampled(false, FLAG_SAMPLED_SET | FLAG_SAMPLED))
-      .isEqualTo(FLAG_SAMPLED_SET);
-  }
-
-  static {
-    SamplingFlags.EMPTY.toString(); // ensure wired
-  }
-
-  @Test public void extraKeyNames() {
+  @Test public void allKeyNames_extraFieldPropagation() {
     ExtraFieldPropagation.Factory factory =
       ExtraFieldPropagation.newFactory(B3SinglePropagation.FACTORY, "user-id", "session-id");
-    assertThat(InternalPropagation.instance.extraKeyNames(factory))
-      .containsExactly("user-id", "session-id");
+    assertThat(InternalBaggage.instance.allKeyNames(factory))
+      .containsExactly("b3", "user-id", "session-id");
   }
 }

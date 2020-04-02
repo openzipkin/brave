@@ -15,6 +15,7 @@ package brave.internal;
 
 import brave.ScopedSpan;
 import brave.Span;
+import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import java.util.List;
@@ -69,4 +70,6 @@ public abstract class InternalPropagation {
 
   /** {@link brave.propagation.TraceContext} is immutable so you need to read the result */
   public abstract TraceContext withFlags(TraceContext context, int flags);
+
+  public abstract String[] extraKeyNames(ExtraFieldPropagation.Factory factory);
 }
