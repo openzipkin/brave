@@ -13,9 +13,9 @@
  */
 package brave.spring.beans;
 
+import brave.baggage.BaggageField;
 import brave.propagation.B3Propagation;
 import brave.propagation.B3SinglePropagation;
-import brave.propagation.BaggageField;
 import brave.propagation.ExtraFieldCustomizer;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;

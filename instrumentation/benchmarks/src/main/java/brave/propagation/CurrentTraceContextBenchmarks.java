@@ -13,6 +13,8 @@
  */
 package brave.propagation;
 
+import brave.baggage.BaggageFields;
+import brave.baggage.BaggagePropagation;
 import brave.context.log4j2.ThreadContextScopeDecorator;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -29,7 +31,7 @@ import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
-import static brave.propagation.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
+import static brave.baggage.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
 
 @Measurement(iterations = 5, time = 1)
 @Warmup(iterations = 10, time = 1)

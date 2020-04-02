@@ -11,11 +11,15 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.propagation;
+package brave.baggage;
 
 import brave.internal.HexCodec;
+import brave.propagation.B3Propagation;
+import brave.propagation.Propagation;
+import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
+import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;

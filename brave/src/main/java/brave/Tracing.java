@@ -13,6 +13,7 @@
  */
 package brave;
 
+import brave.baggage.BaggageField;
 import brave.handler.FinishedSpanHandler;
 import brave.internal.IpLiteral;
 import brave.internal.Nullable;
@@ -22,7 +23,6 @@ import brave.internal.handler.ZipkinFinishedSpanHandler;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.BaggageField;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;

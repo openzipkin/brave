@@ -11,7 +11,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.propagation;
+package brave.baggage;
 
 import brave.internal.CorrelationContext;
 import brave.propagation.CurrentTraceContext.Scope;
@@ -20,8 +20,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static brave.propagation.CorrelationScopeDecorator.equal;
-import static brave.propagation.CorrelationScopeDecorator.update;
+import static brave.baggage.CorrelationScopeDecorator.equal;
 
 /** Sets up thread locals if they are needed to support {@link BaggageField#flushOnUpdate()} */
 final class BaggageFieldFlushScope extends AtomicBoolean implements Scope {
@@ -56,8 +55,8 @@ final class BaggageFieldFlushScope extends AtomicBoolean implements Scope {
       // Since this is a static method, it could be called with different tracers on the stack.
       // This synchronizes the context if we haven't already.
       if (!syncedContexts.contains(next.context)) {
-        if (!equal(next.context.get(field.name()), value)) {
-          update(next.context, field, value);
+        if (!equal(next.context.getValue(field.name()), value)) {
+          next.context.update(field.name, value);
         }
         syncedContexts.add(next.context);
       }

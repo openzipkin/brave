@@ -14,6 +14,8 @@
 package brave.propagation;
 
 import brave.TracingCustomizer;
+import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationCustomizer;
 
 /**
  * This allows configuration plugins to collaborate on building an instance of {@link

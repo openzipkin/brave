@@ -16,7 +16,7 @@ package brave.sparkjava;
 import brave.Tracing;
 import brave.http.HttpServerBenchmarks;
 import brave.propagation.B3Propagation;
-import brave.propagation.BaggagePropagation;
+import brave.baggage.BaggagePropagation;
 import brave.sampler.Sampler;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.FilterInfo;
@@ -31,7 +31,7 @@ import spark.servlet.SparkApplication;
 import spark.servlet.SparkFilter;
 import zipkin2.reporter.Reporter;
 
-import static brave.propagation.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
+import static brave.baggage.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
 import static javax.servlet.DispatcherType.REQUEST;
 
 public class SparkBenchmarks extends HttpServerBenchmarks {

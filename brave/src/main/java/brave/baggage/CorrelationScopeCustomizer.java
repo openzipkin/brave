@@ -11,7 +11,9 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.propagation;
+package brave.baggage;
+
+import brave.propagation.Propagation;
 
 /**
  * This allows configuration plugins to collaborate on building an instance of {@link
@@ -29,7 +31,7 @@ package brave.propagation;
  * <p>In practice, a dependency injection tool applies a collection of these instances prior to
  * {@link CorrelationScopeDecorator.Builder#build() building the scope instance}. For example, an
  * injected {@code List<CorrelationCustomizer>} parameter to a provider of {@link
- * Propagation.Factory}.
+ * Propagation.Factory }.
  *
  * <p>Here are some examples, in alphabetical order:
  * <pre><ul>

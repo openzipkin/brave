@@ -11,17 +11,16 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.propagation;
+package brave.baggage;
 
 import brave.internal.CorrelationContext;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext.Scope;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static brave.propagation.CorrelationScopeDecorator.equal;
-import static brave.propagation.CorrelationScopeDecorator.isSet;
-import static brave.propagation.CorrelationScopeDecorator.setBit;
-import static brave.propagation.CorrelationScopeDecorator.update;
+import static brave.baggage.CorrelationScopeDecorator.equal;
+import static brave.baggage.CorrelationScopeDecorator.isSet;
+import static brave.baggage.CorrelationScopeDecorator.setBit;
 
 /** Handles reverting potentially late value updates to baggage fields. */
 abstract class BaggageFieldUpdateScope extends AtomicBoolean implements Scope {
@@ -61,7 +60,7 @@ abstract class BaggageFieldUpdateScope extends AtomicBoolean implements Scope {
       // don't duplicate work if called multiple times.
       if (!compareAndSet(false, true)) return;
       delegate.close();
-      if (dirty) update(context, trackedField, valueToRevert);
+      if (dirty) context.update(trackedField.name, valueToRevert);
     }
 
     @Override void handleUpdate(BaggageField field, String value) {
@@ -96,7 +95,7 @@ abstract class BaggageFieldUpdateScope extends AtomicBoolean implements Scope {
 
       delegate.close();
       for (int i = 0; i < fields.length; i++) {
-        if (isSet(dirty, i)) update(context, fields[i], valuesToRevert[i]);
+        if (isSet(dirty, i)) context.update(fields[i].name, valuesToRevert[i]);
       }
     }
 

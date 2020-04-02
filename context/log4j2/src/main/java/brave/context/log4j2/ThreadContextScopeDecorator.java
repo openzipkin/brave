@@ -14,8 +14,9 @@
 package brave.context.log4j2;
 
 import brave.internal.CorrelationContext;
-import brave.propagation.BaggageFields;
-import brave.propagation.CorrelationScopeDecorator;
+import brave.internal.Nullable;
+import brave.baggage.BaggageFields;
+import brave.baggage.CorrelationScopeDecorator;
 import brave.propagation.CurrentTraceContext;
 import org.apache.logging.log4j.ThreadContext;
 
@@ -87,16 +88,19 @@ public final class ThreadContextScopeDecorator {
   enum ThreadContextCorrelationContext implements CorrelationContext {
     INSTANCE;
 
-    @Override public String get(String name) {
+    @Override public String getValue(String name) {
       return ThreadContext.get(name);
     }
 
-    @Override public void put(String name, String value) {
-      ThreadContext.put(name, value);
-    }
-
-    @Override public void remove(String name) {
-      ThreadContext.remove(name);
+    @Override public boolean update(String name, @Nullable String value) {
+      if (value != null) {
+        ThreadContext.put(name, value);
+      } else if (ThreadContext.containsKey(name)) {
+        ThreadContext.remove(name);
+      } else {
+        return false;
+      }
+      return true;
     }
   }
 }

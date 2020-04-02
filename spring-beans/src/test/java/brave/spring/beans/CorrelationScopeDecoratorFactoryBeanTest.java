@@ -13,9 +13,9 @@
  */
 package brave.spring.beans;
 
-import brave.propagation.BaggageFields;
-import brave.propagation.CorrelationScopeCustomizer;
-import brave.propagation.CorrelationScopeDecorator;
+import brave.baggage.BaggageFields;
+import brave.baggage.CorrelationScopeCustomizer;
+import brave.baggage.CorrelationScopeDecorator;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.After;
 import org.junit.Test;
@@ -76,8 +76,8 @@ public class CorrelationScopeDecoratorFactoryBeanTest {
       + "  </property>\n"
       + "  <property name=\"fields\">\n"
       + "    <list>\n"
-      + "      <util:constant static-field=\"brave.propagation.BaggageFields.TRACE_ID\"/>\n"
-      + "      <util:constant static-field=\"brave.propagation.BaggageFields.SPAN_ID\"/>\n"
+      + "      <util:constant static-field=\"brave.baggage.BaggageFields.TRACE_ID\"/>\n"
+      + "      <util:constant static-field=\"brave.baggage.BaggageFields.SPAN_ID\"/>\n"
       + "    </list>\n"
       + "  </property>"
       + "</bean>"

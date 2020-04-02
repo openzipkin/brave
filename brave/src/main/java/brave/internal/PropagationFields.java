@@ -35,8 +35,10 @@ public abstract class PropagationFields<K, V> {
   /** Returns the value of the field with the specified key or null if not available */
   protected abstract V get(K key);
 
-  /** Replaces the value of the field with the specified key, ignoring if not a permitted field */
-  protected abstract void put(K key, @Nullable V value);
+  /**
+   * Replaces the value of the field with the specified key, ignoring if not a permitted field
+   */
+  protected abstract boolean put(K key, @Nullable V value);
 
   /** Invokes the consumer for every non-null field value */
   protected abstract void forEach(FieldConsumer<K, V> consumer);

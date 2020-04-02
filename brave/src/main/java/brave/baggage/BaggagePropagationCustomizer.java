@@ -11,7 +11,9 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.propagation;
+package brave.baggage;
+
+import brave.propagation.Propagation;
 
 /**
  * This allows configuration plugins to collaborate on building an instance of {@link

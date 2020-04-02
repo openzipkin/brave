@@ -11,11 +11,13 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.propagation;
+package brave.baggage;
 
+import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.PropagationFields;
 import brave.internal.PropagationFieldsFactory;
+import brave.propagation.TraceContext;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -45,7 +47,7 @@ final class PredefinedBaggageFields extends PropagationFields<BaggageField, Stri
     }
 
     @Override protected TraceContext contextWithExtra(TraceContext context, List<Object> extra) {
-      return context.withExtra(extra); // more efficient
+      return InternalPropagation.instance.withExtra(context, extra); // more efficient
     }
   }
 
@@ -85,10 +87,10 @@ final class PredefinedBaggageFields extends PropagationFields<BaggageField, Stri
     }
   }
 
-  @Override protected final void put(BaggageField field, String value) {
+  @Override protected final boolean put(BaggageField field, String value) {
     int index = indexOf(field);
-    if (index == -1) return;
-    put(index, value);
+    if (index == -1) return false;
+    return put(index, value);
   }
 
   @Override protected boolean isEmpty() {
@@ -100,26 +102,27 @@ final class PredefinedBaggageFields extends PropagationFields<BaggageField, Stri
     return true;
   }
 
-  protected final void put(int index, @Nullable String value) {
-    if (index >= fields.length) return;
+  protected final boolean put(int index, @Nullable String value) {
+    if (index >= fields.length) return false;
 
     synchronized (this) {
-      doPut(index, value);
+      return doPut(index, value);
     }
   }
 
-  void doPut(int index, @Nullable String value) {
+  boolean doPut(int index, @Nullable String value) {
     String[] elements = values;
     if (elements == null) {
       elements = new String[fields.length];
       elements[index] = value;
     } else if (equal(value, elements[index])) {
-      return;
+      return false;
     } else { // this is the copy-on-write part
       elements = Arrays.copyOf(elements, elements.length);
       elements[index] = value;
     }
     values = elements;
+    return true;
   }
 
   @Override protected final void putAllIfAbsent(PropagationFields parent) {

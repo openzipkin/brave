@@ -15,11 +15,11 @@ package brave;
 
 import brave.Span.Kind;
 import brave.Tracer.SpanInScope;
+import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagation;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.propagation.B3Propagation;
-import brave.propagation.BaggageField;
-import brave.propagation.BaggagePropagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.Propagation;

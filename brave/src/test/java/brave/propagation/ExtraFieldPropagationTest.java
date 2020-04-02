@@ -14,6 +14,8 @@
 package brave.propagation;
 
 import brave.Tracing;
+import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagationTest;
 import brave.propagation.CurrentTraceContext.Scope;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -75,16 +77,14 @@ public class ExtraFieldPropagationTest {
 
   @Test public void downcasesNames() {
     ExtraFieldPropagation.Factory factory =
-      (ExtraFieldPropagation.Factory) ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
-        "X-FOO");
+      ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "X-FOO");
     assertThat(factory.fields).extracting(BaggageField::name)
       .containsExactly("x-foo");
   }
 
   @Test public void trimsNames() {
     ExtraFieldPropagation.Factory factory =
-      (ExtraFieldPropagation.Factory) ExtraFieldPropagation.newFactory(B3Propagation.FACTORY,
-        " x-foo  ");
+      ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, " x-foo  ");
     assertThat(factory.fields).extracting(BaggageField::name)
       .containsExactly("x-foo");
   }
@@ -198,8 +198,7 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void inject_extra() {
-    PredefinedBaggageFields extra = context.findExtra(PredefinedBaggageFields.class);
-    extra.put(BaggageField.create("x-vcap-request-id"), uuid);
+    BaggageField.getByName(context, "x-vcap-request-id").updateValue(context, uuid);
 
     injector.inject(context, carrier);
 
@@ -207,9 +206,8 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void inject_two() {
-    PredefinedBaggageFields extra = context.findExtra(PredefinedBaggageFields.class);
-    extra.put(BaggageField.create("x-vcap-request-id"), uuid);
-    extra.put(BaggageField.create("x-amzn-trace-id"), awsTraceId);
+    BaggageField.getByName(context, "x-vcap-request-id").updateValue(context, uuid);
+    BaggageField.getByName(context, "x-amzn-trace-id").updateValue(context, awsTraceId);
 
     injector.inject(context, carrier);
 
@@ -225,9 +223,8 @@ public class ExtraFieldPropagationTest {
       .build();
     initialize();
 
-    PredefinedBaggageFields extra = context.findExtra(PredefinedBaggageFields.class);
-    extra.put(BaggageField.create("x-vcap-request-id"), uuid);
-    extra.put(BaggageField.create("country-code"), "FO");
+    BaggageField.getByName(context, "x-vcap-request-id").updateValue(context, uuid);
+    BaggageField.getByName(context, "country-code").updateValue(context, "FO");
 
     injector.inject(context, carrier);
 
@@ -246,9 +243,8 @@ public class ExtraFieldPropagationTest {
     assertThat(extracted.context().extra())
       .hasSize(1);
 
-    PredefinedBaggageFields extra = (PredefinedBaggageFields) extracted.context().extra().get(0);
-    assertThat(extra.toMap())
-      .containsEntry("x-amzn-trace-id", awsTraceId);
+    assertThat(BaggageField.getByName(extracted, "x-amzn-trace-id").getValue(extracted))
+      .isEqualTo(awsTraceId);
   }
 
   @Test public void extract_two() {
@@ -262,10 +258,10 @@ public class ExtraFieldPropagationTest {
     assertThat(extracted.context().extra())
       .hasSize(1);
 
-    PredefinedBaggageFields extra = (PredefinedBaggageFields) extracted.context().extra().get(0);
-    assertThat(extra.toMap())
-      .containsEntry("x-amzn-trace-id", awsTraceId)
-      .containsEntry("x-vcap-request-id", uuid);
+    assertThat(BaggageField.getByName(extracted, "x-amzn-trace-id").getValue(extracted))
+      .isEqualTo(awsTraceId);
+    assertThat(BaggageField.getByName(extracted, "x-vcap-request-id").getValue(extracted))
+      .isEqualTo(uuid);
   }
 
   @Test public void extract_prefixed() {
@@ -285,10 +281,10 @@ public class ExtraFieldPropagationTest {
     assertThat(extracted.context().extra())
       .hasSize(1);
 
-    PredefinedBaggageFields extra = (PredefinedBaggageFields) extracted.context().extra().get(0);
-    assertThat(extra.toMap())
-      .containsEntry("country-code", "FO")
-      .containsEntry("x-vcap-request-id", uuid);
+    assertThat(BaggageField.getByName(extracted, "country-code").getValue(extracted))
+      .isEqualTo("FO");
+    assertThat(BaggageField.getByName(extracted, "x-vcap-request-id").getValue(extracted))
+      .isEqualTo(uuid);
   }
 
   @Test public void getAll() {

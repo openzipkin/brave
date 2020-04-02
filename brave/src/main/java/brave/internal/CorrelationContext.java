@@ -13,7 +13,7 @@
  */
 package brave.internal;
 
-import brave.propagation.CorrelationScopeDecorator;
+import brave.baggage.CorrelationScopeDecorator;
 
 /**
  * Dispatches methods to synchronize fields with a context such as SLF4J MDC.
@@ -24,14 +24,11 @@ import brave.propagation.CorrelationScopeDecorator;
 // NOTE: revert to abstract class with protected signatures if this is ever promoted to the
 // brave.propagation package.
 public interface CorrelationContext {
-  /**
-   * Returns the correlation property of the specified name iff it is a string, or null otherwise.
-   */
-  @Nullable String get(String name);
+  /** Returns the string property of the specified name or {@code null}. */
+  // same as BaggageContext#getValue(BaggageField, TraceContext)
+  @Nullable String getValue(String name);
 
-  /** Replaces the correlation property of the specified name with the specified value. */
-  void put(String name, @Nullable String value);
-
-  /** Removes the correlation property of the specified name. */
-  void remove(String name);
+  /** Returns false if the update was ignored. */
+  // same as BaggageContext#updateValue(BaggageField, TraceContext, String)
+  boolean update(String name, @Nullable String value);
 }

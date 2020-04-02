@@ -13,9 +13,9 @@
  */
 package brave.spring.beans;
 
-import brave.propagation.BaggageField;
-import brave.propagation.CorrelationScopeCustomizer;
-import brave.propagation.CorrelationScopeDecorator;
+import brave.baggage.BaggageField;
+import brave.baggage.CorrelationScopeCustomizer;
+import brave.baggage.CorrelationScopeDecorator;
 import java.util.List;
 import org.springframework.beans.factory.FactoryBean;
 

@@ -25,7 +25,7 @@ import brave.http.HttpServerParser;
 import brave.http.HttpTags;
 import brave.http.HttpTracing;
 import brave.propagation.B3SingleFormat;
-import brave.propagation.BaggageField;
+import brave.baggage.BaggageField;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;

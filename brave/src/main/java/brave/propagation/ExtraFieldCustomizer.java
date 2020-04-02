@@ -13,6 +13,8 @@
  */
 package brave.propagation;
 
+import brave.baggage.BaggagePropagationCustomizer;
+
 /**
  * @since 5.7
  * @deprecated Since 5.11 use {@link BaggagePropagationCustomizer}

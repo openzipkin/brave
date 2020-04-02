@@ -13,7 +13,7 @@
  */
 package brave.features.opentracing;
 
-import brave.propagation.BaggageField;
+import brave.baggage.BaggageField;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.tag.Tag;

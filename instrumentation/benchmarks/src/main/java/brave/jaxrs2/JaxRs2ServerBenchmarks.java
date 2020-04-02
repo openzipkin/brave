@@ -32,7 +32,7 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
-import static brave.propagation.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
+import static brave.baggage.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
 import static brave.servlet.ServletBenchmarks.addFilterMappings;
 
 public class JaxRs2ServerBenchmarks extends HttpServerBenchmarks {

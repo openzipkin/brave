@@ -13,10 +13,10 @@
  */
 package brave.spring.beans;
 
+import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationCustomizer;
 import brave.propagation.B3Propagation;
-import brave.propagation.BaggageField;
-import brave.propagation.BaggagePropagation;
-import brave.propagation.BaggagePropagationCustomizer;
 import brave.propagation.Propagation;
 import java.util.List;
 import org.springframework.beans.factory.FactoryBean;

@@ -11,12 +11,13 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.propagation;
+package brave.baggage;
 
 import brave.internal.CorrelationContext;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
+import brave.propagation.TraceContext;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -127,13 +128,13 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
     }
 
     @Override public Scope decorateScope(@Nullable TraceContext traceContext, Scope scope) {
-      String valueToRevert = context.get(field.name());
+      String valueToRevert = context.getValue(field.name());
       String currentValue = traceContext != null ? field.getValue(traceContext) : null;
 
       boolean dirty = false;
-      if (scope != Scope.NOOP || !field.readOnly()) {
+      if (scope != Scope.NOOP || !readOnly(field)) {
         dirty = !equal(valueToRevert, currentValue);
-        if (dirty) update(context, field, currentValue);
+        if (dirty) context.update(field.name, currentValue);
       }
 
       if (!dirty && !field.flushOnUpdate()) return scope;
@@ -158,12 +159,12 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
       String[] valuesToRevert = new String[fields.length];
       for (int i = 0; i < fields.length; i++) {
         BaggageField field = fields[i];
-        String valueToRevert = context.get(field.name());
+        String valueToRevert = context.getValue(field.name());
         String currentValue = traceContext != null ? field.getValue(traceContext) : null;
 
-        if (scope != Scope.NOOP || !field.readOnly()) {
+        if (scope != Scope.NOOP || !readOnly(field)) {
           if (!equal(valueToRevert, currentValue)) {
-            update(context, field, currentValue);
+            context.update(field.name, currentValue);
             dirty = setBit(dirty, i);
           }
         }
@@ -184,12 +185,8 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
     }
   }
 
-  static void update(CorrelationContext context, BaggageField field, @Nullable String value) {
-    if (value != null) {
-      context.put(field.name(), value);
-    } else {
-      context.remove(field.name());
-    }
+  static boolean readOnly(BaggageField field) {
+    return field.context instanceof BaggageContext.ReadOnly;
   }
 
   static int setBit(int bitset, int i) {

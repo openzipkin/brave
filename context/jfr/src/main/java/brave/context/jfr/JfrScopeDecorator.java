@@ -14,7 +14,7 @@
 package brave.context.jfr;
 
 import brave.internal.Nullable;
-import brave.propagation.BaggageFields;
+import brave.baggage.BaggageFields;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import brave.propagation.TraceContext;

@@ -16,7 +16,7 @@ package brave.netty.http;
 import brave.Tracing;
 import brave.http.HttpServerBenchmarks;
 import brave.propagation.B3Propagation;
-import brave.propagation.BaggagePropagation;
+import brave.baggage.BaggagePropagation;
 import brave.sampler.Sampler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;

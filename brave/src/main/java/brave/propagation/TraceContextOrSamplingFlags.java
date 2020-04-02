@@ -100,7 +100,8 @@ public final class TraceContextOrSamplingFlags {
   }
 
   /**
-   * Non-empty when {@link #context} is null: A list of additional state extracted from the carrier.
+   * Non-empty when {@link #context} is null: A list of additional state extracted from the
+   * carrier.
    *
    * @see TraceContext#extra()
    */

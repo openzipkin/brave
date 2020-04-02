@@ -13,7 +13,7 @@
  */
 package brave.spring.beans;
 
-import brave.propagation.BaggageField;
+import brave.baggage.BaggageField;
 import org.junit.After;
 import org.junit.Test;
 

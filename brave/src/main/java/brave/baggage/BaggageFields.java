@@ -11,12 +11,27 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.propagation;
+package brave.baggage;
 
 import brave.internal.Nullable;
+import brave.propagation.TraceContext;
+import brave.propagation.TraceContextOrSamplingFlags;
 
 /**
- * Common fields accessible
+ * This contains pre-defined fields, such as {@link #TRACE_ID} and a way to create a {@linkplain
+ * #constant(String, String) constant field}.
+ *
+ * <h3>Built-in fields</h3>
+ * The following are fields that dispatch to methods on the {@link TraceContext}. They are available
+ * regardless of {@link BaggagePropagation}. None will return in lookups such as {@link
+ * BaggageField#getAll(TraceContext)} or {@link BaggageField#getByName(TraceContext, String)}
+ *
+ * <p><ol>
+ * <li>{@link #TRACE_ID}</li>
+ * <li>{@link #PARENT_ID}</li>
+ * <li>{@link #SPAN_ID}</li>
+ * <li>{@link #SAMPLED}</li>
+ * </ol>
  *
  * @since 5.11
  */
@@ -28,19 +43,16 @@ public final class BaggageFields {
    * @since 5.11
    */
   public static final BaggageField TRACE_ID = BaggageField.newBuilder("traceId")
-    .internalValueAccessor(TraceIdAccessor.INSTANCE)
-    .readOnly().clearRemoteNames().build();
+    .internalContext(new TraceIdStorage()).clearRemoteNames().build();
 
-  enum TraceIdAccessor implements BaggageField.ValueAccessor {
-    INSTANCE;
-
-    @Override public String get(BaggageField field, TraceContextOrSamplingFlags extracted) {
-      if (extracted.context() != null) return get(field, extracted.context());
+  static final class TraceIdStorage extends BaggageContext.ReadOnly {
+    @Override public String getValue(BaggageField field, TraceContextOrSamplingFlags extracted) {
+      if (extracted.context() != null) return getValue(field, extracted.context());
       if (extracted.traceIdContext() != null) extracted.traceIdContext().traceIdString();
       return null;
     }
 
-    @Override public String get(BaggageField field, TraceContext context) {
+    @Override public String getValue(BaggageField field, TraceContext context) {
       return context.traceIdString();
     }
   }
@@ -52,18 +64,15 @@ public final class BaggageFields {
    * @since 5.11
    */
   public static final BaggageField PARENT_ID = BaggageField.newBuilder("parentId")
-    .internalValueAccessor(ParentIdAccessor.INSTANCE)
-    .readOnly().clearRemoteNames().build();
+    .internalContext(new ParentIdStorage()).clearRemoteNames().build();
 
-  enum ParentIdAccessor implements BaggageField.ValueAccessor {
-    INSTANCE;
-
-    @Override public String get(BaggageField field, TraceContextOrSamplingFlags extracted) {
-      if (extracted.context() != null) return get(field, extracted.context());
+  static final class ParentIdStorage extends BaggageContext.ReadOnly {
+    @Override public String getValue(BaggageField field, TraceContextOrSamplingFlags extracted) {
+      if (extracted.context() != null) return getValue(field, extracted.context());
       return null;
     }
 
-    @Override public String get(BaggageField field, TraceContext context) {
+    @Override public String getValue(BaggageField field, TraceContext context) {
       return context.parentIdString();
     }
   }
@@ -75,18 +84,15 @@ public final class BaggageFields {
    * @since 5.11
    */
   public static final BaggageField SPAN_ID = BaggageField.newBuilder("spanId")
-    .internalValueAccessor(SpanIdAccessor.INSTANCE)
-    .readOnly().clearRemoteNames().build();
+    .internalContext(new SpanIdStorage()).clearRemoteNames().build();
 
-  enum SpanIdAccessor implements BaggageField.ValueAccessor {
-    INSTANCE;
-
-    @Override public String get(BaggageField field, TraceContextOrSamplingFlags extracted) {
-      if (extracted.context() != null) return get(field, extracted.context());
+  static final class SpanIdStorage extends BaggageContext.ReadOnly {
+    @Override public String getValue(BaggageField field, TraceContextOrSamplingFlags extracted) {
+      if (extracted.context() != null) return getValue(field, extracted.context());
       return null;
     }
 
-    @Override public String get(BaggageField field, TraceContext context) {
+    @Override public String getValue(BaggageField field, TraceContext context) {
       return context.spanIdString();
     }
   }
@@ -100,17 +106,14 @@ public final class BaggageFields {
    * @since 5.11
    */
   public static final BaggageField SAMPLED = BaggageField.newBuilder("sampled")
-    .internalValueAccessor(SampledAccessor.INSTANCE)
-    .readOnly().clearRemoteNames().build();
+    .internalContext(new SampledStorage()).clearRemoteNames().build();
 
-  enum SampledAccessor implements BaggageField.ValueAccessor {
-    INSTANCE;
-
-    @Override public String get(BaggageField field, TraceContextOrSamplingFlags extracted) {
+  static final class SampledStorage extends BaggageContext.ReadOnly {
+    @Override public String getValue(BaggageField field, TraceContextOrSamplingFlags extracted) {
       return getValue(extracted.sampled());
     }
 
-    @Override public String get(BaggageField field, TraceContext context) {
+    @Override public String getValue(BaggageField field, TraceContext context) {
       return getValue(context.sampled());
     }
 
@@ -131,22 +134,21 @@ public final class BaggageFields {
    */
   public static BaggageField constant(String name, @Nullable String value) {
     return BaggageField.newBuilder(name)
-      .internalValueAccessor(new ConstantValueAccessor(value))
-      .readOnly().clearRemoteNames().build();
+      .internalContext(new ConstantStorage(value)).clearRemoteNames().build();
   }
 
-  static final class ConstantValueAccessor implements BaggageField.ValueAccessor {
+  static final class ConstantStorage extends BaggageContext.ReadOnly {
     @Nullable final String value;
 
-    ConstantValueAccessor(String value) {
+    ConstantStorage(String value) {
       this.value = value;
     }
 
-    @Override public String get(BaggageField field, TraceContextOrSamplingFlags extracted) {
+    @Override public String getValue(BaggageField field, TraceContextOrSamplingFlags extracted) {
       return value;
     }
 
-    @Override public String get(BaggageField field, TraceContext context) {
+    @Override public String getValue(BaggageField field, TraceContext context) {
       return value;
     }
   }

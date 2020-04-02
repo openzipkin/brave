@@ -11,12 +11,16 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.propagation;
+package brave.baggage;
 
 import brave.Tracing;
 import brave.internal.PropagationFields;
+import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.Propagation;
+import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
+import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Collections;
 import java.util.Map;
 import org.junit.Test;
@@ -60,36 +64,22 @@ public class BaggageFieldTest {
       BaggageField.newBuilder("addRemoteName").addRemoteName("second").build().remoteNames()
     ).containsExactly("addremotename", "second");
 
-    assertThat(BaggageField.create("foo").readOnly()).isFalse();
-    assertThat(
-      BaggageField.newBuilder("readOnly").readOnly().build().readOnly()
-    ).isTrue();
-
     assertThat(BaggageField.create("foo").flushOnUpdate()).isFalse();
     assertThat(
       BaggageField.newBuilder("flushOnUpdate").flushOnUpdate().build().flushOnUpdate()
     ).isTrue();
   }
 
-  @Test public void internalValueAccessor() {
-    assertThat(BaggageField.create("foo").valueAccessor)
-      .isSameAs(BaggageField.ValueFromExtra.INSTANCE);
+  @Test public void internalStorage() {
+    assertThat(BaggageField.create("foo").context)
+      .isSameAs(BaggageContext.EXTRA);
 
-    BaggageField.ValueAccessor valueAccessor = mock(BaggageField.ValueAccessor.class);
+    BaggageContext context = mock(BaggageContext.class);
     assertThat(
-      BaggageField.newBuilder("valueAccessor")
-        .internalValueAccessor(valueAccessor)
-        .build().valueAccessor
-    ).isSameAs(valueAccessor);
-  }
-
-  @Test public void illegalCombinations() {
-    BaggageField.Builder builder = BaggageField.newBuilder("illegal")
-      .readOnly()
-      .flushOnUpdate();
-
-    assertThatThrownBy(builder::build)
-      .isInstanceOf(IllegalArgumentException.class);
+      BaggageField.newBuilder("context")
+        .internalContext(context)
+        .build().context
+    ).isSameAs(context);
   }
 
   @Test public void getAll_extracted() {

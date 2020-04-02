@@ -14,8 +14,9 @@
 package brave.context.slf4j;
 
 import brave.internal.CorrelationContext;
-import brave.propagation.BaggageFields;
-import brave.propagation.CorrelationScopeDecorator;
+import brave.internal.Nullable;
+import brave.baggage.BaggageFields;
+import brave.baggage.CorrelationScopeDecorator;
 import brave.propagation.CurrentTraceContext;
 import org.slf4j.MDC;
 
@@ -86,16 +87,17 @@ public final class MDCScopeDecorator {
   enum MDCContext implements CorrelationContext {
     INSTANCE;
 
-    @Override public String get(String name) {
+    @Override public String getValue(String name) {
       return MDC.get(name);
     }
 
-    @Override public void put(String name, String value) {
-      MDC.put(name, value);
-    }
-
-    @Override public void remove(String name) {
-      MDC.remove(name);
+    @Override public boolean update(String name, @Nullable String value) {
+      if (value != null) {
+        MDC.put(name, value);
+      } else {
+        MDC.remove(name);
+      }
+      return true;
     }
   }
 }

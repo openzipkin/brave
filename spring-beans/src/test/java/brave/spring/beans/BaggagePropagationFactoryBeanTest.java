@@ -13,11 +13,11 @@
  */
 package brave.spring.beans;
 
+import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationCustomizer;
 import brave.propagation.B3Propagation;
 import brave.propagation.B3SinglePropagation;
-import brave.propagation.BaggageField;
-import brave.propagation.BaggagePropagation;
-import brave.propagation.BaggagePropagationCustomizer;
 import brave.propagation.Propagation;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.After;

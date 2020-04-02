@@ -17,7 +17,7 @@ import brave.Tracing;
 import brave.http.HttpServerBenchmarks;
 import brave.http.HttpTracing;
 import brave.propagation.B3Propagation;
-import brave.propagation.BaggagePropagation;
+import brave.baggage.BaggagePropagation;
 import brave.sampler.Sampler;
 import io.undertow.servlet.api.DeploymentInfo;
 import java.util.Collections;
@@ -35,7 +35,7 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import zipkin2.reporter.Reporter;
 
-import static brave.propagation.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
+import static brave.baggage.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
 import static io.undertow.servlet.Servlets.servlet;
 import static java.util.Arrays.asList;
 

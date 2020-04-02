@@ -37,7 +37,7 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 
-import static brave.propagation.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
+import static brave.baggage.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
 
 @Measurement(iterations = 5, time = 1)
 @Warmup(iterations = 10, time = 1)

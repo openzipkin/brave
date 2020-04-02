@@ -11,8 +11,14 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.propagation;
+package brave.baggage;
 
+import brave.propagation.B3Propagation;
+import brave.propagation.B3SingleFormat;
+import brave.propagation.B3SinglePropagation;
+import brave.propagation.Propagation;
+import brave.propagation.TraceContext;
+import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -20,7 +26,7 @@ import java.util.TreeMap;
 import org.junit.Before;
 import org.junit.Test;
 
-import static brave.propagation.BaggagePropagation.newFactoryBuilder;
+import static brave.baggage.BaggagePropagation.newFactoryBuilder;
 import static brave.propagation.Propagation.KeyFactory.STRING;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

@@ -11,11 +11,15 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.propagation;
+package brave.baggage;
 
 import brave.internal.CorrelationContext;
+import brave.internal.Nullable;
+import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
+import brave.propagation.Propagation;
+import brave.propagation.TraceContext;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -481,16 +485,19 @@ public class CorrelationScopeDecoratorTest {
   enum MapContext implements CorrelationContext {
     INSTANCE;
 
-    @Override public String get(String name) {
+    @Override public String getValue(String name) {
       return map.get(name);
     }
 
-    @Override public void put(String name, String value) {
-      map.put(name, value);
-    }
-
-    @Override public void remove(String name) {
-      map.remove(name);
+    @Override public boolean update(String name, @Nullable String value) {
+      if (value != null) {
+        map.put(name, value);
+      } else if (map.containsKey(name)) {
+        map.remove(name);
+      } else {
+        return false;
+      }
+      return true;
     }
   }
 }

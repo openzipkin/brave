@@ -15,8 +15,8 @@ package brave.test;
 
 import brave.Tracing;
 import brave.propagation.B3Propagation;
-import brave.propagation.BaggageField;
-import brave.propagation.BaggagePropagation;
+import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagation;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.StrictCurrentTraceContext;

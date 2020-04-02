@@ -14,7 +14,7 @@
 package brave.features.opentracing;
 
 import brave.Tracing;
-import brave.propagation.BaggageField;
+import brave.baggage.BaggageField;
 import brave.propagation.Propagation;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.Propagation.Setter;

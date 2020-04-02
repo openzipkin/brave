@@ -59,14 +59,14 @@ public class MapPropagationFields<K, V> extends PropagationFields<K, V> {
     }
   }
 
-  @Override public final void put(K key, @Nullable V value) {
+  @Override public final boolean put(K key, @Nullable V value) {
     synchronized (this) {
       Map<K, V> values = this.values;
       if (values == null) {
         values = new LinkedHashMap<>();
         if (value != null) values.put(key, value);
       } else if (equal(value, values.get(key))) {
-        return;
+        return false;
       } else {
         // this is the copy-on-write part
         values = new LinkedHashMap<>(values);
@@ -78,6 +78,7 @@ public class MapPropagationFields<K, V> extends PropagationFields<K, V> {
       }
       this.values = Collections.unmodifiableMap(values);
     }
+    return false;
   }
 
   @Override public boolean isEmpty() {

@@ -15,8 +15,8 @@ package brave.features.opentracing;
 
 import brave.Tracing;
 import brave.propagation.B3Propagation;
-import brave.propagation.BaggageField;
-import brave.propagation.BaggagePropagation;
+import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagation;
 import brave.propagation.TraceContext;
 import io.opentracing.propagation.Format;
 import io.opentracing.propagation.TextMapAdapter;

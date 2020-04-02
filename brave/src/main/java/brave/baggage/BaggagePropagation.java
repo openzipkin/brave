@@ -11,10 +11,15 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.propagation;
+package brave.baggage;
 
+import brave.propagation.Propagation;
+import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
+import brave.propagation.TraceContextOrSamplingFlags;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -57,6 +62,30 @@ public class BaggagePropagation<K> implements Propagation<K> {
     FactoryBuilder(Propagation.Factory delegate) {
       if (delegate == null) throw new NullPointerException("delegate == null");
       this.delegate = delegate;
+    }
+
+    /**
+     * Returns an immutable copy of the currently configured fields. This allows those who can't
+     * create the builder to reconfigure fields.
+     *
+     * @see #clear()
+     * @see BaggagePropagationCustomizer
+     * @since 5.11
+     */
+    public List<BaggageField> fields() {
+      return Collections.unmodifiableList(new ArrayList<>(fields));
+    }
+
+    /**
+     * Clears all state. This allows those who can't create the builder to reconfigure fields.
+     *
+     * @see #fields()
+     * @see BaggagePropagationCustomizer
+     * @since 5.11
+     */
+    public FactoryBuilder clear() {
+      fields.clear();
+      return this;
     }
 
     /**
