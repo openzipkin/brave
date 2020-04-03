@@ -13,11 +13,11 @@
  */
 package brave.spring.beans;
 
+import brave.baggage.CorrelationField;
 import brave.baggage.CorrelationScopeCustomizer;
 import brave.baggage.CorrelationScopeDecorator;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import java.util.List;
-import java.util.Locale;
 import org.springframework.beans.factory.FactoryBean;
 
 /** Spring XML config does not support chained builders. This converts accordingly */
@@ -31,11 +31,7 @@ public class CorrelationScopeDecoratorFactoryBean implements FactoryBean {
     if (fields != null) {
       builder.clear();
       for (CorrelationField field : fields) {
-        String name = field.name;
-        if (name == null) name = field.field.name().toLowerCase(Locale.ROOT);
-        builder.addField(field.field, name);
-        if (field.dirty) builder.addDirtyName(name);
-        if (field.flushOnUpdate) builder.addFlushOnUpdateName(name);
+        builder.addField(field);
       }
     }
     if (customizers != null) {

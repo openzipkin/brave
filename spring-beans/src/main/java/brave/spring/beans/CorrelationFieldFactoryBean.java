@@ -14,14 +14,33 @@
 package brave.spring.beans;
 
 import brave.baggage.BaggageField;
+import brave.baggage.CorrelationField;
+import org.springframework.beans.factory.FactoryBean;
 
-public class CorrelationField {
-  BaggageField field;
+/** Spring XML config does not support chained builders. This converts accordingly */
+public class CorrelationFieldFactoryBean implements FactoryBean {
+  BaggageField baggageField;
   String name;
   boolean dirty, flushOnUpdate;
 
-  public void setField(BaggageField field) {
-    this.field = field;
+  @Override public CorrelationField getObject() {
+    CorrelationField.Builder builder = CorrelationField.newBuilder(baggageField);
+    if (name != null) builder.name(name);
+    if (dirty) builder.dirty();
+    if (flushOnUpdate) builder.flushOnUpdate();
+    return builder.build();
+  }
+
+  @Override public Class<? extends CorrelationField> getObjectType() {
+    return CorrelationField.class;
+  }
+
+  @Override public boolean isSingleton() {
+    return true;
+  }
+
+  public void setBaggageField(BaggageField baggageField) {
+    this.baggageField = baggageField;
   }
 
   public void setName(String name) {

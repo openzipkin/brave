@@ -11,7 +11,8 @@ Bean Factories exist for the following types:
 * MessagingTracingFactoryBean - for messaging tagging and sampling policy
 * CurrentTraceContextFactoryBean - to integrate decorators such as correlation.
 * BaggagePropagationFactoryBean - for propagating baggage fields in process and over headers
-* CorrelationScopeDecoratorFactoryBean -  for scope decorations such as MDC (logging) field correlation
+* CorrelationScopeDecoratorFactoryBean - for scope decorations such as MDC (logging) field correlation
+* CorrelationFieldFactoryBean - configures a baggage field for correlation
 
 Here are some example beans using the factories in this module:
 ```xml
@@ -80,8 +81,8 @@ Here's an example of adding only the trace ID as the correlation property "X-B3-
   </property>
   <property name="fields">
     <list>
-      <bean class="brave.spring.beans.CorrelationField">
-        <property name="field" ref="traceId"/>
+      <bean class="brave.spring.beans.CorrelationFieldFactoryBean">
+        <property name="baggageField" ref="traceId"/>
         <property name="name" value="X-B3-TraceId"/>
       </bean>
     </list>

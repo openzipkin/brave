@@ -45,65 +45,59 @@ abstract class CorrelationUpdateScope extends AtomicBoolean implements Scope {
 
   static final class Single extends CorrelationUpdateScope {
     final Scope delegate;
-    final BaggageField field;
-    final String name;
+    final CorrelationField field;
     final @Nullable String valueToRevert;
-    boolean dirty;
+    boolean shouldRevert;
 
     Single(
       Scope delegate,
       CorrelationContext context,
-      BaggageField field,
-      String name,
+      CorrelationField field,
       @Nullable String valueToRevert,
-      boolean dirty
+      boolean shouldRevert
     ) {
       super(context);
       this.delegate = delegate;
       this.field = field;
-      this.name = name;
       this.valueToRevert = valueToRevert;
-      this.dirty = dirty;
+      this.shouldRevert = shouldRevert;
     }
 
     @Override public void close() {
       // don't duplicate work if called multiple times.
       if (!compareAndSet(false, true)) return;
       delegate.close();
-      if (dirty) context.update(name, valueToRevert);
+      if (shouldRevert) context.update(field.name, valueToRevert);
     }
 
     @Override String name(BaggageField field) {
-      return name;
+      return field.name;
     }
 
     @Override void handleUpdate(BaggageField field, String value) {
-      if (!this.field.equals(field)) return;
-      if (!equal(value, valueToRevert)) dirty = true;
+      if (!this.field.baggageField.equals(field)) return;
+      if (!equal(value, valueToRevert)) shouldRevert = true;
     }
   }
 
   static final class Multiple extends CorrelationUpdateScope {
     final Scope delegate;
-    final BaggageField[] fields;
-    final String[] names;
+    final CorrelationField[] fields;
     final String[] valuesToRevert;
-    int dirty;
+    int shouldRevert;
 
     Multiple(
       Scope delegate,
       CorrelationContext context,
-      BaggageField[] fields,
-      String[] names,
+      CorrelationField[] fields,
       String[] valuesToRevert,
-      int dirty
+      int shouldRevert
     ) {
       super(context);
       this.delegate = delegate;
       this.fields = fields;
-      this.names = names;
       this.valuesToRevert = valuesToRevert;
-      this.dirty = dirty;
+      this.shouldRevert = shouldRevert;
     }
 
     @Override public void close() {
@@ -112,14 +106,14 @@ abstract class CorrelationUpdateScope extends AtomicBoolean implements Scope {
 
       delegate.close();
       for (int i = 0; i < fields.length; i++) {
-        if (isSet(dirty, i)) context.update(names[i], valuesToRevert[i]);
+        if (isSet(shouldRevert, i)) context.update(fields[i].name, valuesToRevert[i]);
       }
     }
 
     @Override String name(BaggageField field) {
       for (int i = 0; i < fields.length; i++) {
-        if (fields[i].equals(field)) {
-          return names[i];
+        if (fields[i].baggageField.equals(field)) {
+          return fields[i].name;
         }
       }
       return null;
@@ -127,8 +121,8 @@ abstract class CorrelationUpdateScope extends AtomicBoolean implements Scope {
 
     @Override void handleUpdate(BaggageField field, String value) {
       for (int i = 0; i < fields.length; i++) {
-        if (fields[i].equals(field)) {
-          if (!equal(value, valuesToRevert[i])) dirty = setBit(dirty, i);
+        if (fields[i].baggageField.equals(field)) {
+          if (!equal(value, valuesToRevert[i])) shouldRevert = setBit(shouldRevert, i);
           return;
         }
       }

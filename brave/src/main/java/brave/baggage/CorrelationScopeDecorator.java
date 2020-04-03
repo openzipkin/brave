@@ -15,19 +15,13 @@ package brave.baggage;
 
 import brave.internal.CorrelationContext;
 import brave.internal.Nullable;
-import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import brave.propagation.TraceContext;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
-
-import static brave.baggage.BaggageField.validateName;
 
 /**
  * Synchronizes fields such as {@link BaggageFields#TRACE_ID} with a correlation context, such as
@@ -38,7 +32,7 @@ import static brave.baggage.BaggageField.validateName;
  * // Add the field "region", so it can be used as a log expression %X{region}
  * CLOUD_REGION = BaggageFields.constant("region", System.getEnv("CLOUD_REGION"));
  * decorator = MDCScopeDecorator.newBuilder()
- *                              .addField(CLOUD_REGION)
+ *                              .addField(CorrelationField.create(CLOUD_REGION))
  *                              .build();
  *
  * // Integrate the decorator
@@ -63,23 +57,7 @@ import static brave.baggage.BaggageField.validateName;
  * }
  * }</pre>
  *
- * <h3>Field mapping</h3>
- * Your log correlation properties may not be the same as the baggage field names. You can override
- * them in the builder as needed.
- *
- * <p>Ex. If your log property is %X{trace-id}, you can do this:
- * <pre>{@code
- * builder.clear(); // traceId is a default field!
- * builder.addField(BaggageFields.TRACE_ID, "trace-id");
- * }</pre>
- *
- * <h3>Visibility</h3>
- * <p>By default, field updates only apply during {@linkplain CorrelationScopeDecorator scope
- * decoration}. This means values set do not flush immediately to the underlying correlation
- * context. Rather, they are scheduled for the next scope operation as a way to control overhead.
- * {@link Builder#addFlushOnUpdateName(String)} overrides this.
- *
- * @see BaggageField
+ * @see CorrelationField
  * @since 5.11
  */
 public abstract class CorrelationScopeDecorator implements ScopeDecorator {
@@ -89,71 +67,42 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
     final CorrelationContext context;
     // Don't allow mixed case of the same name!
     final Set<String> allNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    final Set<String> dirtyNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    final Set<String> flushOnUpdateNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    final Map<BaggageField, String> fieldToNames = new LinkedHashMap<>();
+    final Set<CorrelationField> fields = new LinkedHashSet<>();
 
     /** Internal constructor used by subtypes. */
     protected Builder(CorrelationContext context) {
       if (context == null) throw new NullPointerException("context == null");
       this.context = context;
-      addField(BaggageFields.TRACE_ID);
-      addField(BaggageFields.SPAN_ID);
+      addField(CorrelationField.create(BaggageFields.TRACE_ID));
+      addField(CorrelationField.create(BaggageFields.SPAN_ID));
     }
 
     /**
-     * Returns an immutable copy of the currently configured {@linkplain #addDirtyName(String) dirty
-     * names}. This allows those who can't create the builder to reconfigure this builder.
+     * Returns an immutable copy of the currently configured {@linkplain #addField(CorrelationField)
+     * fields}. This allows those who can't create the builder to reconfigure this builder.
      *
      * @see #clear()
      * @since 5.11
      */
-    public Set<String> dirtyNames() {
-      return Collections.unmodifiableSet(new LinkedHashSet<>(dirtyNames));
+    public Set<CorrelationField> fields() {
+      return Collections.unmodifiableSet(new LinkedHashSet<>(fields));
     }
 
     /**
-     * Returns an immutable copy of the currently configured {@linkplain
-     * #addFlushOnUpdateName(String) flush-on-update names}. This allows those who can't create the
-     * builder to reconfigure this builder.
-     *
-     * @see #clear()
-     * @since 5.11
-     */
-    public Set<String> flushOnUpdateNames() {
-      return Collections.unmodifiableSet(new LinkedHashSet<>(flushOnUpdateNames));
-    }
-
-    /**
-     * Returns an immutable copy of the currently configured fields mapped to names for use in
-     * correlation. This allows those who can't create the builder to reconfigure this builder.
-     *
-     * @see #clear()
-     * @since 5.11
-     */
-    public Map<BaggageField, String> fieldToNames() {
-      return Collections.unmodifiableMap(new LinkedHashMap<>(fieldToNames));
-    }
-
-    /**
-     * Invoke this to clear fields so that you can {@linkplain #addField(BaggageField) add the ones
-     * you need}.
+     * Invoke this to clear fields so that you can {@linkplain #addField(CorrelationField) add the
+     * ones you need}.
      *
      * <p>Defaults may include a field you aren't using, such as {@link BaggageFields#PARENT_ID}.
      * For best performance, only include the fields you use in your correlation expressions (such
      * as log formats).
      *
-     * @see #fieldToNames()
-     * @see #dirtyNames()
-     * @see #flushOnUpdateNames()
+     * @see #fields()
      * @see CorrelationScopeDecorator
      * @since 5.11
      */
     public Builder clear() {
       allNames.clear();
-      dirtyNames.clear();
-      flushOnUpdateNames.clear();
-      fieldToNames.clear();
+      fields.clear();
       return this;
     }
 
@@ -162,116 +111,26 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
      *
      * @since 5.11
      */
-    public Builder addField(BaggageField field) {
-      return addField(field, field.name);
-    }
-
-    /**
-     * Adds a correlation property into the context with an alternate name.
-     *
-     * <p>For example, if your log correlation needs the name "trace-id", you can do this:
-     * <pre>{@code
-     * builder.clear(); // traceId is a default field!
-     * builder.addField(BaggageFields.TRACE_ID, "trace-id");
-     * }</pre>
-     *
-     * @since 5.11
-     */
-    public Builder addField(BaggageField field, String name) {
+    public Builder addField(CorrelationField field) {
       if (field == null) throw new NullPointerException("field == null");
-      if (fieldToNames.containsKey(field)) {
-        throw new IllegalArgumentException("Field already added: " + field.name);
+      if (fields.contains(field)) {
+        throw new IllegalArgumentException(
+          "Baggage Field already added: " + field.baggageField.name);
       }
-
-      name = validateName(name);
-      if (allNames.contains(name)) {
-        throw new IllegalArgumentException("Correlation name already in use: " + name);
+      if (allNames.contains(field.name)) {
+        throw new IllegalArgumentException("Correlation name already in use: " + field.name);
       }
-      allNames.add(name);
-      fieldToNames.put(field, name);
-      return this;
-    }
-
-    /**
-     * Adds a name in the underlying context which is updated directly. The decorator will overwrite
-     * any underlying changes when the scope closes.
-     *
-     * <p>This is used when there are a mix of libraries controlling the same correlation field.
-     * For example, if SLF4J MDC can update the same field name.
-     *
-     * <p>This has a similar performance impact to {@link #addFlushOnUpdateName(String)}, as it
-     * requires tracking the field value even if there's no change detected.
-     *
-     * @since 5.11
-     */
-    public Builder addDirtyName(String name) {
-      dirtyNames.add(checkNameInUse(name));
-      return this;
-    }
-
-    String checkNameInUse(String name) {
-      name = validateName(name);
-      if (!allNames.contains(name)) {
-        throw new IllegalArgumentException("Correlation name not in use: " + name);
-      }
-      return name;
-    }
-
-    /**
-     * When true, updates made to this name via {@linkplain BaggageField#updateValue(TraceContext,
-     * String)} flush immediately to the correlation context.
-     *
-     * <p>This is useful for callbacks that have a void return. Ex.
-     * <pre>{@code
-     * @SendTo(SourceChannels.OUTPUT)
-     * public void timerMessageSource() {
-     *   // Assume BUSINESS_PROCESS is an updatable field
-     *   BUSINESS_PROCESS.updateValue("accounting");
-     *   // Assuming a Log4j context, the expression %{bp} will show "accounting" in businessCode()
-     *   businessCode();
-     * }
-     * }</pre>
-     *
-     * <h3>Appropriate Usage</h3>
-     * This has a significant performance impact as it requires even {@link
-     * CurrentTraceContext#maybeScope(TraceContext)} to always track values.
-     *
-     * <p>Most fields do not change in the scope of a {@link TraceContext}. For example, standard
-     * fields such as {@link BaggageFields#SPAN_ID the span ID} and {@linkplain
-     * BaggageFields#constant(String, String) constants} such as env variables do not need to be
-     * tracked. Even field value updates do not necessarily need to be flushed to the underlying
-     * correlation context, as they will apply on the next scope operation.
-     *
-     * @since 5.11
-     */
-    public Builder addFlushOnUpdateName(String name) {
-      flushOnUpdateNames.add(checkNameInUse(name));
+      fields.add(field);
       return this;
     }
 
     /** @return {@link ScopeDecorator#NOOP} if no baggage fields were added. */
     public final ScopeDecorator build() {
-      int fieldCount = fieldToNames.size();
+      int fieldCount = fields.size();
       if (fieldCount == 0) return ScopeDecorator.NOOP;
-      if (fieldCount == 1) {
-        Entry<BaggageField, String> onlyEntry = fieldToNames.entrySet().iterator().next();
-        return new Single(context, onlyEntry.getKey(), onlyEntry.getValue(),
-          dirtyNames.size() > 0, flushOnUpdateNames.size() > 0
-        );
-      }
+      if (fieldCount == 1) return new Single(context, fields.iterator().next());
       if (fieldCount > 32) throw new IllegalArgumentException("over 32 baggage fields");
-      BaggageField[] fields = new BaggageField[fieldCount];
-      String[] names = new String[fieldCount];
-      int dirty = 0, flushOnUpdate = 0;
-      int i = 0;
-      for (Entry<BaggageField, String> next : fieldToNames.entrySet()) {
-        fields[i] = next.getKey();
-        names[i] = next.getValue();
-        if (dirtyNames.contains(next.getValue())) dirty = setBit(dirty, i);
-        if (flushOnUpdateNames.contains(next.getValue())) flushOnUpdate = setBit(flushOnUpdate, i);
-        i++;
-      }
-      return new Multiple(context, fields, names, dirty, flushOnUpdate);
+      return new Multiple(context, fields.toArray(new CorrelationField[0]));
     }
   }
 
@@ -282,87 +141,74 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
   }
 
   static final class Single extends CorrelationScopeDecorator {
-    final BaggageField field;
-    final String name;
-    final boolean dirty, flushOnUpdate;
+    final CorrelationField field;
 
-    Single(CorrelationContext context, BaggageField field, String name, boolean dirtyName,
-      boolean flushOnUpdate) {
+    Single(CorrelationContext context, CorrelationField field) {
       super(context);
       this.field = field;
-      this.name = name;
-      this.dirty = dirtyName;
-      this.flushOnUpdate = flushOnUpdate;
     }
 
     @Override public Scope decorateScope(@Nullable TraceContext traceContext, Scope scope) {
-      String valueToRevert = context.getValue(name);
-      String currentValue = traceContext != null ? field.getValue(traceContext) : null;
+      String valueToRevert = context.getValue(field.name);
+      String currentValue = field.baggageField.getValue(traceContext);
 
       boolean dirty = false;
-      if (scope != Scope.NOOP || !readOnly(field)) {
+      if (scope != Scope.NOOP || !field.readOnly()) {
         dirty = !equal(valueToRevert, currentValue);
-        if (dirty) context.update(name, currentValue);
+        if (dirty) context.update(field.name, currentValue);
       }
 
       // If the underlying field might be updated, always revert the value
-      dirty = dirty || this.dirty;
+      dirty = dirty || field.dirty;
 
-      if (!dirty && !flushOnUpdate) return scope;
+      if (!dirty && !field.flushOnUpdate) return scope;
 
       // If there was or could be a value update, we need to track values to revert.
       CorrelationUpdateScope updateScope =
-        new CorrelationUpdateScope.Single(scope, context, field, name, valueToRevert, dirty);
-      return flushOnUpdate ? new CorrelationFlushScope(updateScope) : updateScope;
+        new CorrelationUpdateScope.Single(scope, context, field, valueToRevert, dirty);
+      return field.flushOnUpdate ? new CorrelationFlushScope(updateScope) : updateScope;
     }
   }
 
   static final class Multiple extends CorrelationScopeDecorator {
-    final BaggageField[] fields;
-    final String[] names;
-    final int dirty, flushOnUpdate;
+    final CorrelationField[] fields;
 
-    Multiple(CorrelationContext context, BaggageField[] fields, String[] names, int dirty,
-      int flushOnUpdate) {
+    Multiple(CorrelationContext context, CorrelationField[] fields) {
       super(context);
       this.fields = fields;
-      this.names = names;
-      this.dirty = dirty;
-      this.flushOnUpdate = flushOnUpdate;
     }
 
     @Override public Scope decorateScope(@Nullable TraceContext traceContext, Scope scope) {
       int dirty = 0;
+      boolean flushOnUpdate = false;
+
       String[] valuesToRevert = new String[fields.length];
       for (int i = 0; i < fields.length; i++) {
-        BaggageField field = fields[i];
-        String valueToRevert = context.getValue(names[i]);
-        String currentValue = traceContext != null ? field.getValue(traceContext) : null;
+        CorrelationField field = fields[i];
+        String valueToRevert = context.getValue(field.name);
+        String currentValue = field.baggageField.getValue(traceContext);
 
-        if (scope != Scope.NOOP || !readOnly(field)) {
+        if (scope != Scope.NOOP || !field.readOnly) {
           if (!equal(valueToRevert, currentValue)) {
-            context.update(names[i], currentValue);
+            context.update(field.name, currentValue);
             dirty = setBit(dirty, i);
           }
         }
 
+        // Always revert fields that could be updated in the context directly
+        if (field.dirty) dirty = setBit(dirty, i);
+        if (field.flushOnUpdate) flushOnUpdate = true;
+
         valuesToRevert[i] = valueToRevert;
       }
 
-      // Always revert fields that could be updated in the context directly
-      dirty |= this.dirty;
-
-      if (dirty == 0 && flushOnUpdate == 0) return scope;
+      if (dirty == 0 && !flushOnUpdate) return scope;
 
       // If there was or could be a value update, we need to track values to revert.
       CorrelationUpdateScope updateScope =
-        new CorrelationUpdateScope.Multiple(scope, context, fields, names, valuesToRevert, dirty);
-      return flushOnUpdate != 0 ? new CorrelationFlushScope(updateScope) : updateScope;
+        new CorrelationUpdateScope.Multiple(scope, context, fields, valuesToRevert, dirty);
+      return flushOnUpdate ? new CorrelationFlushScope(updateScope) : updateScope;
     }
-  }
-
-  static boolean readOnly(BaggageField field) {
-    return field.context instanceof BaggageContext.ReadOnly;
   }
 
   static int setBit(int bitset, int i) {
