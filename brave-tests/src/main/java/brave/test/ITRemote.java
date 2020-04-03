@@ -24,6 +24,8 @@ import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.StrictScopeDecorator;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
+import java.io.Closeable;
+import java.io.IOException;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.rules.DisableOnDebug;
@@ -71,15 +73,32 @@ public abstract class ITRemote {
     return tracing.propagationFactory().decorate(result);
   }
 
-  final StrictCurrentTraceContext strictCurrentTraceContext = new StrictCurrentTraceContext();
-  // field because this allows subclasses to initialize a field Tracing
-  protected CurrentTraceContext currentTraceContext = strictCurrentTraceContext;
+  protected final CurrentTraceContext currentTraceContext;
+  protected final Propagation.Factory propagationFactory;
+  protected Tracing tracing; // mutable for test-specific configuration!
 
-  protected final Propagation.Factory propagationFactory =
-    BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+  final Closeable checkForLeakedScopes; // internal to this type
+
+  /** Subclass to override the builder. The result will have {@link StrictScopeDecorator} added */
+  protected CurrentTraceContext.Builder currentTraceContextBuilder() {
+    return StrictCurrentTraceContext.newBuilder();
+  }
+
+  protected ITRemote() {
+    CurrentTraceContext.Builder currentTraceContextBuilder = currentTraceContextBuilder();
+    if (currentTraceContextBuilder instanceof StrictCurrentTraceContext.Builder) {
+      currentTraceContext = currentTraceContextBuilder.build();
+      checkForLeakedScopes = (Closeable) currentTraceContext;
+    } else {
+      StrictScopeDecorator strictScopeDecorator = StrictScopeDecorator.create();
+      currentTraceContext = currentTraceContextBuilder
+        .addScopeDecorator(strictScopeDecorator).build();
+      checkForLeakedScopes = strictScopeDecorator;
+    }
+    propagationFactory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
       .addRemoteField(BAGGAGE_FIELD).build();
-
-  protected Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
+    tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
+  }
 
   protected Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
@@ -112,15 +131,9 @@ public abstract class ITRemote {
     checkForLeakedScopes();
   }
 
-  /**
-   * Override to control scope leak enforcement.
-   *
-   * <p>For example, if you override {@link #strictCurrentTraceContext} you will want to add your
-   * own {@link StrictScopeDecorator} as a both a decorator on that object, and field in the test
-   * class, so that you can close it here.
-   */
-  protected void checkForLeakedScopes() {
-    strictCurrentTraceContext.close();
+  /** Override to disable scope leak enforcement. */
+  protected void checkForLeakedScopes() throws IOException {
+    checkForLeakedScopes.close();
   }
 
   // Assertions below here can eventually move to a new type
