@@ -29,6 +29,8 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
     <main.java.version>1.8</main.java.version>
     <main.signature.artifact>java18</main.signature.artifact>
+    <!-- disable errorprone warning that "return this" is not synchronized! -->
+    <errorprone.args>-Xep:UnsynchronizedOverridesSynchronized:OFF</errorprone.args>
   </properties>
 
   <dependencies>
