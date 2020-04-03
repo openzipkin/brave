@@ -81,8 +81,8 @@ Here's an example of adding only the trace ID as the correlation property "X-B3-
   </property>
   <property name="fields">
     <list>
-      <bean class="brave.spring.beans.CorrelationField">
-        <property name="field" ref="traceId"/>
+      <bean class="brave.spring.beans.CorrelationFieldFactoryBean">
+        <property name="baggageField" ref="traceId"/>
         <property name="name" value="X-B3-TraceId"/>
       </bean>
     </list>

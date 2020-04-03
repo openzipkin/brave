@@ -14,6 +14,7 @@
 package brave.spring.beans;
 
 import brave.baggage.BaggageFields;
+import brave.baggage.CorrelationField;
 import brave.baggage.CorrelationScopeCustomizer;
 import brave.baggage.CorrelationScopeDecorator;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
@@ -66,7 +67,10 @@ public class CorrelationScopeDecoratorFactoryBeanTest {
 
     assertThat(context.getBean("correlationDecorator", CorrelationScopeDecorator.class))
       .extracting("fields").asInstanceOf(InstanceOfAssertFactories.ARRAY)
-      .containsExactly(BaggageFields.TRACE_ID, BaggageFields.SPAN_ID);
+      .containsExactly(
+        CorrelationField.create(BaggageFields.TRACE_ID),
+        CorrelationField.create(BaggageFields.SPAN_ID)
+      );
   }
 
   @Test public void fields() {
@@ -78,11 +82,9 @@ public class CorrelationScopeDecoratorFactoryBeanTest {
       + "  </property>\n"
       + "  <property name=\"fields\">\n"
       + "    <list>\n"
-      + "      <bean class=\"brave.spring.beans.CorrelationField\">\n"
-      + "        <property name=\"field\" ref=\"traceId\"/>\n"
+      + "      <bean class=\"brave.spring.beans.CorrelationFieldFactoryBean\">\n"
+      + "        <property name=\"baggageField\" ref=\"traceId\"/>\n"
       + "        <property name=\"name\" value=\"X-B3-TraceId\"/>\n"
-      + "        <property name=\"dirty\" value=\"true\"/>\n"
-      + "        <property name=\"flushOnUpdate\" value=\"true\"/>\n"
       + "      </bean>\n"
       + "    </list>\n"
       + "  </property>\n"
@@ -91,13 +93,8 @@ public class CorrelationScopeDecoratorFactoryBeanTest {
 
     ScopeDecorator decorator = context.getBean("correlationDecorator", ScopeDecorator.class);
     assertThat(decorator).extracting("field")
-      .isEqualTo(BaggageFields.TRACE_ID);
-    assertThat(decorator).extracting("name")
-      .isEqualTo("X-B3-TraceId");
-    assertThat(decorator).extracting("dirty")
-      .isEqualTo(true);
-    assertThat(decorator).extracting("flushOnUpdate")
-      .isEqualTo(true);
+      .usingRecursiveComparison()
+      .isEqualTo(CorrelationField.newBuilder(BaggageFields.TRACE_ID).name("X-B3-TraceId").build());
   }
 
   public static final CorrelationScopeCustomizer
