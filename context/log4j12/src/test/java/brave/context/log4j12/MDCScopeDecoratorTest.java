@@ -21,7 +21,6 @@ import brave.test.propagation.CurrentTraceContextTest;
 import java.util.function.Supplier;
 import org.apache.log4j.MDC;
 import org.apache.log4j.helpers.Loader;
-import org.apache.logging.log4j.ThreadContext;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -67,7 +66,7 @@ public class MDCScopeDecoratorTest extends CurrentTraceContextTest {
     if (context != null) {
       assertThat(MDC.get("traceId")).isEqualTo(context.traceIdString());
       assertThat(MDC.get("spanId")).isEqualTo(context.spanIdString());
-      assertThat(ThreadContext.get(CORRELATION_FIELD.name()))
+      assertThat(MDC.get(CORRELATION_FIELD.name()))
         .isEqualTo(CORRELATION_FIELD.baggageField().getValue(context));
     } else {
       assertThat(MDC.get("traceId")).isNull();
