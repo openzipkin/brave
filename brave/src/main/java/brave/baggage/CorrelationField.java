@@ -63,7 +63,7 @@ public final class CorrelationField {
   }
 
   /** @since 5.11 */
-  public static class Builder {
+  public static final class Builder {
     final BaggageField baggageField;
     String name;
     boolean dirty, flushOnUpdate;
