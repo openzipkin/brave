@@ -28,7 +28,7 @@ import brave.propagation.TraceContext;
  * <pre>{@code
  * scopeBuilder.clear() // TRACE_ID is a default field!
  *             .add(CorrelationField.newBuilder(BaggageFields.TRACE_ID)
- *                                  .name("trace-id").build()
+ *                                  .name("trace-id").build())
  * }</pre>
  *
  * <h3>Visibility</h3>
