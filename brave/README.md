@@ -1063,7 +1063,7 @@ Propagating a trace context instead of a span is a right fit for several reasons
 * Brave's recorder is keyed on context, so there's no feature loss in this choice
 
 ### Local Sampling flag
-The [Census](https://opencensus.io/) project has a concept of a[SampledSpanStore](https://github.com/census-instrumentation/opencensus-java/blob/master/api/src/main/java/io/opencensus/trace/export/SampledSpanStore.java).
+The [Census](https://opencensus.io/) project has a concept of a [SampledSpanStore](https://github.com/census-instrumentation/opencensus-java/blob/master/api/src/main/java/io/opencensus/trace/export/SampledSpanStore.java).
 Typically, you configure a span name pattern or choose [individual spans](https://github.com/census-instrumentation/opencensus-java/blob/660e8f375bb483a3eb817940b3aa8534f86da314/api/src/main/java/io/opencensus/trace/EndSpanOptions.java#L65)
 for local (in-process) storage. This storage is used to power
 administrative pages named zPages. For example, [Tracez](https://github.com/census-instrumentation/opencensus-java/blob/660e8f375bb483a3eb817940b3aa8534f86da314/contrib/zpages/src/main/java/io/opencensus/contrib/zpages/TracezZPageHandler.java#L220)
