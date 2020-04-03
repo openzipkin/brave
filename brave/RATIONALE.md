@@ -7,9 +7,9 @@
 The value read at the beginning of a scope is currently held when there's a
 chance the field can be updated later:
 
-* `CorrelationScopeDecorator.Builder.addDirtyName()`
+* `CorrelationField.dirty()`
   * Always revert because someone else could have changed it (ex via `MDC`)
-* `CorrelationScopeDecorator.Builder.addFlushOnUpdateName()`
+* `CorrelationField.flushOnUpdate()`
   * Revert if only when we changed it (ex via `BaggageField.updateValue()`)
 
 This is because users generally expect data to be "cleaned up" when a scope

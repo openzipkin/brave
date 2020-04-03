@@ -99,7 +99,7 @@ import java.util.Set;
  * propagate "arbitrary stuff" with a request.
  *
  * @see BaggagePropagation
- * @see CorrelationScopeDecorator
+ * @see CorrelationField
  * @since 5.11
  */
 public final class BaggageField {
@@ -195,7 +195,7 @@ public final class BaggageField {
    * made current.
    *
    * @see #getByName(TraceContext, String)
-   * @see CorrelationScopeDecorator
+   * @see CorrelationField#name()
    * @since 5.11
    */
   public final String name() {

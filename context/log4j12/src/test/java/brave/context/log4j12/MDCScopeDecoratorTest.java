@@ -21,6 +21,7 @@ import brave.test.propagation.CurrentTraceContextTest;
 import java.util.function.Supplier;
 import org.apache.log4j.MDC;
 import org.apache.log4j.helpers.Loader;
+import org.apache.logging.log4j.ThreadContext;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -53,7 +54,7 @@ public class MDCScopeDecoratorTest extends CurrentTraceContextTest {
   static class BuilderSupplier implements Supplier<CurrentTraceContext.Builder> {
     @Override public CurrentTraceContext.Builder get() {
       return ThreadLocalCurrentTraceContext.newBuilder()
-        .addScopeDecorator(MDCScopeDecorator.newBuilder().addField(BAGGAGE_FIELD).build());
+        .addScopeDecorator(MDCScopeDecorator.newBuilder().addField(CORRELATION_FIELD).build());
     }
   }
 
@@ -66,11 +67,12 @@ public class MDCScopeDecoratorTest extends CurrentTraceContextTest {
     if (context != null) {
       assertThat(MDC.get("traceId")).isEqualTo(context.traceIdString());
       assertThat(MDC.get("spanId")).isEqualTo(context.spanIdString());
-      assertThat(MDC.get(BAGGAGE_FIELD.name())).isEqualTo(BAGGAGE_FIELD.getValue(context));
+      assertThat(ThreadContext.get(CORRELATION_FIELD.name()))
+        .isEqualTo(CORRELATION_FIELD.baggageField().getValue(context));
     } else {
       assertThat(MDC.get("traceId")).isNull();
       assertThat(MDC.get("spanId")).isNull();
-      assertThat(MDC.get(BAGGAGE_FIELD.name())).isNull();
+      assertThat(MDC.get(CORRELATION_FIELD.name())).isNull();
     }
   }
 }

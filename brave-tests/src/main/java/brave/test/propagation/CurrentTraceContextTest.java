@@ -15,6 +15,7 @@ package brave.test.propagation;
 
 import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagation;
+import brave.baggage.CorrelationField;
 import brave.internal.Nullable;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
@@ -40,10 +41,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 public abstract class CurrentTraceContextTest {
-  protected static final BaggageField BAGGAGE_FIELD = BaggageField.create("user-id");
+  protected static final CorrelationField CORRELATION_FIELD =
+    CorrelationField.create(BaggageField.create("user-id"));
 
   Propagation.Factory baggageFactory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-    .addRemoteField(BAGGAGE_FIELD).build();
+    .addRemoteField(CORRELATION_FIELD.baggageField()).build();
 
   protected final CurrentTraceContext currentTraceContext;
   protected final TraceContext context = baggageFactory.decorate(
@@ -93,7 +95,7 @@ public abstract class CurrentTraceContextTest {
   @Test public void newScope_noticesDifferentBaggageField() {
     try (Scope scope = currentTraceContext.newScope(context)) {
       TraceContext differentBaggageField = context.toBuilder().build();
-      BAGGAGE_FIELD.updateValue(differentBaggageField, "foo");
+      CORRELATION_FIELD.baggageField().updateValue(differentBaggageField, "foo");
 
       try (Scope scope2 = currentTraceContext.newScope(differentBaggageField)) {
         assertThat(scope2).isNotEqualTo(Scope.NOOP);

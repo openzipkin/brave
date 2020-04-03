@@ -13,12 +13,10 @@
  */
 package brave.internal;
 
-import brave.baggage.CorrelationScopeDecorator;
-
 /**
  * Dispatches methods to synchronize fields with a context such as SLF4J MDC.
  *
- * <p><em>This is internal:</em> All subtypes of {@link CorrelationScopeDecorator} are sealed
+ * <p><em>This is internal:</em> All subtypes of {@link CorrelationContext} are sealed
  * to this repository until we better understand implications of making this a public type.
  */
 // NOTE: revert to abstract class with protected signatures if this is ever promoted to the
