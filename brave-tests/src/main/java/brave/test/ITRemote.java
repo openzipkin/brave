@@ -14,12 +14,14 @@
 package brave.test;
 
 import brave.Tracing;
-import brave.propagation.B3Propagation;
 import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagation;
+import brave.propagation.B3Propagation;
+import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.StrictCurrentTraceContext;
+import brave.propagation.StrictScopeDecorator;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import org.junit.After;
@@ -69,8 +71,9 @@ public abstract class ITRemote {
     return tracing.propagationFactory().decorate(result);
   }
 
+  final StrictCurrentTraceContext strictCurrentTraceContext = new StrictCurrentTraceContext();
   // field because this allows subclasses to initialize a field Tracing
-  protected final StrictCurrentTraceContext currentTraceContext = new StrictCurrentTraceContext();
+  protected CurrentTraceContext currentTraceContext = strictCurrentTraceContext;
 
   protected final Propagation.Factory propagationFactory =
     BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
@@ -109,9 +112,15 @@ public abstract class ITRemote {
     checkForLeakedScopes();
   }
 
-  /** Override to control scope leak enforcement. */
+  /**
+   * Override to control scope leak enforcement.
+   *
+   * <p>For example, if you override {@link #strictCurrentTraceContext} you will want to add your
+   * own {@link StrictScopeDecorator} as a both a decorator on that object, and field in the test
+   * class, so that you can close it here.
+   */
   protected void checkForLeakedScopes() {
-    currentTraceContext.close();
+    strictCurrentTraceContext.close();
   }
 
   // Assertions below here can eventually move to a new type
