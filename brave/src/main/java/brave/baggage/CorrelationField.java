@@ -197,7 +197,7 @@ public final class CorrelationField {
     return baggageField.equals(((CorrelationField) o).baggageField);
   }
 
-  /** Returns the same value for any correlation field  with the same baggage field. */
+  /** Returns the same value for any correlation field with the same baggage field. */
   @Override public int hashCode() {
     return baggageField.hashCode();
   }
