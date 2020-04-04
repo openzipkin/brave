@@ -340,18 +340,18 @@ tracingBuilder.propagationFactory(
 
 // Later, you can retrieve that country code in any of the services handling the trace
 // and add it as a span tag or do any other processing you want with it.
-countryCode = COUNTRY_CODE.get(context);
+countryCode = COUNTRY_CODE.getValue(context);
 ```
 
 ### Using `BaggageField`
 As long as a field is configured with `BaggagePropagation`, local reads and
 updates are possible in-process.
 
-Ex. once added to `BaggagePropagation`, you can call below to affect the country code
-of the current trace context:
+If added to the `BaggagePropagation.Builder`, you can call below to affect
+the country code of the current trace context:
 ```java
 COUNTRY_CODE.updateValue("FO");
-String countryCode = COUNTRY_CODE.get();
+String countryCode = COUNTRY_CODE.getValue();
 ```
 
 Or, if you have a reference to a trace context, it is more efficient to use it explicitly:
@@ -361,6 +361,27 @@ String countryCode = COUNTRY_CODE.get(span.context());
 Tags.BAGGAGE_FIELD.tag(COUNTRY_CODE, span);
 ```
 
+### Remote Baggage
+
+By default, the name used as a propagation key (header) by `addRemoteField()` is the same as
+the lowercase variant of the field name. You can override this by supplying different key
+names. Note: they will be lower-cased.
+
+For example, the following will propagate the field "x-vcap-request-id" as-is, but send the
+fields "countryCode" and "userId" on the wire as "baggage-country-code" and "baggage-user-id"
+respectively.
+```java
+REQUEST_ID = BaggageField.create("x-vcap-request-id");
+COUNTRY_CODE = BaggageField.create("countryCode");
+USER_ID = BaggageField.create("userId");
+
+tracingBuilder.propagationFactory(
+    BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+                      .addRemoteField(REQUEST_ID)
+                      .addRemoteField(COUNTRY_CODE, "baggage-country-code")
+                      .addRemoteField(USER_ID, "baggage-user-id").build())
+);
+```
 ### Correlation
 
 You can also integrate baggage with other correlated contexts such as logging:
@@ -386,7 +407,8 @@ override them in the builder as needed.
 Ex. If your log property is %X{trace-id}, you can do this:
 ```java
 builder.clear(); // traceId is a default field!
-builder.addField(BaggageFields.TRACE_ID, "trace-id");
+builder.addField(CorrelationField.newBuilder(BaggageFields.TRACE_ID)
+                                 .name("trace-id").build());
 ```
 
 ### Appropriate usage
@@ -412,28 +434,6 @@ tracingBuilder.propagationFactory(
   BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
                     .addRemoteField(OTHER_TRACE_ID)
                     .build()
-);
-```
-
-### Customizing remote names
-
-By default, the name used as a propagation key (header) by `addRemoteField()` is the same as
-the lowercase variant of the field name. You can override this by supplying different key
-names. Note: they will be lower-cased.
-
-For example, the following will propagate the field "x-vcap-request-id" as-is, but send the
-fields "countryCode" and "userId" on the wire as "baggage-country-code" and "baggage-user-id"
-respectively.
-```java
-REQUEST_ID = BaggageField.create("x-vcap-request-id");
-COUNTRY_CODE = BaggageField.create("countryCode");
-USER_ID = BaggageField.create("userId");
-
-tracingBuilder.propagationFactory(
-    BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-                      .addRemoteField(REQUEST_ID)
-                      .addRemoteField(COUNTRY_CODE, "baggage-country-code")
-                      .addRemoteField(USER_ID, "baggage-user-id").build())
 );
 ```
 
