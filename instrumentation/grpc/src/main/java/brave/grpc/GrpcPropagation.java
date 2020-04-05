@@ -38,7 +38,7 @@ final class GrpcPropagation<K> implements Propagation<K> {
   static final Metadata.Key<byte[]> GRPC_TRACE_BIN =
     Metadata.Key.of("grpc-trace-bin", Metadata.BINARY_BYTE_MARSHALLER);
 
-  /** This stashes the tag context in "extra" so it isn't lost */
+  /** This stashes the tag context into ad-hoc baggage state so it isn't lost */
   static final Metadata.Key<String> GRPC_TAGS_BIN =
     Metadata.Key.of("grpc-tags-bin", new HexBinaryMarshaller());
 
