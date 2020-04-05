@@ -34,7 +34,7 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 @BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 public class TagContextBinaryMarshallerBenchmarks {
-  static final TagContextBinaryMarshaller marshaller = new TagContextBinaryMarshaller();
+  static final HexBinaryMarshaller marshaller = new HexBinaryMarshaller();
 
   static final Map<String, String>
     context = Collections.singletonMap("method", "helloworld.Greeter/SayHello");

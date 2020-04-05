@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  */
 package brave.grpc;
 
-import brave.grpc.GrpcPropagation.Tags;
+import brave.internal.baggage.BaggageState;
 import brave.propagation.TraceContext;
 import java.util.Collections;
 import org.junit.Test;
@@ -59,7 +59,7 @@ public class TraceContextBinaryFormatTest {
   }
 
   @Test public void roundtrip_tags() {
-    Tags tags = new Tags();
+    BaggageState tags = GrpcPropagation.GRPC_TAGS_FACTORY.create();
     context = context.toBuilder().extra(Collections.singletonList(tags)).build();
 
     byte[] serialized = TraceContextBinaryFormat.toBytes(context);

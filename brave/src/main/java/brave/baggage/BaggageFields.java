@@ -14,6 +14,7 @@
 package brave.baggage;
 
 import brave.internal.Nullable;
+import brave.internal.baggage.BaggageContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 

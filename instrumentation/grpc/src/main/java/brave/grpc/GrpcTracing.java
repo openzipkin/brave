@@ -79,10 +79,12 @@ public final class GrpcTracing {
      * Default is false.
      *
      * <p>This wraps an existing propagation implementation, but prefers extracting
-     * "grpc-trace-bin" and "grpc-tags-bin" when parsing gRPC metadata. Regardless of whether
-     * "grpc-trace-bin" was parsed, it is speculatively written on outgoing requests.
+     * "grpc-trace-bin" when parsing gRPC metadata. Regardless of whether "grpc-trace-bin" was
+     * parsed, it is speculatively written on outgoing requests.
      *
-     * <p>Warning: the format of both "grpc-trace-bin" and "grpc-tags-bin" are version 0. As such,
+     * <p>When present, "grpc-tags-bin" is propagated pass-through. We do not alter it.
+     *
+     * <p>Warning: the format of both "grpc-trace-bin" is version 0. As such,
      * consider this feature experimental.
      */
     public Builder grpcPropagationFormatEnabled(boolean grpcPropagationFormatEnabled) {

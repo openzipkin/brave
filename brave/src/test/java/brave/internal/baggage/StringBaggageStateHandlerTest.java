@@ -11,21 +11,25 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.grpc;
+package brave.internal.baggage;
 
-import brave.grpc.GrpcPropagation.Tags;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class TagsTest {
-  @Test public void extractTags() {
-    Map<String, String> extracted = new LinkedHashMap<>();
-    extracted.put("method", "helloworld.Greeter/SayHello");
+public class StringBaggageStateHandlerTest extends BaggageStateTest<String> {
+  @Override protected BaggageState.Factory newFactory() {
+    return new BaggageStateFactory(
+      BaggageStateHandlers.string(field1),
+      BaggageStateHandlers.string(field2)
+    );
+  }
 
-    assertThat(new Tags(extracted).get("method"))
-      .isEqualTo("helloworld.Greeter/SayHello");
+  @Test public void putValue_ignores_if_not_defined() {
+    BaggageState baggageState = factory.create();
+
+    baggageState.updateValue(field3, "1");
+
+    assertThat(isEmpty(baggageState)).isTrue();
   }
 }

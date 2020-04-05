@@ -15,7 +15,7 @@ package brave.propagation;
 
 import brave.Tracing;
 import brave.baggage.BaggageField;
-import brave.baggage.BaggagePropagationTest;
+import brave.internal.baggage.BaggagePropagationTest;
 import brave.propagation.CurrentTraceContext.Scope;
 import java.util.Collections;
 import java.util.LinkedHashMap;

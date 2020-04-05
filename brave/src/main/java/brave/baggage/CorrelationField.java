@@ -13,6 +13,7 @@
  */
 package brave.baggage;
 
+import brave.internal.baggage.BaggageContext;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 
