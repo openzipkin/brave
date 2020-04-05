@@ -42,7 +42,7 @@ final class HexBinaryMarshaller implements BinaryMarshaller<String> {
       return ENCODING.encode(buf);
     } catch (Throwable e) {
       propagateIfFatal(e);
-      Platform.get().log("error decoding gRPC tags", e);
+      Platform.get().log("error encode gRPC tags", e);
       return null;
     }
   }
