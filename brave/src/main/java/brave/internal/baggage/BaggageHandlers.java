@@ -33,6 +33,10 @@ public final class BaggageHandlers {
       this.fieldList = Collections.singletonList(field);
     }
 
+    @Override public boolean isDynamic() {
+      return false;
+    }
+
     @Override public List<BaggageField> currentFields(String state) {
       return fieldList;
     }
@@ -53,11 +57,11 @@ public final class BaggageHandlers {
       return value; // overwrite
     }
 
-    @Override public String decode(String encoded) {
+    @Override public String fromRemoteValue(String encoded) {
       return encoded;
     }
 
-    @Override public String encode(String state) {
+    @Override public String toRemoteValue(String state) {
       return state;
     }
   }

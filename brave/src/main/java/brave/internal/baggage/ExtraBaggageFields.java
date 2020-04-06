@@ -48,11 +48,14 @@ public final class ExtraBaggageFields {
   }
 
   /** The list of fields present, regardless of value. */
-  public List<BaggageField> getFields() {
-    List<BaggageField> result = new ArrayList<>();
+  public List<BaggageField> getAllFields() {
+    if (!hasDynamicFields) return fixedFieldList;
+    List<BaggageField> result = new ArrayList<>(fixedFieldList);
     Object[] stateArray = this.stateArray;
     for (int i = 0, length = handlers.length; i < length; i++) {
-      result.addAll(handlers[i].currentFields(stateArray != null ? stateArray[i] : null));
+      BaggageHandler handler = handlers[i];
+      if (!handler.isDynamic()) continue;
+      result.addAll(handler.currentFields(stateArray != null ? stateArray[i] : null));
     }
     return Collections.unmodifiableList(result);
   }
@@ -109,18 +112,18 @@ public final class ExtraBaggageFields {
   }
 
   /**
-   * Returns true if it can decode values for this baggage handler.
+   * Returns true if state derived from the remote value was assigned to handler.
    *
    * @see Propagation.Getter
    */
-  public boolean decodeState(BaggageHandler handler, String encoded) {
+  public boolean putRemoteValue(BaggageHandler handler, String remoteValue) {
     if (handler == null) throw new NullPointerException("handler == null");
-    if (encoded == null) throw new NullPointerException("encoded == null");
+    if (remoteValue == null) throw new NullPointerException("remoteValue == null");
 
     int index = indexOf(handler);
     if (index == -1) return false;
 
-    Object state = handlers[index].decode(encoded);
+    Object state = handlers[index].fromRemoteValue(remoteValue);
     if (state == null) return false;
     // Unsynchronized as only called during extraction when the object is new.
     putState(index, state);
@@ -128,11 +131,11 @@ public final class ExtraBaggageFields {
   }
 
   /**
-   * Returns encoded state of any value associated with this baggage handler.
+   * Returns a remote value to use for the state in this handler.
    *
    * @see Propagation.Setter
    */
-  @Nullable public String encodeState(BaggageHandler handler) {
+  @Nullable public String getRemoteValue(BaggageHandler handler) {
     if (handler == null) throw new NullPointerException("handler == null");
 
     int index = indexOf(handler);
@@ -140,15 +143,29 @@ public final class ExtraBaggageFields {
 
     Object maybeValue = getState(index);
     if (maybeValue == null) return null;
-    return handlers[index].encode(maybeValue);
+    return handlers[index].toRemoteValue(maybeValue);
   }
 
   final BaggageHandler[] handlers;
+  final List<BaggageField> fixedFieldList;
+  final boolean hasDynamicFields;
+
   volatile Object[] stateArray; // guarded by this, copy on write
   long traceId, spanId; // guarded by this
 
   ExtraBaggageFields(BaggageHandler[] handlers) {
     this.handlers = handlers;
+    List<BaggageField> constantFields = new ArrayList<>();
+    boolean hasDynamicFields = false;
+    for (BaggageHandler handler : handlers) {
+      if (!handler.isDynamic()) {
+        constantFields.addAll(handler.currentFields(null));
+      } else {
+        hasDynamicFields = true;
+      }
+    }
+    this.hasDynamicFields = hasDynamicFields;
+    this.fixedFieldList = Collections.unmodifiableList(constantFields);
   }
 
   ExtraBaggageFields(ExtraBaggageFields parent, BaggageHandler[] handlers) {

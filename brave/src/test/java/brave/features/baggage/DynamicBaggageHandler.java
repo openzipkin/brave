@@ -14,10 +14,12 @@
 package brave.features.baggage;
 
 import brave.baggage.BaggageField;
+import brave.internal.Nullable;
 import brave.internal.baggage.BaggageHandler;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,9 +29,13 @@ import org.apache.logging.log4j.core.util.StringBuilderWriter;
 import static com.google.common.base.Objects.equal;
 
 /** This accepts any keys, but only writes to one propagation field. */
-final class DynamicBaggageHandler
-  implements BaggageHandler<Map<BaggageField, String>> {
-  @Override public List<BaggageField> currentFields(Map<BaggageField, String> state) {
+final class DynamicBaggageHandler implements BaggageHandler<Map<BaggageField, String>> {
+  @Override public boolean isDynamic() {
+    return true;
+  }
+
+  @Override public List<BaggageField> currentFields(@Nullable Map<BaggageField, String> state) {
+    if (state == null) return Collections.emptyList();
     return new ArrayList<>(state.keySet());
   }
 
@@ -67,7 +73,7 @@ final class DynamicBaggageHandler
   }
 
   @Override
-  public Map<BaggageField, String> decode(String encoded) {
+  public Map<BaggageField, String> fromRemoteValue(String encoded) {
     Properties decoded = new Properties();
     try {
       decoded.load(new StringReader(encoded));
@@ -82,7 +88,7 @@ final class DynamicBaggageHandler
     return result;
   }
 
-  @Override public String encode(Map<BaggageField, String> state) {
+  @Override public String toRemoteValue(Map<BaggageField, String> state) {
     Properties encoded = new Properties();
     state.forEach((f, v) -> encoded.put(f.name(), v));
     StringBuilder result = new StringBuilder();

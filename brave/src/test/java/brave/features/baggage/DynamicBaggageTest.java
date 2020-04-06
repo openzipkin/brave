@@ -28,6 +28,21 @@ public class DynamicBaggageTest extends ExtraBaggageFieldsTest<Map<String, Strin
     return ExtraBaggageFields.newFactory(handler);
   }
 
+  @Test public void fieldsAreNotConstant() {
+    ExtraBaggageFields extraBaggageFields = factory.create();
+
+    assertThat(extraBaggageFields.getAllFields()).isEmpty();
+    extraBaggageFields.updateValue(field1, "1");
+
+    assertThat(extraBaggageFields.getAllFields()).containsOnly(field1);
+
+    extraBaggageFields.updateValue(field2, "3");
+    assertThat(extraBaggageFields.getAllFields()).containsOnly(field1, field2);
+
+    extraBaggageFields.updateValue(field1, null);
+    assertThat(extraBaggageFields.getAllFields()).containsOnly(field2);
+  }
+
   @Test public void encodes_arbitrary_fields() {
     ExtraBaggageFields extraBaggageFields = factory.create();
 
@@ -35,7 +50,7 @@ public class DynamicBaggageTest extends ExtraBaggageFieldsTest<Map<String, Strin
     extraBaggageFields.updateValue(field2, "2");
     extraBaggageFields.updateValue(field3, "3");
 
-    assertThat(extraBaggageFields.encodeState(handler))
+    assertThat(extraBaggageFields.getRemoteValue(handler))
       .contains(""
         + "one=1\n"
         + "two=2\n"

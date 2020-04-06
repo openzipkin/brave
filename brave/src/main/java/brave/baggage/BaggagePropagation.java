@@ -316,7 +316,7 @@ public class BaggagePropagation<K> implements Propagation<K> {
     void inject(ExtraBaggageFields extraBaggageFields, C carrier) {
       for (int i = 0, length = propagation.handlersWithKeys.length; i < length; i++) {
         BaggageHandlerWithKeys<K> handlerWithKeys = propagation.handlersWithKeys[i];
-        String encoded = extraBaggageFields.encodeState(handlerWithKeys.handler);
+        String encoded = extraBaggageFields.getRemoteValue(handlerWithKeys.handler);
         if (encoded == null) continue;
         for (K key : handlerWithKeys.keys) setter.put(carrier, key, encoded);
       }
@@ -344,7 +344,7 @@ public class BaggagePropagation<K> implements Propagation<K> {
         for (K key : handlerWithKeys.keys) { // possibly multiple keys when prefixes are in use
           String maybeEncoded = getter.get(carrier, key);
           if (maybeEncoded != null) { // accept the first match
-            if (extraBaggageFields.decodeState(handlerWithKeys.handler, maybeEncoded)) break;
+            if (extraBaggageFields.putRemoteValue(handlerWithKeys.handler, maybeEncoded)) break;
           }
         }
       }

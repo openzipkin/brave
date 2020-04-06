@@ -73,7 +73,7 @@ public final class ExtraBaggageContext extends BaggageContext {
   static List<BaggageField> getAllFields(List<Object> extra) {
     ExtraBaggageFields fields = findExtra(ExtraBaggageFields.class, extra);
     if (fields == null) return Collections.emptyList();
-    return fields.getFields();
+    return fields.getAllFields();
   }
 
   @Nullable static BaggageField getFieldByName(List<BaggageField> fields, String name) {

@@ -13,6 +13,8 @@
  */
 package brave.internal.baggage;
 
+import brave.baggage.BaggageField;
+import java.util.List;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,6 +25,17 @@ public class StringBaggageHandlerTest extends ExtraBaggageFieldsTest<String> {
       BaggageHandlers.string(field1),
       BaggageHandlers.string(field2)
     );
+  }
+
+  @Test public void fieldsAreConstant() {
+    ExtraBaggageFields extraBaggageFields = factory.create();
+
+    List<BaggageField> withNoValues = extraBaggageFields.getAllFields();
+    extraBaggageFields.updateValue(field1, "1");
+    extraBaggageFields.updateValue(field2, "3");
+
+    assertThat(extraBaggageFields.getAllFields())
+      .isSameAs(withNoValues);
   }
 
   @Test public void putValue_ignores_if_not_defined() {
