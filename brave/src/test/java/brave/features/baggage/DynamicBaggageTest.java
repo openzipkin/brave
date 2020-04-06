@@ -13,6 +13,9 @@
  */
 package brave.features.baggage;
 
+import brave.baggage.BaggageField;
+import brave.internal.baggage.BaggageHandler;
+import brave.internal.baggage.BaggageHandlers;
 import brave.internal.baggage.ExtraBaggageFields;
 import brave.internal.baggage.ExtraBaggageFieldsTest;
 import java.util.Map;
@@ -22,25 +25,32 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /** This is an internal feature until we settle on an encoding format. */
 public class DynamicBaggageTest extends ExtraBaggageFieldsTest<Map<String, String>> {
-  DynamicBaggageHandler handler = new DynamicBaggageHandler();
+  BaggageHandler<String> singleValueHandler = BaggageHandlers.string(field1);
+  BaggageHandler<Map<BaggageField, String>> dynamicHandler = DynamicBaggageHandler.create();
 
+  // Here, we add one constant field and one handler for everything else
   @Override protected ExtraBaggageFields.Factory newFactory() {
-    return ExtraBaggageFields.newFactory(handler);
+    return ExtraBaggageFields.newFactory(singleValueHandler, dynamicHandler);
   }
 
   @Test public void fieldsAreNotConstant() {
     ExtraBaggageFields extraBaggageFields = factory.create();
 
-    assertThat(extraBaggageFields.getAllFields()).isEmpty();
-    extraBaggageFields.updateValue(field1, "1");
+    assertThat(extraBaggageFields.getAllFields()).containsOnly(field1);
 
     assertThat(extraBaggageFields.getAllFields()).containsOnly(field1);
 
-    extraBaggageFields.updateValue(field2, "3");
-    assertThat(extraBaggageFields.getAllFields()).containsOnly(field1, field2);
+    extraBaggageFields.updateValue(field2, "2");
+    extraBaggageFields.updateValue(field3, "3");
+    assertThat(extraBaggageFields.getAllFields()).containsOnly(field1, field2, field3);
 
     extraBaggageFields.updateValue(field1, null);
-    assertThat(extraBaggageFields.getAllFields()).containsOnly(field2);
+    // Field one is not dynamic so it stays in the list
+    assertThat(extraBaggageFields.getAllFields()).containsOnly(field1, field2, field3);
+
+    extraBaggageFields.updateValue(field2, null);
+    // dynamic fields are also not pruned from the list
+    assertThat(extraBaggageFields.getAllFields()).containsOnly(field1, field2, field3);
   }
 
   @Test public void encodes_arbitrary_fields() {
@@ -50,9 +60,10 @@ public class DynamicBaggageTest extends ExtraBaggageFieldsTest<Map<String, Strin
     extraBaggageFields.updateValue(field2, "2");
     extraBaggageFields.updateValue(field3, "3");
 
-    assertThat(extraBaggageFields.getRemoteValue(handler))
+    assertThat(extraBaggageFields.getRemoteValue(singleValueHandler))
+      .isEqualTo("1");
+    assertThat(extraBaggageFields.getRemoteValue(dynamicHandler))
       .contains(""
-        + "one=1\n"
         + "two=2\n"
         + "three=3");
   }

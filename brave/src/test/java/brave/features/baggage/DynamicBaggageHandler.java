@@ -28,8 +28,15 @@ import org.apache.logging.log4j.core.util.StringBuilderWriter;
 
 import static com.google.common.base.Objects.equal;
 
-/** This accepts any keys, but only writes to one propagation field. */
+/**
+ * This accepts any fields, but only uses one remote value. This is an example, but not of good
+ * performance.
+ */
 final class DynamicBaggageHandler implements BaggageHandler<Map<BaggageField, String>> {
+  static BaggageHandler<Map<BaggageField, String>> create() {
+    return new DynamicBaggageHandler();
+  }
+
   @Override public boolean isDynamic() {
     return true;
   }
@@ -62,13 +69,10 @@ final class DynamicBaggageHandler implements BaggageHandler<Map<BaggageField, St
       if (state.size() == 1) return null;
     }
 
-    // Now we are updating. Either replace the entry or delete it
+    // We replace an existing value with null instead of deleting it. This way we know there was
+    // a field value at some point (ex for reverting state).
     LinkedHashMap<BaggageField, String> mergedState = new LinkedHashMap<>(state);
-    if (value != null) {
-      mergedState.put(field, value);
-    } else {
-      mergedState.remove(field);
-    }
+    mergedState.put(field, value);
     return mergedState;
   }
 
