@@ -72,11 +72,11 @@ public class BaggagePropagationFactoryBeanTest {
       + "</bean>\n"
     );
 
-    assertThatFieldWithKeyNames()
-      .extracting("field")
+    assertThathandlersWithKeyNames()
+      .extracting("handler.field")
       .usingFieldByFieldElementComparator()
       .containsExactly(BaggageField.create("userId"));
-    assertThatFieldWithKeyNames()
+    assertThathandlersWithKeyNames()
       .flatExtracting("keyNames")
       .isEmpty();
   }
@@ -103,11 +103,11 @@ public class BaggagePropagationFactoryBeanTest {
       + "</bean>"
     );
 
-    assertThatFieldWithKeyNames()
-      .extracting("field")
+    assertThathandlersWithKeyNames()
+      .extracting("handler.field")
       .usingFieldByFieldElementComparator()
       .containsExactly(BaggageField.create("userId"));
-    assertThatFieldWithKeyNames()
+    assertThathandlersWithKeyNames()
       .flatExtracting("keyNames")
       .containsExactly("baggage_user_id", "baggage-user-id");
   }
@@ -128,11 +128,11 @@ public class BaggagePropagationFactoryBeanTest {
       + "</bean>"
     );
 
-    assertThatFieldWithKeyNames()
-      .extracting("field")
+    assertThathandlersWithKeyNames()
+      .extracting("handler.field")
       .usingFieldByFieldElementComparator()
       .containsExactly(BaggageField.create("userId"));
-    assertThatFieldWithKeyNames()
+    assertThathandlersWithKeyNames()
       .flatExtracting("keyNames")
       .containsExactly("userid");
   }
@@ -182,9 +182,9 @@ public class BaggagePropagationFactoryBeanTest {
     verify(CUSTOMIZER_TWO).customize(any(BaggagePropagation.FactoryBuilder.class));
   }
 
-  ObjectArrayAssert<Object> assertThatFieldWithKeyNames() {
+  ObjectArrayAssert<Object> assertThathandlersWithKeyNames() {
     return assertThat(context.getBean("propagationFactory", Propagation.Factory.class))
-      .extracting("fieldWithKeyNames")
+      .extracting("handlersWithKeyNames")
       .asInstanceOf(InstanceOfAssertFactories.ARRAY);
   }
 }

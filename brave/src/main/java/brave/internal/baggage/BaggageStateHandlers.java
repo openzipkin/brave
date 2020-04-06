@@ -25,20 +25,20 @@ public final class BaggageStateHandlers {
   }
 
   static final class StringBaggageStateHandler implements BaggageStateHandler<String> {
-    final BaggageField onlyField;
-    final List<BaggageField> onlyFieldList;
+    final BaggageField field;
+    final List<BaggageField> fieldList;
 
-    StringBaggageStateHandler(BaggageField onlyField) {
-      this.onlyField = onlyField;
-      this.onlyFieldList = Collections.singletonList(onlyField);
+    StringBaggageStateHandler(BaggageField field) {
+      this.field = field;
+      this.fieldList = Collections.singletonList(field);
     }
 
     @Override public List<BaggageField> currentFields(String state) {
-      return onlyFieldList;
+      return fieldList;
     }
 
     @Override public boolean handlesField(BaggageField field) {
-      return onlyField.equals(field);
+      return this.field.equals(field);
     }
 
     @Override public String getValue(BaggageField field, String state) {

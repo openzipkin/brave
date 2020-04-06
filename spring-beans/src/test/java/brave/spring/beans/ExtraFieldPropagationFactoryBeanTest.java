@@ -74,8 +74,9 @@ public class ExtraFieldPropagationFactoryBeanTest {
     );
 
     assertThat(context.getBean("propagationFactory", Propagation.Factory.class))
-      .extracting("delegate.extraFactory.fields")
+      .extracting("delegate.handlersWithKeyNames")
       .asInstanceOf(InstanceOfAssertFactories.ARRAY)
+      .extracting("handler.field")
       .usingFieldByFieldElementComparator()
       .containsExactly(
         BaggageField.create("customer-id"),
