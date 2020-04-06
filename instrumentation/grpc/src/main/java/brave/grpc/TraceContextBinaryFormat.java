@@ -13,9 +13,9 @@
  */
 package brave.grpc;
 
+import brave.grpc.GrpcPropagation.BytesWrapper;
 import brave.internal.Nullable;
 import brave.internal.Platform;
-import brave.internal.baggage.BaggageState;
 import brave.propagation.TraceContext;
 import java.util.Collections;
 
@@ -52,7 +52,7 @@ final class TraceContextBinaryFormat {
     return bytes;
   }
 
-  @Nullable static TraceContext parseBytes(byte[] bytes, @Nullable BaggageState tags) {
+  @Nullable static TraceContext parseBytes(byte[] bytes, @Nullable BytesWrapper tags) {
     if (bytes == null) throw new NullPointerException("bytes == null"); // programming error
     if (bytes.length == 0) return null;
     if (bytes[0] != VERSION) {

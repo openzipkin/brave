@@ -13,6 +13,7 @@
  */
 package brave.grpc;
 
+import brave.grpc.GrpcPropagation.BytesWrapper;
 import brave.internal.baggage.BaggageState;
 import brave.propagation.TraceContext;
 import java.util.Collections;
@@ -35,6 +36,15 @@ public class TraceContextBinaryFormatTest {
     0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0, // trace ID
     1, -1, -1, -1, -1, -1, -1, -1, -1, // span ID
     2, 1 // sampled
+  };
+  byte[] tagsBytes = {
+    0, // version
+    0, // field number
+    6, 'm', 'e', 't', 'h', 'o', 'd', //
+    3, 'f', 'o', 'o', //
+    0, // field number
+    4, 'u', 's', 'e', 'r', //
+    5, 'r', 'o', 'm', 'e', 'o' //
   };
 
   @Test public void roundtrip() {
@@ -66,7 +76,7 @@ public class TraceContextBinaryFormatTest {
     assertThat(serialized)
       .containsExactly(contextBytes);
 
-    assertThat(TraceContextBinaryFormat.parseBytes(serialized, tags))
+    assertThat(TraceContextBinaryFormat.parseBytes(serialized, new BytesWrapper(tagsBytes)))
       .isEqualTo(context);
   }
 

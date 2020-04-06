@@ -37,10 +37,27 @@ final class GrpcPropagation<K> implements Propagation<K> {
    */
   static final Metadata.Key<byte[]> GRPC_TRACE_BIN =
     Metadata.Key.of("grpc-trace-bin", Metadata.BINARY_BYTE_MARSHALLER);
+  /** This stashes the tag context in "extra" so it isn't lost */
+  static final Metadata.Key<BytesWrapper> GRPC_TAGS_BIN =
+    Metadata.Key.of("grpc-tags-bin", new Metadata.BinaryMarshaller<BytesWrapper>() {
+      @Override public byte[] toBytes(BytesWrapper value) {
+        return value.bytes;
+      }
 
-  /** This stashes the tag context into ad-hoc baggage state so it isn't lost */
-  static final Metadata.Key<String> GRPC_TAGS_BIN =
-    Metadata.Key.of("grpc-tags-bin", new HexBinaryMarshaller());
+      @Override public BytesWrapper parseBytes(byte[] serialized) {
+        if (serialized == null || serialized.length == 0) return null;
+        return new BytesWrapper(serialized);
+      }
+    });
+
+  /** {@linkplain TraceContext#extra() extra field} that passes through bytes metdata. */
+  static final class BytesWrapper {
+    final byte[] bytes;
+
+    BytesWrapper(byte[] bytes) {
+      this.bytes = bytes;
+    }
+  }
 
   static Propagation.Factory newFactory(Propagation.Factory delegate) {
     if (delegate == null) throw new NullPointerException("delegate == null");
@@ -103,7 +120,7 @@ final class GrpcPropagation<K> implements Propagation<K> {
       if (carrier instanceof GrpcClientRequest) {
         byte[] serialized = TraceContextBinaryFormat.toBytes(context);
         ((GrpcClientRequest) carrier).setMetadata(GRPC_TRACE_BIN, serialized);
-        String tags = GRPC_TAGS_FIELD.getValue(context);
+        BytesWrapper tags = context.findExtra(BytesWrapper.class);
         if (tags != null) ((GrpcClientRequest) carrier).setMetadata(GRPC_TAGS_BIN, tags);
       }
       delegate.inject(context, carrier);
@@ -125,24 +142,19 @@ final class GrpcPropagation<K> implements Propagation<K> {
       GrpcServerRequest serverRequest = (GrpcServerRequest) carrier;
 
       // First, check if we are propagating gRPC tags.
-      String tagsBin = serverRequest.getMetadata(GRPC_TAGS_BIN);
-      BaggageState tags = null;
-      if (tagsBin != null) {
-        tags = GRPC_TAGS_FACTORY.create();
-        tags.updateValue(GRPC_TAGS_FIELD, tagsBin);
-      }
+      BytesWrapper tagsBin = serverRequest.getMetadata(GRPC_TAGS_BIN);
 
       // Next, check to see if there is a gRPC formatted trace context: use it if parsable.
       byte[] bytes = serverRequest.getMetadata(GRPC_TRACE_BIN);
       if (bytes != null) {
-        TraceContext maybeContext = TraceContextBinaryFormat.parseBytes(bytes, tags);
+        TraceContext maybeContext = TraceContextBinaryFormat.parseBytes(bytes, tagsBin);
         if (maybeContext != null) return TraceContextOrSamplingFlags.create(maybeContext);
       }
 
       // Finally, try to extract an incoming, non-gRPC trace context. If tags exist, propagate them.
       TraceContextOrSamplingFlags result = delegate.extract(carrier);
-      if (tags == null) return result;
-      return result.toBuilder().addExtra(tags).build();
+      if (tagsBin == null) return result;
+      return result.toBuilder().addExtra(tagsBin).build();
     }
   }
 }
