@@ -13,7 +13,7 @@
  */
 package brave.grpc;
 
-import brave.grpc.GrpcPropagation.BytesWrapper;
+import brave.grpc.GrpcPropagation.TagsBin;
 import brave.internal.Nullable;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
@@ -52,7 +52,7 @@ final class TraceContextBinaryFormat {
     return bytes;
   }
 
-  @Nullable static TraceContext parseBytes(byte[] bytes, @Nullable BytesWrapper tags) {
+  @Nullable static TraceContext parseBytes(byte[] bytes, @Nullable TagsBin tags) {
     if (bytes == null) throw new NullPointerException("bytes == null"); // programming error
     if (bytes.length == 0) return null;
     if (bytes[0] != VERSION) {

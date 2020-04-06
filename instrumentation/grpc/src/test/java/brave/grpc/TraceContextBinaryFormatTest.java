@@ -13,7 +13,7 @@
  */
 package brave.grpc;
 
-import brave.grpc.GrpcPropagation.BytesWrapper;
+import brave.grpc.GrpcPropagation.TagsBin;
 import brave.internal.baggage.BaggageState;
 import brave.propagation.TraceContext;
 import java.util.Collections;
@@ -76,7 +76,7 @@ public class TraceContextBinaryFormatTest {
     assertThat(serialized)
       .containsExactly(contextBytes);
 
-    assertThat(TraceContextBinaryFormat.parseBytes(serialized, new BytesWrapper(tagsBytes)))
+    assertThat(TraceContextBinaryFormat.parseBytes(serialized, new TagsBin(tagsBytes)))
       .isEqualTo(context);
   }
 

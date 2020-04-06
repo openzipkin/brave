@@ -101,7 +101,7 @@ public class GrpcPropagationBenchmarks {
     }
 
     contextWithTags = bothFactory.decorate(context).toBuilder()
-      .extra(Arrays.asList(new GrpcPropagation.BytesWrapper(tagsBytes))).build();
+      .extra(Arrays.asList(new GrpcPropagation.TagsBin(tagsBytes))).build();
     b3Injector.inject(context,
       new GrpcClientRequest(methodDescriptor).metadata(incomingB3.metadata));
     bothInjector.inject(contextWithTags,

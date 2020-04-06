@@ -38,23 +38,23 @@ final class GrpcPropagation<K> implements Propagation<K> {
   static final Metadata.Key<byte[]> GRPC_TRACE_BIN =
     Metadata.Key.of("grpc-trace-bin", Metadata.BINARY_BYTE_MARSHALLER);
   /** This stashes the tag context in "extra" so it isn't lost */
-  static final Metadata.Key<BytesWrapper> GRPC_TAGS_BIN =
-    Metadata.Key.of("grpc-tags-bin", new Metadata.BinaryMarshaller<BytesWrapper>() {
-      @Override public byte[] toBytes(BytesWrapper value) {
+  static final Metadata.Key<TagsBin> GRPC_TAGS_BIN =
+    Metadata.Key.of("grpc-tags-bin", new Metadata.BinaryMarshaller<TagsBin>() {
+      @Override public byte[] toBytes(TagsBin value) {
         return value.bytes;
       }
 
-      @Override public BytesWrapper parseBytes(byte[] serialized) {
+      @Override public TagsBin parseBytes(byte[] serialized) {
         if (serialized == null || serialized.length == 0) return null;
-        return new BytesWrapper(serialized);
+        return new TagsBin(serialized);
       }
     });
 
   /** {@linkplain TraceContext#extra() extra field} that passes through bytes metdata. */
-  static final class BytesWrapper {
+  static final class TagsBin {
     final byte[] bytes;
 
-    BytesWrapper(byte[] bytes) {
+    TagsBin(byte[] bytes) {
       this.bytes = bytes;
     }
   }
@@ -120,7 +120,7 @@ final class GrpcPropagation<K> implements Propagation<K> {
       if (carrier instanceof GrpcClientRequest) {
         byte[] serialized = TraceContextBinaryFormat.toBytes(context);
         ((GrpcClientRequest) carrier).setMetadata(GRPC_TRACE_BIN, serialized);
-        BytesWrapper tags = context.findExtra(BytesWrapper.class);
+        TagsBin tags = context.findExtra(TagsBin.class);
         if (tags != null) ((GrpcClientRequest) carrier).setMetadata(GRPC_TAGS_BIN, tags);
       }
       delegate.inject(context, carrier);
@@ -142,7 +142,7 @@ final class GrpcPropagation<K> implements Propagation<K> {
       GrpcServerRequest serverRequest = (GrpcServerRequest) carrier;
 
       // First, check if we are propagating gRPC tags.
-      BytesWrapper tagsBin = serverRequest.getMetadata(GRPC_TAGS_BIN);
+      TagsBin tagsBin = serverRequest.getMetadata(GRPC_TAGS_BIN);
 
       // Next, check to see if there is a gRPC formatted trace context: use it if parsable.
       byte[] bytes = serverRequest.getMetadata(GRPC_TRACE_BIN);
