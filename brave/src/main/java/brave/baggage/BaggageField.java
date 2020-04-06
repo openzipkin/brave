@@ -14,7 +14,7 @@
 package brave.baggage;
 
 import brave.Tracing;
-import brave.baggage.BaggagePropagation.BaggageStateHandlerWithKeyNames;
+import brave.baggage.BaggagePropagation.BaggageHandlerWithKeyNames;
 import brave.internal.InternalBaggage;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
@@ -322,7 +322,7 @@ public final class BaggageField {
             (ExtraFieldPropagation.Factory) factory)));
         } else if (factory instanceof BaggagePropagation.Factory) {
           BaggagePropagation.Factory baggageFactory = (BaggagePropagation.Factory) factory;
-          for (BaggageStateHandlerWithKeyNames next : baggageFactory.handlersWithKeyNames) {
+          for (BaggageHandlerWithKeyNames next : baggageFactory.handlersWithKeyNames) {
             allKeyNames.addAll(Arrays.asList(next.keyNames));
           }
         }
