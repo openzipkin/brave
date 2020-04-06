@@ -15,6 +15,7 @@ package brave.propagation;
 
 import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
@@ -69,9 +70,7 @@ import static java.util.Collections.unmodifiableList;
       this.baggageFactory = BaggagePropagation.newFactoryBuilder(delegate);
     }
 
-    /**
-     * @deprecated Since 5.11,  use {@link BaggagePropagation.FactoryBuilder#addField(BaggageField)}
-     */
+    /** @deprecated Since 5.11, use {@link SingleBaggageField#local(BaggageField)} */
     @Deprecated public FactoryBuilder addRedactedField(String fieldName) {
       fieldName = validateFieldName(fieldName);
       redactedNames.add(fieldName);
@@ -79,20 +78,14 @@ import static java.util.Collections.unmodifiableList;
       return this;
     }
 
-    /**
-     * @deprecated Since 5.11, use {@link BaggagePropagation.FactoryBuilder#addRemoteField(BaggageField,
-     * String...)}.
-     */
+    /** @deprecated Since 5.11, use {@link SingleBaggageField#remote(BaggageField)} */
     @Deprecated public FactoryBuilder addField(String fieldName) {
       fieldName = validateFieldName(fieldName);
       addKeyName(fieldName, fieldName);
       return this;
     }
 
-    /**
-     * @deprecated Since 5.11, use {@link BaggagePropagation.FactoryBuilder#addRemoteField(BaggageField,
-     * Iterable)}
-     */
+    /** @deprecated Since 5.11, use {@link SingleBaggageField.Builder#addKeyName(String)} */
     @Deprecated public FactoryBuilder addPrefixedFields(String prefix, Collection<String> names) {
       if (prefix == null) throw new NullPointerException("prefix == null");
       prefix = validateFieldName(prefix);
@@ -116,10 +109,14 @@ import static java.util.Collections.unmodifiableList;
       for (Map.Entry<String, Set<String>> entry : nameToKeyNames.entrySet()) {
         BaggageField field = BaggageField.create(entry.getKey());
         if (redactedNames.contains(field.name())) {
-          baggageFactory.addField(field);
+          baggageFactory.add(SingleBaggageField.local(field));
         } else {
           extraKeyNames.addAll(entry.getValue());
-          baggageFactory.addRemoteField(field, entry.getValue());
+          SingleBaggageField.Builder builder = SingleBaggageField.newBuilder(field);
+          for (String keyName : entry.getValue()) {
+            builder.addKeyName(keyName);
+          }
+          baggageFactory.add(builder.build());
         }
       }
       return new Factory(baggageFactory.build(), extraKeyNames.toArray(new String[0]));

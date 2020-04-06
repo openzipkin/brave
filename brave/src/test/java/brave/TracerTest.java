@@ -17,6 +17,7 @@ import brave.Span.Kind;
 import brave.Tracer.SpanInScope;
 import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.propagation.B3Propagation;
@@ -55,7 +56,7 @@ public class TracerTest {
   Propagation.Factory propagationFactory = B3Propagation.FACTORY;
   CurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   Propagation.Factory baggageFactory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-    .addRemoteField(BAGGAGE_FIELD).build();
+    .add(SingleBaggageField.remote(BAGGAGE_FIELD)).build();
   Tracer tracer = Tracing.newBuilder()
     .spanReporter(new Reporter<zipkin2.Span>() {
       @Override public void report(zipkin2.Span span) {

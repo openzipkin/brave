@@ -14,9 +14,10 @@
 package brave.features.opentracing;
 
 import brave.Tracing;
-import brave.propagation.B3Propagation;
 import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+import brave.propagation.B3Propagation;
 import brave.propagation.TraceContext;
 import io.opentracing.propagation.Format;
 import io.opentracing.propagation.TextMapAdapter;
@@ -41,7 +42,7 @@ public class OpenTracingAdapterTest {
   List<zipkin2.Span> spans = new ArrayList<>();
   Tracing brave = Tracing.newBuilder()
     .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-      .addRemoteField(BAGGAGE_FIELD).build())
+      .add(SingleBaggageField.remote(BAGGAGE_FIELD)).build())
     .spanReporter(spans::add).build();
 
   BraveTracer opentracing = BraveTracer.wrap(brave);

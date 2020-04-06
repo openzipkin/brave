@@ -14,7 +14,7 @@
 package brave.spring.beans;
 
 import brave.baggage.BaggageField;
-import brave.baggage.CorrelationField;
+import brave.baggage.CorrelationScopeConfig;
 import org.springframework.beans.factory.FactoryBean;
 
 /** Spring XML config does not support chained builders. This converts accordingly */
@@ -23,16 +23,16 @@ public class CorrelationFieldFactoryBean implements FactoryBean {
   String name;
   boolean dirty, flushOnUpdate;
 
-  @Override public CorrelationField getObject() {
-    CorrelationField.Builder builder = CorrelationField.newBuilder(baggageField);
+  @Override public CorrelationScopeConfig getObject() {
+    CorrelationScopeConfig.Builder builder = CorrelationScopeConfig.newBuilder(baggageField);
     if (name != null) builder.name(name);
     if (dirty) builder.dirty();
     if (flushOnUpdate) builder.flushOnUpdate();
     return builder.build();
   }
 
-  @Override public Class<? extends CorrelationField> getObjectType() {
-    return CorrelationField.class;
+  @Override public Class<? extends CorrelationScopeConfig> getObjectType() {
+    return CorrelationScopeConfig.class;
   }
 
   @Override public boolean isSingleton() {

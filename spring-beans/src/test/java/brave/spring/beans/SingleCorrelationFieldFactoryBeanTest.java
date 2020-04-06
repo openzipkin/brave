@@ -14,13 +14,14 @@
 package brave.spring.beans;
 
 import brave.baggage.BaggageFields;
-import brave.baggage.CorrelationField;
+import brave.baggage.CorrelationScopeConfig;
+import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
 import org.junit.After;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class CorrelationFieldFactoryBeanTest {
+public class SingleCorrelationFieldFactoryBeanTest {
   XmlBeans context;
 
   @After public void close() {
@@ -35,9 +36,9 @@ public class CorrelationFieldFactoryBeanTest {
       + "</bean>\n"
     );
 
-    assertThat(context.getBean("traceIdCorrelation", CorrelationField.class))
+    assertThat(context.getBean("traceIdCorrelation", CorrelationScopeConfig.class))
       .usingRecursiveComparison()
-      .isEqualTo(CorrelationField.create(BaggageFields.TRACE_ID));
+      .isEqualTo(SingleCorrelationField.create(BaggageFields.TRACE_ID));
   }
 
   @Test public void allProperties() {
@@ -51,9 +52,9 @@ public class CorrelationFieldFactoryBeanTest {
       + "</bean>\n"
     );
 
-    assertThat(context.getBean("traceIdCorrelation", CorrelationField.class))
+    assertThat(context.getBean("traceIdCorrelation", CorrelationScopeConfig.class))
       .usingRecursiveComparison()
-      .isEqualTo(CorrelationField.newBuilder(BaggageFields.TRACE_ID)
+      .isEqualTo(SingleCorrelationField.newBuilder(BaggageFields.TRACE_ID)
         .name("X-B3-TraceId")
         .dirty()
         .flushOnUpdate()

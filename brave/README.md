@@ -328,13 +328,15 @@ context.
 For example, if you have a need to know the a specific request's country code, you can
 propagate it through the trace as an HTTP header with the same name:
 ```java
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+
 // Configure your baggage field
 COUNTRY_CODE = BaggageField.create("country-code");
 
 // When you initialize the builder, add the baggage you want to propagate
 tracingBuilder.propagationFactory(
   BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-                    .addRemoteField(COUNTRY_CODE)
+                    .add(SingleBaggageField.remote(COUNTRY_CODE))
                     .build()
 );
 
@@ -371,29 +373,37 @@ For example, the following will propagate the field "x-vcap-request-id" as-is, b
 fields "countryCode" and "userId" on the wire as "baggage-country-code" and "baggage-user-id"
 respectively.
 ```java
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+
 REQUEST_ID = BaggageField.create("x-vcap-request-id");
 COUNTRY_CODE = BaggageField.create("countryCode");
 USER_ID = BaggageField.create("userId");
 
 tracingBuilder.propagationFactory(
     BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-                      .addRemoteField(REQUEST_ID)
-                      .addRemoteField(COUNTRY_CODE, "baggage-country-code")
-                      .addRemoteField(USER_ID, "baggage-user-id").build())
+                      .add(SingleBaggageField.remote(REQUEST_ID))
+                      .add(SingleBaggageField.newBuilder(COUNTRY_CODE)
+                                             .addKeyName("baggage-country-code").build())
+                      .add(SingleBaggageField.newBuilder(USER_ID)
+                                             .addKeyName("baggage-user-id").build())
+                      .build()
 );
 ```
 ### Correlation
 
 You can also integrate baggage with other correlated contexts such as logging:
 ```java
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
+
 AMZN_TRACE_ID = BaggageField.create("x-amzn-trace-id");
 
 // Allow logging patterns like %X{traceId} %X{x-amzn-trace-id}
 decorator = MDCScopeDecorator.newBuilder()
-                             .addField(AMZN_TRACE_ID).build();
+                             .add(SingleCorrelationField.create(AMZN_TRACE_ID)).build()
 
 tracingBuilder.propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-                                                    .addRemoteField(AMZN_TRACE_ID)
+                                                    .add(SingleBaggageField.remote(AMZN_TRACE_ID))
                                                     .build())
               .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
                                                                  .addScopeDecorator(decorator)
@@ -406,9 +416,11 @@ override them in the builder as needed.
 
 Ex. If your log property is %X{trace-id}, you can do this:
 ```java
-builder.clear(); // traceId is a default field!
-builder.addField(CorrelationField.newBuilder(BaggageFields.TRACE_ID)
-                                 .name("trace-id").build());
+import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
+
+scopeBuilder.clear() // TRACE_ID is a default field!
+            .add(SingleCorrelationField.newBuilder(BaggageFields.TRACE_ID)
+                                       .name("trace-id").build())
 ```
 
 ### Appropriate usage
@@ -428,11 +440,13 @@ Amazon Web Services environment, but not reporting data to X-Ray. To ensure X-Ra
 correctly, pass-through its tracing header like so.
 
 ```java
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+
 OTHER_TRACE_ID = BaggageField.create("x-amzn-trace-id");
 
 tracingBuilder.propagationFactory(
   BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-                    .addRemoteField(OTHER_TRACE_ID)
+                    .add(SingleBaggageField.remote(OTHER_TRACE_ID))
                     .build()
 );
 ```

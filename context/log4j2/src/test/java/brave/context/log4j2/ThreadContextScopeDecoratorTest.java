@@ -32,7 +32,7 @@ public class ThreadContextScopeDecoratorTest extends CurrentTraceContextTest {
     @Override public CurrentTraceContext.Builder get() {
       return ThreadLocalCurrentTraceContext.newBuilder()
         .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
-          .addField(CORRELATION_FIELD).build());
+          .add(CORRELATION_FIELD).build());
     }
   }
 

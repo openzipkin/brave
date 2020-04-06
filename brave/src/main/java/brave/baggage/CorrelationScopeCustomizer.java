@@ -19,7 +19,7 @@ import brave.propagation.Propagation;
  * This allows configuration plugins to collaborate on building an instance of {@link
  * CorrelationScopeDecorator}.
  *
- * <p>For example, a customizer can {@linkplain CorrelationScopeDecorator.Builder#addField(CorrelationField)
+ * <p>For example, a customizer can {@linkplain CorrelationScopeDecorator.Builder#add(CorrelationScopeConfig)
  * configure a baggage field} without instantiating the {@link CorrelationScopeDecorator.Builder).
  *
  * <p>This also allows one object to customize both {@linkplain BaggagePropagation baggage}
@@ -40,6 +40,7 @@ import brave.propagation.Propagation;
  *   <li><a href="https://docs.spring.io/spring/docs/current/spring-framework-reference/core.html#beans-autowired-annotation">Spring Autowired Collections</a></li>
  * </ul></pre>
  *
+ * @see CorrelationScopeConfig
  * @see BaggageCustomizer
  * @since 5.11
  */

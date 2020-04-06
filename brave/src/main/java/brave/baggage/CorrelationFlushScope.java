@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static brave.baggage.CorrelationScopeDecorator.equal;
 
-/** Sets up thread locals needed to support {@link CorrelationField#flushOnUpdate()} */
+/** Sets up thread locals needed to support {@link CorrelationScopeConfig#flushOnUpdate()} */
 final class CorrelationFlushScope extends AtomicBoolean implements Scope {
   final CorrelationUpdateScope updateScope;
 

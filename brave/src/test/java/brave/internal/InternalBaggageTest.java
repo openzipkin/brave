@@ -15,6 +15,7 @@ package brave.internal;
 
 import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.propagation.B3SinglePropagation;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
@@ -25,9 +26,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class InternalBaggageTest {
   @Test public void allKeyNames_baggagePropagation() {
     Propagation.Factory factory = BaggagePropagation.newFactoryBuilder(B3SinglePropagation.FACTORY)
-      .addField(BaggageField.create("redacted"))
-      .addRemoteField(BaggageField.create("user-id"))
-      .addRemoteField(BaggageField.create("session-id")).build();
+      .add(SingleBaggageField.local(BaggageField.create("redacted")))
+      .add(SingleBaggageField.remote(BaggageField.create("user-id")))
+      .add(SingleBaggageField.remote(BaggageField.create("session-id"))).build();
     assertThat(InternalBaggage.instance.allKeyNames(factory))
       .containsExactly("b3", "user-id", "session-id");
   }

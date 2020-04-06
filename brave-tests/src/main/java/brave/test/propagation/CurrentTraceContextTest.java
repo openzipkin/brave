@@ -15,7 +15,7 @@ package brave.test.propagation;
 
 import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagation;
-import brave.baggage.CorrelationField;
+import brave.baggage.CorrelationScopeConfig;
 import brave.internal.Nullable;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
@@ -41,8 +41,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 public abstract class CurrentTraceContextTest {
-  protected static final CorrelationField CORRELATION_FIELD =
-    CorrelationField.create(BaggageField.create("user-id"));
+  protected static final CorrelationScopeConfig CORRELATION_FIELD =
+    CorrelationScopeConfig.create(BaggageField.create("user-id"));
 
   Propagation.Factory baggageFactory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
     .addRemoteField(CORRELATION_FIELD.baggageField()).build();

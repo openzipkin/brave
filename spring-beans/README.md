@@ -12,7 +12,7 @@ Bean Factories exist for the following types:
 * CurrentTraceContextFactoryBean - to integrate decorators such as correlation.
 * BaggagePropagationFactoryBean - for propagating baggage fields in process and over headers
 * CorrelationScopeDecoratorFactoryBean - for scope decorations such as MDC (logging) field correlation
-* CorrelationFieldFactoryBean - configures a baggage field for correlation
+* SingleCorrelationFieldFactoryBean - configures a baggage field for correlation
 
 Here are some example beans using the factories in this module:
 ```xml
