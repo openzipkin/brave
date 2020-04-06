@@ -50,30 +50,32 @@ import java.util.Set;
  * <p>Ex. once added to `BaggagePropagation`, you can call below to affect the country code
  * of the current trace context:
  * <pre>{@code
- *  COUNTRY_CODE.updateValue("FO");
- *  String countryCode = COUNTRY_CODE.get();
+ * COUNTRY_CODE.updateValue("FO");
+ * String countryCode = COUNTRY_CODE.get();
  * }</pre>
  *
  * <p>Or, if you have a reference to a trace context, it is more efficient to use it explicitly:
  * <pre>{@code
- *   COUNTRY_CODE.updateValue(span.context(), "FO");
- *  String countryCode = COUNTRY_CODE.get(span.context());
- *  Tags.BAGGAGE_FIELD.tag(COUNTRY_CODE, span);
+ * COUNTRY_CODE.updateValue(span.context(), "FO");
+ * String countryCode = COUNTRY_CODE.get(span.context());
+ * Tags.BAGGAGE_FIELD.tag(COUNTRY_CODE, span);
  * }</pre>
  *
  * <p>Correlation</p>
  *
- *
  * <p>You can also integrate baggage with other correlated contexts such as logging:
  * <pre>{@code
+ * import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+ * import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
+ *
  * AMZN_TRACE_ID = BaggageField.create("x-amzn-trace-id");
  *
  * // Allow logging patterns like %X{traceId} %X{x-amzn-trace-id}
  * decorator = MDCScopeDecorator.newBuilder()
- *                              .addField(AMZN_TRACE_ID).build();
+ *                              .add(SingleCorrelationField.create(AMZN_TRACE_ID)).build()
  *
  * tracingBuilder.propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
- *                                                     .addRemoteField(AMZN_TRACE_ID)
+ *                                                     .add(SingleBaggageField.remote(AMZN_TRACE_ID))
  *                                                     .build())
  *               .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
  *                                                                  .addScopeDecorator(decorator)
@@ -101,7 +103,7 @@ import java.util.Set;
  * propagate "arbitrary stuff" with a request.
  *
  * @see BaggagePropagation
- * @see CorrelationField
+ * @see CorrelationScopeConfig
  * @since 5.11
  */
 public final class BaggageField {
@@ -197,7 +199,7 @@ public final class BaggageField {
    * made current.
    *
    * @see #getByName(TraceContext, String)
-   * @see CorrelationField#name()
+   * @see CorrelationScopeConfig.SingleCorrelationField#name()
    * @since 5.11
    */
   public final String name() {

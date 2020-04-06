@@ -15,7 +15,8 @@ package brave.propagation;
 
 import brave.baggage.BaggageFields;
 import brave.baggage.BaggagePropagation;
-import brave.baggage.CorrelationField;
+import brave.baggage.BaggagePropagationConfig;
+import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
 import brave.context.log4j2.ThreadContextScopeDecorator;
 import brave.propagation.CurrentTraceContext.Scope;
 import java.util.concurrent.TimeUnit;
@@ -45,13 +46,13 @@ public class CurrentTraceContextBenchmarks {
   static final CurrentTraceContext log4j2OnlyTraceId = ThreadLocalCurrentTraceContext.newBuilder()
     .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
       .clear()
-      .addField(CorrelationField.create(BaggageFields.TRACE_ID))
+      .add(SingleCorrelationField.create(BaggageFields.TRACE_ID))
       .build())
     .build();
   static final CurrentTraceContext log4j2OnlyBaggage = ThreadLocalCurrentTraceContext.newBuilder()
     .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
       .clear()
-      .addField(CorrelationField.create(BAGGAGE_FIELD))
+      .add(SingleCorrelationField.create(BAGGAGE_FIELD))
       .build())
     .build();
   static final CurrentTraceContext log4j2 = ThreadLocalCurrentTraceContext.newBuilder()
@@ -60,12 +61,11 @@ public class CurrentTraceContextBenchmarks {
 
   static final Propagation.Factory baggageFactory =
     BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-      .addRemoteField(BAGGAGE_FIELD)
-      .build();
+      .add(BaggagePropagationConfig.SingleBaggageField.remote(BAGGAGE_FIELD)).build();
 
   static final CurrentTraceContext log4j2Baggage = ThreadLocalCurrentTraceContext.newBuilder()
     .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
-      .addField(CorrelationField.create(BAGGAGE_FIELD)).build())
+      .add(SingleCorrelationField.create(BAGGAGE_FIELD)).build())
     .build();
 
   static final TraceContext context = baggageFactory.decorate(TraceContext.newBuilder()

@@ -31,7 +31,7 @@ public class MDCScopeDecoratorTest extends CurrentTraceContextTest {
   static class BuilderSupplier implements Supplier<CurrentTraceContext.Builder> {
     @Override public CurrentTraceContext.Builder get() {
       return ThreadLocalCurrentTraceContext.newBuilder()
-        .addScopeDecorator(MDCScopeDecorator.newBuilder().addField(CORRELATION_FIELD).build());
+        .addScopeDecorator(MDCScopeDecorator.newBuilder().add(CORRELATION_FIELD).build());
     }
   }
 

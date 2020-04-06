@@ -14,13 +14,14 @@
 package brave.spring.beans;
 
 import brave.baggage.BaggageFields;
-import brave.baggage.CorrelationField;
+import brave.baggage.CorrelationScopeConfig;
+import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
 import org.junit.After;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class CorrelationFieldFactoryBeanTest {
+public class SingleCorrelationFieldFactoryBeanTest {
   XmlBeans context;
 
   @After public void close() {
@@ -30,20 +31,20 @@ public class CorrelationFieldFactoryBeanTest {
   @Test public void leastProperties() {
     context = new XmlBeans(""
       + "<util:constant id=\"traceId\" static-field=\"brave.baggage.BaggageFields.TRACE_ID\"/>\n"
-      + "<bean id=\"traceIdCorrelation\" class=\"brave.spring.beans.CorrelationFieldFactoryBean\">\n"
+      + "<bean id=\"traceIdCorrelationConfig\" class=\"brave.spring.beans.SingleCorrelationFieldFactoryBean\">\n"
       + "  <property name=\"baggageField\" ref=\"traceId\"/>\n"
       + "</bean>\n"
     );
 
-    assertThat(context.getBean("traceIdCorrelation", CorrelationField.class))
+    assertThat(context.getBean("traceIdCorrelationConfig", CorrelationScopeConfig.class))
       .usingRecursiveComparison()
-      .isEqualTo(CorrelationField.create(BaggageFields.TRACE_ID));
+      .isEqualTo(SingleCorrelationField.create(BaggageFields.TRACE_ID));
   }
 
   @Test public void allProperties() {
     context = new XmlBeans(""
       + "<util:constant id=\"traceId\" static-field=\"brave.baggage.BaggageFields.TRACE_ID\"/>\n"
-      + "<bean id=\"traceIdCorrelation\" class=\"brave.spring.beans.CorrelationFieldFactoryBean\">\n"
+      + "<bean id=\"traceIdCorrelationConfig\" class=\"brave.spring.beans.SingleCorrelationFieldFactoryBean\">\n"
       + "  <property name=\"baggageField\" ref=\"traceId\"/>\n"
       + "  <property name=\"name\" value=\"X-B3-TraceId\"/>\n"
       + "  <property name=\"dirty\" value=\"true\"/>\n"
@@ -51,9 +52,9 @@ public class CorrelationFieldFactoryBeanTest {
       + "</bean>\n"
     );
 
-    assertThat(context.getBean("traceIdCorrelation", CorrelationField.class))
+    assertThat(context.getBean("traceIdCorrelationConfig", CorrelationScopeConfig.class))
       .usingRecursiveComparison()
-      .isEqualTo(CorrelationField.newBuilder(BaggageFields.TRACE_ID)
+      .isEqualTo(SingleCorrelationField.newBuilder(BaggageFields.TRACE_ID)
         .name("X-B3-TraceId")
         .dirty()
         .flushOnUpdate()

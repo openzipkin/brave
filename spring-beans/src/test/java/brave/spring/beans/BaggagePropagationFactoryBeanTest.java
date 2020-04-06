@@ -58,38 +58,15 @@ public class BaggagePropagationFactoryBeanTest {
       .isEqualTo(B3SinglePropagation.FACTORY);
   }
 
-  @Test public void fields() {
+  @Test public void configs() {
     context = new XmlBeans(""
       + "<bean id=\"userId\" class=\"brave.baggage.BaggageField\" factory-method=\"create\">\n"
       + "  <constructor-arg><value>userId</value></constructor-arg>\n"
       + "</bean>\n"
       + "<bean id=\"propagationFactory\" class=\"brave.spring.beans.BaggagePropagationFactoryBean\">\n"
-      + "  <property name=\"fields\">\n"
+      + "  <property name=\"configs\">\n"
       + "    <list>\n"
-      + "      <ref bean=\"userId\"/>\n"
-      + "    </list>\n"
-      + "  </property>\n"
-      + "</bean>\n"
-    );
-
-    assertThathandlersWithKeyNames()
-      .extracting("handler.field")
-      .usingFieldByFieldElementComparator()
-      .containsExactly(BaggageField.create("userId"));
-    assertThathandlersWithKeyNames()
-      .flatExtracting("keyNames")
-      .isEmpty();
-  }
-
-  @Test public void remoteFields() {
-    context = new XmlBeans(""
-      + "<bean id=\"userId\" class=\"brave.baggage.BaggageField\" factory-method=\"create\">\n"
-      + "  <constructor-arg><value>userId</value></constructor-arg>\n"
-      + "</bean>\n"
-      + "<bean id=\"propagationFactory\" class=\"brave.spring.beans.BaggagePropagationFactoryBean\">\n"
-      + "  <property name=\"remoteFields\">\n"
-      + "    <list>\n"
-      + "      <bean class=\"brave.spring.beans.RemoteBaggageField\">\n"
+      + "      <bean class=\"brave.spring.beans.SingleBaggageFieldFactoryBean\">\n"
       + "        <property name=\"field\" ref=\"userId\"/>\n"
       + "        <property name=\"keyNames\">\n"
       + "          <list>\n"
@@ -112,31 +89,6 @@ public class BaggagePropagationFactoryBeanTest {
       .containsExactly("baggage_user_id", "baggage-user-id");
   }
 
-  @Test public void remoteFields_defaultKeyName() {
-    context = new XmlBeans(""
-      + "<bean id=\"userId\" class=\"brave.baggage.BaggageField\" factory-method=\"create\">\n"
-      + "  <constructor-arg><value>userId</value></constructor-arg>\n"
-      + "</bean>\n"
-      + "<bean id=\"propagationFactory\" class=\"brave.spring.beans.BaggagePropagationFactoryBean\">\n"
-      + "  <property name=\"remoteFields\">\n"
-      + "    <list>\n"
-      + "      <bean class=\"brave.spring.beans.RemoteBaggageField\">\n"
-      + "        <property name=\"field\" ref=\"userId\"/>\n"
-      + "      </bean>\n"
-      + "    </list>\n"
-      + "  </property>\n"
-      + "</bean>"
-    );
-
-    assertThathandlersWithKeyNames()
-      .extracting("handler.field")
-      .usingFieldByFieldElementComparator()
-      .containsExactly(BaggageField.create("userId"));
-    assertThathandlersWithKeyNames()
-      .flatExtracting("keyNames")
-      .containsExactly("userid");
-  }
-
   @Test public void propagationFactory() {
     context = new XmlBeans(""
       + "<bean id=\"userId\" class=\"brave.baggage.BaggageField\" factory-method=\"create\">\n"
@@ -146,9 +98,11 @@ public class BaggagePropagationFactoryBeanTest {
       + "  <property name=\"propagationFactory\">\n"
       + "    <util:constant static-field=\"brave.propagation.B3SinglePropagation.FACTORY\"/>\n"
       + "  </property>\n"
-      + "  <property name=\"fields\">\n"
+      + "  <property name=\"configs\">\n"
       + "    <list>\n"
-      + "      <ref bean=\"userId\"/>\n"
+      + "      <bean class=\"brave.spring.beans.SingleBaggageFieldFactoryBean\">\n"
+      + "        <property name=\"field\" ref=\"userId\"/>\n"
+      + "      </bean>\n"
       + "    </list>\n"
       + "  </property>\n"
       + "</bean>\n"

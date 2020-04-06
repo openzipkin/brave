@@ -13,10 +13,11 @@
  */
 package brave;
 
+import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.propagation.B3Propagation;
-import brave.baggage.BaggagePropagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
@@ -52,7 +53,7 @@ import static brave.propagation.SamplingFlags.NOT_SAMPLED;
 @State(Scope.Benchmark)
 public class TracerBenchmarks {
   Propagation.Factory baggageFactory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-    .addRemoteField(BAGGAGE_FIELD).build();
+    .add(SingleBaggageField.remote(BAGGAGE_FIELD)).build();
 
   TraceContext context =
     TraceContext.newBuilder().traceIdHigh(333L).traceId(444L).spanId(3).sampled(true).build();

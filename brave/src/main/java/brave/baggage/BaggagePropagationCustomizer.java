@@ -19,7 +19,7 @@ import brave.propagation.Propagation;
  * This allows configuration plugins to collaborate on building an instance of {@link
  * BaggagePropagation.Factory}.
  *
- * <p>For example, a customizer can {@link BaggagePropagation.FactoryBuilder#addRemoteField(BaggageField)
+ * <p>For example, a customizer can {@link BaggagePropagation.FactoryBuilder#add(BaggagePropagationConfig)
  * add a baggage field} without affecting the {@link BaggagePropagation#newFactoryBuilder(Propagation.Factory)
  * trace propagation format}.
  *
@@ -42,6 +42,7 @@ import brave.propagation.Propagation;
  * </ul></pre>
  *
  * @see CorrelationScopeCustomizer
+ * @see BaggagePropagationConfig
  * @since 5.11
  */
 public interface BaggagePropagationCustomizer {

@@ -13,6 +13,7 @@
  */
 package brave.baggage;
 
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.internal.baggage.BaggageHandler;
 import brave.internal.baggage.BaggageHandlers;
 import brave.internal.baggage.ExtraBaggageFields;
@@ -21,7 +22,6 @@ import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -38,13 +38,15 @@ import static brave.baggage.BaggageField.validateName;
  * <p>For example, if you have a need to know the a specific request's country code, you can
  * propagate it through the trace as HTTP headers.
  * <pre>{@code
+ * import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+ *
  * // Configure your baggage field
  * COUNTRY_CODE = BaggageField.create("country-code");
  *
  * // When you initialize the builder, add the baggage you want to propagate
  * tracingBuilder.propagationFactory(
  *   BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
- *                     .addRemoteField(COUNTRY_CODE)
+ *                     .add(SingleBaggageField.remote(COUNTRY_CODE))
  *                     .build()
  * );
  *
@@ -52,32 +54,38 @@ import static brave.baggage.BaggageField.validateName;
  * Tags.BAGGAGE_FIELD.tag(COUNTRY_CODE, span);
  * }</pre>
  *
- * <h3>Customizing propagtion keys</h3>
- * By default, the name used as a propagation key (header) by {@link
- * FactoryBuilder#addRemoteField(BaggageField, String...)} is the same as the lowercase variant of
- * the field name. You can override this by supplying different key names. Note: they will be
- * lower-cased.
+ * <p>See {@link BaggageField} for baggage usage examples.
+ *
+ * <h3>Customizing propagation keys</h3>
+ * {@link SingleBaggageField#remote(BaggageField)} sets the name used as a propagation key (header)
+ * to the lowercase variant of the field name. You can override this by supplying different key
+ * names. Note: they will be lower-cased.
  *
  * <p>For example, the following will propagate the field "x-vcap-request-id" as-is, but send the
  * fields "countryCode" and "userId" on the wire as "baggage-country-code" and "baggage-user-id"
  * respectively.
  *
  * <pre>{@code
+ * import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+ *
  * REQUEST_ID = BaggageField.create("x-vcap-request-id");
  * COUNTRY_CODE = BaggageField.create("countryCode");
  * USER_ID = BaggageField.create("userId");
  *
  * tracingBuilder.propagationFactory(
  *     BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
- *                       .addRemoteField(REQUEST_ID)
- *                       .addRemoteField(COUNTRY_CODE, "baggage-country-code")
- *                       .addRemoteField(USER_ID, "baggage-user-id").build())
+ *                       .add(SingleBaggageField.remote(REQUEST_ID))
+ *                       .add(SingleBaggageField.newBuilder(COUNTRY_CODE)
+ *                                              .addKeyName("baggage-country-code").build())
+ *                       .add(SingleBaggageField.newBuilder(USER_ID)
+ *                                              .addKeyName("baggage-user-id").build())
+ *                       .build()
  * );
  * }</pre>
  *
- * <p>See {@link BaggageField} for usage examples
- *
  * @see BaggageField
+ * @see BaggagePropagationConfig
+ * @see BaggagePropagationCustomizer
  * @see CorrelationScopeDecorator
  * @since 5.11
  */
@@ -91,6 +99,7 @@ public class BaggagePropagation<K> implements Propagation<K> {
     final Propagation.Factory delegate;
     final Set<String> allKeyNames = new LinkedHashSet<>();
     final Map<BaggageField, Set<String>> fieldToKeyNames = new LinkedHashMap<>();
+    final Set<SingleBaggageField> configs = new LinkedHashSet<>();
 
     FactoryBuilder(Propagation.Factory delegate) {
       if (delegate == null) throw new NullPointerException("delegate == null");
@@ -98,75 +107,43 @@ public class BaggagePropagation<K> implements Propagation<K> {
     }
 
     /**
-     * Returns an immutable copy of the currently configured fields mapped to names for use in
-     * remote propagation. This allows those who can't create the builder to reconfigure this
-     * builder.
+     * Returns an immutable copy of the current {@linkplain #add(BaggagePropagationConfig)
+     * configuration}. This allows those who can't create the builder to reconfigure this builder.
      *
+     * @see #clear()
      * @since 5.11
      */
-    public Map<BaggageField, Set<String>> fieldToKeyNames() {
-      return Collections.unmodifiableMap(new LinkedHashMap<>(fieldToKeyNames));
+    public Set<BaggagePropagationConfig> configs() {
+      return Collections.unmodifiableSet(new LinkedHashSet<>(configs));
     }
 
     /**
      * Clears all state. This allows those who can't create the builder to reconfigure fields.
      *
-     * @see #fieldToKeyNames()
+     * @see #configs()
      * @see BaggagePropagationCustomizer
      * @since 5.11
      */
     public FactoryBuilder clear() {
       allKeyNames.clear();
       fieldToKeyNames.clear();
+      configs.clear();
       return this;
     }
 
-    /**
-     * Adds a {@linkplain BaggageField baggage field}, but does not configure remote propagation.
-     *
-     * @throws IllegalArgumentException if the field was already added
-     * @since 5.11
-     */
-    public FactoryBuilder addField(BaggageField field) {
-      if (field == null) throw new NullPointerException("field == null");
-      if (fieldToKeyNames.containsKey(field)) {
-        throw new IllegalArgumentException(field.name + " already added");
+    /** @since 5.11 */
+    public FactoryBuilder add(BaggagePropagationConfig config) {
+      if (config == null) throw new NullPointerException("config == null");
+      if (!(config instanceof SingleBaggageField)) {
+        throw new UnsupportedOperationException("dynamic fields not yet supported");
       }
-      fieldToKeyNames.put(field, Collections.emptySet());
-      return this;
-    }
-
-    /**
-     * Adds a {@linkplain BaggageField baggage field} for remote propagation.
-     *
-     * <p>When {@code keyNames} are not supplied the field is referenced the same in-process as it
-     * is on the wire. For example, the {@linkplain BaggageField#name() name} "x-vcap-request-id"
-     * would be set as-is including the prefix.
-     *
-     * @param keyNames possibly empty lower-case {@link Propagation#keys() propagation key names}.
-     * @throws IllegalArgumentException if the field was already added or a key name is already in
-     * use.
-     * @since 5.11
-     */
-    public FactoryBuilder addRemoteField(BaggageField field, String... keyNames) {
-      if (field == null) throw new NullPointerException("field == null");
-      if (keyNames == null) throw new NullPointerException("keyNames == null");
-      return addRemoteField(field, Arrays.asList(keyNames));
-    }
-
-    /**
-     * Same as {@link #addRemoteField(BaggageField, String...)}.
-     *
-     * @since 5.11
-     */
-    public FactoryBuilder addRemoteField(BaggageField field, Iterable<String> keyNames) {
-      if (field == null) throw new NullPointerException("field == null");
-      if (keyNames == null) throw new NullPointerException("keyNames == null");
-      if (fieldToKeyNames.containsKey(field)) {
-        throw new IllegalArgumentException(field.name + " already added");
+      SingleBaggageField field = (SingleBaggageField) config;
+      if (fieldToKeyNames.containsKey(field.field)) {
+        throw new IllegalArgumentException(field.field.name + " already added");
       }
+      configs.add(field);
       Set<String> lcKeyNames = new LinkedHashSet<>();
-      for (String keyName : keyNames) {
+      for (String keyName : field.keyNames) {
         String lcName = validateName(keyName).toLowerCase(Locale.ROOT);
         if (allKeyNames.contains(lcName)) {
           throw new IllegalArgumentException("Propagation key already in use: " + lcName);
@@ -175,12 +152,7 @@ public class BaggagePropagation<K> implements Propagation<K> {
         lcKeyNames.add(lcName);
       }
 
-      if (lcKeyNames.isEmpty()) { // add the default name
-        allKeyNames.add(field.lcName);
-        lcKeyNames.add(field.lcName);
-      }
-
-      fieldToKeyNames.put(field, Collections.unmodifiableSet(lcKeyNames));
+      fieldToKeyNames.put(field.field, Collections.unmodifiableSet(lcKeyNames));
       return this;
     }
 

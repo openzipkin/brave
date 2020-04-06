@@ -13,6 +13,7 @@
  */
 package brave.baggage;
 
+import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
 import brave.internal.CorrelationContext;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext.Scope;
@@ -45,14 +46,14 @@ abstract class CorrelationUpdateScope extends AtomicBoolean implements Scope {
 
   static final class Single extends CorrelationUpdateScope {
     final Scope delegate;
-    final CorrelationField field;
+    final SingleCorrelationField field;
     final @Nullable String valueToRevert;
     boolean shouldRevert;
 
     Single(
       Scope delegate,
       CorrelationContext context,
-      CorrelationField field,
+      SingleCorrelationField field,
       @Nullable String valueToRevert,
       boolean shouldRevert
     ) {
@@ -82,14 +83,14 @@ abstract class CorrelationUpdateScope extends AtomicBoolean implements Scope {
 
   static final class Multiple extends CorrelationUpdateScope {
     final Scope delegate;
-    final CorrelationField[] fields;
+    final SingleCorrelationField[] fields;
     final String[] valuesToRevert;
     int shouldRevert;
 
     Multiple(
       Scope delegate,
       CorrelationContext context,
-      CorrelationField[] fields,
+      SingleCorrelationField[] fields,
       String[] valuesToRevert,
       int shouldRevert
     ) {

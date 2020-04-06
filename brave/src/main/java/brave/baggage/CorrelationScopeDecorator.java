@@ -13,6 +13,7 @@
  */
 package brave.baggage;
 
+import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
 import brave.internal.CorrelationContext;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext.Scope;
@@ -29,10 +30,13 @@ import java.util.TreeSet;
  *
  * <p>Setup example:
  * <pre>{@code
+ * import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
+ *
  * // Add the field "region", so it can be used as a log expression %X{region}
  * CLOUD_REGION = BaggageFields.constant("region", System.getEnv("CLOUD_REGION"));
+ *
  * decorator = MDCScopeDecorator.newBuilder()
- *                              .addField(CorrelationField.create(CLOUD_REGION))
+ *                              .add(SingleCorrelationField.create(CLOUD_REGION))
  *                              .build();
  *
  * // Integrate the decorator
@@ -57,7 +61,9 @@ import java.util.TreeSet;
  * }
  * }</pre>
  *
- * @see CorrelationField
+ * @see CorrelationScopeConfig
+ * @see CorrelationScopeCustomizer
+ * @see BaggagePropagation
  * @since 5.11
  */
 public abstract class CorrelationScopeDecorator implements ScopeDecorator {
@@ -67,36 +73,36 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
     final CorrelationContext context;
     // Don't allow mixed case of the same name!
     final Set<String> allNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    final Set<CorrelationField> fields = new LinkedHashSet<>();
+    final Set<SingleCorrelationField> fields = new LinkedHashSet<>();
 
     /** Internal constructor used by subtypes. */
     protected Builder(CorrelationContext context) {
       if (context == null) throw new NullPointerException("context == null");
       this.context = context;
-      addField(CorrelationField.create(BaggageFields.TRACE_ID));
-      addField(CorrelationField.create(BaggageFields.SPAN_ID));
+      add(SingleCorrelationField.create(BaggageFields.TRACE_ID));
+      add(SingleCorrelationField.create(BaggageFields.SPAN_ID));
     }
 
     /**
-     * Returns an immutable copy of the currently configured {@linkplain #addField(CorrelationField)
-     * fields}. This allows those who can't create the builder to reconfigure this builder.
+     * Returns an immutable copy of the current {@linkplain #add(CorrelationScopeConfig)
+     * configuration}. This allows those who can't create the builder to reconfigure this builder.
      *
      * @see #clear()
      * @since 5.11
      */
-    public Set<CorrelationField> fields() {
+    public Set<CorrelationScopeConfig> configs() {
       return Collections.unmodifiableSet(new LinkedHashSet<>(fields));
     }
 
     /**
-     * Invoke this to clear fields so that you can {@linkplain #addField(CorrelationField) add the
+     * Invoke this to clear fields so that you can {@linkplain #add(CorrelationScopeConfig) add the
      * ones you need}.
      *
      * <p>Defaults may include a field you aren't using, such as {@link BaggageFields#PARENT_ID}.
      * For best performance, only include the fields you use in your correlation expressions (such
      * as log formats).
      *
-     * @see #fields()
+     * @see #configs()
      * @see CorrelationScopeDecorator
      * @since 5.11
      */
@@ -106,13 +112,13 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
       return this;
     }
 
-    /**
-     * Adds a correlation property into the context with its {@link BaggageField#name()}.
-     *
-     * @since 5.11
-     */
-    public Builder addField(CorrelationField field) {
-      if (field == null) throw new NullPointerException("field == null");
+    /** @since 5.11 */
+    public Builder add(CorrelationScopeConfig config) {
+      if (config == null) throw new NullPointerException("config == null");
+      if (!(config instanceof SingleCorrelationField)) {
+        throw new UnsupportedOperationException("dynamic fields not yet supported");
+      }
+      SingleCorrelationField field = (SingleCorrelationField) config;
       if (fields.contains(field)) {
         throw new IllegalArgumentException(
           "Baggage Field already added: " + field.baggageField.name);
@@ -130,7 +136,7 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
       if (fieldCount == 0) return ScopeDecorator.NOOP;
       if (fieldCount == 1) return new Single(context, fields.iterator().next());
       if (fieldCount > 32) throw new IllegalArgumentException("over 32 baggage fields");
-      return new Multiple(context, fields.toArray(new CorrelationField[0]));
+      return new Multiple(context, fields.toArray(new SingleCorrelationField[0]));
     }
   }
 
@@ -141,9 +147,9 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
   }
 
   static final class Single extends CorrelationScopeDecorator {
-    final CorrelationField field;
+    final SingleCorrelationField field;
 
-    Single(CorrelationContext context, CorrelationField field) {
+    Single(CorrelationContext context, SingleCorrelationField field) {
       super(context);
       this.field = field;
     }
@@ -171,9 +177,9 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
   }
 
   static final class Multiple extends CorrelationScopeDecorator {
-    final CorrelationField[] fields;
+    final SingleCorrelationField[] fields;
 
-    Multiple(CorrelationContext context, CorrelationField[] fields) {
+    Multiple(CorrelationContext context, SingleCorrelationField[] fields) {
       super(context);
       this.fields = fields;
     }
@@ -184,7 +190,7 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
 
       String[] valuesToRevert = new String[fields.length];
       for (int i = 0; i < fields.length; i++) {
-        CorrelationField field = fields[i];
+        SingleCorrelationField field = fields[i];
         String valueToRevert = context.getValue(field.name);
         String currentValue = field.baggageField.getValue(traceContext);
 

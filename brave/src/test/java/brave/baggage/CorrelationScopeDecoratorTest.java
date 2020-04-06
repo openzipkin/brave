@@ -13,6 +13,8 @@
  */
 package brave.baggage;
 
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
 import brave.baggage.CorrelationUpdateScope.Single;
 import brave.internal.CorrelationContext;
 import brave.internal.Nullable;
@@ -37,23 +39,24 @@ import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.Mockito.mock;
 
 public class CorrelationScopeDecoratorTest {
-  static final CorrelationField
-    TRACE_ID = CorrelationField.newBuilder(BaggageFields.TRACE_ID).name("X-B3-TraceId").build(),
-    FIELD = CorrelationField.create(BaggageField.create("user-id")),
-    FIELD_2 = CorrelationField.create(BaggageField.create("country-code")),
+  static final SingleCorrelationField
+    TRACE_ID =
+    SingleCorrelationField.newBuilder(BaggageFields.TRACE_ID).name("X-B3-TraceId").build(),
+    FIELD = SingleCorrelationField.create(BaggageField.create("user-id")),
+    FIELD_2 = SingleCorrelationField.create(BaggageField.create("country-code")),
     DIRTY_FIELD = FIELD.toBuilder().name("dirty").dirty().build(),
-    LOCAL_FIELD = CorrelationField.create(BaggageField.create("serviceId")),
-    FLUSH_FIELD = CorrelationField.newBuilder(BaggageField.create("bp"))
+    LOCAL_FIELD = SingleCorrelationField.create(BaggageField.create("serviceId")),
+    FLUSH_FIELD = SingleCorrelationField.newBuilder(BaggageField.create("bp"))
       .name("flushed")
       .flushOnUpdate()
       .build();
   static final Map<String, String> map = new LinkedHashMap<>();
 
   Propagation.Factory baggageFactory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-    .addField(LOCAL_FIELD.baggageField())
-    .addRemoteField(FIELD.baggageField())
-    .addRemoteField(FIELD_2.baggageField())
-    .addRemoteField(FLUSH_FIELD.baggageField())
+    .add(SingleBaggageField.local(LOCAL_FIELD.baggageField()))
+    .add(SingleBaggageField.remote(FIELD.baggageField()))
+    .add(SingleBaggageField.remote(FIELD_2.baggageField()))
+    .add(SingleBaggageField.remote(FLUSH_FIELD.baggageField()))
     .build();
 
   TraceContext context = baggageFactory.decorate(TraceContext.newBuilder()
@@ -66,35 +69,35 @@ public class CorrelationScopeDecoratorTest {
   ScopeDecorator decorator = new TestBuilder().build();
   ScopeDecorator onlyTraceIdDecorator = new TestBuilder()
     .clear()
-    .addField(TRACE_ID)
+    .add(TRACE_ID)
     .build();
   ScopeDecorator onlyScopeDecorator = new TestBuilder()
     .clear()
-    .addField(FIELD)
+    .add(FIELD)
     .build();
   ScopeDecorator withBaggageFieldsDecorator = new TestBuilder()
     .clear()
-    .addField(TRACE_ID)
-    .addField(FIELD)
-    .addField(LOCAL_FIELD)
-    .addField(FIELD_2)
+    .add(TRACE_ID)
+    .add(FIELD)
+    .add(LOCAL_FIELD)
+    .add(FIELD_2)
     .build();
   ScopeDecorator withFlushOnUpdateScopeDecorator = new TestBuilder()
-    .addField(FIELD)
-    .addField(LOCAL_FIELD)
-    .addField(FIELD_2)
-    .addField(FLUSH_FIELD)
+    .add(FIELD)
+    .add(LOCAL_FIELD)
+    .add(FIELD_2)
+    .add(FLUSH_FIELD)
     .build();
   ScopeDecorator onlyFlushOnUpdateScopeDecorator = new TestBuilder()
     .clear()
-    .addField(FLUSH_FIELD)
+    .add(FLUSH_FIELD)
     .build();
   ScopeDecorator withDirtyFieldDecorator = new TestBuilder()
-    .addField(DIRTY_FIELD)
+    .add(DIRTY_FIELD)
     .build();
   ScopeDecorator onlyDirtyFieldDecorator = new TestBuilder()
     .clear()
-    .addField(DIRTY_FIELD)
+    .add(DIRTY_FIELD)
     .build();
 
   @Before public void before() {
@@ -107,29 +110,29 @@ public class CorrelationScopeDecoratorTest {
 
   @Test public void no_dupes() {
     CorrelationScopeDecorator.Builder builder =
-      new TestBuilder().addField(FLUSH_FIELD);
+      new TestBuilder().add(FLUSH_FIELD);
 
-    assertThatThrownBy(() -> builder.addField(FLUSH_FIELD))
+    assertThatThrownBy(() -> builder.add(FLUSH_FIELD))
       .isInstanceOf(IllegalArgumentException.class)
       .hasMessage("Baggage Field already added: bp");
   }
 
   @Test public void clear_and_add() {
     CorrelationScopeDecorator.Builder builder = new TestBuilder()
-      .addField(FIELD)
-      .addField(FLUSH_FIELD);
+      .add(FIELD)
+      .add(FLUSH_FIELD);
 
-    Set<CorrelationField> fields = builder.fields();
+    Set<CorrelationScopeConfig> fields = builder.configs();
 
     builder.clear();
 
-    fields.forEach(builder::addField);
+    fields.forEach(builder::add);
 
     assertThat(builder)
       .usingRecursiveComparison()
       .isEqualTo(new TestBuilder()
-        .addField(FIELD)
-        .addField(FLUSH_FIELD));
+        .add(FIELD)
+        .add(FLUSH_FIELD));
   }
 
   @Test public void doesntDecorateNoop() {
@@ -147,7 +150,7 @@ public class CorrelationScopeDecoratorTest {
       (CorrelationUpdateScope.Multiple) withDirtyFieldDecorator.decorateScope(context, Scope.NOOP);
 
     BitSet shouldRevert = BitSet.valueOf(new long[] {scopeMultiple.shouldRevert});
-    assertThat(scopeMultiple.fields).extracting(CorrelationField::name)
+    assertThat(scopeMultiple.fields).extracting(SingleCorrelationField::name)
       .containsExactly("traceId", "spanId", "dirty");
 
     assertThat(shouldRevert.get(0)).isFalse();

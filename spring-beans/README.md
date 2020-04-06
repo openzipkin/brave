@@ -11,9 +11,9 @@ Bean Factories exist for the following types:
 * MessagingTracingFactoryBean - for messaging tagging and sampling policy
 * CurrentTraceContextFactoryBean - to integrate decorators such as correlation.
 * BaggagePropagationFactoryBean - for propagating baggage fields in process and over headers
+  * SingleBaggageFieldFactoryBean - configures a single baggage field
 * CorrelationScopeDecoratorFactoryBean - for scope decorations such as MDC (logging) field correlation
-* CorrelationFieldFactoryBean - configures a baggage field for correlation
-
+  * SingleCorrelationFieldFactoryBean - configures a single baggage field for correlation
 Here are some example beans using the factories in this module:
 ```xml
   <bean id="sender" class="zipkin2.reporter.beans.OkHttpSenderFactoryBean">
@@ -61,7 +61,7 @@ with trace headers:
 
   <bean id="propagationFactory" class="brave.spring.beans.BaggagePropagationFactoryBean">
     <property name="remoteFields">
-      <bean class=\"brave.spring.beans.RemoteBaggageField\">
+      <bean class=\"brave.spring.beans.SingleBaggageFieldFactoryBean\">
         <property name=\"field\" ref=\"userId\"/>
       </bean>
     </property>
@@ -79,9 +79,9 @@ Here's an example of adding only the trace ID as the correlation property "X-B3-
   <property name="builder">
     <bean class="brave.context.log4j12.MDCScopeDecorator" factory-method="newBuilder"/>
   </property>
-  <property name="fields">
+  <property name="configs">
     <list>
-      <bean class="brave.spring.beans.CorrelationFieldFactoryBean">
+      <bean class="brave.spring.beans.SingleCorrelationFieldFactoryBean">
         <property name="baggageField" ref="traceId"/>
         <property name="name" value="X-B3-TraceId"/>
       </bean>

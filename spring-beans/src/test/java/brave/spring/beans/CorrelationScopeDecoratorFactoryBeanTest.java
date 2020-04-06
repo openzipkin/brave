@@ -13,8 +13,7 @@
  */
 package brave.spring.beans;
 
-import brave.baggage.BaggageFields;
-import brave.baggage.CorrelationField;
+import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
 import brave.baggage.CorrelationScopeCustomizer;
 import brave.baggage.CorrelationScopeDecorator;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
@@ -23,6 +22,8 @@ import org.junit.After;
 import org.junit.Test;
 import org.springframework.beans.factory.BeanCreationException;
 
+import static brave.baggage.BaggageFields.SPAN_ID;
+import static brave.baggage.BaggageFields.TRACE_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -68,21 +69,21 @@ public class CorrelationScopeDecoratorFactoryBeanTest {
     assertThat(context.getBean("correlationDecorator", CorrelationScopeDecorator.class))
       .extracting("fields").asInstanceOf(InstanceOfAssertFactories.ARRAY)
       .containsExactly(
-        CorrelationField.create(BaggageFields.TRACE_ID),
-        CorrelationField.create(BaggageFields.SPAN_ID)
+        SingleCorrelationField.create(TRACE_ID),
+        SingleCorrelationField.create(SPAN_ID)
       );
   }
 
-  @Test public void fields() {
+  @Test public void configs() {
     context = new XmlBeans(""
       + "<util:constant id=\"traceId\" static-field=\"brave.baggage.BaggageFields.TRACE_ID\"/>\n"
       + "<bean id=\"correlationDecorator\" class=\"brave.spring.beans.CorrelationScopeDecoratorFactoryBean\">\n"
       + "  <property name=\"builder\">\n"
       + "    <bean class=\"brave.context.log4j12.MDCScopeDecorator\" factory-method=\"newBuilder\"/>\n"
       + "  </property>\n"
-      + "  <property name=\"fields\">\n"
+      + "  <property name=\"configs\">\n"
       + "    <list>\n"
-      + "      <bean class=\"brave.spring.beans.CorrelationFieldFactoryBean\">\n"
+      + "      <bean class=\"brave.spring.beans.SingleCorrelationFieldFactoryBean\">\n"
       + "        <property name=\"baggageField\" ref=\"traceId\"/>\n"
       + "        <property name=\"name\" value=\"X-B3-TraceId\"/>\n"
       + "      </bean>\n"
@@ -94,7 +95,8 @@ public class CorrelationScopeDecoratorFactoryBeanTest {
     ScopeDecorator decorator = context.getBean("correlationDecorator", ScopeDecorator.class);
     assertThat(decorator).extracting("field")
       .usingRecursiveComparison()
-      .isEqualTo(CorrelationField.newBuilder(BaggageFields.TRACE_ID).name("X-B3-TraceId").build());
+      .isEqualTo(
+        SingleCorrelationField.newBuilder(TRACE_ID).name("X-B3-TraceId").build());
   }
 
   public static final CorrelationScopeCustomizer

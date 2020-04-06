@@ -14,9 +14,10 @@
 package brave.servlet;
 
 import brave.Tracing;
+import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.http.HttpServerBenchmarks;
 import brave.propagation.B3Propagation;
-import brave.baggage.BaggagePropagation;
 import brave.sampler.Sampler;
 import io.undertow.servlet.Servlets;
 import io.undertow.servlet.api.DeploymentInfo;
@@ -70,7 +71,7 @@ public class ServletBenchmarks extends HttpServerBenchmarks {
     public TracedBaggage() {
       super(TracingFilter.create(Tracing.newBuilder()
         .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-          .addRemoteField(BAGGAGE_FIELD).build())
+          .add(SingleBaggageField.remote(BAGGAGE_FIELD)).build())
         .spanReporter(Reporter.NOOP)
         .build()));
     }

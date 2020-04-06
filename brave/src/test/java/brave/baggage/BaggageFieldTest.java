@@ -14,9 +14,10 @@
 package brave.baggage;
 
 import brave.Tracing;
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.internal.baggage.BaggageContext;
-import brave.internal.baggage.ExtraBaggageFields;
 import brave.internal.baggage.ExtraBaggageContext;
+import brave.internal.baggage.ExtraBaggageFields;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.Propagation;
@@ -36,8 +37,8 @@ public class BaggageFieldTest {
   static final BaggageField AMZN_TRACE_ID = BaggageField.create("x-amzn-trace-id");
 
   Propagation.Factory factory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-    .addRemoteField(REQUEST_ID, "x-vcap-request-id")
-    .addRemoteField(AMZN_TRACE_ID).build();
+    .add(SingleBaggageField.newBuilder(REQUEST_ID).addKeyName("x-vcap-request-id").build())
+    .add(SingleBaggageField.remote(AMZN_TRACE_ID)).build();
   Propagation<String> propagation = factory.create(Propagation.KeyFactory.STRING);
   Extractor<Map<String, String>> extractor = propagation.extractor(Map::get);
 

@@ -14,9 +14,10 @@
 package brave.sparkjava;
 
 import brave.Tracing;
+import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationConfig;
 import brave.http.HttpServerBenchmarks;
 import brave.propagation.B3Propagation;
-import brave.baggage.BaggagePropagation;
 import brave.sampler.Sampler;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.FilterInfo;
@@ -73,7 +74,7 @@ public class SparkBenchmarks extends HttpServerBenchmarks {
     SparkTracing sparkTracing = SparkTracing.create(
       Tracing.newBuilder()
         .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-          .addRemoteField(BAGGAGE_FIELD).build())
+          .add(BaggagePropagationConfig.SingleBaggageField.remote(BAGGAGE_FIELD)).build())
         .spanReporter(Reporter.NOOP).build()
     );
 
