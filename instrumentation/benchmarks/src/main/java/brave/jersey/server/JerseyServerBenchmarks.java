@@ -14,10 +14,11 @@
 package brave.jersey.server;
 
 import brave.Tracing;
+import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.http.HttpServerBenchmarks;
 import brave.http.HttpTracing;
 import brave.propagation.B3Propagation;
-import brave.baggage.BaggagePropagation;
 import brave.sampler.Sampler;
 import io.undertow.servlet.api.DeploymentInfo;
 import java.util.Collections;
@@ -83,8 +84,7 @@ public class JerseyServerBenchmarks extends HttpServerBenchmarks {
       return new LinkedHashSet<>(asList(new Resource(), TracingApplicationEventListener.create(
         HttpTracing.create(Tracing.newBuilder()
           .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-            .addRemoteField(BAGGAGE_FIELD)
-            .build())
+            .add(SingleBaggageField.remote(BAGGAGE_FIELD)).build())
           .spanReporter(Reporter.NOOP)
           .build())
       )));

@@ -16,6 +16,7 @@ package brave.test;
 import brave.Tracing;
 import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
@@ -96,7 +97,7 @@ public abstract class ITRemote {
       checkForLeakedScopes = strictScopeDecorator;
     }
     propagationFactory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-      .addRemoteField(BAGGAGE_FIELD).build();
+      .add(SingleBaggageField.remote(BAGGAGE_FIELD)).build();
     tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
   }
 

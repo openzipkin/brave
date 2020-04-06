@@ -13,8 +13,8 @@
  */
 package brave.spring.beans;
 
-import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationConfig;
 import brave.baggage.BaggagePropagationCustomizer;
 import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
@@ -24,19 +24,17 @@ import org.springframework.beans.factory.FactoryBean;
 /** Spring XML config does not support chained builders. This converts accordingly */
 public class BaggagePropagationFactoryBean implements FactoryBean {
   Propagation.Factory propagationFactory = B3Propagation.FACTORY;
-  List<BaggageField> fields;
-  List<RemoteBaggageField> remoteFields;
+  List<BaggagePropagationConfig> configs;
   List<BaggagePropagationCustomizer> customizers;
 
   @Override public Propagation.Factory getObject() {
     BaggagePropagation.FactoryBuilder builder =
       BaggagePropagation.newFactoryBuilder(propagationFactory);
-    if (fields != null) {
-      for (BaggageField field : fields) builder.addField(field);
-    }
-    if (remoteFields != null) {
-      for (RemoteBaggageField remoteField : remoteFields)
-        builder.addRemoteField(remoteField.field, remoteField.keyNames);
+    if (configs != null) {
+      builder.clear();
+      for (BaggagePropagationConfig config : configs) {
+        builder.add(config);
+      }
     }
     if (customizers != null) {
       for (BaggagePropagationCustomizer customizer : customizers) customizer.customize(builder);
@@ -56,12 +54,8 @@ public class BaggagePropagationFactoryBean implements FactoryBean {
     this.propagationFactory = propagationFactory;
   }
 
-  public void setFields(List<BaggageField> fields) {
-    this.fields = fields;
-  }
-
-  public void setRemoteFields(List<RemoteBaggageField> remoteFields) {
-    this.remoteFields = remoteFields;
+  public void setConfigs(List<BaggagePropagationConfig> configs) {
+    this.configs = configs;
   }
 
   public void setCustomizers(List<BaggagePropagationCustomizer> customizers) {

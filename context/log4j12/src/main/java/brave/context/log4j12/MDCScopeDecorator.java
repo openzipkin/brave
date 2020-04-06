@@ -14,7 +14,7 @@
 package brave.context.log4j12;
 
 import brave.baggage.BaggageFields;
-import brave.baggage.CorrelationScopeConfig;
+import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
 import brave.baggage.CorrelationScopeDecorator;
 import brave.internal.CorrelationContext;
 import brave.internal.Nullable;
@@ -71,10 +71,10 @@ public final class MDCScopeDecorator {
   @Deprecated public static CurrentTraceContext.ScopeDecorator create() {
     return new Builder()
       .clear()
-      .add(CorrelationScopeConfig.create(BaggageFields.TRACE_ID))
-      .add(CorrelationScopeConfig.create(BaggageFields.PARENT_ID))
-      .add(CorrelationScopeConfig.create(BaggageFields.SPAN_ID))
-      .add(CorrelationScopeConfig.create(BaggageFields.SAMPLED))
+      .add(SingleCorrelationField.create(BaggageFields.TRACE_ID))
+      .add(SingleCorrelationField.create(BaggageFields.PARENT_ID))
+      .add(SingleCorrelationField.create(BaggageFields.SPAN_ID))
+      .add(SingleCorrelationField.create(BaggageFields.SAMPLED))
       .build();
   }
 

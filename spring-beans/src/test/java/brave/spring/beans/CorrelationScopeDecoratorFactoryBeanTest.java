@@ -74,16 +74,16 @@ public class CorrelationScopeDecoratorFactoryBeanTest {
       );
   }
 
-  @Test public void fields() {
+  @Test public void configs() {
     context = new XmlBeans(""
       + "<util:constant id=\"traceId\" static-field=\"brave.baggage.BaggageFields.TRACE_ID\"/>\n"
       + "<bean id=\"correlationDecorator\" class=\"brave.spring.beans.CorrelationScopeDecoratorFactoryBean\">\n"
       + "  <property name=\"builder\">\n"
       + "    <bean class=\"brave.context.log4j12.MDCScopeDecorator\" factory-method=\"newBuilder\"/>\n"
       + "  </property>\n"
-      + "  <property name=\"fields\">\n"
+      + "  <property name=\"configs\">\n"
       + "    <list>\n"
-      + "      <bean class=\"brave.spring.beans.CorrelationFieldFactoryBean\">\n"
+      + "      <bean class=\"brave.spring.beans.SingleCorrelationFieldFactoryBean\">\n"
       + "        <property name=\"baggageField\" ref=\"traceId\"/>\n"
       + "        <property name=\"name\" value=\"X-B3-TraceId\"/>\n"
       + "      </bean>\n"

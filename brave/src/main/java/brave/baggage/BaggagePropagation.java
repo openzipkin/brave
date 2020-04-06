@@ -141,6 +141,7 @@ public class BaggagePropagation<K> implements Propagation<K> {
       if (fieldToKeyNames.containsKey(field.field)) {
         throw new IllegalArgumentException(field.field.name + " already added");
       }
+      configs.add(field);
       Set<String> lcKeyNames = new LinkedHashSet<>();
       for (String keyName : field.keyNames) {
         String lcName = validateName(keyName).toLowerCase(Locale.ROOT);

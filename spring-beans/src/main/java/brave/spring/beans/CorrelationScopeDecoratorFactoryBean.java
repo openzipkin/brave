@@ -23,15 +23,15 @@ import org.springframework.beans.factory.FactoryBean;
 /** Spring XML config does not support chained builders. This converts accordingly */
 public class CorrelationScopeDecoratorFactoryBean implements FactoryBean {
   CorrelationScopeDecorator.Builder builder;
-  List<CorrelationScopeConfig> fields;
+  List<CorrelationScopeConfig> configs;
   List<CorrelationScopeCustomizer> customizers;
 
   @Override public ScopeDecorator getObject() {
     if (builder == null) throw new NullPointerException("builder == null");
-    if (fields != null) {
+    if (configs != null) {
       builder.clear();
-      for (CorrelationScopeConfig field : fields) {
-        builder.add(field);
+      for (CorrelationScopeConfig config : configs) {
+        builder.add(config);
       }
     }
     if (customizers != null) {
@@ -52,8 +52,8 @@ public class CorrelationScopeDecoratorFactoryBean implements FactoryBean {
     this.builder = builder;
   }
 
-  public void setFields(List<CorrelationScopeConfig> fields) {
-    this.fields = fields;
+  public void setConfigs(List<CorrelationScopeConfig> configs) {
+    this.configs = configs;
   }
 
   public void setCustomizers(List<CorrelationScopeCustomizer> customizers) {

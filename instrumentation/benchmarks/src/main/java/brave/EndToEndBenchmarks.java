@@ -15,6 +15,7 @@ package brave;
 
 import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.context.log4j2.ThreadContextScopeDecorator;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
@@ -137,9 +138,14 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
     public TracedBaggage() {
       super(Tracing.newBuilder()
         .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-          .addRemoteField(REQUEST_ID)
-          .addRemoteField(COUNTRY_CODE, "baggage-country-code")
-          .addRemoteField(USER_ID, "baggage-user-id").build())
+          .add(SingleBaggageField.remote(REQUEST_ID))
+          .add(SingleBaggageField.newBuilder(COUNTRY_CODE)
+            .addKeyName("baggage-country-code")
+            .build())
+          .add(SingleBaggageField.newBuilder(USER_ID)
+            .addKeyName("baggage-user-id")
+            .build())
+          .build())
         .spanReporter(AsyncReporter.create(new NoopSender()))
         .build());
     }
