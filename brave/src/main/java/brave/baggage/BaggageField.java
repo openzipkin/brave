@@ -14,10 +14,12 @@
 package brave.baggage;
 
 import brave.Tracing;
-import brave.baggage.BaggagePropagation.BaggageFieldWithKeyNames;
+import brave.baggage.BaggagePropagation.BaggageHandlerWithKeyNames;
 import brave.internal.InternalBaggage;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
+import brave.internal.baggage.BaggageContext;
+import brave.internal.baggage.ExtraBaggageContext;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
@@ -108,7 +110,7 @@ public final class BaggageField {
    * @since 5.11
    */
   public static BaggageField create(String name) {
-    return new BaggageField(name, BaggageContext.EXTRA);
+    return new BaggageField(name, ExtraBaggageContext.get());
   }
 
   /**
@@ -118,7 +120,7 @@ public final class BaggageField {
    */
   public static List<BaggageField> getAll(@Nullable TraceContext context) {
     if (context == null) return Collections.emptyList();
-    return BaggageContext.Extra.getAll(context);
+    return ExtraBaggageContext.getAllFields(context);
   }
 
   /**
@@ -129,7 +131,7 @@ public final class BaggageField {
    */
   public static List<BaggageField> getAll(TraceContextOrSamplingFlags extracted) {
     if (extracted == null) throw new NullPointerException("extracted == null");
-    return BaggageContext.Extra.getAll(extracted);
+    return ExtraBaggageContext.getAllFields(extracted);
   }
 
   /**
@@ -151,7 +153,7 @@ public final class BaggageField {
    */
   @Nullable public static BaggageField getByName(@Nullable TraceContext context, String name) {
     if (context == null) return null;
-    return BaggageContext.Extra.getByName(context, validateName(name));
+    return ExtraBaggageContext.getFieldByName(context, validateName(name));
   }
 
   /**
@@ -163,7 +165,7 @@ public final class BaggageField {
   @Nullable public static BaggageField getByName(TraceContextOrSamplingFlags extracted,
     String name) {
     if (extracted == null) throw new NullPointerException("extracted == null");
-    return BaggageContext.Extra.getByName(extracted, validateName(name));
+    return ExtraBaggageContext.getFieldByName(extracted, validateName(name));
   }
 
   /**
@@ -242,11 +244,13 @@ public final class BaggageField {
    *
    * @since 5.11
    */
-  public void updateValue(@Nullable TraceContext context, @Nullable String value) {
-    if (context == null) return;
+  public boolean updateValue(@Nullable TraceContext context, @Nullable String value) {
+    if (context == null) return false;
     if (this.context.updateValue(this, context, value)) {
       CorrelationFlushScope.flush(this, value);
+      return true;
     }
+    return false;
   }
 
   /**
@@ -256,11 +260,13 @@ public final class BaggageField {
    *
    * @since 5.11
    */
-  public void updateValue(TraceContextOrSamplingFlags extracted, @Nullable String value) {
+  public boolean updateValue(TraceContextOrSamplingFlags extracted, @Nullable String value) {
     if (extracted == null) throw new NullPointerException("extracted == null");
     if (context.updateValue(this, extracted, value)) {
       CorrelationFlushScope.flush(this, value);
+      return true;
     }
+    return false;
   }
 
   /**
@@ -271,8 +277,8 @@ public final class BaggageField {
    *
    * @since 5.11
    */
-  public void updateValue(String value) {
-    updateValue(currentTraceContext(), value);
+  public boolean updateValue(String value) {
+    return updateValue(currentTraceContext(), value);
   }
 
   @Override public String toString() {
@@ -316,7 +322,7 @@ public final class BaggageField {
             (ExtraFieldPropagation.Factory) factory)));
         } else if (factory instanceof BaggagePropagation.Factory) {
           BaggagePropagation.Factory baggageFactory = (BaggagePropagation.Factory) factory;
-          for (BaggageFieldWithKeyNames next : baggageFactory.fieldWithKeyNames) {
+          for (BaggageHandlerWithKeyNames next : baggageFactory.handlersWithKeyNames) {
             allKeyNames.addAll(Arrays.asList(next.keyNames));
           }
         }

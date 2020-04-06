@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,8 @@
  */
 package brave.grpc;
 
-import brave.grpc.GrpcPropagation.Tags;
+import brave.grpc.GrpcPropagation.TagsBin;
+import brave.internal.baggage.ExtraBaggageFields;
 import brave.propagation.TraceContext;
 import java.util.Collections;
 import org.junit.Test;
@@ -35,6 +36,15 @@ public class TraceContextBinaryFormatTest {
     0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0, // trace ID
     1, -1, -1, -1, -1, -1, -1, -1, -1, // span ID
     2, 1 // sampled
+  };
+  byte[] tagsBytes = {
+    0, // version
+    0, // field number
+    6, 'm', 'e', 't', 'h', 'o', 'd', //
+    3, 'f', 'o', 'o', //
+    0, // field number
+    4, 'u', 's', 'e', 'r', //
+    5, 'r', 'o', 'm', 'e', 'o' //
   };
 
   @Test public void roundtrip() {
@@ -59,14 +69,14 @@ public class TraceContextBinaryFormatTest {
   }
 
   @Test public void roundtrip_tags() {
-    Tags tags = new Tags();
+    ExtraBaggageFields tags = GrpcPropagation.GRPC_TAGS_FACTORY.create();
     context = context.toBuilder().extra(Collections.singletonList(tags)).build();
 
     byte[] serialized = TraceContextBinaryFormat.toBytes(context);
     assertThat(serialized)
       .containsExactly(contextBytes);
 
-    assertThat(TraceContextBinaryFormat.parseBytes(serialized, tags))
+    assertThat(TraceContextBinaryFormat.parseBytes(serialized, new TagsBin(tagsBytes)))
       .isEqualTo(context);
   }
 

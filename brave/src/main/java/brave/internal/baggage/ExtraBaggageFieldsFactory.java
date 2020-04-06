@@ -11,8 +11,9 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.internal;
+package brave.internal.baggage;
 
+import brave.internal.InternalPropagation;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -20,25 +21,43 @@ import java.util.List;
 
 import static brave.internal.Lists.ensureMutable;
 
-public abstract class ExtraFactory<E> {
-  public abstract Class<E> type();
+final class ExtraBaggageFieldsFactory implements ExtraBaggageFields.Factory {
+  BaggageHandler[] handlers;
 
-  protected abstract E create();
+  ExtraBaggageFieldsFactory(BaggageHandler... handlers) {
+    this.handlers = handlers;
+  }
 
-  protected abstract E create(E parent);
+  @Override public ExtraBaggageFields create() {
+    return new ExtraBaggageFields(handlers);
+  }
 
-  protected abstract E createExtraAndClaim(long traceId, long spanId);
+  @Override public ExtraBaggageFields create(ExtraBaggageFields parent) {
+    return new ExtraBaggageFields(parent, handlers);
+  }
 
-  protected abstract E createExtraAndClaim(E existing, long traceId, long spanId);
+  ExtraBaggageFields createExtraAndClaim(long traceId, long spanId) {
+    ExtraBaggageFields result = create();
+    result.tryToClaim(traceId, spanId);
+    return result;
+  }
 
-  protected abstract boolean tryToClaim(E existing, long traceId, long spanId);
+  ExtraBaggageFields createExtraAndClaim(ExtraBaggageFields existing, long traceId, long spanId) {
+    ExtraBaggageFields result = create(existing);
+    result.tryToClaim(traceId, spanId);
+    return result;
+  }
 
-  protected abstract void consolidate(E existing, E consolidated);
+  boolean tryToClaim(ExtraBaggageFields existing, long traceId, long spanId) {
+    return existing.tryToClaim(traceId, spanId);
+  }
 
-  public final TraceContext decorate(TraceContext context) {
+  void consolidate(ExtraBaggageFields existing, ExtraBaggageFields consolidated) {
+    consolidated.putAllIfAbsent(existing);
+  }
+
+  @Override public TraceContext decorate(TraceContext context) {
     long traceId = context.traceId(), spanId = context.spanId();
-    Class<E> type = type();
-
     List<Object> extra = context.extra();
     int extraSize = extra.size();
     if (extraSize == 0) {
@@ -47,11 +66,11 @@ public abstract class ExtraFactory<E> {
     }
 
     Object first = extra.get(0);
-    E consolidated = null;
+    ExtraBaggageFields consolidated = null;
 
-    // if the first item is a fields object, try to claim or copy its fields
-    if (type.isInstance(first)) {
-      E existing = (E) first;
+    // if the first item is a baggage state object, try to claim or copy its fields
+    if (first instanceof ExtraBaggageFields) {
+      ExtraBaggageFields existing = (ExtraBaggageFields) first;
       if (tryToClaim(existing, traceId, spanId)) {
         consolidated = existing;
       } else { // otherwise we need to consolidate the fields
@@ -84,8 +103,8 @@ public abstract class ExtraFactory<E> {
     // avoid creating a new list.
     for (int i = 1; i < extraSize; i++) {
       Object next = extra.get(i);
-      if (!type.isInstance(next)) continue;
-      E existing = (E) next;
+      if (!(next instanceof ExtraBaggageFields)) continue;
+      ExtraBaggageFields existing = (ExtraBaggageFields) next;
       if (consolidated == null) {
         if (tryToClaim(existing, traceId, spanId)) {
           consolidated = existing;
@@ -113,7 +132,7 @@ public abstract class ExtraFactory<E> {
   }
 
   // TODO: this is internal. If we ever expose it otherwise, we should use Lists.ensureImmutable
-  protected TraceContext contextWithExtra(TraceContext context, List<Object> immutableExtra) {
-    return InternalPropagation.instance.withExtra(context, immutableExtra);
+  TraceContext contextWithExtra(TraceContext context, List<Object> extra) {
+    return InternalPropagation.instance.withExtra(context, extra);
   }
 }

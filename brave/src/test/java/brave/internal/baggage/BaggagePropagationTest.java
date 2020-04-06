@@ -11,8 +11,10 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.baggage;
+package brave.internal.baggage;
 
+import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagation;
 import brave.propagation.B3Propagation;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.B3SinglePropagation;
@@ -96,8 +98,8 @@ public class BaggagePropagationTest {
   }
 
   @Test public void inject_baggage() {
-    PredefinedBaggageFields baggage = context.findExtra(PredefinedBaggageFields.class);
-    baggage.put(vcapRequestId, uuid);
+    ExtraBaggageFields baggage = context.findExtra(ExtraBaggageFields.class);
+    baggage.updateValue(vcapRequestId, uuid);
 
     injector.inject(context, carrier);
 
@@ -105,9 +107,9 @@ public class BaggagePropagationTest {
   }
 
   @Test public void inject_two() {
-    PredefinedBaggageFields baggage = context.findExtra(PredefinedBaggageFields.class);
-    baggage.put(vcapRequestId, uuid);
-    baggage.put(amznTraceId, awsTraceId);
+    ExtraBaggageFields baggage = context.findExtra(ExtraBaggageFields.class);
+    baggage.updateValue(vcapRequestId, uuid);
+    baggage.updateValue(amznTraceId, awsTraceId);
 
     injector.inject(context, carrier);
 
@@ -126,10 +128,8 @@ public class BaggagePropagationTest {
     assertThat(extracted.context().extra())
       .hasSize(1);
 
-    PredefinedBaggageFields baggage =
-      (PredefinedBaggageFields) extracted.context().extra().get(0);
-    assertThat(baggage.toMap())
-      .containsEntry(amznTraceId.name(), awsTraceId);
+    assertThat(amznTraceId.getValue(extracted))
+      .isEqualTo(awsTraceId);
   }
 
   @Test public void extract_two() {
@@ -143,10 +143,10 @@ public class BaggagePropagationTest {
     assertThat(extracted.context().extra())
       .hasSize(1);
 
-    PredefinedBaggageFields baggage = (PredefinedBaggageFields) extracted.context().extra().get(0);
-    assertThat(baggage.toMap())
-      .containsEntry(amznTraceId.name(), awsTraceId)
-      .containsEntry(vcapRequestId.name(), uuid);
+    assertThat(amznTraceId.getValue(extracted))
+      .isEqualTo(awsTraceId);
+    assertThat(vcapRequestId.getValue(extracted))
+      .isEqualTo(uuid);
   }
 
   @Test public void extract_field_multiple_key_names() {
@@ -172,7 +172,7 @@ public class BaggagePropagationTest {
     assertThat(sessionId.getValue(context)).isEqualTo("12345");
   }
 
-  @Test public void extract_no_key_names() {
+  @Test public void extract_no_overridden_key_names() {
     BaggageField userId = BaggageField.create("userId");
     BaggageField sessionId = BaggageField.create("sessionId");
 

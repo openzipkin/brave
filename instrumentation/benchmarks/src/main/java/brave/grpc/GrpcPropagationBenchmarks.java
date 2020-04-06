@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,9 +13,7 @@
  */
 package brave.grpc;
 
-import brave.grpc.GrpcPropagation.Tags;
 import brave.internal.HexCodec;
-import brave.internal.PropagationFields;
 import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
@@ -25,7 +23,11 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -38,6 +40,8 @@ import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 @Measurement(iterations = 5, time = 1)
 @Warmup(iterations = 10, time = 1)
@@ -71,7 +75,7 @@ public class GrpcPropagationBenchmarks {
     .spanId(HexCodec.lowerHexToUnsignedLong("463ac35c9f6413ad"))
     .sampled(true)
     .build();
-  static final TraceContext contextWithTags = bothFactory.decorate(context);
+  static final TraceContext contextWithTags;
 
   static final GrpcServerRequest
     incomingB3 = new GrpcServerRequest(methodDescriptor, new Metadata()),
@@ -79,8 +83,25 @@ public class GrpcPropagationBenchmarks {
     incomingBothNoTags = new GrpcServerRequest(methodDescriptor, new Metadata()),
     nothingIncoming = new GrpcServerRequest(methodDescriptor, new Metadata());
 
+  static final byte[] tagsBytes;
+
   static {
-    PropagationFields.put(contextWithTags, "method", "helloworld.Greeter/SayHello", Tags.class);
+
+    try {
+      ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+      bytes.write(0); // version
+      bytes.write(0); // field number
+      bytes.write("method".length());
+      bytes.write("method".getBytes(UTF_8));
+      bytes.write("helloworld.Greeter/SayHello".length());
+      bytes.write("helloworld.Greeter/SayHello".getBytes(UTF_8));
+      tagsBytes = bytes.toByteArray();
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+
+    contextWithTags = bothFactory.decorate(context).toBuilder()
+      .extra(Arrays.asList(new GrpcPropagation.TagsBin(tagsBytes))).build();
     b3Injector.inject(context,
       new GrpcClientRequest(methodDescriptor).metadata(incomingB3.metadata));
     bothInjector.inject(contextWithTags,
