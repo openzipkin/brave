@@ -13,9 +13,9 @@
  */
 package brave.baggage;
 
-import brave.internal.baggage.BaggageState;
-import brave.internal.baggage.BaggageStateHandler;
-import brave.internal.baggage.BaggageStateHandlers;
+import brave.internal.baggage.BaggageHandler;
+import brave.internal.baggage.BaggageHandlers;
+import brave.internal.baggage.ExtraBaggageFields;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
@@ -192,7 +192,7 @@ public class BaggagePropagation<K> implements Propagation<K> {
       int i = 0;
       for (Map.Entry<BaggageField, Set<String>> entry : fieldToKeyNames.entrySet()) {
         // one state entry per baggage field, for now..
-        BaggageStateHandler<String> handler = BaggageStateHandlers.string(entry.getKey());
+        BaggageHandler<String> handler = BaggageHandlers.string(entry.getKey());
         handlersWithKeyNames[i++] = new BaggageStateHandlerWithKeyNames(
           handler, entry.getValue().toArray(new String[0])
         );
@@ -203,10 +203,10 @@ public class BaggagePropagation<K> implements Propagation<K> {
 
   /** For {@link Propagation.Factory} */
   static final class BaggageStateHandlerWithKeyNames {
-    final BaggageStateHandler handler;
+    final BaggageHandler handler;
     final String[] keyNames;
 
-    BaggageStateHandlerWithKeyNames(BaggageStateHandler handler, String[] keyNames) {
+    BaggageStateHandlerWithKeyNames(BaggageHandler handler, String[] keyNames) {
       this.handler = handler;
       this.keyNames = keyNames;
     }
@@ -214,10 +214,10 @@ public class BaggagePropagation<K> implements Propagation<K> {
 
   /** For {@link Propagation.Factory#create(KeyFactory)} */
   static final class BaggageStateHandlerWithKeys<K> {
-    final BaggageStateHandler handler;
+    final BaggageHandler handler;
     final K[] keys;
 
-    BaggageStateHandlerWithKeys(BaggageStateHandler handler, K[] keys) {
+    BaggageStateHandlerWithKeys(BaggageHandler handler, K[] keys) {
       this.handler = handler;
       this.keys = keys;
     }
@@ -226,16 +226,16 @@ public class BaggagePropagation<K> implements Propagation<K> {
   static final class Factory extends Propagation.Factory {
     final Propagation.Factory delegate;
     final BaggageStateHandlerWithKeyNames[] handlersWithKeyNames;
-    final BaggageState.Factory stateFactory;
+    final ExtraBaggageFields.Factory stateFactory;
 
     Factory(Propagation.Factory delegate, BaggageStateHandlerWithKeyNames[] handlersWithKeyNames) {
       this.delegate = delegate;
       this.handlersWithKeyNames = handlersWithKeyNames;
-      BaggageStateHandler[] handlers = new BaggageStateHandler[handlersWithKeyNames.length];
+      BaggageHandler[] handlers = new BaggageHandler[handlersWithKeyNames.length];
       for (int i = 0, length = handlersWithKeyNames.length; i < length; i++) {
         handlers[i] = handlersWithKeyNames[i].handler;
       }
-      this.stateFactory = BaggageState.newFactory(handlers);
+      this.stateFactory = ExtraBaggageFields.newFactory(handlers);
     }
 
     @Override
@@ -308,15 +308,15 @@ public class BaggagePropagation<K> implements Propagation<K> {
 
     @Override public void inject(TraceContext traceContext, C carrier) {
       delegate.inject(traceContext, carrier);
-      BaggageState extra = traceContext.findExtra(BaggageState.class);
+      ExtraBaggageFields extra = traceContext.findExtra(ExtraBaggageFields.class);
       if (extra == null) return;
       inject(extra, carrier);
     }
 
-    void inject(BaggageState baggageState, C carrier) {
+    void inject(ExtraBaggageFields extraBaggageFields, C carrier) {
       for (int i = 0, length = propagation.handlersWithKeys.length; i < length; i++) {
         BaggageStateHandlerWithKeys<K> handlerWithKeys = propagation.handlersWithKeys[i];
-        String encoded = baggageState.encodeState(handlerWithKeys.handler);
+        String encoded = extraBaggageFields.encodeState(handlerWithKeys.handler);
         if (encoded == null) continue;
         for (K key : handlerWithKeys.keys) setter.put(carrier, key, encoded);
       }
@@ -338,18 +338,18 @@ public class BaggagePropagation<K> implements Propagation<K> {
       TraceContextOrSamplingFlags result = delegate.extract(carrier);
 
       // always allocate in case values are added late
-      BaggageState baggageState = propagation.factory.stateFactory.create();
+      ExtraBaggageFields extraBaggageFields = propagation.factory.stateFactory.create();
       for (int i = 0, length = propagation.handlersWithKeys.length; i < length; i++) {
         BaggageStateHandlerWithKeys<K> handlerWithKeys = propagation.handlersWithKeys[i];
         for (K key : handlerWithKeys.keys) { // possibly multiple keys when prefixes are in use
           String maybeEncoded = getter.get(carrier, key);
           if (maybeEncoded != null) { // accept the first match
-            if (baggageState.decodeState(handlerWithKeys.handler, maybeEncoded)) break;
+            if (extraBaggageFields.decodeState(handlerWithKeys.handler, maybeEncoded)) break;
           }
         }
       }
 
-      return result.toBuilder().addExtra(baggageState).build();
+      return result.toBuilder().addExtra(extraBaggageFields).build();
     }
   }
 }

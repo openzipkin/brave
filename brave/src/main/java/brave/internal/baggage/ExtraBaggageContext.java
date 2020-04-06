@@ -20,9 +20,13 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Collections;
 import java.util.List;
 
-/** Most commonly, field storage is inside {@link TraceContext#extra()} */
-public final class BaggageStateContext extends BaggageContext {
-  static final BaggageStateContext INSTANCE = new BaggageStateContext();
+/**
+ * Most commonly, field storage is inside {@link TraceContext#extra()}.
+ *
+ * @see ExtraBaggageFields
+ */
+public final class ExtraBaggageContext extends BaggageContext {
+  static final ExtraBaggageContext INSTANCE = new ExtraBaggageContext();
 
   public static BaggageContext get() {
     return INSTANCE;
@@ -67,9 +71,9 @@ public final class BaggageStateContext extends BaggageContext {
   }
 
   static List<BaggageField> getAllFields(List<Object> extra) {
-    BaggageState state = findExtra(BaggageState.class, extra);
-    if (state == null) return Collections.emptyList();
-    return state.getFields();
+    ExtraBaggageFields fields = findExtra(ExtraBaggageFields.class, extra);
+    if (fields == null) return Collections.emptyList();
+    return fields.getFields();
   }
 
   @Nullable static BaggageField getFieldByName(List<BaggageField> fields, String name) {
@@ -85,14 +89,14 @@ public final class BaggageStateContext extends BaggageContext {
   }
 
   @Nullable static String getValue(BaggageField field, List<Object> extra) {
-    BaggageState state = findExtra(BaggageState.class, extra);
-    if (state == null) return null;
-    return state.getValue(field);
+    ExtraBaggageFields fields = findExtra(ExtraBaggageFields.class, extra);
+    if (fields == null) return null;
+    return fields.getValue(field);
   }
 
   static boolean updateValue(BaggageField field, List<Object> extra, @Nullable String value) {
-    BaggageState state = findExtra(BaggageState.class, extra);
-    return state != null && state.updateValue(field, value);
+    ExtraBaggageFields fields = findExtra(ExtraBaggageFields.class, extra);
+    return fields != null && fields.updateValue(field, value);
   }
 
   static <T> T findExtra(Class<T> type, List<Object> extra) {

@@ -17,19 +17,19 @@ import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class StringBaggageStateHandlerTest extends BaggageStateTest<String> {
-  @Override protected BaggageState.Factory newFactory() {
-    return new BaggageStateFactory(
-      BaggageStateHandlers.string(field1),
-      BaggageStateHandlers.string(field2)
+public class StringBaggageHandlerTest extends ExtraBaggageFieldsTest<String> {
+  @Override protected ExtraBaggageFields.Factory newFactory() {
+    return new ExtraBaggageFieldsFactory(
+      BaggageHandlers.string(field1),
+      BaggageHandlers.string(field2)
     );
   }
 
   @Test public void putValue_ignores_if_not_defined() {
-    BaggageState baggageState = factory.create();
+    ExtraBaggageFields extraBaggageFields = factory.create();
 
-    baggageState.updateValue(field3, "1");
+    extraBaggageFields.updateValue(field3, "1");
 
-    assertThat(isEmpty(baggageState)).isTrue();
+    assertThat(isEmpty(extraBaggageFields)).isTrue();
   }
 }

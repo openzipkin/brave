@@ -17,18 +17,18 @@ import brave.baggage.BaggageField;
 import java.util.Collections;
 import java.util.List;
 
-public final class BaggageStateHandlers {
-  /** Only handles a singe field per element. */
-  public static BaggageStateHandler<String> string(BaggageField onlyField) {
+public final class BaggageHandlers {
+  /** Only handles a single field value. */
+  public static BaggageHandler<String> string(BaggageField onlyField) {
     if (onlyField == null) throw new NullPointerException("onlyField == null");
-    return new StringBaggageStateHandler(onlyField);
+    return new StringBaggageHandler(onlyField);
   }
 
-  static final class StringBaggageStateHandler implements BaggageStateHandler<String> {
+  static final class StringBaggageHandler implements BaggageHandler<String> {
     final BaggageField field;
     final List<BaggageField> fieldList;
 
-    StringBaggageStateHandler(BaggageField field) {
+    StringBaggageHandler(BaggageField field) {
       this.field = field;
       this.fieldList = Collections.singletonList(field);
     }

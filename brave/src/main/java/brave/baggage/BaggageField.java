@@ -19,7 +19,7 @@ import brave.internal.InternalBaggage;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.baggage.BaggageContext;
-import brave.internal.baggage.BaggageStateContext;
+import brave.internal.baggage.ExtraBaggageContext;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
@@ -110,7 +110,7 @@ public final class BaggageField {
    * @since 5.11
    */
   public static BaggageField create(String name) {
-    return new BaggageField(name, BaggageStateContext.get());
+    return new BaggageField(name, ExtraBaggageContext.get());
   }
 
   /**
@@ -120,7 +120,7 @@ public final class BaggageField {
    */
   public static List<BaggageField> getAll(@Nullable TraceContext context) {
     if (context == null) return Collections.emptyList();
-    return BaggageStateContext.getAllFields(context);
+    return ExtraBaggageContext.getAllFields(context);
   }
 
   /**
@@ -131,7 +131,7 @@ public final class BaggageField {
    */
   public static List<BaggageField> getAll(TraceContextOrSamplingFlags extracted) {
     if (extracted == null) throw new NullPointerException("extracted == null");
-    return BaggageStateContext.getAllFields(extracted);
+    return ExtraBaggageContext.getAllFields(extracted);
   }
 
   /**
@@ -153,7 +153,7 @@ public final class BaggageField {
    */
   @Nullable public static BaggageField getByName(@Nullable TraceContext context, String name) {
     if (context == null) return null;
-    return BaggageStateContext.getFieldByName(context, validateName(name));
+    return ExtraBaggageContext.getFieldByName(context, validateName(name));
   }
 
   /**
@@ -165,7 +165,7 @@ public final class BaggageField {
   @Nullable public static BaggageField getByName(TraceContextOrSamplingFlags extracted,
     String name) {
     if (extracted == null) throw new NullPointerException("extracted == null");
-    return BaggageStateContext.getFieldByName(extracted, validateName(name));
+    return ExtraBaggageContext.getFieldByName(extracted, validateName(name));
   }
 
   /**

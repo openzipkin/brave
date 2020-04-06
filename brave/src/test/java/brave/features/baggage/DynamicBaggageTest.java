@@ -13,29 +13,29 @@
  */
 package brave.features.baggage;
 
-import brave.internal.baggage.BaggageState;
-import brave.internal.baggage.BaggageStateTest;
+import brave.internal.baggage.ExtraBaggageFields;
+import brave.internal.baggage.ExtraBaggageFieldsTest;
 import java.util.Map;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** This is an internal feature until we settle on an encoding format. */
-public class DynamicBaggageTest extends BaggageStateTest<Map<String, String>> {
-  DynamicBaggageStateHandler handler = new DynamicBaggageStateHandler();
+public class DynamicBaggageTest extends ExtraBaggageFieldsTest<Map<String, String>> {
+  DynamicBaggageHandler handler = new DynamicBaggageHandler();
 
-  @Override protected BaggageState.Factory newFactory() {
-    return BaggageState.newFactory(handler);
+  @Override protected ExtraBaggageFields.Factory newFactory() {
+    return ExtraBaggageFields.newFactory(handler);
   }
 
   @Test public void encodes_arbitrary_fields() {
-    BaggageState baggageState = factory.create();
+    ExtraBaggageFields extraBaggageFields = factory.create();
 
-    baggageState.updateValue(field1, "1");
-    baggageState.updateValue(field2, "2");
-    baggageState.updateValue(field3, "3");
+    extraBaggageFields.updateValue(field1, "1");
+    extraBaggageFields.updateValue(field2, "2");
+    extraBaggageFields.updateValue(field3, "3");
 
-    assertThat(baggageState.encodeState(handler))
+    assertThat(extraBaggageFields.encodeState(handler))
       .contains(""
         + "one=1\n"
         + "two=2\n"

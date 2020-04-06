@@ -31,18 +31,18 @@ import java.util.Map.Entry;
 import org.junit.Test;
 import zipkin2.reporter.Reporter;
 
-import static brave.internal.baggage.BaggageStateContext.findExtra;
+import static brave.internal.baggage.ExtraBaggageContext.findExtra;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class BaggageStateFactoryTest {
+public class ExtraBaggageFieldsFactoryTest {
   BaggageField field1 = BaggageField.create("one");
   BaggageField field2 = BaggageField.create("two");
   String state1 = "1", state2 = "2", state3 = "3";
 
-  BaggageStateFactory factory = new BaggageStateFactory(
-    BaggageStateHandlers.string(field1),
-    BaggageStateHandlers.string(field2)
+  ExtraBaggageFieldsFactory factory = new ExtraBaggageFieldsFactory(
+    BaggageHandlers.string(field1),
+    BaggageHandlers.string(field2)
   );
 
   Propagation.Factory propagationFactory = new Propagation.Factory() {
@@ -68,12 +68,12 @@ public class BaggageStateFactoryTest {
       TraceContext context2 = tracing.tracer().newChild(context1).context();
 
       // Instances are not the same
-      assertThat(context1.findExtra(BaggageState.class))
-        .isNotSameAs(context2.findExtra(BaggageState.class));
+      assertThat(context1.findExtra(ExtraBaggageFields.class))
+        .isNotSameAs(context2.findExtra(ExtraBaggageFields.class));
 
       // But have the same values
-      assertThat(context1.findExtra(BaggageState.class))
-        .isEqualTo(context2.findExtra(BaggageState.class));
+      assertThat(context1.findExtra(ExtraBaggageFields.class))
+        .isEqualTo(context2.findExtra(ExtraBaggageFields.class));
       assertThat(getState(context1, field1))
         .isEqualTo(getState(context2, field1))
         .isEqualTo(state1);
@@ -95,27 +95,27 @@ public class BaggageStateFactoryTest {
 
       TraceContext context2 =
         tracing.tracer().toSpan(context1.toBuilder().sampled(false).build()).context();
-      BaggageState baggageState1 = (BaggageState) context1.extra().get(0);
-      BaggageState baggageState1_toSpan = (BaggageState) context2.extra().get(0);
+      ExtraBaggageFields extraBaggageFields1 = (ExtraBaggageFields) context1.extra().get(0);
+      ExtraBaggageFields extraBaggageFields1_toSpan = (ExtraBaggageFields) context2.extra().get(0);
 
       // we have the same span ID, so we should couple our propagation baggageState
-      assertThat(baggageState1).isSameAs(baggageState1_toSpan);
+      assertThat(extraBaggageFields1).isSameAs(extraBaggageFields1_toSpan);
 
       // we no longer have the same span ID, so we should decouple our propagation baggageState
       TraceContext context3 = tracing.tracer().newChild(context1).context();
-      BaggageState baggageState3 = (BaggageState) context3.extra().get(0);
+      ExtraBaggageFields extraBaggageFields3 = (ExtraBaggageFields) context3.extra().get(0);
 
       // we have different instances of extra
-      assertThat(baggageState1).isNotSameAs(baggageState3);
+      assertThat(extraBaggageFields1).isNotSameAs(extraBaggageFields3);
 
       // however, the values inside are the same until a write occurs
-      assertThat(baggageState1).isEqualTo(baggageState3);
+      assertThat(extraBaggageFields1).isEqualTo(extraBaggageFields3);
 
       // check that the change is present, but the other contexts are the same
       Object beforeUpdate = getState(context1, field1);
-      baggageState1.updateValue(field1, "2");
-      assertThat(getState(baggageState1, field1)).isNotEqualTo(beforeUpdate); // copy-on-write
-      assertThat(getState(baggageState3, field1)).isEqualTo(beforeUpdate);
+      extraBaggageFields1.updateValue(field1, "2");
+      assertThat(getState(extraBaggageFields1, field1)).isNotEqualTo(beforeUpdate); // copy-on-write
+      assertThat(getState(extraBaggageFields3, field1)).isEqualTo(beforeUpdate);
     }
   }
 
@@ -126,7 +126,7 @@ public class BaggageStateFactoryTest {
    * a leak such as from using {@link CurrentTraceContext.Default#inheritable()}.
    *
    * <BaggageState>When we are only extracting propagation baggageState, the baggageState should
-   * merge as opposed to creating duplicate copies of {@link BaggageState}.
+   * merge as opposed to creating duplicate copies of {@link ExtraBaggageFields}.
    */
   @Test public void nextSpanMergesExtraWithImplicitParent_hasstate() {
     try (Tracing tracing = withNoopSpanReporter()) {
@@ -206,9 +206,9 @@ public class BaggageStateFactoryTest {
   }
 
   @Test public void get_ignore_if_not_defined_index() {
-    BaggageState baggageState = factory.create();
+    ExtraBaggageFields extraBaggageFields = factory.create();
 
-    assertThat(baggageState.getState(4))
+    assertThat(extraBaggageFields.getState(4))
       .isNull();
   }
 
@@ -261,7 +261,7 @@ public class BaggageStateFactoryTest {
   }
 
   @Test public void decorate_redundant() {
-    BaggageState alreadyClaimed = factory.create();
+    ExtraBaggageFields alreadyClaimed = factory.create();
     factory.tryToClaim(alreadyClaimed, context.traceId(), context.spanId());
 
     Map<List<Object>, List<Object>> inputToExpected = new LinkedHashMap<>();
@@ -280,7 +280,7 @@ public class BaggageStateFactoryTest {
 
   @Test public void decorate_forksWhenFieldsAlreadyClaimed() {
     TraceContext other = TraceContext.newBuilder().traceId(98L).spanId(99L).build();
-    BaggageState claimedByOther = factory.create();
+    ExtraBaggageFields claimedByOther = factory.create();
     factory.tryToClaim(claimedByOther, other.traceId(), other.spanId());
 
     Map<List<Object>, List<Object>> inputToExpected = new LinkedHashMap<>();
@@ -312,7 +312,7 @@ public class BaggageStateFactoryTest {
 
   static void assertBaggageStateClaimed(List<Object> actual, TraceContext context) {
     assertThat(actual)
-      .filteredOn(BaggageState.class::isInstance)
+      .filteredOn(ExtraBaggageFields.class::isInstance)
       .hasSize(1)
       .flatExtracting("traceId", "spanId")
       .containsExactly(context.traceId(), context.spanId());
@@ -327,25 +327,25 @@ public class BaggageStateFactoryTest {
   }
 
   void putState(List<Object> extra, BaggageField field, String state) {
-    BaggageState baggageState = findExtra(BaggageState.class, extra);
-    if (baggageState == null) return;
-    putState(baggageState, field, state);
+    ExtraBaggageFields extraBaggageFields = findExtra(ExtraBaggageFields.class, extra);
+    if (extraBaggageFields == null) return;
+    putState(extraBaggageFields, field, state);
   }
 
-  void putState(BaggageState baggageState, BaggageField field, String state) {
-    int index = baggageState.indexOf(field);
+  void putState(ExtraBaggageFields extraBaggageFields, BaggageField field, String state) {
+    int index = extraBaggageFields.indexOf(field);
     if (index == -1) return;
-    baggageState.putState(index, state);
+    extraBaggageFields.putState(index, state);
   }
 
   String getState(TraceContext context, BaggageField field) {
-    BaggageState baggageState = context.findExtra(BaggageState.class);
-    if (baggageState == null) return null;
-    return getState(baggageState, field);
+    ExtraBaggageFields extraBaggageFields = context.findExtra(ExtraBaggageFields.class);
+    if (extraBaggageFields == null) return null;
+    return getState(extraBaggageFields, field);
   }
 
-  String getState(BaggageState baggageState, BaggageField field) {
-    int index = baggageState.indexOf(field);
-    return index != -1 ? (String) baggageState.getState(index) : null;
+  String getState(ExtraBaggageFields extraBaggageFields, BaggageField field) {
+    int index = extraBaggageFields.indexOf(field);
+    return index != -1 ? (String) extraBaggageFields.getState(index) : null;
   }
 }

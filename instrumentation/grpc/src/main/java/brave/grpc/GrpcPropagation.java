@@ -14,8 +14,8 @@
 package brave.grpc;
 
 import brave.baggage.BaggageField;
-import brave.internal.baggage.BaggageState;
-import brave.internal.baggage.BaggageStateHandlers;
+import brave.internal.baggage.BaggageHandlers;
+import brave.internal.baggage.ExtraBaggageFields;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
@@ -28,8 +28,8 @@ import java.util.List;
 final class GrpcPropagation<K> implements Propagation<K> {
   static final BaggageField GRPC_TAGS_FIELD = BaggageField.create("grpc-tags");
 
-  static final BaggageState.Factory GRPC_TAGS_FACTORY =
-    BaggageState.newFactory(BaggageStateHandlers.string(GRPC_TAGS_FIELD));
+  static final ExtraBaggageFields.Factory GRPC_TAGS_FACTORY =
+    ExtraBaggageFields.newFactory(BaggageHandlers.string(GRPC_TAGS_FIELD));
 
   /**
    * This creates a compatible metadata key based on Census, except this extracts a brave trace

@@ -17,7 +17,12 @@ import brave.baggage.BaggageField;
 import brave.internal.Nullable;
 import java.util.List;
 
-public interface BaggageStateHandler<S> {
+/**
+ * Handles context storage of one or more baggage fields in {@link ExtraBaggageFields}.
+ *
+ * @param <S> the state that holds field values
+ */
+public interface BaggageHandler<S> {
   List<BaggageField> currentFields(@Nullable S state);
 
   boolean handlesField(BaggageField field);

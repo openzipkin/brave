@@ -14,7 +14,7 @@
 package brave.grpc;
 
 import brave.grpc.GrpcPropagation.TagsBin;
-import brave.internal.baggage.BaggageState;
+import brave.internal.baggage.ExtraBaggageFields;
 import brave.propagation.TraceContext;
 import java.util.Collections;
 import org.junit.Test;
@@ -69,7 +69,7 @@ public class TraceContextBinaryFormatTest {
   }
 
   @Test public void roundtrip_tags() {
-    BaggageState tags = GrpcPropagation.GRPC_TAGS_FACTORY.create();
+    ExtraBaggageFields tags = GrpcPropagation.GRPC_TAGS_FACTORY.create();
     context = context.toBuilder().extra(Collections.singletonList(tags)).build();
 
     byte[] serialized = TraceContextBinaryFormat.toBytes(context);

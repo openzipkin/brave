@@ -14,7 +14,7 @@
 package brave.features.baggage;
 
 import brave.baggage.BaggageField;
-import brave.internal.baggage.BaggageStateHandler;
+import brave.internal.baggage.BaggageHandler;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -27,7 +27,8 @@ import org.apache.logging.log4j.core.util.StringBuilderWriter;
 import static com.google.common.base.Objects.equal;
 
 /** This accepts any keys, but only writes to one propagation field. */
-final class DynamicBaggageStateHandler implements BaggageStateHandler<Map<BaggageField, String>> {
+final class DynamicBaggageHandler
+  implements BaggageHandler<Map<BaggageField, String>> {
   @Override public List<BaggageField> currentFields(Map<BaggageField, String> state) {
     return new ArrayList<>(state.keySet());
   }

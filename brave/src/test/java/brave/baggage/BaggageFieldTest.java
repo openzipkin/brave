@@ -15,8 +15,8 @@ package brave.baggage;
 
 import brave.Tracing;
 import brave.internal.baggage.BaggageContext;
-import brave.internal.baggage.BaggageState;
-import brave.internal.baggage.BaggageStateContext;
+import brave.internal.baggage.ExtraBaggageFields;
+import brave.internal.baggage.ExtraBaggageContext;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.Propagation;
@@ -54,7 +54,7 @@ public class BaggageFieldTest {
 
   @Test public void internalStorage() {
     assertThat(BaggageField.create("foo").context)
-      .isSameAs(BaggageStateContext.get());
+      .isSameAs(ExtraBaggageContext.get());
 
     BaggageContext context = mock(BaggageContext.class);
     assertThat(new BaggageField("context", context).context)
@@ -282,7 +282,7 @@ public class BaggageFieldTest {
 
   /**
    * Ensures only lower-case name comparison is used in equals and hashCode. This allows {@link
-   * BaggagePropagation} to deduplicate and {@link BaggageState} to use these as keys.
+   * BaggagePropagation} to deduplicate and {@link ExtraBaggageFields} to use these as keys.
    */
   @Test public void equalsAndHashCode() {
     // same field are equivalent

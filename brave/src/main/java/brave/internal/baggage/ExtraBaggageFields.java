@@ -17,30 +17,32 @@ import brave.baggage.BaggageField;
 import brave.internal.Nullable;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 /**
- * Holds one or more baggage fields detached from a {@linkplain TraceContext}.
+ * Holds one or more baggage fields in {@link TraceContext#extra()} or {@link
+ * TraceContextOrSamplingFlags#extra()}.
  *
  * <p>We need to retain propagation state extracted from headers. However, we don't know the trace
  * identifiers, yet. In order to resolve this ordering concern, we create an object to hold extra
- * state, and defer associating it with a span ID (via {@link BaggageStateFactory#decorate(TraceContext)}.
+ * state, and defer associating it with a span ID (via {@link ExtraBaggageFieldsFactory#decorate(TraceContext)}.
  *
  * <p>The implementation of this type uses copy-on-write semantics to prevent changes in a
  * child context from affecting its parent.
  */
-public final class BaggageState {
-  public static Factory newFactory(BaggageStateHandler... handlers) {
-    return new BaggageStateFactory(handlers);
+public final class ExtraBaggageFields {
+  public static Factory newFactory(BaggageHandler... handlers) {
+    return new ExtraBaggageFieldsFactory(handlers);
   }
 
   public interface Factory {
-    BaggageState create();
+    ExtraBaggageFields create();
 
-    BaggageState create(BaggageState parent);
+    ExtraBaggageFields create(ExtraBaggageFields parent);
 
     TraceContext decorate(TraceContext context);
   }
@@ -78,7 +80,7 @@ public final class BaggageState {
     int index = indexOf(field);
     if (index == -1) return false;
 
-    BaggageStateHandler handler = handlers[index];
+    BaggageHandler handler = handlers[index];
     synchronized (this) {
       Object[] stateArray = this.stateArray;
       if (stateArray == null) {
@@ -111,7 +113,7 @@ public final class BaggageState {
    *
    * @see Propagation.Getter
    */
-  public boolean decodeState(BaggageStateHandler handler, String encoded) {
+  public boolean decodeState(BaggageHandler handler, String encoded) {
     if (handler == null) throw new NullPointerException("handler == null");
     if (encoded == null) throw new NullPointerException("encoded == null");
 
@@ -130,7 +132,7 @@ public final class BaggageState {
    *
    * @see Propagation.Setter
    */
-  @Nullable public String encodeState(BaggageStateHandler handler) {
+  @Nullable public String encodeState(BaggageHandler handler) {
     if (handler == null) throw new NullPointerException("handler == null");
 
     int index = indexOf(handler);
@@ -141,15 +143,15 @@ public final class BaggageState {
     return handlers[index].encode(maybeValue);
   }
 
-  final BaggageStateHandler[] handlers;
+  final BaggageHandler[] handlers;
   volatile Object[] stateArray; // guarded by this, copy on write
   long traceId, spanId; // guarded by this
 
-  BaggageState(BaggageStateHandler[] handlers) {
+  ExtraBaggageFields(BaggageHandler[] handlers) {
     this.handlers = handlers;
   }
 
-  BaggageState(BaggageState parent, BaggageStateHandler[] handlers) {
+  ExtraBaggageFields(ExtraBaggageFields parent, BaggageHandler[] handlers) {
     this(handlers);
     checkSameHandlers(parent);
     this.stateArray = parent.stateArray;
@@ -170,7 +172,7 @@ public final class BaggageState {
     return true;
   }
 
-  void checkSameHandlers(BaggageState predefinedParent) {
+  void checkSameHandlers(ExtraBaggageFields predefinedParent) {
     if (!Arrays.equals(handlers, predefinedParent.handlers)) {
       throw new IllegalStateException(
         String.format("Mixed name configuration unsupported: found %s, expected %s",
@@ -179,7 +181,7 @@ public final class BaggageState {
     }
   }
 
-  int indexOf(BaggageStateHandler handler) {
+  int indexOf(BaggageHandler handler) {
     for (int i = 0, length = handlers.length; i < length; i++) {
       if (handlers[i].equals(handler)) return i;
     }
@@ -205,7 +207,7 @@ public final class BaggageState {
    * <p>Note: this does not synchronize internally as it is acting on newly constructed fields
    * not yet returned to a caller.
    */
-  void putAllIfAbsent(BaggageState parent) {
+  void putAllIfAbsent(ExtraBaggageFields parent) {
     checkSameHandlers(parent);
     Object[] parentStateArray = parent.stateArray;
     if (parentStateArray == null) return;
@@ -231,8 +233,8 @@ public final class BaggageState {
   // Implemented for equals when no baggage was extracted
   @Override public boolean equals(Object o) {
     if (o == this) return true;
-    if (!(o instanceof BaggageState)) return false;
-    BaggageState that = (BaggageState) o;
+    if (!(o instanceof ExtraBaggageFields)) return false;
+    ExtraBaggageFields that = (ExtraBaggageFields) o;
     return Arrays.equals(handlers, that.handlers) && Arrays.equals(stateArray, that.stateArray);
   }
 

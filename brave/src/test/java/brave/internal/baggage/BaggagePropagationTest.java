@@ -98,7 +98,7 @@ public class BaggagePropagationTest {
   }
 
   @Test public void inject_baggage() {
-    BaggageState baggage = context.findExtra(BaggageState.class);
+    ExtraBaggageFields baggage = context.findExtra(ExtraBaggageFields.class);
     baggage.updateValue(vcapRequestId, uuid);
 
     injector.inject(context, carrier);
@@ -107,7 +107,7 @@ public class BaggagePropagationTest {
   }
 
   @Test public void inject_two() {
-    BaggageState baggage = context.findExtra(BaggageState.class);
+    ExtraBaggageFields baggage = context.findExtra(ExtraBaggageFields.class);
     baggage.updateValue(vcapRequestId, uuid);
     baggage.updateValue(amznTraceId, awsTraceId);
 

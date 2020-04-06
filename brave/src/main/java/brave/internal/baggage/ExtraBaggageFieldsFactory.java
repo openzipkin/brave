@@ -21,38 +21,38 @@ import java.util.List;
 
 import static brave.internal.Lists.ensureMutable;
 
-final class BaggageStateFactory implements BaggageState.Factory {
-  BaggageStateHandler[] handlers;
+final class ExtraBaggageFieldsFactory implements ExtraBaggageFields.Factory {
+  BaggageHandler[] handlers;
 
-  BaggageStateFactory(BaggageStateHandler... handlers) {
+  ExtraBaggageFieldsFactory(BaggageHandler... handlers) {
     this.handlers = handlers;
   }
 
-  @Override public BaggageState create() {
-    return new BaggageState(handlers);
+  @Override public ExtraBaggageFields create() {
+    return new ExtraBaggageFields(handlers);
   }
 
-  @Override public BaggageState create(BaggageState parent) {
-    return new BaggageState(parent, handlers);
+  @Override public ExtraBaggageFields create(ExtraBaggageFields parent) {
+    return new ExtraBaggageFields(parent, handlers);
   }
 
-  BaggageState createExtraAndClaim(long traceId, long spanId) {
-    BaggageState result = create();
+  ExtraBaggageFields createExtraAndClaim(long traceId, long spanId) {
+    ExtraBaggageFields result = create();
     result.tryToClaim(traceId, spanId);
     return result;
   }
 
-  BaggageState createExtraAndClaim(BaggageState existing, long traceId, long spanId) {
-    BaggageState result = create(existing);
+  ExtraBaggageFields createExtraAndClaim(ExtraBaggageFields existing, long traceId, long spanId) {
+    ExtraBaggageFields result = create(existing);
     result.tryToClaim(traceId, spanId);
     return result;
   }
 
-  boolean tryToClaim(BaggageState existing, long traceId, long spanId) {
+  boolean tryToClaim(ExtraBaggageFields existing, long traceId, long spanId) {
     return existing.tryToClaim(traceId, spanId);
   }
 
-  void consolidate(BaggageState existing, BaggageState consolidated) {
+  void consolidate(ExtraBaggageFields existing, ExtraBaggageFields consolidated) {
     consolidated.putAllIfAbsent(existing);
   }
 
@@ -66,11 +66,11 @@ final class BaggageStateFactory implements BaggageState.Factory {
     }
 
     Object first = extra.get(0);
-    BaggageState consolidated = null;
+    ExtraBaggageFields consolidated = null;
 
     // if the first item is a baggage state object, try to claim or copy its fields
-    if (first instanceof BaggageState) {
-      BaggageState existing = (BaggageState) first;
+    if (first instanceof ExtraBaggageFields) {
+      ExtraBaggageFields existing = (ExtraBaggageFields) first;
       if (tryToClaim(existing, traceId, spanId)) {
         consolidated = existing;
       } else { // otherwise we need to consolidate the fields
@@ -103,8 +103,8 @@ final class BaggageStateFactory implements BaggageState.Factory {
     // avoid creating a new list.
     for (int i = 1; i < extraSize; i++) {
       Object next = extra.get(i);
-      if (!(next instanceof BaggageState)) continue;
-      BaggageState existing = (BaggageState) next;
+      if (!(next instanceof ExtraBaggageFields)) continue;
+      ExtraBaggageFields existing = (ExtraBaggageFields) next;
       if (consolidated == null) {
         if (tryToClaim(existing, traceId, spanId)) {
           consolidated = existing;
