@@ -100,14 +100,4 @@ public class HackedTraceIdTest {
       .satisfies(c -> assertThat(c.traceIdString()).isEqualTo("1111111111111111"))
       .satisfies(c -> assertThat(c.spanIdString()).isEqualTo("2222222222222222"));
   }
-
-  @Test public void invalidTraceIdsDontCrash() {
-    //Arrays.asList(
-    //  "",
-    //  "1",
-    //  "12222222222222222",
-    //
-    //)
-
-  }
 }
