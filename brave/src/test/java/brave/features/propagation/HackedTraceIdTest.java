@@ -31,12 +31,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>Rumor has it that Twitter used to do this for embedding device information to ensure a
  * specific device couldn't absorb the entire random space. It isn't known if the amount of bits
  * stolen was a nibble or a byte.
+ *
+ * <p>See https://github.com/spring-cloud/spring-cloud-sleuth/issues/1106
  */
 public class HackedTraceIdTest {
   String customTraceIdName = "trace_id";
   // CustomTraceIdPropagation.Factory substitutes for B3Propagation.FACTORY in real config.
   Propagation.Factory propagationFactory =
-    new CustomTraceIdPropagation.Factory(B3Propagation.FACTORY, customTraceIdName);
+    CustomTraceIdPropagation.create(B3Propagation.FACTORY, customTraceIdName);
   Propagation<String> propagation = propagationFactory.create(KeyFactory.STRING);
   Extractor<Map<String, String>> extractor = propagation.extractor(Map::get);
   Map<String, String> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);

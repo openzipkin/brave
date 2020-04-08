@@ -25,7 +25,6 @@ import java.util.List;
  * different header name. In ideal case, the load balancer just switches to use B3 single format.
  * This is an example of a hack you can do when it can't.
  *
- * <p>See https://github.com/spring-cloud/spring-cloud-sleuth/issues/1106
  * <p>See https://github.com/openzipkin/b3-propagation
  */
 public final class CustomTraceIdPropagation<K> implements Propagation<K> {
