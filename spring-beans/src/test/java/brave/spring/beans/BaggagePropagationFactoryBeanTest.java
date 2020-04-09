@@ -60,14 +60,14 @@ public class BaggagePropagationFactoryBeanTest {
 
   @Test public void configs() {
     context = new XmlBeans(""
-      + "<bean id=\"userId\" class=\"brave.baggage.BaggageField\" factory-method=\"create\">\n"
-      + "  <constructor-arg><value>userId</value></constructor-arg>\n"
+      + "<bean id=\"userIdBaggageField\" class=\"brave.baggage.BaggageField\" factory-method=\"create\">\n"
+      + "  <constructor-arg value=\"userId\" />\n"
       + "</bean>\n"
       + "<bean id=\"propagationFactory\" class=\"brave.spring.beans.BaggagePropagationFactoryBean\">\n"
       + "  <property name=\"configs\">\n"
       + "    <list>\n"
       + "      <bean class=\"brave.spring.beans.SingleBaggageFieldFactoryBean\">\n"
-      + "        <property name=\"field\" ref=\"userId\"/>\n"
+      + "        <property name=\"field\" ref=\"userIdBaggageField\"/>\n"
       + "        <property name=\"keyNames\">\n"
       + "          <list>\n"
       + "            <value>baggage_user_id</value>\n"
@@ -80,19 +80,44 @@ public class BaggagePropagationFactoryBeanTest {
       + "</bean>"
     );
 
-    assertThathandlersWithKeyNames()
+    assertThatHandlersWithKeyNames()
       .extracting("handler.field")
       .usingFieldByFieldElementComparator()
       .containsExactly(BaggageField.create("userId"));
-    assertThathandlersWithKeyNames()
+    assertThatHandlersWithKeyNames()
       .flatExtracting("keyNames")
       .containsExactly("baggage_user_id", "baggage-user-id");
   }
 
+  /** Spring is graceful about a single field being substitutable for a list of size one */
+  @Test public void config_no_lists() {
+    context = new XmlBeans(""
+      + "<bean id=\"userIdBaggageField\" class=\"brave.baggage.BaggageField\" factory-method=\"create\">\n"
+      + "  <constructor-arg value=\"userId\" />\n"
+      + "</bean>\n"
+      + "<bean id=\"propagationFactory\" class=\"brave.spring.beans.BaggagePropagationFactoryBean\">\n"
+      + "  <property name=\"configs\">\n"
+      + "    <bean class=\"brave.spring.beans.SingleBaggageFieldFactoryBean\">\n"
+      + "      <property name=\"field\" ref=\"userIdBaggageField\" />\n"
+      + "      <property name=\"keyNames\" value=\"userid\" />\n"
+      + "    </bean>\n"
+      + "  </property>\n"
+      + "</bean>"
+    );
+
+    assertThatHandlersWithKeyNames()
+      .extracting("handler.field")
+      .usingFieldByFieldElementComparator()
+      .containsExactly(BaggageField.create("userId"));
+    assertThatHandlersWithKeyNames()
+      .flatExtracting("keyNames")
+      .containsExactly("userid");
+  }
+
   @Test public void propagationFactory() {
     context = new XmlBeans(""
-      + "<bean id=\"userId\" class=\"brave.baggage.BaggageField\" factory-method=\"create\">\n"
-      + "  <constructor-arg><value>userId</value></constructor-arg>\n"
+      + "<bean id=\"userIdBaggageField\" class=\"brave.baggage.BaggageField\" factory-method=\"create\">\n"
+      + "  <constructor-arg value=\"userId\" />\n"
       + "</bean>\n"
       + "<bean id=\"propagationFactory\" class=\"brave.spring.beans.BaggagePropagationFactoryBean\">\n"
       + "  <property name=\"propagationFactory\">\n"
@@ -101,7 +126,7 @@ public class BaggagePropagationFactoryBeanTest {
       + "  <property name=\"configs\">\n"
       + "    <list>\n"
       + "      <bean class=\"brave.spring.beans.SingleBaggageFieldFactoryBean\">\n"
-      + "        <property name=\"field\" ref=\"userId\"/>\n"
+      + "        <property name=\"field\" ref=\"userIdBaggageField\"/>\n"
       + "      </bean>\n"
       + "    </list>\n"
       + "  </property>\n"
@@ -136,7 +161,7 @@ public class BaggagePropagationFactoryBeanTest {
     verify(CUSTOMIZER_TWO).customize(any(BaggagePropagation.FactoryBuilder.class));
   }
 
-  ObjectArrayAssert<Object> assertThathandlersWithKeyNames() {
+  ObjectArrayAssert<Object> assertThatHandlersWithKeyNames() {
     return assertThat(context.getBean("propagationFactory", Propagation.Factory.class))
       .extracting("handlersWithKeyNames")
       .asInstanceOf(InstanceOfAssertFactories.ARRAY);
