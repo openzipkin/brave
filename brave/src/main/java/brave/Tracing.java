@@ -49,8 +49,7 @@ import zipkin2.reporter.Sender;
  * for example via spring or when mocking.
  */
 public abstract class Tracing implements Closeable {
-  // AtomicReference<Object> instead of AtomicReference<Tracing> to ensure unloadable
-  static final AtomicReference<Object> CURRENT = new AtomicReference<>();
+  static final AtomicReference<Tracing> CURRENT = new AtomicReference<>();
 
   public static Builder newBuilder() {
     return new Builder();

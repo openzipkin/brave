@@ -60,10 +60,10 @@ public final class TraceIdContext extends SamplingFlags {
 
   static String toTraceIdString(long traceIdHigh, long traceId) {
     if (traceIdHigh != 0) {
-      char[] result = RecyclableBuffers.idBuffer();
+      char[] result = RecyclableBuffers.parseBuffer();
       writeHexLong(result, 0, traceIdHigh);
       writeHexLong(result, 16, traceId);
-      return new String(result);
+      return new String(result, 0, 32);
     }
     return toLowerHex(traceId);
   }

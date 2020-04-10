@@ -92,12 +92,21 @@ public class ThreadLocalCurrentTraceContext extends CurrentTraceContext { // not
   @Override public Scope newScope(@Nullable TraceContext currentSpan) {
     final TraceContext previous = local.get();
     local.set(currentSpan);
-    class ThreadLocalScope implements Scope {
-      @Override public void close() {
-        local.set(previous);
-      }
-    }
-    Scope result = new ThreadLocalScope();
+    Scope result = new ThreadLocalScope(local, previous);
     return decorateScope(currentSpan, result);
+  }
+
+  static final class ThreadLocalScope implements Scope {
+    final ThreadLocal<TraceContext> local;
+    final TraceContext previous;
+
+    ThreadLocalScope(ThreadLocal<TraceContext> local, TraceContext previous) {
+      this.local = local;
+      this.previous = previous;
+    }
+
+    @Override public void close() {
+      local.set(previous);
+    }
   }
 }
