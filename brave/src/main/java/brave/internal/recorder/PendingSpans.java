@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -40,6 +40,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * <p>The internal implementation is derived from WeakConcurrentMap by Rafael Winterhalter. See
  * https://github.com/raphw/weak-lock-free/blob/master/src/main/java/com/blogspot/mydailyjava/weaklockfree/WeakConcurrentMap.java
+ * Notably, this does not require reference equality for keys, rather stable {@link #hashCode()}.
  */
 public final class PendingSpans extends ReferenceQueue<TraceContext> {
   // Even though we only put by RealKey, we allow get and remove by LookupKey
