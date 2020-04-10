@@ -15,6 +15,7 @@ package brave.propagation;
 
 import brave.internal.Nullable;
 import brave.internal.Platform;
+import brave.internal.RecyclableBuffers;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 
@@ -71,7 +72,7 @@ public final class B3SingleFormat {
    * with the client.
    */
   public static String writeB3SingleFormatWithoutParentId(TraceContext context) {
-    char[] buffer = getCharBuffer();
+    char[] buffer = RecyclableBuffers.parseBuffer();
     int length = writeB3SingleFormat(context, 0L, buffer);
     return new String(buffer, 0, length);
   }
@@ -81,7 +82,7 @@ public final class B3SingleFormat {
    * array or byte buffer values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
    */
   public static byte[] writeB3SingleFormatWithoutParentIdAsBytes(TraceContext context) {
-    char[] buffer = getCharBuffer();
+    char[] buffer = RecyclableBuffers.parseBuffer();
     int length = writeB3SingleFormat(context, 0L, buffer);
     return asciiToNewByteArray(buffer, length);
   }
@@ -95,7 +96,7 @@ public final class B3SingleFormat {
    * reuses a client's span ID, prefer {@link #writeB3SingleFormatWithoutParentId(TraceContext)}.
    */
   public static String writeB3SingleFormat(TraceContext context) {
-    char[] buffer = getCharBuffer();
+    char[] buffer = RecyclableBuffers.parseBuffer();
     int length = writeB3SingleFormat(context, context.parentIdAsLong(), buffer);
     return new String(buffer, 0, length);
   }
@@ -105,7 +106,7 @@ public final class B3SingleFormat {
    * buffer values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
    */
   public static byte[] writeB3SingleFormatAsBytes(TraceContext context) {
-    char[] buffer = getCharBuffer();
+    char[] buffer = RecyclableBuffers.parseBuffer();
     int length = writeB3SingleFormat(context, context.parentIdAsLong(), buffer);
     return asciiToNewByteArray(buffer, length);
   }
@@ -341,17 +342,6 @@ public final class B3SingleFormat {
       result[i] = (byte) buffer[i];
     }
     return result;
-  }
-
-  static final ThreadLocal<char[]> CHAR_BUFFER = new ThreadLocal<>();
-
-  static char[] getCharBuffer() {
-    char[] charBuffer = CHAR_BUFFER.get();
-    if (charBuffer == null) {
-      charBuffer = new char[FORMAT_MAX_LENGTH];
-      CHAR_BUFFER.set(charBuffer);
-    }
-    return charBuffer;
   }
 
   B3SingleFormat() {

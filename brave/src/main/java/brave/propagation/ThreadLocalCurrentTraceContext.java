@@ -78,11 +78,13 @@ public class ThreadLocalCurrentTraceContext extends CurrentTraceContext { // not
 
   @SuppressWarnings("ThreadLocalUsage") // intentional: to support multiple Tracer instances
   final ThreadLocal<TraceContext> local;
+  final RevertToNullScope revertToNull;
 
   ThreadLocalCurrentTraceContext(Builder builder) {
     super(builder);
     if (builder.local == null) throw new NullPointerException("local == null");
     local = builder.local;
+    revertToNull = new RevertToNullScope(local);
   }
 
   @Override public TraceContext get() {
@@ -92,12 +94,33 @@ public class ThreadLocalCurrentTraceContext extends CurrentTraceContext { // not
   @Override public Scope newScope(@Nullable TraceContext currentSpan) {
     final TraceContext previous = local.get();
     local.set(currentSpan);
-    class ThreadLocalScope implements Scope {
-      @Override public void close() {
-        local.set(previous);
-      }
-    }
-    Scope result = new ThreadLocalScope();
+    Scope result = previous != null ? new RevertToPreviousScope(local, previous) : revertToNull;
     return decorateScope(currentSpan, result);
+  }
+
+  static final class RevertToNullScope implements Scope {
+    final ThreadLocal<TraceContext> local;
+
+    RevertToNullScope(ThreadLocal<TraceContext> local) {
+      this.local = local;
+    }
+
+    @Override public void close() {
+      local.set(null);
+    }
+  }
+
+  static final class RevertToPreviousScope implements Scope {
+    final ThreadLocal<TraceContext> local;
+    final TraceContext previous;
+
+    RevertToPreviousScope(ThreadLocal<TraceContext> local, TraceContext previous) {
+      this.local = local;
+      this.previous = previous;
+    }
+
+    @Override public void close() {
+      local.set(previous);
+    }
   }
 }

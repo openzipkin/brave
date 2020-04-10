@@ -31,8 +31,7 @@ import static brave.http.HttpSampler.toHttpRequestSampler;
  */
 // Not final as it previously was not. This allows mocks and similar.
 public class HttpTracing implements Closeable {
-  // AtomicReference<Object> instead of AtomicReference<HttpTracing> to ensure unloadable
-  static final AtomicReference<Object> CURRENT = new AtomicReference<>();
+  static final AtomicReference<HttpTracing> CURRENT = new AtomicReference<>();
 
   public static HttpTracing create(Tracing tracing) {
     return newBuilder(tracing).build();
