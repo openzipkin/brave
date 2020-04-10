@@ -55,8 +55,12 @@ public class ThreadLocalCurrentTraceContextClassLoaderTest {
   }
 
   /**
-   * TODO: While it is an instrumentation bug to leak a scope, we should be tolerant, for example
-   * considering weak references or similar.
+   * TODO: While it is an instrumentation bug to leak a scope, we should be tolerant.
+   *
+   * <p>The current design problem is we don't know a reference type we can use that clears when
+   * the classloader is unloaded, regardless of GC. For example, having {@link Scope} extend {@link
+   * java.lang.ref.WeakReference} to hold the value to revert. This would only help if GC happened
+   * prior to the classloader unload, which would be an odd thing to rely on.
    */
   @Test(expected = AssertionError.class) public void leakedScope_preventsUnloading() {
     assertRunIsUnloadable(LeakedScope.class, getClass().getClassLoader());
