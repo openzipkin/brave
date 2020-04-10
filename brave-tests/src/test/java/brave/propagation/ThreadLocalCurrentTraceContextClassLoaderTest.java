@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -40,6 +40,17 @@ public class ThreadLocalCurrentTraceContextClassLoaderTest {
       try (Scope scope = current.newScope(TraceContext.newBuilder().traceId(1).spanId(1).build())) {
 
       }
+    }
+  }
+
+  @Test public void leakedNullScope() {
+    assertRunIsUnloadable(LeakedNullScope.class, getClass().getClassLoader());
+  }
+
+  static class LeakedNullScope implements Runnable {
+    @Override public void run() {
+      CurrentTraceContext current = ThreadLocalCurrentTraceContext.newBuilder().build();
+      current.newScope(null);
     }
   }
 
