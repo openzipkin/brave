@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.tuple;
  * This shows how a {@link FinishedSpanHandler} can add data some external formats need, such as
  * child count.
  *
- * <p><em>Note:</em> this currently only works with children enclosed by their parents. If you have
+ * <p><em>Note:</em> this currently only works with children fully enclosed by their parents. If you have
  * spans that finish after their parent, you'll need a more fancy implementation.
  */
 public class CountingChildrenTest {
