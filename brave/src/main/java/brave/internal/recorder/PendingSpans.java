@@ -71,51 +71,40 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     return delegate.get(context);
   }
 
-  public PendingSpan getOrCreate(TraceContext context, boolean start) {
+  public PendingSpan getOrCreate(
+    @Nullable TraceContext parent, TraceContext context, boolean start) {
     PendingSpan result = get(context);
     if (result != null) return result;
 
     MutableSpan data = new MutableSpan();
     if (context.shared()) data.setShared();
 
+    PendingSpan parentSpan = parent != null ? get(parent) : null;
+
     // save overhead calculating time if the parent is in-progress (usually is)
-    TickClock clock = getClockFromParent(context);
-    if (clock == null) {
-      clock = new TickClock(this.clock.currentTimeMicroseconds(), System.nanoTime());
-      if (start) data.startTimestamp(clock.baseEpochMicros);
-    } else if (start) {
-      data.startTimestamp(clock.currentTimeMicroseconds());
+    TickClock clock;
+    if (parentSpan != null) {
+      clock = parentSpan.clock;
+      if (start) data.startTimestamp(clock.currentTimeMicroseconds());
+    } else {
+      long currentTimeMicroseconds = this.clock.currentTimeMicroseconds();
+      clock = new TickClock(currentTimeMicroseconds, System.nanoTime());
+      if (start) data.startTimestamp(currentTimeMicroseconds);
     }
+
     PendingSpan newSpan = new PendingSpan(context, data, clock);
     PendingSpan previousSpan = delegate.putIfAbsent(new RealKey(context, this), newSpan);
     if (previousSpan != null) return previousSpan; // lost race
+
+    // We've now allocated a new trace context.
+    // It is a bug to have neither a reference to your parent or local root set.
+    assert parent != null || context.isLocalRoot();
 
     if (trackOrphans) {
       newSpan.caller =
         new Throwable("Thread " + Thread.currentThread().getName() + " allocated span here");
     }
     return newSpan;
-  }
-
-  /** Trace contexts are equal only on trace ID and span ID. try to get the parent's clock */
-  @Nullable TickClock getClockFromParent(TraceContext context) {
-    long parentId = context.parentIdAsLong();
-    // NOTE: we still look for lookup key even on root span, as a client span can be root, and a
-    // server can share the same ID. Essentially, a shared span is similar to a child.
-    PendingSpan parent = null;
-    if (context.shared() || parentId != 0L) {
-      long spanId = parentId != 0L ? parentId : context.spanId();
-      parent = delegate.get(InternalPropagation.instance.newTraceContext(
-        0,
-        context.traceIdHigh(),
-        context.traceId(),
-        0,
-        0,
-        spanId,
-        Collections.emptyList()
-      ));
-    }
-    return parent != null ? parent.clock : null;
   }
 
   /** @see brave.Span#abandon() */

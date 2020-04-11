@@ -93,7 +93,7 @@ public abstract class Tracing implements Closeable {
    * @param context references a potentially unstarted span you'd like a clock correlated with
    */
   public final Clock clock(TraceContext context) {
-    return tracer().pendingSpans.getOrCreate(context, false).clock();
+    return tracer().pendingSpans.getOrCreate(null, context, false).clock();
   }
 
   abstract public ErrorParser errorParser();
@@ -104,7 +104,7 @@ public abstract class Tracing implements Closeable {
    * <p>This object should not be cached.
    */
   @Nullable public static Tracing current() {
-    return (Tracing) CURRENT.get();
+    return CURRENT.get();
   }
 
   /**
