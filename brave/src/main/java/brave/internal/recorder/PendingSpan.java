@@ -20,10 +20,12 @@ import brave.propagation.TraceContext;
 import java.lang.ref.WeakReference;
 
 /**
- * This includes a weak reference of the trace context, which allows externalized forms of the trace
- * context to be swapped for the one in use.
+ * This is the value of a map entry in {@link PendingSpans}, whose key is a weak reference to {@link
+ * #context()}.
  *
- * <p>This is a weak reference to ensure that {@link PendingSpans} can clean up on GC.
+ * <p>{@link #context()} is cached so that externalized forms of a trace context to be swapped for
+ * the one in use. It is a weak reference as otherwise it would prevent the corresponding map key
+ * from being garbage collected.
  */
 public final class PendingSpan extends WeakReference<TraceContext> {
   final MutableSpan state;
