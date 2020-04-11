@@ -17,9 +17,11 @@ import brave.GarbageCollectors;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.internal.InternalPropagation;
+import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import java.lang.ref.Reference;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -28,12 +30,29 @@ import org.junit.Test;
 import zipkin2.Annotation;
 import zipkin2.Span;
 
+import static brave.internal.InternalPropagation.FLAG_LOCAL_ROOT;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class PendingSpansTest {
+  static {
+    SamplingFlags.NOT_SAMPLED.toString(); // ensure InternalPropagation is wired for tests
+  }
+
   List<zipkin2.Span> spans = new ArrayList<>();
-  TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
+  // PendingSpans should always be passed a trace context instantiated by the Tracer. This fakes
+  // a local root span, so that we don't have to depend on the Tracer to run these tests.
+  TraceContext context = InternalPropagation.instance.newTraceContext(
+    FLAG_SAMPLED_SET | FLAG_SAMPLED | FLAG_LOCAL_ROOT,
+    0L,
+    1L,
+    2L,
+    0L,
+    1L,
+    Collections.emptyList()
+  );
   AtomicInteger clock = new AtomicInteger();
   PendingSpans pendingSpans;
 
@@ -58,7 +77,7 @@ public class PendingSpansTest {
 
   @Test
   public void getOrCreate_lazyCreatesASpan() {
-    PendingSpan span = pendingSpans.getOrCreate(context, false);
+    PendingSpan span = pendingSpans.getOrCreate(null, context, false);
 
     assertThat(span).isNotNull();
   }
@@ -66,16 +85,16 @@ public class PendingSpansTest {
   /** Ensure we use the same clock for traces that started in-process */
   @Test
   public void getOrCreate_reusesClockFromParent() {
-    TraceContext trace = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
+    TraceContext trace = context;
     TraceContext traceJoin = trace.toBuilder().shared(true).build();
-    TraceContext trace2 = TraceContext.newBuilder().traceId(2L).spanId(2L).build();
+    TraceContext trace2 = context.toBuilder().traceId(2L).build();
     TraceContext traceChild =
-      TraceContext.newBuilder().traceId(1L).parentId(2L).spanId(3L).build();
+      TraceContext.newBuilder().traceId(1L).parentId(trace.spanId()).spanId(3L).build();
 
-    PendingSpan traceSpan = pendingSpans.getOrCreate(trace, false);
-    PendingSpan traceJoinSpan = pendingSpans.getOrCreate(traceJoin, false);
-    PendingSpan trace2Span = pendingSpans.getOrCreate(trace2, false);
-    PendingSpan traceChildSpan = pendingSpans.getOrCreate(traceChild, false);
+    PendingSpan traceSpan = pendingSpans.getOrCreate(null, trace, false);
+    PendingSpan traceJoinSpan = pendingSpans.getOrCreate(trace, traceJoin, false);
+    PendingSpan trace2Span = pendingSpans.getOrCreate(null, trace2, false);
+    PendingSpan traceChildSpan = pendingSpans.getOrCreate(trace, traceChild, false);
 
     assertThat(traceSpan.clock).isSameAs(traceChildSpan.clock);
     assertThat(traceSpan.clock).isSameAs(traceJoinSpan.clock);
@@ -84,8 +103,8 @@ public class PendingSpansTest {
 
   @Test
   public void getOrCreate_cachesReference() {
-    PendingSpan span = pendingSpans.getOrCreate(context, false);
-    assertThat(pendingSpans.getOrCreate(context, false)).isSameAs(span);
+    PendingSpan span = pendingSpans.getOrCreate(null, context, false);
+    assertThat(pendingSpans.getOrCreate(null, context, false)).isSameAs(span);
   }
 
   @Test
@@ -98,21 +117,21 @@ public class PendingSpansTest {
     assertThat(context1.hashCode()).isEqualTo(context2.hashCode());
     assertThat(context1).isNotEqualTo(context2);
 
-    assertThat(pendingSpans.getOrCreate(context1, false)).isNotEqualTo(
-      pendingSpans.getOrCreate(context2, false));
+    assertThat(pendingSpans.getOrCreate(null, context1, false)).isNotEqualTo(
+      pendingSpans.getOrCreate(null, context2, false));
   }
 
   @Test
   public void getOrCreate_splitsSharedServerDataFromClient() {
     TraceContext context2 = context.toBuilder().shared(true).build();
 
-    assertThat(pendingSpans.getOrCreate(context, false)).isNotEqualTo(
-      pendingSpans.getOrCreate(context2, false));
+    assertThat(pendingSpans.getOrCreate(null, context, false)).isNotEqualTo(
+      pendingSpans.getOrCreate(null, context2, false));
   }
 
   @Test
   public void remove_clearsReference() {
-    pendingSpans.getOrCreate(context, false);
+    pendingSpans.getOrCreate(null, context, false);
     pendingSpans.remove(context);
 
     assertThat(pendingSpans.delegate).isEmpty();
@@ -121,7 +140,7 @@ public class PendingSpansTest {
 
   @Test
   public void remove_doesntReport() {
-    pendingSpans.getOrCreate(context, false);
+    pendingSpans.getOrCreate(null, context, false);
     pendingSpans.remove(context);
 
     assertThat(spans).isEmpty();
@@ -142,8 +161,8 @@ public class PendingSpansTest {
     assertThat(context1.hashCode()).isEqualTo(context2.hashCode());
     assertThat(context1).isNotEqualTo(context2);
 
-    pendingSpans.getOrCreate(context1, false);
-    pendingSpans.getOrCreate(context2, false);
+    pendingSpans.getOrCreate(null, context1, false);
+    pendingSpans.getOrCreate(null, context2, false);
 
     pendingSpans.remove(context1);
 
@@ -154,7 +173,7 @@ public class PendingSpansTest {
   /** mainly ensures internals aren't dodgy on null */
   @Test
   public void remove_whenSomeReferencesAreCleared() {
-    pendingSpans.getOrCreate(context, false);
+    pendingSpans.getOrCreate(null, context, false);
     pretendGCHappened();
     pendingSpans.remove(context);
 
@@ -165,9 +184,9 @@ public class PendingSpansTest {
 
   @Test
   public void getOrCreate_whenSomeReferencesAreCleared() {
-    pendingSpans.getOrCreate(context, false);
+    pendingSpans.getOrCreate(null, context, false);
     pretendGCHappened();
-    pendingSpans.getOrCreate(context, false);
+    pendingSpans.getOrCreate(null, context, false);
 
     // we'd expect two distinct entries.. the span would be reported twice, but merged zipkin-side
     assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
@@ -182,19 +201,19 @@ public class PendingSpansTest {
   @Test
   public void reportOrphanedSpans_afterGC() {
     TraceContext context1 = context.toBuilder().traceId(1).spanId(1).build();
-    PendingSpan span = pendingSpans.getOrCreate(context1, false);
+    PendingSpan span = pendingSpans.getOrCreate(null, context1, false);
     span.state.name("foo");
     span = null; // clear reference so GC occurs
     TraceContext context2 = context.toBuilder().traceId(2).spanId(2).build();
-    pendingSpans.getOrCreate(context2, false);
+    pendingSpans.getOrCreate(null, context2, false);
     TraceContext context3 = context.toBuilder().traceId(3).spanId(3).build();
-    pendingSpans.getOrCreate(context3, false);
+    pendingSpans.getOrCreate(null, context3, false);
     TraceContext context4 = context.toBuilder().traceId(4).spanId(4).build();
-    pendingSpans.getOrCreate(context4, false);
+    pendingSpans.getOrCreate(null, context4, false);
     // ensure sampled local spans are not reported when orphaned unless they are also sampled remote
     TraceContext context5 =
       context.toBuilder().spanId(5).sampledLocal(true).sampled(false).build();
-    pendingSpans.getOrCreate(context5, false);
+    pendingSpans.getOrCreate(null, context5, false);
 
     int initialClockVal = clock.get();
 
@@ -223,13 +242,13 @@ public class PendingSpansTest {
   @Test
   public void noop_afterGC() {
     TraceContext context1 = context.toBuilder().spanId(1).build();
-    pendingSpans.getOrCreate(context1, false);
+    pendingSpans.getOrCreate(null, context1, false);
     TraceContext context2 = context.toBuilder().spanId(2).build();
-    pendingSpans.getOrCreate(context2, false);
+    pendingSpans.getOrCreate(null, context2, false);
     TraceContext context3 = context.toBuilder().spanId(3).build();
-    pendingSpans.getOrCreate(context3, false);
+    pendingSpans.getOrCreate(null, context3, false);
     TraceContext context4 = context.toBuilder().spanId(4).build();
-    pendingSpans.getOrCreate(context4, false);
+    pendingSpans.getOrCreate(null, context4, false);
 
     int initialClockVal = clock.get();
 
@@ -266,7 +285,7 @@ public class PendingSpansTest {
     }, false);
 
     TraceContext context = this.context.toBuilder().build();
-    pendingSpans.getOrCreate(context, false);
+    pendingSpans.getOrCreate(null, context, false);
     // We drop the reference to the context, which means the next GC should attempt to flush it
     context = null;
 
@@ -291,7 +310,7 @@ public class PendingSpansTest {
     assertThat(pendingSpans.toString())
       .isEqualTo("PendingSpans[]");
 
-    pendingSpans.getOrCreate(context, false);
+    pendingSpans.getOrCreate(null, context, false);
 
     assertThat(pendingSpans.toString())
       .isEqualTo("PendingSpans[WeakReference(" + context + ")]");
@@ -323,7 +342,7 @@ public class PendingSpansTest {
     }, false);
 
     TraceContext context = this.context.toBuilder().build();
-    pendingSpans.getOrCreate(context, false).state().tag("foo", "bar");
+    pendingSpans.getOrCreate(null, context, false).state().tag("foo", "bar");
     // We drop the reference to the context, which means the next GC should attempt to flush it
     context = null;
 
@@ -348,7 +367,7 @@ public class PendingSpansTest {
     }, false);
 
     TraceContext context = context1.toBuilder().build();
-    pendingSpans.getOrCreate(context, false).state().tag("foo", "bar");
+    pendingSpans.getOrCreate(null, context, false).state().tag("foo", "bar");
     // We drop the reference to the context, which means the next GC should attempt to flush it
     context = null;
 

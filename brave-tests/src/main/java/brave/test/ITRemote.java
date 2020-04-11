@@ -17,6 +17,7 @@ import brave.Tracing;
 import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagation;
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+import brave.internal.InternalPropagation;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
@@ -27,6 +28,7 @@ import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Collections;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.rules.DisableOnDebug;
@@ -35,6 +37,7 @@ import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
 import zipkin2.Span;
 
+import static brave.internal.InternalPropagation.FLAG_LOCAL_ROOT;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -48,6 +51,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ul></pre>
  */
 public abstract class ITRemote {
+  static {
+    SamplingFlags.NOT_SAMPLED.toString(); // ensure InternalPropagation is wired for tests
+  }
+
   public static final BaggageField BAGGAGE_FIELD = BaggageField.create("user-id");
 
   /**
@@ -65,13 +72,19 @@ public abstract class ITRemote {
   /** Returns a trace context for use in propagation tests. */
   protected TraceContext newTraceContext(SamplingFlags flags) {
     long id = System.nanoTime(); // Random enough as tests are run serially anyway
-    TraceContext result = TraceContext.newBuilder()
-      .traceIdHigh(id).traceId(id + 1).parentId(id + 2).spanId(id + 3)
-      .sampled(flags.sampled())
-      .sampledLocal(flags.sampledLocal())
-      .debug(flags.debug()).build();
 
-    return tracing.propagationFactory().decorate(result);
+    // Simulate a new local root root, but without the dependency on Tracer to create it.
+    TraceContext context = InternalPropagation.instance.newTraceContext(
+      InternalPropagation.instance.flags(flags) | FLAG_LOCAL_ROOT,
+      0L,
+      id + 1L,
+      id + 3L,
+      id + 2L,
+      id + 3L,
+      Collections.emptyList()
+    );
+
+    return tracing.propagationFactory().decorate(context);
   }
 
   protected final CurrentTraceContext currentTraceContext;
