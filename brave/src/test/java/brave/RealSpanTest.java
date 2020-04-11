@@ -13,7 +13,7 @@
  */
 package brave;
 
-import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.List;
@@ -201,18 +201,18 @@ public class RealSpanTest {
     assertThat(one).isNotEqualTo(two);
   }
 
-  @Test public void equals_realSpan_sameContext() {
+  @Test public void equals_lazySpan_sameContext() {
     Span current;
-    try (CurrentTraceContext.Scope ws = tracing.currentTraceContext().newScope(context)) {
+    try (Scope ws = tracing.currentTraceContext().newScope(context)) {
       current = tracing.tracer().currentSpan();
     }
 
     assertThat(tracing.tracer().toSpan(context)).isEqualTo(current);
   }
 
-  @Test public void equals_realSpan_notSameContext() {
+  @Test public void equals_lazySpan_notSameContext() {
     Span current;
-    try (CurrentTraceContext.Scope ws = tracing.currentTraceContext().newScope(context2)) {
+    try (Scope ws = tracing.currentTraceContext().newScope(context2)) {
       current = tracing.tracer().currentSpan();
     }
 

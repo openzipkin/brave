@@ -58,10 +58,21 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     this.noop = noop;
   }
 
-  public PendingSpan getOrCreate(TraceContext context, boolean start) {
+  /**
+   * Gets a pending span, or returns {@code null} if there is none.
+   *
+   * <p>This saves processing time and ensures reference consistency by looking for an existing,
+   * decorated context first. This ensures an externalized, but existing context is not mistaken for
+   * a new local root.
+   */
+  @Nullable public PendingSpan get(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
     reportOrphanedSpans();
-    PendingSpan result = delegate.get(context);
+    return delegate.get(context);
+  }
+
+  public PendingSpan getOrCreate(TraceContext context, boolean start) {
+    PendingSpan result = get(context);
     if (result != null) return result;
 
     MutableSpan data = new MutableSpan();
@@ -75,7 +86,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     } else if (start) {
       data.startTimestamp(clock.currentTimeMicroseconds());
     }
-    PendingSpan newSpan = new PendingSpan(data, clock);
+    PendingSpan newSpan = new PendingSpan(context, data, clock);
     PendingSpan previousSpan = delegate.putIfAbsent(new RealKey(context, this), newSpan);
     if (previousSpan != null) return previousSpan; // lost race
 
@@ -108,6 +119,13 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
   }
 
   /** @see brave.Span#abandon() */
+  public void abandon(TraceContext context) {
+    if (context == null) throw new NullPointerException("context == null");
+    PendingSpan last = delegate.remove(context);
+    reportOrphanedSpans(); // also clears the reference relating to the recent remove
+  }
+
+  /** @see brave.Span#finish() */
   public boolean remove(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
     PendingSpan last = delegate.remove(context);
@@ -127,6 +145,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     while ((contextKey = (RealKey) poll()) != null) {
       PendingSpan value = delegate.remove(contextKey);
       if (noop || value == null) continue;
+      assert value.context() == null : "unexpected for the weak referent to be present after GC!";
       if (flushTime == 0L) flushTime = clock.currentTimeMicroseconds();
 
       boolean isEmpty = value.state.isEmpty();
