@@ -173,6 +173,8 @@ final class RealSpan extends Span {
     return isEqualToRealOrLazySpan(context, o);
   }
 
+  // We don't compare a RealSpan vs a NoopSpan as they can never equal each other.
+  // RealSpan's are always locally sampled and Noop ones are always not.
   static boolean isEqualToRealOrLazySpan(TraceContext context, Object o) {
     if (o instanceof LazySpan) {
       return context.equals(((LazySpan) o).context);

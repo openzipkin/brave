@@ -378,13 +378,13 @@ public class Tracer {
 
     // There are a few known scenarios for the context to be absent from the pending map:
     // * Created by a separate tracer (localRootId set)
-    // * Resurrected span from a garbage collection (localRootId set)
+    // * Recreating the same trace context after it was garbage collected (localRootId set)
     // * Ad-hoc usage of TraceContext.Builder (localRootId not set, as only settable internally)
     //
-    // The first two scenarios are currently indistinguishable from eachother. If we had a way to
+    // The first two scenarios are currently indistinguishable from each other. If we had a way to
     // tell if the current tracer already decorated the context, we could avoid re-decorating it
-    // here in the case of resurrection. This is an edge case anyway and decoration should be
-    // idempotent. Hence, we decorate unconditionally at this point.
+    // in the case of recreation. This is an edge case anyway and decoration should be idempotent.
+    // Hence, we decorate unconditionally here.
     TraceContext decorated = decorateContext(
       InternalPropagation.instance.flags(context),
       context.traceIdHigh(),
