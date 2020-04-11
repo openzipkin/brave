@@ -13,10 +13,10 @@
  */
 package brave.internal.handler;
 
-import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
+import brave.handler.SpanHandler.Cause;
 import brave.propagation.TraceContext;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -44,10 +44,10 @@ import static java.util.Arrays.asList;
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Thread)
 @Threads(1)
-public class NoopAwareFinishedSpanHandlerBenchmarks {
+public class NoopAwareSpanHandlerBenchmarks {
   AtomicBoolean noop = new AtomicBoolean();
-  FinishedSpanHandler one = new FinishedSpanHandler() {
-    @Override public boolean handle(TraceContext context, MutableSpan span) {
+  SpanHandler one = new SpanHandler() {
+    @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
       span.tag("one", "");
       return true;
     }
@@ -56,8 +56,8 @@ public class NoopAwareFinishedSpanHandlerBenchmarks {
       return "one";
     }
   };
-  FinishedSpanHandler two = new FinishedSpanHandler() {
-    @Override public boolean handle(TraceContext context, MutableSpan span) {
+  SpanHandler two = new SpanHandler() {
+    @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
       span.tag("two", "");
       return true;
     }
@@ -66,8 +66,8 @@ public class NoopAwareFinishedSpanHandlerBenchmarks {
       return "two";
     }
   };
-  FinishedSpanHandler three = new FinishedSpanHandler() {
-    @Override public boolean handle(TraceContext context, MutableSpan span) {
+  SpanHandler three = new SpanHandler() {
+    @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
       span.tag("three", "");
       return true;
     }
@@ -77,24 +77,25 @@ public class NoopAwareFinishedSpanHandlerBenchmarks {
     }
   };
 
-  final FinishedSpanHandler composite =
-    NoopAwareFinishedSpanHandler.create(new LinkedHashSet<>(asList(one, two, three)), noop);
-  final FinishedSpanHandler listIndexComposite = new FinishedSpanHandler() {
-    List<FinishedSpanHandler> delegates = asList(one, two, three);
+  final SpanHandler composite =
+    NoopAwareSpanHandler.create(new SpanHandler[] {one, two, three}, noop);
+  final SpanHandler listIndexComposite = new SpanHandler() {
 
-    @Override public boolean handle(TraceContext context, MutableSpan span) {
+    List<SpanHandler> delegates = asList(one, two, three);
+
+    @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
       for (int i = 0, length = delegates.size(); i < length; i++) {
-        if (!delegates.get(i).handle(context, span)) return false;
+        if (!delegates.get(i).end(context, span, cause)) return false;
       }
       return true;
     }
   };
-  final FinishedSpanHandler listIteratorComposite = new FinishedSpanHandler() {
-    List<FinishedSpanHandler> delegates = asList(one, two, three);
+  final SpanHandler listIteratorComposite = new SpanHandler() {
+    List<SpanHandler> delegates = asList(one, two, three);
 
-    @Override public boolean handle(TraceContext context, MutableSpan span) {
-      for (FinishedSpanHandler delegate : delegates) {
-        if (!delegate.handle(context, span)) return false;
+    @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
+      for (SpanHandler delegate : delegates) {
+        if (!delegate.end(context, span, cause)) return false;
       }
       return true;
     }
@@ -102,22 +103,22 @@ public class NoopAwareFinishedSpanHandlerBenchmarks {
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true).build();
 
   @Benchmark public void compose() {
-    composite.handle(context, new MutableSpan());
+    composite.end(context, new MutableSpan(), Cause.FINISH);
   }
 
   @Benchmark public void compose_index() {
-    listIndexComposite.handle(context, new MutableSpan());
+    listIndexComposite.end(context, new MutableSpan(), Cause.FINISH);
   }
 
   @Benchmark public void compose_iterator() {
-    listIteratorComposite.handle(context, new MutableSpan());
+    listIteratorComposite.end(context, new MutableSpan(), Cause.FINISH);
   }
 
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
       .addProfiler("gc")
-      .include(".*" + NoopAwareFinishedSpanHandlerBenchmarks.class.getSimpleName() + ".*")
+      .include(".*" + NoopAwareSpanHandlerBenchmarks.class.getSimpleName() + ".*")
       .build();
 
     new Runner(opt).run();

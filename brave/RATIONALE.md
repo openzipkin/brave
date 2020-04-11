@@ -468,6 +468,30 @@ The implementation is very simple except that we have a redaction use case to
 address, which implies filtering keys. To address that, we keep a bitmap of all
 filtered keys and consider that when performing any scan operations.
 
+## SpanHandler
+There are a few reasons why `SpanHandler` exists. For example:
+
+* We need to manipulate Baggage without overriding `PropagationFactory`, e.g. when
+some baggage are derived (parsed from other headers): Given a create hook, one can post process
+baggage before the span is visible to the user.
+* Another example is parent-child relationships: With a create hook someone can do things like count
+children (needed by [stackdriver model](https://cloud.google.com/trace/docs/reference/v2/rpc/google.devtools.cloudtrace.v2#google.devtools.cloudtrace.v2.Span)).
+* Some services require the entire "local root" to be reported at the same time. The only
+known example of this is [DataDog](https://github.com/DataDog/dd-trace-java/blob/406b324a82b482d7d8ad3faa5f9ccdd307c72308/dd-trace-ot/src/main/java/datadog/trace/common/writer/Writer.java#L20): A create hook can be used track a local root, allowing buffering of all descendants.
+
+### What's with all the termination hooks?
+Most users will be unaware that there's an end state besides `Span.finish()`, but here are all
+possibilities:
+
+ * `Span.abandon()` - if a speculative context
+ * `Span.flush()` - if intentionally reported incomplete
+ * `Span.finish()` - normal case
+ * "orphan" - a possibly empty span reported incomplete due to garbage collection
+
+The above hooks ensure every created trace context has an end state. This is particularly different
+than `FinishedSpanHandler`, which doesn't see some nuance such as allocated, but unused contexts,
+which would end up orphaned. The cause of these is usually a leak.
+
 ## CorrelationScopeDecorator
 
 ### Why hold the initial values even when they match?

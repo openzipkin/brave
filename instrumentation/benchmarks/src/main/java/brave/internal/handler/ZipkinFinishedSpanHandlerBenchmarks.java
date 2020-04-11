@@ -44,8 +44,8 @@ import static brave.handler.MutableSpanBenchmarks.newServerMutableSpan;
 @State(Scope.Thread)
 @Threads(1)
 public class ZipkinFinishedSpanHandlerBenchmarks {
-  final ZipkinFinishedSpanHandler converter = new ZipkinFinishedSpanHandler(
-    new MutableSpan(), Reporter.NOOP, ErrorParser.NOOP, true);
+  final ZipkinSpanHandler converter =
+    new ZipkinSpanHandler(new MutableSpan(), Reporter.NOOP, ErrorParser.NOOP, true);
   final MutableSpan serverMutableSpan = newServerMutableSpan();
   final MutableSpan bigClientMutableSpan = newBigClientMutableSpan();
 

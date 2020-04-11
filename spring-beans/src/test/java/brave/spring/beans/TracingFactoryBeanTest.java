@@ -126,7 +126,7 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-      .extracting("tracer.finishedSpanHandler.delegate.spanReporter")
+      .extracting("tracer.spanHandler.delegate.spanReporter")
       .isEqualTo(Reporter.CONSOLE);
   }
 
@@ -142,7 +142,7 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-      .extracting("tracer.finishedSpanHandler.delegate")
+      .extracting("tracer.spanHandler.delegate")
       .isEqualTo(FIREHOSE_HANDLER);
   }
 

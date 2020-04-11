@@ -30,10 +30,10 @@ import brave.propagation.TraceContext;
  * <p>When Zipkin's reporter is {@link zipkin2.reporter.Reporter#NOOP} or the context is
  * unsampled, this will still receive spans where {@link TraceContext#sampledLocal()} is true.
  *
- * @see Tracing.Builder#alwaysSampleLocal()
+ * @see SpanHandler
  * @since 5.4
  */
-public abstract class FinishedSpanHandler {
+public abstract class FinishedSpanHandler extends SpanHandler {
   /** Use to avoid comparing against null references */
   public static final FinishedSpanHandler NOOP = new FinishedSpanHandler() {
     @Override public boolean handle(TraceContext context, MutableSpan span) {
@@ -138,5 +138,20 @@ public abstract class FinishedSpanHandler {
    */
   @Deprecated public boolean alwaysSampleLocal() {
     return false;
+  }
+
+  @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
+    switch (cause) {
+      case ABANDON:
+        return true;
+      case FLUSH:
+      case FINISH:
+        return handle(context, span);
+      case ORPHAN:
+        return !supportsOrphans() || handle(context, span);
+      default:
+        assert false : "Bug!: missing state handling for " + cause;
+        return true;
+    }
   }
 }

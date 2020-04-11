@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,8 +18,8 @@ import brave.Span;
 import brave.Span.Kind;
 import brave.Tracer;
 import brave.Tracing;
-import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
@@ -43,8 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * cherry-picking data used by the dependency linker, mostly to make it simpler.
  */
 public class SkeletalSpansTest {
-
-  class ReportSkeletalSpans extends FinishedSpanHandler {
+  class ReportSkeletalSpans extends SpanHandler {
     final String localServiceName;
     final Reporter<zipkin2.Span> delegate;
 
@@ -53,8 +52,8 @@ public class SkeletalSpansTest {
       this.delegate = delegate;
     }
 
-    @Override public boolean handle(TraceContext context, MutableSpan span) {
-      if (span.kind() == null) return false; // skip local spans
+    @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
+      if (cause == Cause.ABANDON || span.kind() == null) return false; // skip local spans
 
       zipkin2.Span.Builder builder = zipkin2.Span.newBuilder()
         .traceId(context.traceIdString())
@@ -92,12 +91,12 @@ public class SkeletalSpansTest {
     .build().tracer();
 
   Tracer server1SkeletalTracer = Tracing.newBuilder()
-    .addFinishedSpanHandler(new ReportSkeletalSpans("server1", toReporter(skeletalSpans)))
+    .addSpanHandler(new ReportSkeletalSpans("server1", toReporter(skeletalSpans)))
     .spanReporter(Reporter.NOOP)
     .build().tracer();
 
   Tracer server2SkeletalTracer = Tracing.newBuilder()
-    .addFinishedSpanHandler(new ReportSkeletalSpans("server2", toReporter(skeletalSpans)))
+    .addSpanHandler(new ReportSkeletalSpans("server2", toReporter(skeletalSpans)))
     .spanReporter(Reporter.NOOP)
     .build().tracer();
 

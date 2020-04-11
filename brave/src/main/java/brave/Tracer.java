@@ -13,8 +13,8 @@
  */
 package brave;
 
-import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.Platform;
@@ -86,10 +86,9 @@ import static brave.propagation.SamplingFlags.SAMPLED;
  * @see Propagation
  */
 public class Tracer {
-
   final Clock clock;
   final Propagation.Factory propagationFactory;
-  final FinishedSpanHandler finishedSpanHandler;
+  final SpanHandler spanHandler; // only for toString
   final PendingSpans pendingSpans;
   final Sampler sampler;
   final CurrentTraceContext currentTraceContext;
@@ -99,7 +98,7 @@ public class Tracer {
   Tracer(
     Clock clock,
     Propagation.Factory propagationFactory,
-    FinishedSpanHandler finishedSpanHandler,
+    SpanHandler spanHandler,
     PendingSpans pendingSpans,
     Sampler sampler,
     CurrentTraceContext currentTraceContext,
@@ -110,7 +109,7 @@ public class Tracer {
   ) {
     this.clock = clock;
     this.propagationFactory = propagationFactory;
-    this.finishedSpanHandler = finishedSpanHandler;
+    this.spanHandler = spanHandler;
     this.pendingSpans = pendingSpans;
     this.sampler = sampler;
     this.currentTraceContext = currentTraceContext;
@@ -130,7 +129,7 @@ public class Tracer {
     return new Tracer(
       clock,
       propagationFactory,
-      finishedSpanHandler,
+      spanHandler,
       pendingSpans,
       sampler,
       currentTraceContext,
@@ -413,8 +412,7 @@ public class Tracer {
     // A lost race of Tracer.toSpan(context) is the only known situation where "context" won't be
     // the same as pendingSpan.context()
     if (pendingContext != null) context = pendingContext;
-    return new RealSpan(context, pendingSpans, pendingSpan.state(), pendingSpan.clock(),
-      finishedSpanHandler);
+    return new RealSpan(context, pendingSpans, pendingSpan.state(), pendingSpan.clock());
   }
 
   /**
@@ -605,7 +603,7 @@ public class Tracer {
     Clock clock = pendingSpan.clock();
     MutableSpan state = pendingSpan.state();
     state.name(name);
-    return new RealScopedSpan(context, scope, state, clock, pendingSpans, finishedSpanHandler);
+    return new RealScopedSpan(context, scope, state, clock, pendingSpans);
   }
 
   /** A span remains in the scope it was bound to until close is called. */
@@ -633,12 +631,11 @@ public class Tracer {
     return "Tracer{"
       + (currentSpan != null ? ("currentSpan=" + currentSpan + ", ") : "")
       + (noop.get() ? "noop=true, " : "")
-      + "finishedSpanHandler=" + finishedSpanHandler
-      + "}";
+      + "spanHandler=" + spanHandler + "}";
   }
 
   boolean isNoop(TraceContext context) {
-    if (finishedSpanHandler == FinishedSpanHandler.NOOP || noop.get()) return true;
+    if (noop.get()) return true;
     int flags = InternalPropagation.instance.flags(context);
     if ((flags & FLAG_SAMPLED_LOCAL) == FLAG_SAMPLED_LOCAL) return false;
     return (flags & FLAG_SAMPLED) != FLAG_SAMPLED;

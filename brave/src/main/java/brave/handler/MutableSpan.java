@@ -293,8 +293,8 @@ public final class MutableSpan implements Cloneable {
   }
 
   /**
-   * Returns the {@linkplain brave.Tracing.Builder#localIp(String) label of this node in the service
-   * graph} or {@code null}.
+   * Returns the {@linkplain brave.Tracing.Builder#localServiceName(String) label of this node in
+   * the service graph} or {@code null}.
    *
    * <p><em>Note</em>: This is initialized from {@link brave.Tracing.Builder#localServiceName(String)}.
    * {@linkplain FinishedSpanHandler handlers} that want to conditionally replace the value should

@@ -14,6 +14,7 @@
 package brave;
 
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.propagation.TraceContext;
 import org.junit.Test;
 
@@ -62,9 +63,9 @@ public class TracingClassLoaderTest {
   // This test will clutter output; it is somewhat difficult to avoid that and still run the test
   static class UsingLoggingReporter implements Runnable {
     @Override public void run() {
-      Tracing.LogFinishedSpanHandler reporter = new Tracing.LogFinishedSpanHandler();
+      Tracing.LogSpanHandler reporter = new Tracing.LogSpanHandler();
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
-      reporter.handle(context, new MutableSpan(context, null));
+      reporter.end(context, new MutableSpan(context, null), SpanHandler.Cause.FINISH);
     }
   }
 }

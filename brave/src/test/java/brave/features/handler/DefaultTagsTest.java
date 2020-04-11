@@ -15,8 +15,8 @@ package brave.features.handler;
 
 import brave.ScopedSpan;
 import brave.Tracing;
-import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
@@ -35,8 +35,8 @@ public class DefaultTagsTest {
   List<zipkin2.Span> spans = new ArrayList<>();
   Tracing tracing = Tracing.newBuilder()
     .currentTraceContext(StrictCurrentTraceContext.create())
-    .addFinishedSpanHandler(new FinishedSpanHandler() {
-      @Override public boolean handle(TraceContext context, MutableSpan span) {
+    .addSpanHandler(new SpanHandler() {
+      @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
         if (context.isLocalRoot()) {
           // pretend these are sourced from the environment
           span.tag("env", "prod");
