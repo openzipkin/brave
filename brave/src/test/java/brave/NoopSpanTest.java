@@ -13,6 +13,7 @@
  */
 package brave;
 
+import brave.Tracer.SpanInScope;
 import brave.sampler.Sampler;
 import org.junit.After;
 import org.junit.Test;
@@ -59,5 +60,23 @@ public class NoopSpanTest {
     span.finish();
     span.abandon();
     span.flush();
+  }
+
+  @Test public void equals_lazySpan_sameContext() {
+    Span current;
+    try (SpanInScope ws = tracer.withSpanInScope(span)) {
+      current = tracer.currentSpan();
+    }
+
+    assertThat(span).isEqualTo(current);
+  }
+
+  @Test public void equals_lazySpan_notSameContext() {
+    Span current;
+    try (SpanInScope ws = tracer.withSpanInScope(tracer.newTrace())) {
+      current = tracer.currentSpan();
+    }
+
+    assertThat(span).isNotEqualTo(current);
   }
 }

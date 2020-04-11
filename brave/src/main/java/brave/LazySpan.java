@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,8 +16,6 @@ package brave;
 import brave.handler.MutableSpan;
 import brave.propagation.TraceContext;
 
-import static brave.RealSpan.isEqualToRealOrLazySpan;
-
 /**
  * This defers creation of a span until first public method call.
  *
@@ -26,7 +24,7 @@ import static brave.RealSpan.isEqualToRealOrLazySpan;
  */
 final class LazySpan extends Span {
   final Tracer tracer;
-  final TraceContext context;
+  TraceContext context;
   Span delegate;
 
   LazySpan(Tracer tracer, TraceContext context) {
@@ -35,11 +33,11 @@ final class LazySpan extends Span {
   }
 
   @Override public boolean isNoop() {
-    return false;
+    return span().isNoop();
   }
 
   @Override public TraceContext context() {
-    return context;
+    return span().context();
   }
 
   @Override public SpanCustomizer customizer() {
@@ -109,12 +107,24 @@ final class LazySpan extends Span {
   }
 
   /**
-   * This also matches equals against a real span. The rationale is least surprise to the user, as
-   * code should not act differently given an instance of lazy or {@link RealSpan}.
+   * This also matches equals against an actual span. The rationale is least surprise to the user,
+   * as code should not act differently given an instance of lazy {@link NoopSpan} or {@link
+   * RealSpan}.
    */
   @Override public boolean equals(Object o) {
     if (o == this) return true;
-    return isEqualToRealOrLazySpan(context, o);
+    if (o instanceof LazySpan) {
+      return context.equals(((LazySpan) o).context);
+    } else if (o instanceof RealSpan) {
+      return context.equals(((RealSpan) o).context);
+    } else if (o instanceof NoopSpan) {
+      return context.equals(((NoopSpan) o).context);
+    }
+    return false;
+  }
+
+  @Override public int hashCode() {
+    return context.hashCode();
   }
 
   /**
@@ -128,10 +138,8 @@ final class LazySpan extends Span {
   Span span() {
     Span result = delegate;
     if (result != null) return result;
-    return delegate = tracer.toSpan(context);
-  }
-
-  @Override public int hashCode() {
-    return context.hashCode();
+    delegate = tracer.toSpan(context);
+    context = delegate.context();
+    return delegate;
   }
 }

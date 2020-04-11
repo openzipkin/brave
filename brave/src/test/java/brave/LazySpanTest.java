@@ -16,6 +16,7 @@ package brave;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.After;
@@ -32,6 +33,10 @@ public class LazySpanTest {
 
   TraceContext context = tracing.tracer().newTrace().context();
   TraceContext context2 = tracing.tracer().newTrace().context();
+  TraceContext unsampledContext =
+    tracing.tracer().nextSpan(TraceContextOrSamplingFlags.NOT_SAMPLED).context();
+  TraceContext unsampledContext2 =
+    tracing.tracer().nextSpan(TraceContextOrSamplingFlags.NOT_SAMPLED).context();
 
   @After public void close() {
     tracing.close();
@@ -78,5 +83,23 @@ public class LazySpanTest {
     }
 
     assertThat(current).isNotEqualTo(tracing.tracer().toSpan(context2));
+  }
+
+  @Test public void equals_noopSpan_sameContext() {
+    Span current;
+    try (Scope ws = tracing.currentTraceContext().newScope(unsampledContext)) {
+      current = tracing.tracer().currentSpan();
+    }
+
+    assertThat(current).isEqualTo(tracing.tracer().toSpan(unsampledContext));
+  }
+
+  @Test public void equals_noopSpan_notSameContext() {
+    Span current;
+    try (Scope ws = tracing.currentTraceContext().newScope(unsampledContext)) {
+      current = tracing.tracer().currentSpan();
+    }
+
+    assertThat(current).isNotEqualTo(tracing.tracer().toSpan(unsampledContext2));
   }
 }

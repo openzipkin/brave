@@ -30,6 +30,7 @@ import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
 import brave.sampler.Sampler;
+import brave.sampler.SamplerFunctions;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -336,10 +337,9 @@ public class TracerTest {
 
   @Test public void toSpan_notSampledIsNoop() {
     TraceContext notSampled =
-      tracer.newTrace().context().toBuilder().sampled(false).build();
+      tracer.nextSpanWithParent(SamplerFunctions.neverSample(), false, null).context();
 
-    assertThat(tracer.toSpan(notSampled))
-      .isInstanceOf(NoopSpan.class);
+    assertThat(tracer.toSpan(notSampled).isNoop()).isTrue();
   }
 
   @Test public void newChild() {
@@ -537,10 +537,15 @@ public class TracerTest {
 
   @Test public void nextSpan_extractedExtra_appendsToChildOfCurrent() {
     // current parent already has extra stuff
-    Span parent = tracer.toSpan(tracer.newTrace().context().toBuilder().extra(asList(1L)).build());
+    Span parent = tracer.nextSpan(TraceContextOrSamplingFlags.newBuilder()
+      .samplingFlags(SamplingFlags.EMPTY)
+      .addExtra(1L)
+      .build());
 
-    TraceContextOrSamplingFlags extracted =
-      TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY).toBuilder().addExtra(1F).build();
+    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder()
+      .samplingFlags(SamplingFlags.EMPTY)
+      .addExtra(1F)
+      .build();
 
     try (SpanInScope ws = tracer.withSpanInScope(parent)) {
       assertThat(tracer.nextSpan(extracted).context().extra())
@@ -1083,6 +1088,88 @@ public class TracerTest {
   @Test public void localRootId_nextSpan_flags_debug() {
     TraceContextOrSamplingFlags flags = TraceContextOrSamplingFlags.DEBUG;
     localRootId(flags, flags, ctx -> tracer.nextSpan(ctx));
+  }
+
+  @Test public void joinSpan_decorates() {
+    propagationFactory = baggageFactory;
+    TraceContext incoming = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true)
+      .shared(true).build();
+
+    TraceContext joined = tracer.joinSpan(incoming).context();
+    assertThat(joined).isNotSameAs(incoming);
+    assertThat(joined.extra()).isNotEmpty();
+  }
+
+  @Test public void joinSpan_decorates_unsampled() {
+    propagationFactory = baggageFactory;
+    TraceContext incoming = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(false)
+      .shared(true).build();
+
+    TraceContext joined = tracer.joinSpan(incoming).context();
+    assertThat(joined).isNotSameAs(incoming);
+    assertThat(joined.extra()).isNotEmpty();
+  }
+
+  @Test public void toSpan_decorates() {
+    propagationFactory = baggageFactory;
+    TraceContext incoming = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true).build();
+
+    TraceContext toSpan = tracer.toSpan(incoming).context();
+    assertThat(toSpan).isNotSameAs(incoming);
+    assertThat(toSpan.extra()).isNotEmpty();
+  }
+
+  @Test public void toSpan_decorates_unsampled() {
+    propagationFactory = baggageFactory;
+    TraceContext incoming = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(false).build();
+
+    TraceContext toSpan = tracer.toSpan(incoming).context();
+    assertThat(toSpan).isNotSameAs(incoming);
+    assertThat(toSpan.extra()).isNotEmpty();
+  }
+
+  @Test public void currentSpan_sameContextReference() {
+    Span span = tracer.newTrace();
+    try (SpanInScope ws = tracer.withSpanInScope(span)) {
+      assertThat(tracer.currentSpan().context())
+        .isSameAs(span.context());
+    }
+  }
+
+  @Test public void join_idempotent() {
+    TraceContext incoming = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true)
+      .shared(true).build();
+
+    TraceContext joined = tracer.joinSpan(incoming).context();
+    assertThat(joined).isNotSameAs(incoming);
+    assertThat(tracer.joinSpan(incoming).context()).isSameAs(joined);
+  }
+
+  @Test public void join_idempotent_unsampled() {
+    TraceContext incoming = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(false)
+      .shared(true).build();
+
+    TraceContext joined = tracer.joinSpan(incoming).context();
+    assertThat(joined).isNotSameAs(incoming);
+    assertThat(tracer.joinSpan(incoming).context())
+      .isNotSameAs(joined); // unsampled spans are by definition not tracked in pending spans
+  }
+
+  @Test public void toSpan_idempotent() {
+    TraceContext incoming = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true).build();
+
+    TraceContext toSpan = tracer.toSpan(incoming).context();
+    assertThat(toSpan).isNotSameAs(incoming);
+    assertThat(tracer.toSpan(incoming).context()).isSameAs(toSpan);
+  }
+
+  @Test public void toSpan_idempotent_unsampled() {
+    TraceContext incoming = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(false).build();
+
+    TraceContext toSpan = tracer.toSpan(incoming).context();
+    assertThat(toSpan).isNotSameAs(incoming);
+    assertThat(tracer.toSpan(incoming).context())
+      .isNotSameAs(toSpan); // unsampled spans are by definition not tracked in pending spans
   }
 
   void localRootId(TraceContext c1, TraceContext c2,
