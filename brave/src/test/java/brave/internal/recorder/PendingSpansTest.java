@@ -19,12 +19,12 @@ import brave.handler.MutableSpan;
 import brave.internal.InternalPropagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
-import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Annotation;
@@ -108,20 +108,6 @@ public class PendingSpansTest {
   }
 
   @Test
-  public void getOrCreate_resolvesHashCodeCollisions() {
-    // intentionally clash on hashCode, but not equals
-    TraceContext context1 = context.toBuilder().spanId(1).build();
-    TraceContext context2 = context.toBuilder().spanId(-2L).build();
-
-    // sanity check
-    assertThat(context1.hashCode()).isEqualTo(context2.hashCode());
-    assertThat(context1).isNotEqualTo(context2);
-
-    assertThat(pendingSpans.getOrCreate(null, context1, false)).isNotEqualTo(
-      pendingSpans.getOrCreate(null, context2, false));
-  }
-
-  @Test
   public void getOrCreate_splitsSharedServerDataFromClient() {
     TraceContext context2 = context.toBuilder().shared(true).build();
 
@@ -130,67 +116,11 @@ public class PendingSpansTest {
   }
 
   @Test
-  public void remove_clearsReference() {
-    pendingSpans.getOrCreate(null, context, false);
-    pendingSpans.remove(context);
-
-    assertThat(pendingSpans.delegate).isEmpty();
-    assertThat(pendingSpans.poll()).isNull();
-  }
-
-  @Test
   public void remove_doesntReport() {
     pendingSpans.getOrCreate(null, context, false);
     pendingSpans.remove(context);
 
     assertThat(spans).isEmpty();
-  }
-
-  @Test
-  public void remove_okWhenDoesntExist() {
-    pendingSpans.remove(context);
-  }
-
-  @Test
-  public void remove_resolvesHashCodeCollisions() {
-    // intentionally clash on hashCode, but not equals
-    TraceContext context1 = context.toBuilder().spanId(1).build();
-    TraceContext context2 = context.toBuilder().spanId(-2L).build();
-
-    // sanity check
-    assertThat(context1.hashCode()).isEqualTo(context2.hashCode());
-    assertThat(context1).isNotEqualTo(context2);
-
-    pendingSpans.getOrCreate(null, context1, false);
-    pendingSpans.getOrCreate(null, context2, false);
-
-    pendingSpans.remove(context1);
-
-    assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
-      .containsOnly(context2);
-  }
-
-  /** mainly ensures internals aren't dodgy on null */
-  @Test
-  public void remove_whenSomeReferencesAreCleared() {
-    pendingSpans.getOrCreate(null, context, false);
-    pretendGCHappened();
-    pendingSpans.remove(context);
-
-    assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
-      .hasSize(1)
-      .containsNull();
-  }
-
-  @Test
-  public void getOrCreate_whenSomeReferencesAreCleared() {
-    pendingSpans.getOrCreate(null, context, false);
-    pretendGCHappened();
-    pendingSpans.getOrCreate(null, context, false);
-
-    // we'd expect two distinct entries.. the span would be reported twice, but merged zipkin-side
-    assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
-      .containsExactlyInAnyOrder(null, context);
   }
 
   /**
@@ -221,15 +151,7 @@ public class PendingSpansTest {
     context1 = context2 = context5 = null;
     GarbageCollectors.blockOnGC();
 
-    // After GC, we expect that the weak references of context1 and context2 to be cleared
-    assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
-      .containsExactlyInAnyOrder(null, null, context3, context4, null);
-
-    pendingSpans.reportOrphanedSpans();
-
-    // After reporting, we expect no the weak references of null
-    assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
-      .containsExactlyInAnyOrder(context3, context4);
+    pendingSpans.expungeStaleEntries();
 
     // We also expect only the sampled span containing data to have been reported
     assertThat(spans).hasSize(1);
@@ -256,17 +178,8 @@ public class PendingSpansTest {
 
     // By clearing strong references in this test, we are left with the weak ones in the map
     context1 = context2 = null;
-    GarbageCollectors.blockOnGC();
 
-    // After GC, we expect that the weak references of context1 and context2 to be cleared
-    assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
-      .containsExactlyInAnyOrder(null, null, context3, context4);
-
-    pendingSpans.reportOrphanedSpans();
-
-    // After reporting, we expect no the weak references of null
-    assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
-      .containsExactlyInAnyOrder(context3, context4);
+    pendingSpans.expungeStaleEntries();
 
     // since this is noop, we don't expect any spans to be reported
     assertThat(spans).isEmpty();
@@ -291,42 +204,13 @@ public class PendingSpansTest {
 
     GarbageCollectors.blockOnGC();
 
-    // Sanity check that the referent trace context cleared due to GC
-    assertThat(pendingSpans.delegate.keySet()).extracting(o -> ((Reference) o).get())
-      .hasSize(1)
-      .containsNull();
-
     // The innocent caller isn't killed due to the exception in implicitly reporting GC'd spans
     pendingSpans.remove(this.context);
 
     // However, the reference queue has been cleared.
-    assertThat(pendingSpans.delegate.keySet())
+    assertThat(pendingSpans).extracting("target")
+      .asInstanceOf(InstanceOfAssertFactories.MAP)
       .isEmpty();
-  }
-
-  /** Debugging should show what the spans are, as well any references pending clear. */
-  @Test
-  public void toString_saysWhatReferentsAre() {
-    assertThat(pendingSpans.toString())
-      .isEqualTo("PendingSpans[]");
-
-    pendingSpans.getOrCreate(null, context, false);
-
-    assertThat(pendingSpans.toString())
-      .isEqualTo("PendingSpans[WeakReference(" + context + ")]");
-
-    pretendGCHappened();
-
-    assertThat(pendingSpans.toString())
-      .isEqualTo("PendingSpans[ClearedReference()]");
-  }
-
-  @Test
-  public void realKey_equalToItself() {
-    PendingSpans.RealKey key = new PendingSpans.RealKey(context, pendingSpans);
-    assertThat(key).isEqualTo(key);
-    key.clear();
-    assertThat(key).isEqualTo(key);
   }
 
   @Test
@@ -347,7 +231,7 @@ public class PendingSpansTest {
     context = null;
 
     GarbageCollectors.blockOnGC();
-    pendingSpans.reportOrphanedSpans();
+    pendingSpans.expungeStaleEntries();
 
     assertThat(handledContext[0]).isEqualTo(context1); // ID comparision is the same
     assertThat(handledContext[0].extra()).isEmpty(); // No context decorations are retained
@@ -372,60 +256,9 @@ public class PendingSpansTest {
     context = null;
 
     GarbageCollectors.blockOnGC();
-    pendingSpans.reportOrphanedSpans();
+    pendingSpans.expungeStaleEntries();
 
     assertThat(InternalPropagation.instance.flags(handledContext[0]))
       .isEqualTo(InternalPropagation.instance.flags(context1)); // no flags lost
-  }
-
-  @Test
-  public void lookupKey_hashCode() {
-    TraceContext context1 = context;
-    TraceContext context2 = context.toBuilder().shared(true).build();
-
-    assertThat(PendingSpans.LookupKey.generateHashCode(
-      context1.traceIdHigh(), context1.traceId(), context1.spanId(), context1.shared()
-    )).isEqualTo(context1.hashCode());
-
-    assertThat(PendingSpans.LookupKey.generateHashCode(
-      context2.traceIdHigh(), context2.traceId(), context2.spanId(), context2.shared()
-    )).isEqualTo(context2.hashCode());
-  }
-
-  @Test
-  public void realKey_equalToEquivalent() {
-    PendingSpans.RealKey key = new PendingSpans.RealKey(context, pendingSpans);
-    PendingSpans.RealKey key2 = new PendingSpans.RealKey(context, pendingSpans);
-    assertThat(key).isEqualTo(key2);
-    key.clear();
-    assertThat(key).isNotEqualTo(key2);
-    key2.clear();
-    assertThat(key).isEqualTo(key2);
-  }
-
-  @Test
-  public void lookupKey_equalToRealKey() {
-    PendingSpans.LookupKey lookupKey = new PendingSpans.LookupKey();
-    lookupKey.set(context);
-    PendingSpans.RealKey key = new PendingSpans.RealKey(context, pendingSpans);
-    assertThat(lookupKey.equals(key)).isTrue();
-    key.clear();
-    assertThat(lookupKey.equals(key)).isFalse();
-  }
-
-  @Test
-  public void lookupKey_equalToRealKey_shared() {
-    context = context.toBuilder().shared(true).build();
-    PendingSpans.LookupKey lookupKey = new PendingSpans.LookupKey();
-    lookupKey.set(context);
-    PendingSpans.RealKey key = new PendingSpans.RealKey(context, pendingSpans);
-    assertThat(lookupKey.equals(key)).isTrue();
-    key = new PendingSpans.RealKey(context.toBuilder().shared(false).build(), pendingSpans);
-    assertThat(lookupKey.equals(key)).isFalse();
-  }
-
-  /** In reality, this clears a reference even if it is strongly held by the test! */
-  void pretendGCHappened() {
-    ((PendingSpans.RealKey) pendingSpans.delegate.keySet().iterator().next()).clear();
   }
 }

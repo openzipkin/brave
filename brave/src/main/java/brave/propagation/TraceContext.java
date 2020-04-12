@@ -489,6 +489,10 @@ public final class TraceContext extends SamplingFlags {
     }
   }
 
+  TraceContext shallowCopy() {
+    return new TraceContext(flags, traceIdHigh, traceId, localRootId, parentId, spanId, extra);
+  }
+
   TraceContext withExtra(List<Object> extra) {
     return new TraceContext(flags, traceIdHigh, traceId, localRootId, parentId, spanId, extra);
   }
@@ -526,7 +530,7 @@ public final class TraceContext extends SamplingFlags {
    */
   @Override public boolean equals(Object o) {
     if (o == this) return true;
-    // Hack that allows PendingSpans to lookup without allocating a new object.
+    // Hack that allows WeakConcurrentMap to lookup without allocating a new object.
     if (o instanceof WeakReference) o = ((WeakReference) o).get();
     if (!(o instanceof TraceContext)) return false;
     TraceContext that = (TraceContext) o;

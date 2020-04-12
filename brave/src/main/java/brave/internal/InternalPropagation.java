@@ -65,6 +65,12 @@ public abstract class InternalPropagation {
     List<Object> extra
   );
 
+  /**
+   * Allows you to decouple from the actual context, for example when it is a weak key. This is less
+   * allocations vs {@code context.toBuilder().build()}.
+   */
+  public abstract TraceContext shallowCopy(TraceContext context);
+
   /** {@link brave.propagation.TraceContext} is immutable so you need to read the result */
   public abstract TraceContext withExtra(TraceContext context, List<Object> immutableExtra);
 

@@ -145,7 +145,7 @@ public class MessagingTracing implements Closeable {
    * @since 5.9
    */
   @Nullable public static MessagingTracing current() {
-    return (MessagingTracing) CURRENT.get();
+    return CURRENT.get();
   }
 
   /** @since 5.9 */

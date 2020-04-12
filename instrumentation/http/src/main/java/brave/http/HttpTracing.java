@@ -379,7 +379,7 @@ public class HttpTracing implements Closeable {
    * @since 5.9
    */
   @Nullable public static HttpTracing current() {
-    return (HttpTracing) CURRENT.get();
+    return CURRENT.get();
   }
 
   /** @since 5.9 */

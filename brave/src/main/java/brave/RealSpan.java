@@ -144,7 +144,7 @@ final class RealSpan extends Span {
   }
 
   @Override public void finish(long timestamp) {
-    if (!pendingSpans.remove(context)) return;
+    if (pendingSpans.remove(context) == null) return;
     synchronized (state) {
       state.finishTimestamp(timestamp);
     }

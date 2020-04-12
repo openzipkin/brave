@@ -145,7 +145,7 @@ public class RpcTracing implements Closeable {
    * @since 5.9
    */
   @Nullable public static RpcTracing current() {
-    return (RpcTracing) CURRENT.get();
+    return CURRENT.get();
   }
 
   /** @since 5.9 */

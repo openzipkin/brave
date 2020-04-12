@@ -17,15 +17,11 @@ import brave.Clock;
 import brave.Tracer;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
-import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.Platform;
+import brave.internal.weaklockfree.WeakConcurrentMap;
 import brave.propagation.TraceContext;
-import java.lang.ref.ReferenceQueue;
-import java.lang.ref.WeakReference;
-import java.util.Collections;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.lang.ref.Reference;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -37,24 +33,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>Spans are weakly referenced by their owning context. When the keys are collected, they are
  * transferred to a queue, waiting to be reported. A call to modify any span will implicitly flush
  * orphans to Zipkin. Spans in this state will have a "brave.flush" annotation added to them.
- *
- * <p>The internal implementation is derived from WeakConcurrentMap by Rafael Winterhalter. See
- * https://github.com/raphw/weak-lock-free/blob/master/src/main/java/com/blogspot/mydailyjava/weaklockfree/WeakConcurrentMap.java
- * Notably, this does not require reference equality for keys, rather stable {@link #hashCode()}.
  */
-public final class PendingSpans extends ReferenceQueue<TraceContext> {
-  // Even though we only put by RealKey, we allow get and remove by LookupKey
-  final ConcurrentMap<Object, PendingSpan> delegate = new ConcurrentHashMap<>(64);
+public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingSpan> {
+  @Nullable final WeakConcurrentMap<MutableSpan, Throwable> spanToCaller;
   final Clock clock;
   final FinishedSpanHandler orphanedSpanHandler;
-  final boolean trackOrphans;
   final AtomicBoolean noop;
 
   public PendingSpans(Clock clock, FinishedSpanHandler orphanedSpanHandler, boolean trackOrphans,
     AtomicBoolean noop) {
     this.clock = clock;
     this.orphanedSpanHandler = orphanedSpanHandler;
-    this.trackOrphans = trackOrphans;
+    this.spanToCaller = trackOrphans ? new WeakConcurrentMap<>() : null;
     this.noop = noop;
   }
 
@@ -66,9 +56,7 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
    * a new local root.
    */
   @Nullable public PendingSpan get(TraceContext context) {
-    if (context == null) throw new NullPointerException("context == null");
-    reportOrphanedSpans();
-    return delegate.get(context);
+    return getIfPresent(context);
   }
 
   public PendingSpan getOrCreate(
@@ -93,59 +81,52 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
     }
 
     PendingSpan newSpan = new PendingSpan(context, data, clock);
-    PendingSpan previousSpan = delegate.putIfAbsent(new RealKey(context, this), newSpan);
+    // Probably absent because we already checked with get() at the entrance of this method
+    PendingSpan previousSpan = putIfProbablyAbsent(context, newSpan);
     if (previousSpan != null) return previousSpan; // lost race
 
     // We've now allocated a new trace context.
-    // It is a bug to have neither a reference to your parent or local root set.
-    assert parent != null || context.isLocalRoot();
+    assert parent != null || context.isLocalRoot() :
+      "Bug (or unexpected call to internal code): parent can only be null in a local root!";
 
-    if (trackOrphans) {
-      newSpan.caller =
-        new Throwable("Thread " + Thread.currentThread().getName() + " allocated span here");
+    if (spanToCaller != null) {
+      Throwable oldCaller = spanToCaller.putIfProbablyAbsent(newSpan.state,
+        new Throwable("Thread " + Thread.currentThread().getName() + " allocated span here"));
+      assert oldCaller == null :
+        "Bug: unexpected to have an existing reference to a new MutableSpan!";
     }
     return newSpan;
   }
 
   /** @see brave.Span#abandon() */
   public void abandon(TraceContext context) {
-    if (context == null) throw new NullPointerException("context == null");
-    PendingSpan last = delegate.remove(context);
-    reportOrphanedSpans(); // also clears the reference relating to the recent remove
+    remove(context);
   }
 
   /** @see brave.Span#finish() */
-  public boolean remove(TraceContext context) {
-    if (context == null) throw new NullPointerException("context == null");
-    PendingSpan last = delegate.remove(context);
-    reportOrphanedSpans(); // also clears the reference relating to the recent remove
-    return last != null;
+  @Override public PendingSpan remove(TraceContext context) {
+    return super.remove(context);
   }
 
   /** Reports spans orphaned by garbage collection. */
-  void reportOrphanedSpans() {
-    RealKey contextKey;
+  @Override protected void expungeStaleEntries() {
+    Reference<?> reference;
     // This is called on critical path of unrelated traced operations. If we have orphaned spans, be
     // careful to not penalize the performance of the caller. It is better to cache time when
     // flushing a span than hurt performance of unrelated operations by calling
     // currentTimeMicroseconds N times
     long flushTime = 0L;
     boolean noop = orphanedSpanHandler == FinishedSpanHandler.NOOP || this.noop.get();
-    while ((contextKey = (RealKey) poll()) != null) {
-      PendingSpan value = delegate.remove(contextKey);
+    while ((reference = poll()) != null) {
+      PendingSpan value = removeStaleEntry(reference);
       if (noop || value == null) continue;
       assert value.context() == null : "unexpected for the weak referent to be present after GC!";
       if (flushTime == 0L) flushTime = clock.currentTimeMicroseconds();
 
       boolean isEmpty = value.state.isEmpty();
-      Throwable caller = value.caller;
+      Throwable caller = spanToCaller != null ? spanToCaller.getIfPresent(value.state) : null;
 
-      TraceContext context = InternalPropagation.instance.newTraceContext(
-        contextKey.flags,
-        contextKey.traceIdHigh, contextKey.traceId,
-        contextKey.localRootId, 0L, contextKey.spanId,
-        Collections.emptyList()
-      );
+      TraceContext context = value.backupContext;
 
       if (caller != null) {
         String message = isEmpty
@@ -158,104 +139,5 @@ public final class PendingSpans extends ReferenceQueue<TraceContext> {
       value.state.annotate(flushTime, "brave.flush");
       orphanedSpanHandler.handle(context, value.state);
     }
-  }
-
-  /**
-   * Real keys contain a reference to the real context associated with a span. This is a weak
-   * reference, so that we get notified on GC pressure.
-   *
-   * <p>Since {@linkplain TraceContext}'s hash code is final, it is used directly both here and in
-   * lookup keys.
-   */
-  static final class RealKey extends WeakReference<TraceContext> {
-    final int hashCode;
-
-    // Copy the identity fields from the trace context, so we can use them when the reference clears
-    final long traceIdHigh, traceId, localRootId, spanId;
-    final int flags;
-
-    RealKey(TraceContext context, ReferenceQueue<TraceContext> queue) {
-      super(context, queue);
-      hashCode = context.hashCode();
-      traceIdHigh = context.traceIdHigh();
-      traceId = context.traceId();
-      localRootId = context.localRootId();
-      spanId = context.spanId();
-      flags = InternalPropagation.instance.flags(context);
-    }
-
-    @Override public String toString() {
-      TraceContext context = get();
-      return context != null ? "WeakReference(" + context + ")" : "ClearedReference()";
-    }
-
-    @Override public int hashCode() {
-      return this.hashCode;
-    }
-
-    /** Resolves hash code collisions */
-    @Override public boolean equals(Object other) {
-      TraceContext thisContext = get(), thatContext = ((RealKey) other).get();
-      if (thisContext == null) {
-        return thatContext == null;
-      } else {
-        return thisContext.equals(thatContext);
-      }
-    }
-  }
-
-  /**
-   * Lookup keys are cheaper than real keys as reference tracking is not involved. We cannot use
-   * {@linkplain TraceContext} directly as a lookup key, as eventhough it has the same hash code as
-   * the real key, it would fail in equals comparison.
-   */
-  static final class LookupKey {
-    long traceIdHigh, traceId, spanId;
-    boolean shared;
-    int hashCode;
-
-    void set(TraceContext context) {
-      set(context.traceIdHigh(), context.traceId(), context.spanId(), context.shared());
-    }
-
-    void set(long traceIdHigh, long traceId, long spanId, boolean shared) {
-      this.traceIdHigh = traceIdHigh;
-      this.traceId = traceId;
-      this.spanId = spanId;
-      this.shared = shared;
-      hashCode = generateHashCode(traceIdHigh, traceId, spanId, shared);
-    }
-
-    @Override public int hashCode() {
-      return hashCode;
-    }
-
-    static int generateHashCode(long traceIdHigh, long traceId, long spanId, boolean shared) {
-      int h = 1;
-      h *= 1000003;
-      h ^= (int) ((traceIdHigh >>> 32) ^ traceIdHigh);
-      h *= 1000003;
-      h ^= (int) ((traceId >>> 32) ^ traceId);
-      h *= 1000003;
-      h ^= (int) ((spanId >>> 32) ^ spanId);
-      h *= 1000003;
-      h ^= shared ? InternalPropagation.FLAG_SHARED : 0; // to match TraceContext.hashCode
-      return h;
-    }
-
-    /** Resolves hash code collisions */
-    @Override public boolean equals(Object other) {
-      RealKey that = (RealKey) other;
-      TraceContext thatContext = that.get();
-      if (thatContext == null) return false;
-      return traceIdHigh == thatContext.traceIdHigh()
-        && traceId == thatContext.traceId()
-        && spanId == thatContext.spanId()
-        && shared == thatContext.shared();
-    }
-  }
-
-  @Override public String toString() {
-    return "PendingSpans" + delegate.keySet();
   }
 }

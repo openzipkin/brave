@@ -10,3 +10,9 @@ by Google in the Guava Library:
   * Copyright (C) 2008 The Guava Authors
   * License: Apache License v2.0
   * Homepage: https://github.com/google/guava
+
+This product contains a modified portion of 'WeakConcurrentMap', distributed
+by Rafael Winterhalter in the weak-lock-free Library:
+
+  * License: Apache License v2.0
+  * Homepage: https://github.com/raphw/weak-lock-free

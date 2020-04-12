@@ -76,7 +76,7 @@ public class PendingSpansClassLoaderTest {
 
       GarbageCollectors.blockOnGC();
 
-      pendingSpans.reportOrphanedSpans();
+      pendingSpans.expungeStaleEntries();
     }
   }
 }
