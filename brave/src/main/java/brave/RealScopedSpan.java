@@ -74,7 +74,7 @@ final class RealScopedSpan extends ScopedSpan {
 
   @Override public void finish() {
     scope.close();
-    if (!pendingSpans.remove(context)) return; // don't double-report
+    if (pendingSpans.remove(context) == null) return; // don't double-report
     state.finishTimestamp(clock.currentTimeMicroseconds());
     finishedSpanHandler.handle(context, state);
   }

@@ -19,6 +19,7 @@ import brave.Tracer;
 import brave.internal.IpLiteral;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 
 /**
@@ -345,5 +346,17 @@ public final class MutableSpan implements Cloneable {
    */
   public void setShared() {
     shared = true;
+  }
+
+  @Override public int hashCode() {
+    return super.hashCode(); // quiet error-prone
+  }
+
+  @Override public boolean equals(Object o) {
+    if (o == this) return true;
+    // Hack that allows WeakConcurrentMap to lookup without allocating a new object.
+    if (o instanceof WeakReference) o = ((WeakReference) o).get();
+    if (!(o instanceof MutableSpan)) return false;
+    return super.equals(o); // not doing value-based comparison
   }
 }

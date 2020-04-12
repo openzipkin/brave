@@ -117,7 +117,7 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
       .build();
          JMSContext context = JmsTracing.create(messagingTracing)
            .connectionFactory(((ArtemisJmsTestRule) jms).factory)
-           .createContext(JMSContext.AUTO_ACKNOWLEDGE);
+           .createContext(JMSContext.AUTO_ACKNOWLEDGE)
     ) {
       context.createProducer().send(jms.queue, "foo");
     }

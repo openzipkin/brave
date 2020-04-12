@@ -41,6 +41,10 @@ public class SamplingFlags {
         return new TraceContext(flags, traceIdHigh, traceId, localRootId, parentId, spanId, extra);
       }
 
+      @Override public TraceContext shallowCopy(TraceContext context) {
+        return context.shallowCopy();
+      }
+
       @Override public TraceContext withExtra(TraceContext context, List<Object> extra) {
         return context.withExtra(extra);
       }

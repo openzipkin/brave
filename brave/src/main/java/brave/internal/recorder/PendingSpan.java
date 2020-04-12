@@ -15,6 +15,7 @@ package brave.internal.recorder;
 
 import brave.Clock;
 import brave.handler.MutableSpan;
+import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import java.lang.ref.WeakReference;
@@ -30,12 +31,13 @@ import java.lang.ref.WeakReference;
 public final class PendingSpan extends WeakReference<TraceContext> {
   final MutableSpan state;
   final TickClock clock;
-  volatile Throwable caller;
+  final TraceContext backupContext; // only used on abandon
 
   PendingSpan(TraceContext context, MutableSpan state, TickClock clock) {
     super(context);
     this.state = state;
     this.clock = clock;
+    this.backupContext = InternalPropagation.instance.shallowCopy(context);
   }
 
   /** Returns the context for this span unless it was cleared due to GC. */
