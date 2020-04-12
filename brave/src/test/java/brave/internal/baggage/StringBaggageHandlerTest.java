@@ -19,7 +19,7 @@ import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class StringBaggageHandlerTest extends ExtraBaggageFieldsTest<String> {
+public class StringBaggageHandlerTest extends ExtraBaggageFieldsTest {
   @Override protected ExtraBaggageFields.Factory newFactory() {
     return new ExtraBaggageFieldsFactory(
       BaggageHandlers.string(field1),

@@ -56,12 +56,18 @@ public interface BaggageHandler<S> {
   S newState(BaggageField field, String value);
 
   /**
-   * Updates a state object to handle a field value change.
+   * Updates a state object to include a value change.
+   *
+   * <p>When the value is {@code null} and the input only includes the given field, either {@code
+   * null} or an appropriate empty sentinel value should be returned.
+   *
+   * <p>When {@code null} is returned, the next non-null update results in a call to {@link
+   * #newState}. Otherwise, the empty state object will become the next input parameter here.
    *
    * @see BaggageField#updateValue(TraceContext, String)
    * @see BaggageField#updateValue(TraceContextOrSamplingFlags, String)
    */
-  S mergeState(S state, BaggageField field, @Nullable String value);
+  @Nullable S updateState(S state, BaggageField field, @Nullable String value);
 
   /**
    * Extracts any state from a remote value received by {@link Propagation.Getter#get(Object,

@@ -19,7 +19,7 @@ import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public abstract class ExtraBaggageFieldsTest<S> {
+public abstract class ExtraBaggageFieldsTest {
   protected ExtraBaggageFields.Factory factory;
   protected BaggageField field1 = BaggageField.create("one");
   protected BaggageField field2 = BaggageField.create("two");
@@ -128,19 +128,23 @@ public abstract class ExtraBaggageFieldsTest<S> {
   }
 
   Object getState(ExtraBaggageFields extraBaggageFields, BaggageField field) {
-    int index = ((ExtraBaggageFields) extraBaggageFields).indexOf(field);
+    int index = extraBaggageFields.indexOf(field);
     if (index == -1) return null;
-    Object[] stateArray = ((ExtraBaggageFields) extraBaggageFields).stateArray;
+    Object[] stateArray = extraBaggageFields.stateArray;
     if (stateArray == null) return null;
     return stateArray[index];
   }
 
   protected boolean isEmpty(ExtraBaggageFields extraBaggageFields) {
-    Object[] stateArray = ((ExtraBaggageFields) extraBaggageFields).stateArray;
+    Object[] stateArray = extraBaggageFields.stateArray;
     if (stateArray == null) return true;
     for (Object state : stateArray) {
-      if (state != null) return false;
+      if (!isEmpty(state)) return false;
     }
     return true;
+  }
+
+  protected boolean isEmpty(Object state) {
+    return state == null;
   }
 }

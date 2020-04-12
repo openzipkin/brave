@@ -24,9 +24,13 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** This is an internal feature until we settle on an encoding format. */
-public class DynamicBaggageTest extends ExtraBaggageFieldsTest<Map<String, String>> {
+public class DynamicBaggageTest extends ExtraBaggageFieldsTest {
   BaggageHandler<String> singleValueHandler = BaggageHandlers.string(field1);
   BaggageHandler<Map<BaggageField, String>> dynamicHandler = DynamicBaggageHandler.create();
+
+  @Override protected boolean isEmpty(Object state) {
+    return state == null || (state instanceof Map && ((Map) state).isEmpty());
+  }
 
   // Here, we add one constant field and one handler for everything else
   @Override protected ExtraBaggageFields.Factory newFactory() {
