@@ -127,7 +127,7 @@ public class WeakConcurrentMap<K, V> extends ReferenceQueue<K> {
     }
 
     /**
-     * While a lookup key will invoke equals against this, the visa versa is not true. This methos
+     * While a lookup key will invoke equals against this, the visa versa is not true. This method
      * is only used inside the target map to resolve hash code collisions.
      */
     @Override public boolean equals(Object o) { // resolves hash code collisions
