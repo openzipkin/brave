@@ -486,7 +486,7 @@ public final class TraceContext extends SamplingFlags {
       String missing = "";
       if (traceIdHigh == 0L && traceId == 0L) missing += " traceId";
       if (spanId == 0L) missing += " spanId";
-      if (!"".equals(missing)) throw new IllegalArgumentException("Missing :" + missing);
+      if (!"".equals(missing)) throw new IllegalArgumentException("Missing:" + missing);
       return new TraceContext(
         flags, traceIdHigh, traceId, localRootId, parentId, spanId, ensureImmutable(extra)
       );
