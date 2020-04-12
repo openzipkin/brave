@@ -98,7 +98,7 @@ public final class ExtraBaggageFields {
       if (stateArray[index] == null) {
         state = handler.newState(field, value);
       } else {
-        state = handler.mergeState(stateArray[index], field, value);
+        state = handler.updateState(stateArray[index], field, value);
       }
 
       if (equal(state, stateArray[index])) return false;

@@ -53,7 +53,7 @@ public final class BaggageHandlers {
       return value;
     }
 
-    @Override public String mergeState(String state, BaggageField field, String value) {
+    @Override public String updateState(String state, BaggageField field, String value) {
       return value; // overwrite
     }
 

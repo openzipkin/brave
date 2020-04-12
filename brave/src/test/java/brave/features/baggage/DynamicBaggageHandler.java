@@ -61,12 +61,12 @@ final class DynamicBaggageHandler implements BaggageHandler<Map<BaggageField, St
   }
 
   @Override
-  public Map<BaggageField, String> mergeState(Map<BaggageField, String> state, BaggageField field,
-    String value) {
+  public Map<BaggageField, String> updateState(Map<BaggageField, String> state, BaggageField field,
+    @Nullable String value) {
     if (equal(value, state.get(field))) return state;
     if (value == null) {
       if (!state.containsKey(field)) return state;
-      if (state.size() == 1) return null;
+      if (state.size() == 1) return Collections.emptyMap();
     }
 
     // We replace an existing value with null instead of deleting it. This way we know there was
