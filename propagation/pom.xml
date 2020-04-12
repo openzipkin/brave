@@ -20,7 +20,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-parent</artifactId>
-    <version>5.10.2-SNAPSHOT</version>
+    <version>5.10.3-SNAPSHOT</version>
   </parent>
 
   <artifactId>brave-propagation-parent</artifactId>
