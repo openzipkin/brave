@@ -333,6 +333,46 @@ public class MutableSpanTest {
       MutableSpan::new,
       () -> {
         MutableSpan span = new MutableSpan();
+        span.traceId("a");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.traceId("b");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.localRootId("a");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.localRootId("b");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.parentId("a");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.parentId("b");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.id("a");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.id("b");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
         span.kind(Span.Kind.CLIENT);
         return span;
       },

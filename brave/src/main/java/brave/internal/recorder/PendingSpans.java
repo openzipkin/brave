@@ -69,24 +69,21 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
     PendingSpan result = get(context);
     if (result != null) return result;
 
-    MutableSpan data = new MutableSpan(defaultSpan);
-    if (context.debug()) data.setDebug();
-    if (context.shared()) data.setShared();
-
+    MutableSpan span = newSpan(context);
     PendingSpan parentSpan = parent != null ? get(parent) : null;
 
     // save overhead calculating time if the parent is in-progress (usually is)
     TickClock clock;
     if (parentSpan != null) {
       clock = parentSpan.clock;
-      if (start) data.startTimestamp(clock.currentTimeMicroseconds());
+      if (start) span.startTimestamp(clock.currentTimeMicroseconds());
     } else {
       long currentTimeMicroseconds = this.clock.currentTimeMicroseconds();
       clock = new TickClock(currentTimeMicroseconds, System.nanoTime());
-      if (start) data.startTimestamp(currentTimeMicroseconds);
+      if (start) span.startTimestamp(currentTimeMicroseconds);
     }
 
-    PendingSpan newSpan = new PendingSpan(context, data, clock);
+    PendingSpan newSpan = new PendingSpan(context, span, clock);
     // Probably absent because we already checked with get() at the entrance of this method
     PendingSpan previousSpan = putIfProbablyAbsent(context, newSpan);
     if (previousSpan != null) return previousSpan; // lost race
@@ -96,12 +93,18 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
       "Bug (or unexpected call to internal code): parent can only be null in a local root!";
 
     if (spanToCaller != null) {
-      Throwable oldCaller = spanToCaller.putIfProbablyAbsent(newSpan.state,
+      Throwable oldCaller = spanToCaller.putIfProbablyAbsent(newSpan.span,
         new Throwable("Thread " + Thread.currentThread().getName() + " allocated span here"));
       assert oldCaller == null :
         "Bug: unexpected to have an existing reference to a new MutableSpan!";
     }
     return newSpan;
+  }
+
+  MutableSpan newSpan(TraceContext context) {
+    MutableSpan span = new MutableSpan(defaultSpan);
+    copy(context, span);
+    return span;
   }
 
   /** @see brave.Span#abandon() */
@@ -113,7 +116,7 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
   public boolean flush(TraceContext context) {
     PendingSpan last = remove(context);
     if (last == null) return false;
-    maybeAddErrorTag(last.state);
+    maybeAddErrorTag(last.span);
     return true;
   }
 
@@ -121,8 +124,8 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
   public boolean finish(TraceContext context, long timestamp) {
     PendingSpan last = remove(context);
     if (last == null) return false;
-    maybeAddErrorTag(last.state);
-    last.state.finishTimestamp(timestamp != 0L ? timestamp : last.clock.currentTimeMicroseconds());
+    maybeAddErrorTag(last.span);
+    last.span.finishTimestamp(timestamp != 0L ? timestamp : last.clock.currentTimeMicroseconds());
     return true;
   }
 
@@ -141,23 +144,29 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
       assert value.context() == null : "unexpected for the weak referent to be present after GC!";
       if (flushTime == 0L) flushTime = clock.currentTimeMicroseconds();
 
-      boolean isEmpty = value.state.equals(defaultSpan);
-      Throwable caller = spanToCaller != null ? spanToCaller.getIfPresent(value.state) : null;
-
+      Throwable caller = spanToCaller != null ? spanToCaller.getIfPresent(value.span) : null;
       TraceContext context = value.backupContext;
 
       if (caller != null) {
-        String message = isEmpty
+        String message = value.span.equals(newSpan(context))
           ? "Span " + context + " was allocated but never used"
           : "Span " + context + " neither finished nor flushed before GC";
         Platform.get().log(message, caller);
       }
-      if (isEmpty) continue;
 
-      maybeAddErrorTag(value.state);
-      value.state.annotate(flushTime, "brave.flush");
-      orphanedSpanHandler.handle(context, value.state);
+      maybeAddErrorTag(value.span);
+      value.span.annotate(flushTime, "brave.flush");
+      orphanedSpanHandler.handle(context, value.span);
     }
+  }
+
+  void copy(TraceContext context, MutableSpan span) {
+    if (span.traceId() == null) span.traceId(context.traceIdString());
+    if (span.localRootId() == null) span.localRootId(context.localRootIdString());
+    if (span.parentId() == null) span.parentId(context.parentIdString());
+    if (span.id() == null) span.id(context.spanIdString());
+    if (context.debug()) span.setDebug();
+    if (context.shared()) span.setShared();
   }
 
   /** Legacy code never called {@link brave.Span#error(Throwable)}, so call here just in case. */

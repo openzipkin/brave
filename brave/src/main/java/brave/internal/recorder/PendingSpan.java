@@ -29,13 +29,13 @@ import java.lang.ref.WeakReference;
  * from being garbage collected.
  */
 public final class PendingSpan extends WeakReference<TraceContext> {
-  final MutableSpan state;
+  final MutableSpan span;
   final TickClock clock;
   final TraceContext backupContext; // only used on abandon
 
-  PendingSpan(TraceContext context, MutableSpan state, TickClock clock) {
+  PendingSpan(TraceContext context, MutableSpan span, TickClock clock) {
     super(context);
-    this.state = state;
+    this.span = span;
     this.clock = clock;
     this.backupContext = InternalPropagation.instance.shallowCopy(context);
   }
@@ -47,7 +47,7 @@ public final class PendingSpan extends WeakReference<TraceContext> {
 
   /** Returns the state currently accumulated for this trace ID and span ID */
   public MutableSpan state() {
-    return state;
+    return span;
   }
 
   /** Returns a clock that ensures startTimestamp consistency across the trace */
