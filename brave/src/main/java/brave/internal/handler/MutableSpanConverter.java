@@ -85,7 +85,8 @@ public final class MutableSpanConverter {
   void addLocalEndpoint(@Nullable String serviceName, @Nullable String ip, int port,
     Span.Builder span) {
     if (serviceName != null) serviceName = serviceName.toLowerCase(Locale.ROOT);
-    if (hashEndpointParameters(serviceName, ip, port) == defaultEndpointHashCode) {
+    if (hashEndpointParameters(serviceName, ip, port) == defaultEndpointHashCode
+      && equal(serviceName, defaultEndpoint.serviceName()) /* in case clash */) {
       span.localEndpoint(defaultEndpoint);
     } else {
       span.localEndpoint(Endpoint.newBuilder().serviceName(serviceName).ip(ip).port(port).build());
@@ -102,5 +103,9 @@ public final class MutableSpanConverter {
     @Override public void accept(Span.Builder target, long timestamp, String value) {
       target.addAnnotation(timestamp, value);
     }
+  }
+
+  static boolean equal(@Nullable Object a, @Nullable Object b) {
+    return a == null ? b == null : a.equals(b); // Java 6 can't use Objects.equals()
   }
 }

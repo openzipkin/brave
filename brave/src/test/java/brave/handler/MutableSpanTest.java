@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -278,6 +279,51 @@ public class MutableSpanTest {
   }
 
   static final Exception EX1 = new Exception(), EX2 = new Exception();
+
+  @Test public void equalsOnHashCodeClash() {
+    // Not as good as property testing, but easier to see changes later when fields are added!
+    List<Function<String, MutableSpan>> permutations = asList(
+      string -> {
+        MutableSpan span = new MutableSpan();
+        span.name(string);
+        return span;
+      },
+      string -> {
+        MutableSpan span = new MutableSpan();
+        span.localServiceName(string);
+        return span;
+      },
+      string -> {
+        MutableSpan span = new MutableSpan();
+        span.remoteServiceName(string);
+        return span;
+      },
+      string -> {
+        MutableSpan span = new MutableSpan();
+        span.tag(string, "");
+        return span;
+      },
+      string -> {
+        MutableSpan span = new MutableSpan();
+        span.tag("error", string);
+        return span;
+      },
+      string -> {
+        MutableSpan span = new MutableSpan();
+        span.annotate(1L, string);
+        return span;
+      }
+    );
+
+    for (Function<String, MutableSpan> factory : permutations) {
+      MutableSpan Aa = factory.apply("Aa");
+      MutableSpan BB = factory.apply("BB");
+      assertThat(Aa)
+        .isNotEqualTo(BB)
+        .extracting(MutableSpan::hashCode)
+        .isEqualTo(BB.hashCode()); // clash
+    }
+  }
 
   @Test public void equalsAndHashCode() {
     // Not as good as property testing, but easier to see changes later when fields are added!

@@ -32,7 +32,7 @@ public class MutableSpanConverterTest {
 
   @Before public void setup() {
     defaultSpan = new MutableSpan();
-    defaultSpan.localServiceName("fooService");
+    defaultSpan.localServiceName("Aa");
     defaultSpan.localIp("1.2.3.4");
     defaultSpan.localPort(80);
     converter = new MutableSpanConverter(defaultSpan);
@@ -53,6 +53,16 @@ public class MutableSpanConverterTest {
 
     assertThat(convert(span).localEndpoint())
       .isSameAs(converter.defaultEndpoint);
+  }
+
+  @Test public void localEndpoint_serviceNameHashCodeCollision() {
+    MutableSpan span = new MutableSpan();
+    span.localServiceName("BB");
+    span.localIp(converter.defaultEndpoint.ipv4());
+    span.localPort(converter.defaultEndpoint.portAsInt());
+
+    assertThat(convert(span).localEndpoint())
+      .isNotSameAs(converter.defaultEndpoint);
   }
 
   @Test public void localEndpoint_notSameAsDefault() {
