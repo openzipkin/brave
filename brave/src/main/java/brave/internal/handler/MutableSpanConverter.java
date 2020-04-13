@@ -71,13 +71,19 @@ public final class MutableSpanConverter {
   void addLocalEndpoint(@Nullable String serviceName, @Nullable String ip, int port,
     Span.Builder span) {
     if (serviceName != null) serviceName = serviceName.toLowerCase(Locale.ROOT);
-    if (equal(serviceName, defaultEndpoint.serviceName())
-      && (equal(ip, defaultEndpoint.ipv4()) || equal(ip, defaultEndpoint.ipv6()))
-      && port == defaultEndpoint.portAsInt()) {
+    if (equalsDefaultEndpoint(serviceName, ip, port)) {
       span.localEndpoint(defaultEndpoint);
     } else {
       span.localEndpoint(Endpoint.newBuilder().serviceName(serviceName).ip(ip).port(port).build());
     }
+  }
+
+  boolean equalsDefaultEndpoint(@Nullable String serviceName, @Nullable String ip, int port) {
+    return equal(serviceName, defaultEndpoint.serviceName())
+      // Brave only has one IP, but it shuffles into zipkin2.Endpoint based on its type
+      && ((defaultEndpoint.ipv4() != null && equal(ip, defaultEndpoint.ipv4())) ||
+      (defaultEndpoint.ipv6() != null && equal(ip, defaultEndpoint.ipv6())))
+      && port == defaultEndpoint.portAsInt();
   }
 
   enum Consumer implements TagConsumer<Span.Builder>, AnnotationConsumer<Span.Builder> {
