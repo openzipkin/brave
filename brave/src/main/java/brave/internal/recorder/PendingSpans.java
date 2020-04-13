@@ -44,8 +44,7 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
   final AtomicBoolean noop;
 
   public PendingSpans(MutableSpan defaultSpan, ErrorParser errorParser, Clock clock,
-    FinishedSpanHandler orphanedSpanHandler,
-    boolean trackOrphans, AtomicBoolean noop) {
+    FinishedSpanHandler orphanedSpanHandler, boolean trackOrphans, AtomicBoolean noop) {
     this.defaultSpan = defaultSpan;
     this.errorParser = errorParser;
     this.clock = clock;
@@ -163,9 +162,8 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
 
   /** Legacy code never called {@link brave.Span#error(Throwable)}, so call here just in case. */
   void maybeAddErrorTag(MutableSpan span) {
+    if (span.error() == null) return;
     String errorTag = span.tag("error");
-    if (errorTag == null && span.error() != null) {
-      errorParser.error(span.error(), span);
-    }
+    if (errorTag == null) errorParser.error(span.error(), span);
   }
 }
