@@ -11,7 +11,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave;
+package brave.internal.handler;
 
 import brave.internal.handler.ZipkinFinishedSpanHandler.LoggingReporter;
 import org.junit.Test;
@@ -19,7 +19,7 @@ import zipkin2.Span;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 
-public class TracerClassLoaderTest {
+public class ZipkinFinishedSpanHandlerClassLoaderTest {
   @Test public void unloadable_withLoggingReporter() {
     assertRunIsUnloadable(UsingLoggingReporter.class, getClass().getClassLoader());
   }

@@ -35,7 +35,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
-import zipkin2.Endpoint;
+import zipkin2.reporter.AsyncReporter;
 import zipkin2.reporter.Reporter;
 
 /**
@@ -200,7 +200,7 @@ public abstract class Tracing implements Closeable {
      * #localPort(int)}. Will be removed in Brave v6.
      */
     @Deprecated
-    public Builder endpoint(Endpoint endpoint) {
+    public Builder endpoint(zipkin2.Endpoint endpoint) {
       if (endpoint == null) throw new NullPointerException("endpoint == null");
       this.localServiceName = endpoint.serviceName();
       this.localIp = endpoint.ipv6() != null ? endpoint.ipv6() : endpoint.ipv4();
@@ -211,8 +211,7 @@ public abstract class Tracing implements Closeable {
     /**
      * Controls how {@linkplain TraceContext#sampled() remote sampled} spans report to a
      * <a href="https://github.com/openzipkin/zipkin-reporter-java">io.zipkin.reporter2:zipkin-reporter</a>destination.
-     * This input is usually a {@link zipkin2.reporter.AsyncReporter} which batches spans before
-     * reporting them.
+     * This input is usually a {@link AsyncReporter} which batches spans before reporting them.
      *
      * <p>For example, here's how to batch send spans via http:
      *
@@ -332,7 +331,7 @@ public abstract class Tracing implements Closeable {
      * aggregation.
      *
      * <h3>Relationship to {@link #spanReporter(Reporter)}</h3>
-     * This is similar to {@link #spanReporter(zipkin2.reporter.Reporter)} except for a few things:
+     * This is similar to {@link #spanReporter(Reporter)} except for a few things:
      * <ul>
      *   <li>This is decoupled from Zipkin types</li>
      *   <li>This receives both {@linkplain TraceContext#sampled() remote} and {@linkplain TraceContext#sampledLocal() local} sampled spans</li>
@@ -345,7 +344,7 @@ public abstract class Tracing implements Closeable {
      * a higher performance codec or disruptor, or you can forward to a vendor-specific trace exporter.
      *
      * @param handler skipped if {@link FinishedSpanHandler#NOOP} or already added
-     * @see #spanReporter(zipkin2.reporter.Reporter)
+     * @see #spanReporter(Reporter)
      * @see #alwaysReportSpans()
      * @see TraceContext#sampledLocal()
      */
