@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,9 +13,9 @@
  */
 package brave.internal.handler;
 
-import brave.ErrorParser;
 import brave.Span.Kind;
 import brave.handler.MutableSpan;
+import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Annotation;
 import zipkin2.Endpoint;
@@ -27,38 +27,82 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 public class MutableSpanConverterTest {
-  MutableSpanConverter converter =
-    new MutableSpanConverter(new ErrorParser(), "fooService", "1.2.3.4", 80);
+  MutableSpan defaultSpan;
+  MutableSpanConverter converter;
 
-  @Test public void localEndpoint_default() {
-    // When span doesn't set local endpoint info
-    assertThat(convert(new MutableSpan()).localEndpoint())
-      .isEqualTo(converter.localEndpoint);
-
-    // When span sets to the same values
-    MutableSpan span = new MutableSpan();
-    span.localServiceName(converter.localServiceName);
-    span.localIp(converter.localIp);
-    span.localPort(converter.localPort);
-
-    assertThat(convert(span).localEndpoint())
-      .isEqualTo(converter.localEndpoint);
+  @Before public void setup() {
+    defaultSpan = new MutableSpan();
+    defaultSpan.localServiceName("Aa");
+    defaultSpan.localIp("1.2.3.4");
+    defaultSpan.localPort(80);
+    converter = new MutableSpanConverter(defaultSpan);
   }
 
-  @Test public void localEndpoint_default_whenIpNull() {
-    converter = new MutableSpanConverter(new ErrorParser(), "fooService", null, 80);
-
-    // When span doesn't set local endpoint info
+  @Test public void localEndpoint_null() {
+    // When a finished span handler clears the endpoint info
     assertThat(convert(new MutableSpan()).localEndpoint())
-      .isEqualTo(converter.localEndpoint);
+      .isNull();
+  }
 
+  @Test public void localEndpoint_sameAsDefault() {
     // When span sets to the same values
     MutableSpan span = new MutableSpan();
-    span.localServiceName(converter.localServiceName);
-    span.localPort(converter.localPort);
+    span.localServiceName(converter.defaultEndpoint.serviceName());
+    span.localIp(converter.defaultEndpoint.ipv4());
+    span.localPort(converter.defaultEndpoint.portAsInt());
 
     assertThat(convert(span).localEndpoint())
-      .isEqualTo(converter.localEndpoint);
+      .isSameAs(converter.defaultEndpoint);
+  }
+
+  @Test public void localEndpoint_serviceNameHashCodeCollision() {
+    MutableSpan span = new MutableSpan();
+    span.localServiceName("BB");
+    span.localIp(converter.defaultEndpoint.ipv4());
+    span.localPort(converter.defaultEndpoint.portAsInt());
+
+    assertThat(convert(span).localEndpoint())
+      .isNotSameAs(converter.defaultEndpoint);
+  }
+
+  @Test public void localEndpoint_notSameAsDefault_missingIp() {
+    MutableSpan span = new MutableSpan();
+    span.localServiceName(converter.defaultEndpoint.serviceName());
+    // missing IP address
+    span.localPort(converter.defaultEndpoint.portAsInt());
+
+    assertThat(convert(span).localEndpoint().ipv4())
+      .isNull();
+  }
+
+  @Test public void localEndpoint_notSameAsDefault_differentIp() {
+    MutableSpan span = new MutableSpan();
+    span.localServiceName(converter.defaultEndpoint.serviceName());
+    span.localIp("2001:db8::c001");
+    span.localPort(converter.defaultEndpoint.portAsInt());
+
+    assertThat(convert(span).localEndpoint().ipv6())
+      .isEqualTo("2001:db8::c001");
+  }
+
+  @Test public void localEndpoint_notSameAsDefault_missingPort() {
+    MutableSpan span = new MutableSpan();
+    span.localServiceName(converter.defaultEndpoint.serviceName());
+    span.localIp(converter.defaultEndpoint.ipv4());
+    // missing port
+
+    assertThat(convert(span).localEndpoint().portAsInt())
+      .isZero();
+  }
+
+  @Test public void localEndpoint_notSameAsDefault_differentPort() {
+    MutableSpan span = new MutableSpan();
+    span.localServiceName(converter.defaultEndpoint.serviceName());
+    span.localIp(converter.defaultEndpoint.ipv4());
+    span.localPort(443);
+
+    assertThat(convert(span).localEndpoint().portAsInt())
+      .isEqualTo(443);
   }
 
   @Test public void localEndpoint_override() {
@@ -66,7 +110,7 @@ public class MutableSpanConverterTest {
     span.localServiceName("barService");
 
     assertThat(convert(span).localEndpoint())
-      .isEqualTo(Endpoint.newBuilder().serviceName("barService").ip("1.2.3.4").port(80).build());
+      .isEqualTo(Endpoint.newBuilder().serviceName("barService").build());
   }
 
   @Test public void minimumDurationIsOne() {
@@ -200,7 +244,7 @@ public class MutableSpanConverterTest {
     MutableSpan flushed = new MutableSpan();
     flushed.finishTimestamp(0L);
 
-    assertThat(convert(flushed)).extracting(s -> s.timestampAsLong(), s -> s.durationAsLong())
+    assertThat(convert(flushed)).extracting(Span::timestampAsLong, Span::durationAsLong)
       .allSatisfy(u -> assertThat(u).isEqualTo(0L));
   }
 

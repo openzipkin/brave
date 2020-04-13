@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,6 @@
  */
 package brave.internal.handler;
 
-import brave.ErrorParser;
 import brave.handler.MutableSpan;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
@@ -34,8 +33,11 @@ public class ZipkinFinishedSpanHandlerTest {
   }
 
   void init(Reporter<Span> spanReporter, boolean alwaysReportSpans) {
-    zipkinFinishedSpanHandler = new ZipkinFinishedSpanHandler(spanReporter, new ErrorParser(),
-      "favistar", "1.2.3.4", 0, alwaysReportSpans);
+    MutableSpan defaultSpan = new MutableSpan();
+    defaultSpan.localServiceName("favistar");
+    defaultSpan.localIp("1.2.3.4");
+    zipkinFinishedSpanHandler = new ZipkinFinishedSpanHandler(defaultSpan, spanReporter,
+      alwaysReportSpans);
   }
 
   @Test public void reportsSampledSpan() {
@@ -46,21 +48,21 @@ public class ZipkinFinishedSpanHandlerTest {
       Span.newBuilder()
         .traceId("1")
         .id("2")
-        .localEndpoint(zipkinFinishedSpanHandler.converter.localEndpoint)
         .build()
     );
   }
 
   @Test public void reportsDebugSpan() {
     TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).debug(true).build();
-    zipkinFinishedSpanHandler.handle(context, new MutableSpan());
+    MutableSpan span = new MutableSpan();
+    span.setDebug();
+    zipkinFinishedSpanHandler.handle(context, span);
 
     assertThat(spans.get(0)).isEqualToComparingFieldByField(
       Span.newBuilder()
         .traceId("1")
         .id("2")
         .debug(true)
-        .localEndpoint(zipkinFinishedSpanHandler.converter.localEndpoint)
         .build()
     );
   }

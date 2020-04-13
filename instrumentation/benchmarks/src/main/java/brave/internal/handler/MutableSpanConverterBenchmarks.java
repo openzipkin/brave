@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,6 @@
  */
 package brave.internal.handler;
 
-import brave.ErrorParser;
 import brave.handler.MutableSpan;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -43,8 +42,7 @@ import static brave.handler.MutableSpanBenchmarks.newServerMutableSpan;
 @State(Scope.Thread)
 @Threads(1)
 public class MutableSpanConverterBenchmarks {
-  final MutableSpanConverter converter =
-    new MutableSpanConverter(new ErrorParser(), "unknown", "127.0.0.1", 0);
+  final MutableSpanConverter converter = new MutableSpanConverter(new MutableSpan());
   final MutableSpan serverMutableSpan = newServerMutableSpan();
   final MutableSpan bigClientMutableSpan = newBigClientMutableSpan();
 

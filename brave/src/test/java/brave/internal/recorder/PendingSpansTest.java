@@ -13,6 +13,7 @@
  */
 package brave.internal.recorder;
 
+import brave.ErrorParser;
 import brave.GarbageCollectors;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
@@ -71,7 +72,10 @@ public class PendingSpansTest {
   }
 
   void init(FinishedSpanHandler zipkinFinishedSpanHandler, boolean trackOrphans) {
-    pendingSpans = new PendingSpans(() -> clock.incrementAndGet() * 1000L,
+    MutableSpan defaultSpan = new MutableSpan();
+    defaultSpan.localServiceName("favistar");
+    defaultSpan.localIp("1.2.3.4");
+    pendingSpans = new PendingSpans(defaultSpan, new ErrorParser(), () -> clock.incrementAndGet() * 1000L,
       zipkinFinishedSpanHandler, trackOrphans, new AtomicBoolean());
   }
 

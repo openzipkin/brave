@@ -18,6 +18,7 @@ import brave.ErrorParser;
 import brave.Tracing;
 import brave.TracingCustomizer;
 import brave.handler.FinishedSpanHandler;
+import brave.handler.MutableSpan;
 import brave.propagation.B3SinglePropagation;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
@@ -66,8 +67,7 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-      .extracting("tracer.finishedSpanHandler.delegate.converter.localEndpoint")
-      .extracting("serviceName")
+      .extracting("tracer.pendingSpans.defaultSpan.localServiceName")
       .isEqualTo("brave-webmvc-example");
   }
 
@@ -84,12 +84,14 @@ public class TracingFactoryBeanTest {
       + "</bean>"
     );
 
+    MutableSpan defaultSpan = new MutableSpan();
+    defaultSpan.localServiceName("brave-webmvc-example");
+    defaultSpan.localIp("1.2.3.4");
+    defaultSpan.localPort(8080);
+
     assertThat(context.getBean("tracing", Tracing.class))
-      .extracting("tracer.finishedSpanHandler.delegate.converter.localEndpoint")
-      .isEqualTo(Endpoint.newBuilder()
-        .serviceName("brave-webmvc-example")
-        .ip("1.2.3.4")
-        .port(8080).build());
+      .extracting("tracer.pendingSpans.defaultSpan")
+      .isEqualTo(defaultSpan);
   }
 
   @Test public void endpoint() {
@@ -105,12 +107,14 @@ public class TracingFactoryBeanTest {
       + "</bean>"
     );
 
+    MutableSpan defaultSpan = new MutableSpan();
+    defaultSpan.localServiceName("brave-webmvc-example");
+    defaultSpan.localIp("1.2.3.4");
+    defaultSpan.localPort(8080);
+
     assertThat(context.getBean("tracing", Tracing.class))
-      .extracting("tracer.finishedSpanHandler.delegate.converter.localEndpoint")
-      .isEqualTo(Endpoint.newBuilder()
-        .serviceName("brave-webmvc-example")
-        .ip("1.2.3.4")
-        .port(8080).build());
+      .extracting("tracer.pendingSpans.defaultSpan")
+      .isEqualTo(defaultSpan);
   }
 
   @Test public void spanReporter() {

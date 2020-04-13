@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,33 +13,31 @@
  */
 package brave.internal.handler;
 
-import brave.ErrorParser;
 import brave.handler.MutableSpan;
 import brave.handler.MutableSpan.AnnotationConsumer;
 import brave.handler.MutableSpan.TagConsumer;
 import brave.internal.Nullable;
+import java.util.Locale;
 import zipkin2.Endpoint;
 import zipkin2.Span;
 
 // internal until we figure out how the api should sit.
 public final class MutableSpanConverter {
+  final String defaultServiceName, defaultIp;
+  final int defaultPort;
+  final Endpoint defaultEndpoint;
 
-  final ErrorParser errorParser;
-  final String localServiceName;
-  @Nullable final String localIp;
-  final int localPort;
-  final Endpoint localEndpoint;
-
-  public MutableSpanConverter(ErrorParser errorParser, String localServiceName, String localIp,
-    int localPort) {
-    if (errorParser == null) throw new NullPointerException("errorParser == null");
-    this.errorParser = errorParser;
-    if (localServiceName == null) throw new NullPointerException("localServiceName == null");
-    this.localServiceName = localServiceName;
-    this.localIp = localIp;
-    this.localPort = localPort;
-    this.localEndpoint =
-      Endpoint.newBuilder().serviceName(localServiceName).ip(localIp).port(localPort).build();
+  public MutableSpanConverter(MutableSpan defaultSpan) {
+    // non-Zipkin models allow mixed case service names, but Zipkin does not.
+    String serviceName = defaultSpan.localServiceName();
+    defaultServiceName = serviceName != null ? serviceName.toLowerCase(Locale.ROOT) : null;
+    defaultPort = defaultSpan.localPort();
+    defaultIp = defaultSpan.localIp();
+    this.defaultEndpoint = Endpoint.newBuilder()
+      .serviceName(defaultServiceName)
+      .ip(defaultIp)
+      .port(defaultPort)
+      .build();
   }
 
   void convert(MutableSpan span, Span.Builder result) {
@@ -55,7 +53,11 @@ public final class MutableSpanConverter {
       result.kind(Span.Kind.values()[kind.ordinal()]);
     }
 
-    addLocalEndpoint(span.localServiceName(), span.localIp(), span.localPort(), result);
+    String localServiceName = span.localServiceName(), localIp = span.localIp();
+    if (localServiceName != null || localIp != null) {
+      addLocalEndpoint(localServiceName, localIp, span.localPort(), result);
+    }
+
     String remoteServiceName = span.remoteServiceName(), remoteIp = span.remoteIp();
     if (remoteServiceName != null || remoteIp != null) {
       result.remoteEndpoint(zipkin2.Endpoint.newBuilder()
@@ -65,25 +67,18 @@ public final class MutableSpanConverter {
         .build());
     }
 
-    String errorTag = span.tag("error");
-    if (errorTag == null && span.error() != null) {
-      errorParser.error(span.error(), span);
-    }
-
     span.forEachTag(Consumer.INSTANCE, result);
     span.forEachAnnotation(Consumer.INSTANCE, result);
     if (span.shared()) result.shared(true);
+    if (span.debug()) result.debug(true);
   }
 
   // avoid re-allocating an endpoint when we have the same data
-  void addLocalEndpoint(String serviceName, @Nullable String ip, int port, Span.Builder span) {
-    if (serviceName == null) serviceName = localServiceName;
-    if (ip == null) ip = localIp;
-    if (port <= 0) port = localPort;
-    if (localServiceName.equals(serviceName)
-      && (localIp == null ? ip == null : localIp.equals(ip))
-      && localPort == port) {
-      span.localEndpoint(localEndpoint);
+  void addLocalEndpoint(@Nullable String serviceName, @Nullable String ip, int port,
+    Span.Builder span) {
+    if (serviceName != null) serviceName = serviceName.toLowerCase(Locale.ROOT);
+    if (equal(serviceName, defaultServiceName) && equal(ip, defaultIp) && port == defaultPort) {
+      span.localEndpoint(defaultEndpoint);
     } else {
       span.localEndpoint(Endpoint.newBuilder().serviceName(serviceName).ip(ip).port(port).build());
     }
@@ -99,5 +94,9 @@ public final class MutableSpanConverter {
     @Override public void accept(Span.Builder target, long timestamp, String value) {
       target.addAnnotation(timestamp, value);
     }
+  }
+
+  static boolean equal(@Nullable Object a, @Nullable Object b) {
+    return a == null ? b == null : a.equals(b); // Java 6 can't use Objects.equals()
   }
 }

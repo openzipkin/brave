@@ -14,32 +14,40 @@
 package brave.handler;
 
 import brave.Span.Kind;
-import brave.Tag;
-import brave.Tracer;
+import brave.SpanCustomizer;
 import brave.internal.IpLiteral;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 
+import static brave.internal.InternalPropagation.FLAG_DEBUG;
+import static brave.internal.InternalPropagation.FLAG_SHARED;
+
 /**
  * This represents a span except for its {@link TraceContext}. It is mutable, for late adjustments.
  *
  * <p>While in-flight, the data is synchronized where necessary. When exposed to users, it can be
  * mutated without synchronization.
+ *
+ * @since 5.4
  */
 public final class MutableSpan implements Cloneable {
+  static final MutableSpan EMPTY = new MutableSpan();
 
+  /** @since 5.4 */
   public interface TagConsumer<T> {
     /** @see brave.Span#tag(String, String) */
     void accept(T target, String key, String value);
   }
 
+  /** @since 5.4 */
   public interface AnnotationConsumer<T> {
     /** @see brave.Span#annotate(long, String) */
     void accept(T target, long timestamp, String value);
   }
 
+  /** @since 5.4 */
   public interface TagUpdater {
     /**
      * Returns the same value, an updated one, or null to drop the tag.
@@ -49,6 +57,7 @@ public final class MutableSpan implements Cloneable {
     @Nullable String update(String key, String value);
   }
 
+  /** @since 5.4 */
   public interface AnnotationUpdater {
     /**
      * Returns the same value, an updated one, or null to drop the annotation.
@@ -63,7 +72,7 @@ public final class MutableSpan implements Cloneable {
    * like array allocation and object reference size.
    */
   Kind kind;
-  boolean shared;
+  int flags;
   long startTimestamp, finishTimestamp;
   String name, localServiceName, localIp, remoteServiceName, remoteIp;
   int localPort, remotePort;
@@ -74,141 +83,242 @@ public final class MutableSpan implements Cloneable {
   ArrayList<Object> annotations;
   Throwable error;
 
+  /** @since 5.4 */
   public MutableSpan() {
-    // this cheats because it will not need to grow unless there are more than 5 tags
-    tags = new ArrayList<>();
-    // lazy initialize annotations
   }
 
-  /** Returns true if there was no data added. Usually this indicates an instrumentation bug. */
-  public boolean isEmpty() {
-    return kind == null
-      && !shared
-      && startTimestamp == 0L
-      && finishTimestamp == 0L
-      && name == null
-      && localServiceName == null
-      && localIp == null
-      && remoteServiceName == null
-      && remoteIp == null
-      && localPort == 0
-      && remotePort == 0
-      && tags.isEmpty()
-      && annotations == null
-      && error == null;
+  /** @since 5.12 */
+  public MutableSpan(MutableSpan toCopy) {
+    if (toCopy == null) throw new NullPointerException("toCopy == null");
+    kind = toCopy.kind;
+    flags = toCopy.flags;
+    startTimestamp = toCopy.startTimestamp;
+    finishTimestamp = toCopy.finishTimestamp;
+    name = toCopy.name;
+    localServiceName = toCopy.localServiceName;
+    localIp = toCopy.localIp;
+    localPort = toCopy.localPort;
+    remoteServiceName = toCopy.remoteServiceName;
+    remoteIp = toCopy.remoteIp;
+    remotePort = toCopy.remotePort;
+    tags = toCopy.tags != null ? new ArrayList<>(toCopy.tags) : null;
+    annotations = toCopy.annotations != null ? new ArrayList<>(toCopy.annotations) : null;
+    error = toCopy.error;
   }
 
-  /** Returns the {@link brave.Span#name(String) span name} or null */
+  /**
+   * @since 5.4
+   * @deprecated Since 5.12 use {@link #equals(Object)} against a base value.
+   */
+  @Deprecated public boolean isEmpty() {
+    return equals(EMPTY);
+  }
+
+  /**
+   * Returns the {@linkplain brave.SpanCustomizer#name(String) span name} or {@code null}
+   *
+   * @since 5.4
+   */
   @Nullable public String name() {
     return name;
   }
 
-  /** @see brave.Span#name(String) */
-  public void name(String name) {
-    if (name == null) throw new NullPointerException("name == null");
-    this.name = name;
+  /**
+   * Calling this overrides any previous value, such as{@link brave.SpanCustomizer#name(String)}.
+   *
+   * @see #name()
+   */
+  public void name(@Nullable String name) {
+    this.name = name == null || name.isEmpty() ? null : name;
   }
 
-  /** Returns the {@link brave.Span#start(long) span start timestamp} or zero */
+  /**
+   * Returns the {@linkplain brave.Span#start(long) span start timestamp} or zero.
+   *
+   * @since 5.4
+   */
   public long startTimestamp() {
     return startTimestamp;
   }
 
-  /** @see brave.Span#start(long) */
+  /**
+   * Calling this overrides any previous value, such as {@link brave.Span#start(long)} or {@link
+   * brave.Tracer#startScopedSpan(String)}.
+   *
+   * @see #startTimestamp()
+   */
   public void startTimestamp(long startTimestamp) {
     this.startTimestamp = startTimestamp;
   }
 
-  /** Returns the {@link brave.Span#finish(long) span finish timestamp} or zero */
+  /**
+   * Returns the {@linkplain brave.Span#finish(long) span finish timestamp} or zero.
+   *
+   * @since 5.4
+   */
   public long finishTimestamp() {
     return finishTimestamp;
   }
 
-  /** @see brave.Span#finish(long) */
+  /**
+   * Calling this overrides any previous value, such as {@link brave.Span#finish(long)} or {@link
+   * brave.ScopedSpan#finish()}.
+   *
+   * @see #finishTimestamp()
+   */
   public void finishTimestamp(long finishTimestamp) {
     this.finishTimestamp = finishTimestamp;
   }
 
-  /** Returns the {@link brave.Span#kind(brave.Span.Kind) span kind} or null */
+  /**
+   * Returns the {@linkplain brave.Span#kind(brave.Span.Kind) span kind} or {@code null}.
+   *
+   * @since 5.4
+   */
   public Kind kind() {
     return kind;
   }
 
-  /** @see brave.Span#kind(brave.Span.Kind) */
+  /**
+   * Calling this overrides any previous value, such as {@link brave.Span#kind(Kind).
+   *
+   * @see #kind()
+   */
   public void kind(@Nullable Kind kind) {
     this.kind = kind;
   }
 
-  /** When null {@link brave.Tracing.Builder#localServiceName(String) default} is used. */
+  /**
+   * Returns the {@linkplain brave.Tracing.Builder#localIp(String) label of this node in the service
+   * graph} or {@code null}.
+   *
+   * <p><em>Note</em>: This is initialized from {@link brave.Tracing.Builder#localServiceName(String)}.
+   * {@linkplain FinishedSpanHandler handlers} that want to conditionally replace the value should
+   * compare against the same value given to the tracing component.
+   *
+   * @since 5.4
+   */
   @Nullable public String localServiceName() {
     return localServiceName;
   }
 
-  /** @see brave.Tracing.Builder#localServiceName(String) */
-  public void localServiceName(String localServiceName) {
+  /**
+   * Calling this overrides any previous value, such as {@link brave.Tracing.Builder#localServiceName(String)}.
+   *
+   * @see #localServiceName()
+   */
+  public void localServiceName(@Nullable String localServiceName) {
     if (localServiceName == null || localServiceName.isEmpty()) {
-      throw new NullPointerException("localServiceName is empty");
+      this.localServiceName = null;
     }
     this.localServiceName = localServiceName;
   }
 
-  /** When null {@link brave.Tracing.Builder#localIp(String) default} will be used for zipkin. */
+  /**
+   * Returns the {@linkplain brave.Tracing.Builder#localIp(String) primary IP address associated
+   * with this service} or {@code null}.
+   *
+   * <p><em>Note</em>: This is initialized from {@link brave.Tracing.Builder#localIp(String)}.
+   * {@linkplain FinishedSpanHandler handlers} that want to conditionally replace the value should
+   * compare against the same value given to the tracing component.
+   *
+   * @since 5.4
+   */
   @Nullable public String localIp() {
     return localIp;
   }
 
-  /** @see #localIp() */
+  /**
+   * Calling this overrides any previous value, such as {@link brave.Tracing.Builder#localIp(String)}.
+   *
+   * @see #localIp()
+   */
   public boolean localIp(@Nullable String localIp) {
     this.localIp = IpLiteral.ipOrNull(localIp);
     return localIp != null;
   }
 
-  /** When zero {@link brave.Tracing.Builder#localIp(String) default} will be used for zipkin. */
+  /**
+   * Returns the {@linkplain brave.Tracing.Builder#localPort(int) primary listen port associated
+   * with this service} or zero.
+   *
+   * <p><em>Note</em>: This is initialized from {@link brave.Tracing.Builder#localPort(int)}.
+   * {@linkplain FinishedSpanHandler handlers} that want to conditionally replace the value should
+   * compare against the same value given to the tracing component.
+   *
+   * @since 5.4
+   */
   public int localPort() {
     return localPort;
   }
 
-  /** @see #localPort() */
+  /**
+   * Calling this overrides any previous value, such as {@link brave.Tracing.Builder#localPort(int)}.
+   *
+   * @see #localPort()
+   */
   public void localPort(int localPort) {
     if (localPort > 0xffff) throw new IllegalArgumentException("invalid port " + localPort);
     if (localPort < 0) localPort = 0;
     this.localPort = localPort;
   }
 
-  /** @see brave.Span#remoteServiceName(String) */
+  /**
+   * Returns the {@linkplain brave.Span#remoteServiceName(String) primary label of the remote
+   * service} or {@code null}.
+   *
+   * @see #remoteIp()
+   * @see #remotePort()
+   * @since 5.4
+   */
   @Nullable public String remoteServiceName() {
     return remoteServiceName;
   }
 
-  /** @see brave.Span#remoteServiceName(String) */
-  public void remoteServiceName(String remoteServiceName) {
+  /**
+   * Calling this overrides any previous value, such as {@link brave.Span#remoteServiceName(String)}.
+   *
+   * @see #remoteServiceName()
+   */
+  public void remoteServiceName(@Nullable String remoteServiceName) {
     if (remoteServiceName == null || remoteServiceName.isEmpty()) {
-      throw new NullPointerException("remoteServiceName is empty");
+      this.remoteServiceName = null;
     }
     this.remoteServiceName = remoteServiceName;
   }
 
   /**
-   * The text representation of the primary IPv4 or IPv6 address associated with the remote side of
-   * this connection. Ex. 192.168.99.100 null if unknown.
+   * Returns the {@linkplain brave.Span#remoteIpAndPort(String, int) IP of the remote service} or
+   * {@code null}.
    *
-   * @see brave.Span#remoteIpAndPort(String, int)
+   * @see #remoteServiceName()
+   * @see #remotePort()
+   * @since 5.4
    */
   @Nullable public String remoteIp() {
     return remoteIp;
   }
 
   /**
-   * Port of the remote IP's socket or 0, if not known.
+   * Returns the {@linkplain brave.Span#remoteIpAndPort(String, int) port of the remote service} or
+   * zero.
    *
-   * @see java.net.InetSocketAddress#getPort()
-   * @see brave.Span#remoteIpAndPort(String, int)
+   * @see #remoteServiceName()
+   * @see #remoteIp()
+   * @since 5.4
    */
   public int remotePort() {
     return remotePort;
   }
 
-  /** @see brave.Span#remoteIpAndPort(String, int) */
+  /**
+   * Calling this overrides any previous value, such as {@link brave.Span#remoteIpAndPort(String,
+   * int)}.
+   *
+   * @see #remoteServiceName()
+   * @see #remoteIp()
+   * @see #remotePort()
+   */
   public boolean remoteIpAndPort(@Nullable String remoteIp, int remotePort) {
     if (remoteIp == null) return false;
     this.remoteIp = IpLiteral.ipOrNull(remoteIp);
@@ -219,7 +329,120 @@ public final class MutableSpan implements Cloneable {
     return true;
   }
 
-  /** Returns true if an annotation with the given value exists in this span. */
+  /**
+   * Returns the {@linkplain brave.Span#error(Throwable) error} or {@code null}.
+   *
+   * @since 5.4
+   */
+  public Throwable error() {
+    return error;
+  }
+
+  /**
+   * Calling this overrides any previous value, such as {@link brave.Span#error(Throwable).
+   *
+   * @see #error()
+   */
+  public void error(@Nullable Throwable error) {
+    this.error = error;
+  }
+
+  /**
+   * Returns true if the context was {@linkplain TraceContext#debug() debug}.
+   *
+   * @since 5.4
+   */
+  public boolean debug() {
+    return (flags & FLAG_DEBUG) == FLAG_DEBUG;
+  }
+
+  /**
+   * Calling this is unexpected as it should only be initialized by {@link TraceContext#debug()}.
+   *
+   * @see #debug()
+   */
+  public void setDebug() {
+    flags |= FLAG_DEBUG;
+  }
+
+  /**
+   * Returns true if the context was {@linkplain TraceContext#shared() shared}.
+   *
+   * @since 5.4
+   */
+  public boolean shared() {
+    return (flags & FLAG_SHARED) == FLAG_SHARED;
+  }
+
+  /**
+   * Calling this is unexpected as it should only be initialized by {@link TraceContext#shared()}.
+   *
+   * @see #shared()
+   */
+  public void setShared() {
+    flags |= FLAG_SHARED;
+  }
+
+  /**
+   * Iterates over all {@linkplain SpanCustomizer#annotate(String) annotations} for purposes such as
+   * copying values.
+   *
+   * <p>Ex.
+   * <pre>{@code
+   * // During initialization, cache an annotation consumer function:
+   * annotationConsumer = (target, timestamp, value) -> target.add(tuple(timestamp, value));
+   *
+   * // Re-use that function while processing spans.
+   * List<Tuple<Long, String>> list = new ArrayList<>();
+   * span.forEachAnnotation(annotationConsumer, list);
+   * }</pre>
+   *
+   * @see #forEachAnnotation(AnnotationUpdater)
+   * @since 5.4
+   */
+  public <T> void forEachAnnotation(AnnotationConsumer<T> annotationConsumer, T target) {
+    if (annotations == null) return;
+    for (int i = 0, length = annotations.size(); i < length; i += 2) {
+      long timestamp = (long) annotations.get(i);
+      annotationConsumer.accept(target, timestamp, annotations.get(i + 1).toString());
+    }
+  }
+
+  /**
+   * Allows you to update or drop {@linkplain SpanCustomizer#annotate(String) annotations} for
+   * purposes such as redaction.
+   *
+   * <p>Ex.
+   * <pre>{@code
+   * // During initialization, cache an annotation updater function:
+   * annotationRedacter = (timestamp, value) -> badWords.contains(value) ? null : value;
+   *
+   * // Re-use that function while processing spans.
+   * span.forEachAnnotation(annotationRedacter);
+   * }</pre>
+   *
+   * @see #forEachAnnotation(AnnotationConsumer, Object)
+   * @since 5.4
+   */
+  public void forEachAnnotation(AnnotationUpdater annotationUpdater) {
+    if (annotations == null) return;
+    for (int i = 0, length = annotations.size(); i < length; i += 2) {
+      String value = annotations.get(i + 1).toString();
+      String newValue = annotationUpdater.update((long) annotations.get(i), value);
+      if (updateOrRemove(annotations, i, value, newValue)) {
+        length -= 2;
+        i -= 2;
+      }
+    }
+  }
+
+  /**
+   * Returns true if an annotation with the given value exists in this span.
+   *
+   * @see #forEachAnnotation(AnnotationConsumer, Object)
+   * @see #forEachAnnotation(AnnotationUpdater)
+   * @since 5.4
+   */
   public boolean containsAnnotation(String value) {
     if (value == null) throw new NullPointerException("value == null");
     if (annotations == null) return false;
@@ -230,7 +453,13 @@ public final class MutableSpan implements Cloneable {
     return false;
   }
 
-  /** @see brave.Span#annotate(String) */
+  /**
+   * Calling this adds an annotation, such as done in {@link brave.SpanCustomizer#annotate(String)}.
+   *
+   * @see #forEachAnnotation(AnnotationConsumer, Object)
+   * @see #forEachAnnotation(AnnotationUpdater)
+   * @since 5.4
+   */
   public void annotate(long timestamp, String value) {
     if (value == null) throw new NullPointerException("value == null");
     if (timestamp == 0L) return;
@@ -239,20 +468,16 @@ public final class MutableSpan implements Cloneable {
     annotations.add(value);
   }
 
-  /** @see brave.Span#error(Throwable) */
-  public Throwable error() {
-    return error;
-  }
-
-  /** @see brave.Span#error(Throwable) */
-  public void error(Throwable error) {
-    this.error = error;
-  }
-
-  /** Returns the last value associated with the key or null */
+  /**
+   * Returns the last {@linkplain brave.SpanCustomizer#tag(String, String) tag value} associated
+   * with the key or {@code null}.
+   *
+   * @since 5.4
+   */
   @Nullable public String tag(String key) {
     if (key == null) throw new NullPointerException("key == null");
     if (key.isEmpty()) throw new IllegalArgumentException("key is empty");
+    if (tags == null) return null;
     String result = null;
     for (int i = 0, length = tags.size(); i < length; i += 2) {
       if (key.equals(tags.get(i))) result = tags.get(i + 1);
@@ -261,31 +486,45 @@ public final class MutableSpan implements Cloneable {
   }
 
   /**
-   * @see brave.Span#tag(String, String)
-   * @see Tag#tag(Object, TraceContext, MutableSpan)
+   * Iterates over all {@linkplain SpanCustomizer#tag(String, String) tags} for purposes such as
+   * copying values.
+   *
+   * <p>Ex.
+   * <pre>{@code
+   * Map<String, String> tags = new LinkedHashMap<>();
+   * span.forEachTag(Map::put, tags);
+   * }</pre>
+   *
+   * @see #forEachTag(TagUpdater)
+   * @see #tag(String)
+   * @since 5.4
    */
-  public void tag(String key, String value) {
-    if (key == null) throw new NullPointerException("key == null");
-    if (key.isEmpty()) throw new IllegalArgumentException("key is empty");
-    if (value == null) throw new NullPointerException("value of " + key + " == null");
-    for (int i = 0, length = tags.size(); i < length; i += 2) {
-      if (key.equals(tags.get(i))) {
-        tags.set(i + 1, value);
-        return;
-      }
-    }
-    tags.add(key);
-    tags.add(value);
-  }
-
   public <T> void forEachTag(TagConsumer<T> tagConsumer, T target) {
+    if (tags == null) return;
     for (int i = 0, length = tags.size(); i < length; i += 2) {
       tagConsumer.accept(target, tags.get(i), tags.get(i + 1));
     }
   }
 
-  /** Allows you to update values for redaction purposes */
+  /**
+   * Allows you to update or drop {@linkplain SpanCustomizer#tag(String, String) tags} for purposes
+   * such as redaction.
+   *
+   * <p>Ex.
+   * <pre>{@code
+   * // During initialization, cache an tag updater function:
+   * tagRedacter = (key, value) -> badWords.contains(value) ? null : value;
+   *
+   * // Re-use that function while processing spans.
+   * span.forEachTag(tagRedacter);
+   * }</pre>
+   *
+   * @see #forEachTag(TagConsumer, Object)
+   * @see #tag(String)
+   * @since 5.4
+   */
   public void forEachTag(TagUpdater tagUpdater) {
+    if (tags == null) return;
     for (int i = 0, length = tags.size(); i < length; i += 2) {
       String value = tags.get(i + 1);
       String newValue = tagUpdater.update(tags.get(i), value);
@@ -297,27 +536,27 @@ public final class MutableSpan implements Cloneable {
   }
 
   /**
-   * Allows you to copy all data into a different target, such as a different span model or logs.
+   * Calling this overrides any previous value, such as {@link brave.SpanCustomizer#tag(String,
+   * String)}.
+   *
+   * @see #tag(String)
    */
-  public <T> void forEachAnnotation(AnnotationConsumer<T> annotationConsumer, T target) {
-    if (annotations == null) return;
-    for (int i = 0, length = annotations.size(); i < length; i += 2) {
-      long timestamp = (long) annotations.get(i);
-      annotationConsumer.accept(target, timestamp, annotations.get(i + 1).toString());
+  public void tag(String key, String value) {
+    if (key == null) throw new NullPointerException("key == null");
+    if (key.isEmpty()) throw new IllegalArgumentException("key is empty");
+    if (value == null) throw new NullPointerException("value of " + key + " == null");
+    if (tags == null) {
+      // this will not need to grow unless there are more than 5 tags
+      tags = new ArrayList<>();
     }
-  }
-
-  /** Allows you to update values for redaction purposes */
-  public void forEachAnnotation(AnnotationUpdater annotationUpdater) {
-    if (annotations == null) return;
-    for (int i = 0, length = annotations.size(); i < length; i += 2) {
-      String value = annotations.get(i + 1).toString();
-      String newValue = annotationUpdater.update((long) annotations.get(i), value);
-      if (updateOrRemove(annotations, i, value, newValue)) {
-        length -= 2;
-        i -= 2;
+    for (int i = 0, length = tags.size(); i < length; i += 2) {
+      if (key.equals(tags.get(i))) {
+        tags.set(i + 1, value);
+        return;
       }
     }
+    tags.add(key);
+    tags.add(value);
   }
 
   /** Returns true if the key/value was removed from the pair-indexed list at index {@code i} */
@@ -332,24 +571,42 @@ public final class MutableSpan implements Cloneable {
     return false;
   }
 
-  /** Returns true if the span ID is {@link #setShared() shared} with a remote client. */
-  public boolean shared() {
-    return shared;
-  }
-
-  /**
-   * Indicates we are contributing to a span started by another tracer (ex on a different host).
-   * Defaults to false.
-   *
-   * @see Tracer#joinSpan(TraceContext)
-   * @see zipkin2.Span#shared()
-   */
-  public void setShared() {
-    shared = true;
-  }
+  volatile int hashCode; // Lazily initialized and cached.
 
   @Override public int hashCode() {
-    return super.hashCode(); // quiet error-prone
+    int h = hashCode;
+    if (h == 0) {
+      h = 1000003;
+      h ^= kind == null ? 0 : kind.hashCode();
+      h *= 1000003;
+      h ^= flags;
+      h *= 1000003;
+      h ^= (int) ((startTimestamp >>> 32) ^ startTimestamp);
+      h *= 1000003;
+      h ^= (int) ((finishTimestamp >>> 32) ^ finishTimestamp);
+      h *= 1000003;
+      h ^= name == null ? 0 : name.hashCode();
+      h *= 1000003;
+      h ^= localServiceName == null ? 0 : localServiceName.hashCode();
+      h *= 1000003;
+      h ^= localIp == null ? 0 : localIp.hashCode();
+      h *= 1000003;
+      h ^= localPort;
+      h *= 1000003;
+      h ^= remoteServiceName == null ? 0 : remoteServiceName.hashCode();
+      h *= 1000003;
+      h ^= remoteIp == null ? 0 : remoteIp.hashCode();
+      h *= 1000003;
+      h ^= remotePort;
+      h *= 1000003;
+      h ^= tags == null ? 0 : tags.hashCode();
+      h *= 1000003;
+      h ^= annotations == null ? 0 : annotations.hashCode();
+      h *= 1000003;
+      h ^= error == null ? 0 : error.hashCode();
+      hashCode = h;
+    }
+    return h;
   }
 
   @Override public boolean equals(Object o) {
@@ -357,6 +614,25 @@ public final class MutableSpan implements Cloneable {
     // Hack that allows WeakConcurrentMap to lookup without allocating a new object.
     if (o instanceof WeakReference) o = ((WeakReference) o).get();
     if (!(o instanceof MutableSpan)) return false;
-    return super.equals(o); // not doing value-based comparison
+
+    MutableSpan that = (MutableSpan) o;
+    return kind == that.kind
+      && flags == that.flags
+      && startTimestamp == that.startTimestamp
+      && finishTimestamp == that.finishTimestamp
+      && equal(name, that.name)
+      && equal(localServiceName, that.localServiceName)
+      && equal(localIp, that.localIp)
+      && localPort == that.localPort
+      && equal(remoteServiceName, that.remoteServiceName)
+      && equal(remoteIp, that.remoteIp)
+      && remotePort == that.remotePort
+      && equal(tags, that.tags)
+      && equal(annotations, that.annotations)
+      && equal(error, that.error);
+  }
+
+  static boolean equal(@Nullable Object a, @Nullable Object b) {
+    return a == null ? b == null : a.equals(b); // Java 6 can't use Objects.equals()
   }
 }

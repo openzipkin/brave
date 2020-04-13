@@ -14,6 +14,7 @@
 package brave.internal.recorder;
 
 import brave.Clock;
+import brave.ErrorParser;
 import brave.Tracer;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
@@ -36,12 +37,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingSpan> {
   @Nullable final WeakConcurrentMap<MutableSpan, Throwable> spanToCaller;
+  final MutableSpan defaultSpan;
+  final ErrorParser errorParser;
   final Clock clock;
   final FinishedSpanHandler orphanedSpanHandler;
   final AtomicBoolean noop;
 
-  public PendingSpans(Clock clock, FinishedSpanHandler orphanedSpanHandler, boolean trackOrphans,
-    AtomicBoolean noop) {
+  public PendingSpans(MutableSpan defaultSpan, ErrorParser errorParser, Clock clock,
+    FinishedSpanHandler orphanedSpanHandler, boolean trackOrphans, AtomicBoolean noop) {
+    this.defaultSpan = defaultSpan;
+    this.errorParser = errorParser;
     this.clock = clock;
     this.orphanedSpanHandler = orphanedSpanHandler;
     this.spanToCaller = trackOrphans ? new WeakConcurrentMap<>() : null;
@@ -64,7 +69,8 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
     PendingSpan result = get(context);
     if (result != null) return result;
 
-    MutableSpan data = new MutableSpan();
+    MutableSpan data = new MutableSpan(defaultSpan);
+    if (context.debug()) data.setDebug();
     if (context.shared()) data.setShared();
 
     PendingSpan parentSpan = parent != null ? get(parent) : null;
@@ -103,9 +109,21 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
     remove(context);
   }
 
+  /** @see brave.Span#flush() */
+  public boolean flush(TraceContext context) {
+    PendingSpan last = remove(context);
+    if (last == null) return false;
+    maybeAddErrorTag(last.state);
+    return true;
+  }
+
   /** @see brave.Span#finish() */
-  @Override public PendingSpan remove(TraceContext context) {
-    return super.remove(context);
+  public boolean finish(TraceContext context, long timestamp) {
+    PendingSpan last = remove(context);
+    if (last == null) return false;
+    maybeAddErrorTag(last.state);
+    last.state.finishTimestamp(timestamp != 0L ? timestamp : last.clock.currentTimeMicroseconds());
+    return true;
   }
 
   /** Reports spans orphaned by garbage collection. */
@@ -123,7 +141,7 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
       assert value.context() == null : "unexpected for the weak referent to be present after GC!";
       if (flushTime == 0L) flushTime = clock.currentTimeMicroseconds();
 
-      boolean isEmpty = value.state.isEmpty();
+      boolean isEmpty = value.state.equals(defaultSpan);
       Throwable caller = spanToCaller != null ? spanToCaller.getIfPresent(value.state) : null;
 
       TraceContext context = value.backupContext;
@@ -136,8 +154,16 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
       }
       if (isEmpty) continue;
 
+      maybeAddErrorTag(value.state);
       value.state.annotate(flushTime, "brave.flush");
       orphanedSpanHandler.handle(context, value.state);
     }
+  }
+
+  /** Legacy code never called {@link brave.Span#error(Throwable)}, so call here just in case. */
+  void maybeAddErrorTag(MutableSpan span) {
+    if (span.error() == null) return;
+    String errorTag = span.tag("error");
+    if (errorTag == null) errorParser.error(span.error(), span);
   }
 }
