@@ -313,6 +313,8 @@ public class MutableSpanTest {
         span.annotate(1L, string);
         return span;
       }
+      // TODO: find two IPv6 literals whose string forms clash on hashCode
+      // bonus if there are actually IPv4 literals that clash on hashCode
     );
 
     for (Function<String, MutableSpan> factory : permutations) {

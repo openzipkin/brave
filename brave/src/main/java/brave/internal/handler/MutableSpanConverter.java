@@ -24,7 +24,6 @@ import zipkin2.Span;
 // internal until we figure out how the api should sit.
 public final class MutableSpanConverter {
   final Endpoint defaultEndpoint;
-  final int defaultEndpointHashCode;
 
   public MutableSpanConverter(MutableSpan defaultSpan) {
     // non-Zipkin models allow mixed case service names, but Zipkin does not.
@@ -32,20 +31,7 @@ public final class MutableSpanConverter {
     if (serviceName != null) serviceName = serviceName.toLowerCase(Locale.ROOT);
     String ip = defaultSpan.localIp();
     int port = defaultSpan.localPort();
-    this.defaultEndpointHashCode = hashEndpointParameters(serviceName, ip, port);
     this.defaultEndpoint = Endpoint.newBuilder().serviceName(serviceName).ip(ip).port(port).build();
-  }
-
-  /** Used to avoid re-allocating the default endpoint. */
-  static int hashEndpointParameters(@Nullable String serviceName, @Nullable String ip, int port) {
-    int h = 1;
-    h *= 1000003;
-    h ^= (serviceName == null) ? 0 : serviceName.hashCode();
-    h *= 1000003;
-    h ^= (ip == null) ? 0 : ip.hashCode();
-    h *= 1000003;
-    h ^= port;
-    return h;
   }
 
   void convert(MutableSpan span, Span.Builder result) {
@@ -85,8 +71,9 @@ public final class MutableSpanConverter {
   void addLocalEndpoint(@Nullable String serviceName, @Nullable String ip, int port,
     Span.Builder span) {
     if (serviceName != null) serviceName = serviceName.toLowerCase(Locale.ROOT);
-    if (hashEndpointParameters(serviceName, ip, port) == defaultEndpointHashCode
-      && equal(serviceName, defaultEndpoint.serviceName()) /* in case clash */) {
+    if (equal(serviceName, defaultEndpoint.serviceName())
+      && (equal(ip, defaultEndpoint.ipv4()) || equal(ip, defaultEndpoint.ipv6()))
+      && port == defaultEndpoint.portAsInt()) {
       span.localEndpoint(defaultEndpoint);
     } else {
       span.localEndpoint(Endpoint.newBuilder().serviceName(serviceName).ip(ip).port(port).build());

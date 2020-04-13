@@ -65,15 +65,44 @@ public class MutableSpanConverterTest {
       .isNotSameAs(converter.defaultEndpoint);
   }
 
-  @Test public void localEndpoint_notSameAsDefault() {
+  @Test public void localEndpoint_notSameAsDefault_missingIp() {
     MutableSpan span = new MutableSpan();
-    span.localServiceName("fooService");
+    span.localServiceName(converter.defaultEndpoint.serviceName());
     // missing IP address
-    span.localPort(80);
+    span.localPort(converter.defaultEndpoint.portAsInt());
 
-    assertThat(convert(span).localEndpoint())
-      .isNotSameAs(converter.defaultEndpoint)
-      .isEqualTo(Endpoint.newBuilder().serviceName("fooService").port(80).build());
+    assertThat(convert(span).localEndpoint().ipv4())
+      .isNull();
+  }
+
+  @Test public void localEndpoint_notSameAsDefault_differentIp() {
+    MutableSpan span = new MutableSpan();
+    span.localServiceName(converter.defaultEndpoint.serviceName());
+    span.localIp("2001:db8::c001");
+    span.localPort(converter.defaultEndpoint.portAsInt());
+
+    assertThat(convert(span).localEndpoint().ipv6())
+      .isEqualTo("2001:db8::c001");
+  }
+
+  @Test public void localEndpoint_notSameAsDefault_missingPort() {
+    MutableSpan span = new MutableSpan();
+    span.localServiceName(converter.defaultEndpoint.serviceName());
+    span.localIp(converter.defaultEndpoint.ipv4());
+    // missing port
+
+    assertThat(convert(span).localEndpoint().portAsInt())
+      .isZero();
+  }
+
+  @Test public void localEndpoint_notSameAsDefault_differentPort() {
+    MutableSpan span = new MutableSpan();
+    span.localServiceName(converter.defaultEndpoint.serviceName());
+    span.localIp(converter.defaultEndpoint.ipv4());
+    span.localPort(443);
+
+    assertThat(convert(span).localEndpoint().portAsInt())
+      .isEqualTo(443);
   }
 
   @Test public void localEndpoint_override() {
