@@ -13,6 +13,7 @@
  */
 package brave;
 
+import brave.internal.handler.ZipkinFinishedSpanHandler.LoggingReporter;
 import org.junit.Test;
 import zipkin2.Span;
 
@@ -26,7 +27,7 @@ public class TracerClassLoaderTest {
   // This test will clutter output; it is somewhat difficult to avoid that and still run the test
   static class UsingLoggingReporter implements Runnable {
     @Override public void run() {
-      Tracing.LoggingReporter reporter = new Tracing.LoggingReporter();
+      LoggingReporter reporter = new LoggingReporter();
       reporter.report(Span.newBuilder().traceId("a").id("b").build());
     }
   }

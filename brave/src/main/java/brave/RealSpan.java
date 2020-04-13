@@ -140,13 +140,12 @@ final class RealSpan extends Span {
   }
 
   @Override public void finish() {
-    finish(clock.currentTimeMicroseconds());
+    finish(0L);
   }
 
   @Override public void finish(long timestamp) {
-    if (pendingSpans.remove(context) == null) return;
     synchronized (state) {
-      state.finishTimestamp(timestamp);
+      if (!pendingSpans.finish(context, timestamp)) return;
     }
     finishedSpanHandler.handle(context, state);
   }
@@ -156,7 +155,7 @@ final class RealSpan extends Span {
   }
 
   @Override public void flush() {
-    pendingSpans.remove(context);
+    if (!pendingSpans.flush(context)) return;
     finishedSpanHandler.handle(context, state);
   }
 

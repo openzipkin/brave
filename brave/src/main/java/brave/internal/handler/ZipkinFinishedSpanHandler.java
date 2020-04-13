@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,24 +13,45 @@
  */
 package brave.internal.handler;
 
-import brave.ErrorParser;
+import brave.Tracer;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
+import brave.internal.Nullable;
 import brave.propagation.TraceContext;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import zipkin2.Span;
 import zipkin2.reporter.Reporter;
 
-/** logs exceptions instead of raising an error, as the supplied reporter could have bugs */
+/**
+ * Logs exceptions instead of raising an error, as the supplied reporter could have bugs.
+ *
+ * <p><em>Note:</em> This is an internal type and will change at any time.
+ */
 public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
-  final Reporter<zipkin2.Span> spanReporter;
+  final Reporter<Span> spanReporter;
   final MutableSpanConverter converter;
   final boolean alwaysReportSpans;
 
-  public ZipkinFinishedSpanHandler(Reporter<zipkin2.Span> spanReporter,
-    ErrorParser errorParser, String serviceName, String ip, int port, boolean alwaysReportSpans) {
-    this.spanReporter = spanReporter;
-    this.converter = new MutableSpanConverter(errorParser, serviceName, ip, port);
+  public ZipkinFinishedSpanHandler(MutableSpan defaultSpan, @Nullable Reporter<Span> spanReporter,
+    boolean alwaysReportSpans) {
+    this.spanReporter = spanReporter != null ? spanReporter : new LoggingReporter();
+    this.converter = new MutableSpanConverter(defaultSpan);
     this.alwaysReportSpans = alwaysReportSpans;
+  }
+
+  public static final class LoggingReporter implements Reporter<Span> {
+    final Logger logger = Logger.getLogger(Tracer.class.getName());
+
+    @Override public void report(Span span) {
+      if (span == null) throw new NullPointerException("span == null");
+      if (!logger.isLoggable(Level.INFO)) return;
+      logger.info(span.toString());
+    }
+
+    @Override public String toString() {
+      return "LoggingReporter{name=" + logger.getName() + "}";
+    }
   }
 
   /**
@@ -45,7 +66,6 @@ public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
       .traceId(context.traceIdString())
       .parentId(context.parentIdString())
       .id(context.spanIdString());
-    if (context.debug()) builderWithContextData.debug(true);
 
     converter.convert(span, builderWithContextData);
     spanReporter.report(builderWithContextData.build());

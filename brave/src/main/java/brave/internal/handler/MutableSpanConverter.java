@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,36 +13,43 @@
  */
 package brave.internal.handler;
 
-import brave.ErrorParser;
 import brave.handler.MutableSpan;
 import brave.handler.MutableSpan.AnnotationConsumer;
 import brave.handler.MutableSpan.TagConsumer;
 import brave.internal.Nullable;
+import java.util.Locale;
 import zipkin2.Endpoint;
 import zipkin2.Span;
+import zipkin2.Span.Builder;
 
 // internal until we figure out how the api should sit.
 public final class MutableSpanConverter {
+  final Endpoint defaultEndpoint;
+  final int defaultEndpointHashCode;
 
-  final ErrorParser errorParser;
-  final String localServiceName;
-  @Nullable final String localIp;
-  final int localPort;
-  final Endpoint localEndpoint;
-
-  public MutableSpanConverter(ErrorParser errorParser, String localServiceName, String localIp,
-    int localPort) {
-    if (errorParser == null) throw new NullPointerException("errorParser == null");
-    this.errorParser = errorParser;
-    if (localServiceName == null) throw new NullPointerException("localServiceName == null");
-    this.localServiceName = localServiceName;
-    this.localIp = localIp;
-    this.localPort = localPort;
-    this.localEndpoint =
-      Endpoint.newBuilder().serviceName(localServiceName).ip(localIp).port(localPort).build();
+  public MutableSpanConverter(MutableSpan defaultSpan) {
+    // non-Zipkin models allow mixed case service names, but Zipkin does not.
+    String serviceName = defaultSpan.localServiceName();
+    if (serviceName != null) serviceName = serviceName.toLowerCase(Locale.ROOT);
+    String ip = defaultSpan.localIp();
+    int port = defaultSpan.localPort();
+    this.defaultEndpointHashCode = hashEndpointParameters(serviceName, ip, port);
+    this.defaultEndpoint = Endpoint.newBuilder().serviceName(serviceName).ip(ip).port(port).build();
   }
 
-  void convert(MutableSpan span, Span.Builder result) {
+  /** Used to avoid re-allocating the default endpoint. */
+  static int hashEndpointParameters(@Nullable String serviceName, @Nullable String ip, int port) {
+    int h = 1;
+    h *= 1000003;
+    h ^= (serviceName == null) ? 0 : serviceName.hashCode();
+    h *= 1000003;
+    h ^= (ip == null) ? 0 : ip.hashCode();
+    h *= 1000003;
+    h ^= port;
+    return h;
+  }
+
+  void convert(MutableSpan span, Builder result) {
     result.name(span.name());
 
     long start = span.startTimestamp(), finish = span.finishTimestamp();
@@ -55,7 +62,11 @@ public final class MutableSpanConverter {
       result.kind(Span.Kind.values()[kind.ordinal()]);
     }
 
-    addLocalEndpoint(span.localServiceName(), span.localIp(), span.localPort(), result);
+    String localServiceName = span.localServiceName(), localIp = span.localIp();
+    if (localServiceName != null || localIp != null) {
+      addLocalEndpoint(localServiceName, localIp, span.localPort(), result);
+    }
+
     String remoteServiceName = span.remoteServiceName(), remoteIp = span.remoteIp();
     if (remoteServiceName != null || remoteIp != null) {
       result.remoteEndpoint(zipkin2.Endpoint.newBuilder()
@@ -65,38 +76,30 @@ public final class MutableSpanConverter {
         .build());
     }
 
-    String errorTag = span.tag("error");
-    if (errorTag == null && span.error() != null) {
-      errorParser.error(span.error(), span);
-    }
-
     span.forEachTag(Consumer.INSTANCE, result);
     span.forEachAnnotation(Consumer.INSTANCE, result);
     if (span.shared()) result.shared(true);
+    if (span.debug()) result.debug(true);
   }
 
   // avoid re-allocating an endpoint when we have the same data
-  void addLocalEndpoint(String serviceName, @Nullable String ip, int port, Span.Builder span) {
-    if (serviceName == null) serviceName = localServiceName;
-    if (ip == null) ip = localIp;
-    if (port <= 0) port = localPort;
-    if (localServiceName.equals(serviceName)
-      && (localIp == null ? ip == null : localIp.equals(ip))
-      && localPort == port) {
-      span.localEndpoint(localEndpoint);
+  void addLocalEndpoint(@Nullable String serviceName, @Nullable String ip, int port, Builder span) {
+    if (serviceName != null) serviceName = serviceName.toLowerCase(Locale.ROOT);
+    if (hashEndpointParameters(serviceName, ip, port) == defaultEndpointHashCode) {
+      span.localEndpoint(defaultEndpoint);
     } else {
       span.localEndpoint(Endpoint.newBuilder().serviceName(serviceName).ip(ip).port(port).build());
     }
   }
 
-  enum Consumer implements TagConsumer<Span.Builder>, AnnotationConsumer<Span.Builder> {
+  enum Consumer implements TagConsumer<Builder>, AnnotationConsumer<Builder> {
     INSTANCE;
 
-    @Override public void accept(Span.Builder target, String key, String value) {
+    @Override public void accept(Builder target, String key, String value) {
       target.putTag(key, value);
     }
 
-    @Override public void accept(Span.Builder target, long timestamp, String value) {
+    @Override public void accept(Builder target, long timestamp, String value) {
       target.addAnnotation(timestamp, value);
     }
   }

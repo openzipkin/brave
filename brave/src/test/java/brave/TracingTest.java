@@ -15,6 +15,7 @@ package brave;
 
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
+import brave.internal.handler.ZipkinFinishedSpanHandler;
 import brave.propagation.B3SinglePropagation;
 import brave.propagation.Propagation;
 import brave.propagation.StrictCurrentTraceContext;
@@ -102,10 +103,10 @@ public class TracingTest {
     assertThat(zipkinSpans).isNotEmpty(); // ensures the assertions passed.
   }
 
-  @Test public void finishedSpanHandler_zipkinByDefault() {
+  @Test public void finishedSpanHandler_loggingByDefault() {
     try (Tracing tracing = Tracing.newBuilder().build()) {
       assertThat(tracing.tracer().finishedSpanHandler).extracting("delegate.spanReporter")
-        .isInstanceOf(Tracing.LoggingReporter.class);
+        .isInstanceOf(ZipkinFinishedSpanHandler.LoggingReporter.class);
     }
   }
 
@@ -114,7 +115,7 @@ public class TracingTest {
       .addFinishedSpanHandler(FinishedSpanHandler.NOOP)
       .build()) {
       assertThat(tracing.tracer().finishedSpanHandler).extracting("delegate.spanReporter")
-        .isInstanceOf(Tracing.LoggingReporter.class);
+        .isInstanceOf(ZipkinFinishedSpanHandler.LoggingReporter.class);
     }
   }
 
