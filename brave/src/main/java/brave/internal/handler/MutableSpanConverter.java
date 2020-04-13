@@ -23,15 +23,21 @@ import zipkin2.Span;
 
 // internal until we figure out how the api should sit.
 public final class MutableSpanConverter {
+  final String defaultServiceName, defaultIp;
+  final int defaultPort;
   final Endpoint defaultEndpoint;
 
   public MutableSpanConverter(MutableSpan defaultSpan) {
     // non-Zipkin models allow mixed case service names, but Zipkin does not.
     String serviceName = defaultSpan.localServiceName();
-    if (serviceName != null) serviceName = serviceName.toLowerCase(Locale.ROOT);
-    String ip = defaultSpan.localIp();
-    int port = defaultSpan.localPort();
-    this.defaultEndpoint = Endpoint.newBuilder().serviceName(serviceName).ip(ip).port(port).build();
+    defaultServiceName = serviceName != null ? serviceName.toLowerCase(Locale.ROOT) : null;
+    defaultPort = defaultSpan.localPort();
+    defaultIp = defaultSpan.localIp();
+    this.defaultEndpoint = Endpoint.newBuilder()
+      .serviceName(defaultServiceName)
+      .ip(defaultIp)
+      .port(defaultPort)
+      .build();
   }
 
   void convert(MutableSpan span, Span.Builder result) {
@@ -71,19 +77,11 @@ public final class MutableSpanConverter {
   void addLocalEndpoint(@Nullable String serviceName, @Nullable String ip, int port,
     Span.Builder span) {
     if (serviceName != null) serviceName = serviceName.toLowerCase(Locale.ROOT);
-    if (equalsDefaultEndpoint(serviceName, ip, port)) {
+    if (equal(serviceName, defaultServiceName) && equal(ip, defaultIp) && port == defaultPort) {
       span.localEndpoint(defaultEndpoint);
     } else {
       span.localEndpoint(Endpoint.newBuilder().serviceName(serviceName).ip(ip).port(port).build());
     }
-  }
-
-  boolean equalsDefaultEndpoint(@Nullable String serviceName, @Nullable String ip, int port) {
-    return equal(serviceName, defaultEndpoint.serviceName())
-      // Brave only has one IP, but it shuffles into zipkin2.Endpoint based on its type
-      && ((defaultEndpoint.ipv4() != null && equal(ip, defaultEndpoint.ipv4())) ||
-      (defaultEndpoint.ipv6() != null && equal(ip, defaultEndpoint.ipv6())))
-      && port == defaultEndpoint.portAsInt();
   }
 
   enum Consumer implements TagConsumer<Span.Builder>, AnnotationConsumer<Span.Builder> {
