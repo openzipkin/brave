@@ -20,7 +20,6 @@ import brave.internal.Nullable;
 import java.util.Locale;
 import zipkin2.Endpoint;
 import zipkin2.Span;
-import zipkin2.Span.Builder;
 
 // internal until we figure out how the api should sit.
 public final class MutableSpanConverter {
@@ -49,7 +48,7 @@ public final class MutableSpanConverter {
     return h;
   }
 
-  void convert(MutableSpan span, Builder result) {
+  void convert(MutableSpan span, Span.Builder result) {
     result.name(span.name());
 
     long start = span.startTimestamp(), finish = span.finishTimestamp();
@@ -83,7 +82,8 @@ public final class MutableSpanConverter {
   }
 
   // avoid re-allocating an endpoint when we have the same data
-  void addLocalEndpoint(@Nullable String serviceName, @Nullable String ip, int port, Builder span) {
+  void addLocalEndpoint(@Nullable String serviceName, @Nullable String ip, int port,
+    Span.Builder span) {
     if (serviceName != null) serviceName = serviceName.toLowerCase(Locale.ROOT);
     if (hashEndpointParameters(serviceName, ip, port) == defaultEndpointHashCode) {
       span.localEndpoint(defaultEndpoint);
@@ -92,14 +92,14 @@ public final class MutableSpanConverter {
     }
   }
 
-  enum Consumer implements TagConsumer<Builder>, AnnotationConsumer<Builder> {
+  enum Consumer implements TagConsumer<Span.Builder>, AnnotationConsumer<Span.Builder> {
     INSTANCE;
 
-    @Override public void accept(Builder target, String key, String value) {
+    @Override public void accept(Span.Builder target, String key, String value) {
       target.putTag(key, value);
     }
 
-    @Override public void accept(Builder target, long timestamp, String value) {
+    @Override public void accept(Span.Builder target, long timestamp, String value) {
       target.addAnnotation(timestamp, value);
     }
   }

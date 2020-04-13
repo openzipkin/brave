@@ -129,16 +129,14 @@ public class TracerTest {
   @Test public void localServiceName() {
     tracer = Tracing.newBuilder().localServiceName("my-foo").build().tracer();
 
-    assertThat(tracer).extracting(
-      "finishedSpanHandler.delegate.converter.localEndpoint.serviceName")
+    assertThat(tracer).extracting("pendingSpans.defaultSpan.localServiceName")
       .isEqualTo("my-foo");
   }
 
   @Test public void localServiceName_defaultIsUnknown() {
     tracer = Tracing.newBuilder().build().tracer();
 
-    assertThat(tracer).extracting(
-      "finishedSpanHandler.delegate.converter.localEndpoint.serviceName")
+    assertThat(tracer).extracting("pendingSpans.defaultSpan.localServiceName")
       .isEqualTo("unknown");
   }
 
@@ -146,8 +144,10 @@ public class TracerTest {
     Endpoint endpoint = Endpoint.newBuilder().ip("1.2.3.4").serviceName("my-bar").build();
     tracer = Tracing.newBuilder().localServiceName("my-foo").endpoint(endpoint).build().tracer();
 
-    assertThat(tracer).extracting("finishedSpanHandler.delegate.converter.localEndpoint")
-      .isEqualTo(endpoint);
+    MutableSpan defaultSpan = new MutableSpan();
+    defaultSpan.localServiceName("my-bar");
+    defaultSpan.localIp("1.2.3.4");
+    assertThat(tracer).extracting("pendingSpans.defaultSpan").isEqualTo(defaultSpan);
   }
 
   @Test public void newTrace_isRootSpan() {

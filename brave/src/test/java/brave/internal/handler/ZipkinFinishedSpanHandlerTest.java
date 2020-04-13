@@ -48,21 +48,21 @@ public class ZipkinFinishedSpanHandlerTest {
       Span.newBuilder()
         .traceId("1")
         .id("2")
-        .localEndpoint(zipkinFinishedSpanHandler.converter.defaultEndpoint)
         .build()
     );
   }
 
   @Test public void reportsDebugSpan() {
     TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).debug(true).build();
-    zipkinFinishedSpanHandler.handle(context, new MutableSpan());
+    MutableSpan span = new MutableSpan();
+    span.setDebug();
+    zipkinFinishedSpanHandler.handle(context, span);
 
     assertThat(spans.get(0)).isEqualToComparingFieldByField(
       Span.newBuilder()
         .traceId("1")
         .id("2")
         .debug(true)
-        .localEndpoint(zipkinFinishedSpanHandler.converter.defaultEndpoint)
         .build()
     );
   }

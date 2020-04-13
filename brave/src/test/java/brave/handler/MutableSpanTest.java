@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
@@ -26,6 +27,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.Test;
 
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
@@ -272,6 +274,178 @@ public class MutableSpanTest {
       MutableSpan span = new MutableSpan();
       span.setShared();
       assertThat(span.isEmpty()).isFalse();
+    }
+  }
+
+  static final Exception EX1 = new Exception(), EX2 = new Exception();
+
+  @Test public void equalsAndHashCode() {
+    // Not as good as property testing, but easier to see changes later when fields are added!
+    List<Supplier<MutableSpan>> permutations = asList(
+      MutableSpan::new,
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.kind(Span.Kind.CLIENT);
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.kind(Span.Kind.SERVER);
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.setDebug();
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.setShared();
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.startTimestamp(1L);
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.startTimestamp(2L);
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.finishTimestamp(1L);
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.finishTimestamp(2L);
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.name("foo");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.name("Foo");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.localServiceName("foo");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.localServiceName("Foo");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.localIp("1.2.3.4");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.localIp("::1");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.localPort(80);
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.localPort(443);
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.remoteServiceName("foo");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.remoteServiceName("Foo");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.remoteIpAndPort("1.2.3.4", 0);
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.remoteIpAndPort("::1", 0);
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.remoteIpAndPort("127.0.0.1", 80);
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.remoteIpAndPort("127.0.0.1", 443);
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.tag("error", "wasted");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.tag("error", "");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.annotate(1L, "wasted");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.annotate(2L, "wasted");
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.error(EX1);
+        return span;
+      },
+      () -> {
+        MutableSpan span = new MutableSpan();
+        span.error(EX2);
+        return span;
+      }
+    );
+
+    for (Supplier<MutableSpan> constructor : permutations) {
+      // same instance are equivalent
+      MutableSpan span = constructor.get();
+      assertThat(span).isEqualTo(span);
+      assertThat(span).hasSameHashCodeAs(span);
+
+      // same field are equivalent
+      assertThat(span).isEqualTo(constructor.get());
+      assertThat(span).hasSameHashCodeAs(constructor.get());
+
+      // This seems redundant, and mostly is, but the order of equals matters
+      List<Supplier<MutableSpan>> exceptMe = new ArrayList<>(permutations);
+      exceptMe.remove(constructor);
+      for (Supplier<MutableSpan> otherConstructor : exceptMe) {
+        MutableSpan other = otherConstructor.get();
+        assertThat(span)
+          .isNotSameAs(other) // sanity
+          .isNotEqualTo(other)
+          .extracting(MutableSpan::hashCode)
+          .isNotEqualTo(other.hashCode());
+      }
     }
   }
 

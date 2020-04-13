@@ -128,9 +128,8 @@ public final class MutableSpan implements Cloneable {
    *
    * @see #name()
    */
-  public void name(String name) {
-    if (name == null) throw new NullPointerException("name == null");
-    this.name = name;
+  public void name(@Nullable String name) {
+    this.name = name == null || name.isEmpty() ? null : name;
   }
 
   /**
@@ -208,9 +207,9 @@ public final class MutableSpan implements Cloneable {
    *
    * @see #localServiceName()
    */
-  public void localServiceName(String localServiceName) {
+  public void localServiceName(@Nullable String localServiceName) {
     if (localServiceName == null || localServiceName.isEmpty()) {
-      throw new NullPointerException("localServiceName is empty");
+      this.localServiceName = null;
     }
     this.localServiceName = localServiceName;
   }
@@ -281,9 +280,9 @@ public final class MutableSpan implements Cloneable {
    *
    * @see #remoteServiceName()
    */
-  public void remoteServiceName(String remoteServiceName) {
+  public void remoteServiceName(@Nullable String remoteServiceName) {
     if (remoteServiceName == null || remoteServiceName.isEmpty()) {
-      throw new NullPointerException("remoteServiceName is empty");
+      this.remoteServiceName = null;
     }
     this.remoteServiceName = remoteServiceName;
   }

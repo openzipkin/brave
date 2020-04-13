@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
+import zipkin2.Endpoint;
 import zipkin2.reporter.Reporter;
 
 /**
@@ -137,7 +138,7 @@ public abstract class Tracing implements Closeable {
   public static final class Builder {
     String localServiceName = "unknown", localIp;
     int localPort; // zero means null
-    zipkin2.reporter.Reporter<zipkin2.Span> spanReporter;
+    Reporter<zipkin2.Span> spanReporter;
     Clock clock;
     Sampler sampler = Sampler.ALWAYS_SAMPLE;
     CurrentTraceContext currentTraceContext = CurrentTraceContext.Default.inheritable();
@@ -199,7 +200,7 @@ public abstract class Tracing implements Closeable {
      * #localPort(int)}. Will be removed in Brave v6.
      */
     @Deprecated
-    public Builder endpoint(zipkin2.Endpoint endpoint) {
+    public Builder endpoint(Endpoint endpoint) {
       if (endpoint == null) throw new NullPointerException("endpoint == null");
       this.localServiceName = endpoint.serviceName();
       this.localIp = endpoint.ipv6() != null ? endpoint.ipv6() : endpoint.ipv4();
@@ -208,9 +209,10 @@ public abstract class Tracing implements Closeable {
     }
 
     /**
-     * Controls how {@linkplain TraceContext#sampled() remote sampled} spans report to a {@code
-     * io.zipkin.reporter2:zipkin-reporter} destination. This input is usually a {@link
-     * zipkin2.reporter.AsyncReporter} which batches spans before reporting them.
+     * Controls how {@linkplain TraceContext#sampled() remote sampled} spans report to a
+     * <a href="https://github.com/openzipkin/zipkin-reporter-java">io.zipkin.reporter2:zipkin-reporter</a>destination.
+     * This input is usually a {@link zipkin2.reporter.AsyncReporter} which batches spans before
+     * reporting them.
      *
      * <p>For example, here's how to batch send spans via http:
      *
@@ -229,7 +231,7 @@ public abstract class Tracing implements Closeable {
      *
      * @see #addFinishedSpanHandler(FinishedSpanHandler)
      */
-    public Builder spanReporter(zipkin2.reporter.Reporter<zipkin2.Span> spanReporter) {
+    public Builder spanReporter(Reporter<zipkin2.Span> spanReporter) {
       if (spanReporter == null) throw new NullPointerException("spanReporter == null");
       this.spanReporter = spanReporter;
       return this;
