@@ -13,6 +13,7 @@
  */
 package brave.internal.handler;
 
+import brave.ErrorParser;
 import brave.handler.MutableSpan;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -30,6 +31,7 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import zipkin2.Span;
+import zipkin2.reporter.Reporter;
 
 import static brave.handler.MutableSpanBenchmarks.newBigClientMutableSpan;
 import static brave.handler.MutableSpanBenchmarks.newServerMutableSpan;
@@ -41,8 +43,9 @@ import static brave.handler.MutableSpanBenchmarks.newServerMutableSpan;
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Thread)
 @Threads(1)
-public class MutableSpanConverterBenchmarks {
-  final MutableSpanConverter converter = new MutableSpanConverter(new MutableSpan());
+public class ZipkinFinishedSpanHandlerBenchmarks {
+  final ZipkinFinishedSpanHandler converter = new ZipkinFinishedSpanHandler(
+    new MutableSpan(), Reporter.NOOP, ErrorParser.NOOP, true);
   final MutableSpan serverMutableSpan = newServerMutableSpan();
   final MutableSpan bigClientMutableSpan = newBigClientMutableSpan();
 
@@ -50,23 +53,19 @@ public class MutableSpanConverterBenchmarks {
    * Tests converting into a builder type. This isolates the performance of walking over the mutable
    * data.
    */
-  @Benchmark public Span.Builder convertServerSpan() {
-    Span.Builder builder = Span.newBuilder();
-    converter.convert(serverMutableSpan, builder);
-    return builder;
+  @Benchmark public Span convertServerSpan() {
+    return converter.convert(serverMutableSpan);
   }
 
-  @Benchmark public Span.Builder convertBigClientSpan() {
-    Span.Builder builder = Span.newBuilder();
-    converter.convert(bigClientMutableSpan, builder);
-    return builder;
+  @Benchmark public Span convertBigClientSpan() {
+    return converter.convert(bigClientMutableSpan);
   }
 
   // Convenience main entry-point
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
       .addProfiler("gc")
-      .include(".*" + MutableSpanConverterBenchmarks.class.getSimpleName() + ".*")
+      .include(".*" + ZipkinFinishedSpanHandlerBenchmarks.class.getSimpleName() + ".*")
       .build();
 
     new Runner(opt).run();

@@ -68,9 +68,10 @@ public final class MutableSpan implements Cloneable {
   }
 
   /*
-   * One of these objects is allocated for each in-flight span, so we try to be parsimonious on things
-   * like array allocation and object reference size.
+   * One of these objects is allocated for each in-flight span, so we try to be parsimonious on
+   * things like array allocation and object reference size.
    */
+  String traceId, localRootId, parentId, id;
   Kind kind;
   int flags;
   long startTimestamp, finishTimestamp;
@@ -90,6 +91,10 @@ public final class MutableSpan implements Cloneable {
   /** @since 5.12 */
   public MutableSpan(MutableSpan toCopy) {
     if (toCopy == null) throw new NullPointerException("toCopy == null");
+    traceId = toCopy.traceId;
+    localRootId = toCopy.localRootId;
+    parentId = toCopy.parentId;
+    id = toCopy.id;
     kind = toCopy.kind;
     flags = toCopy.flags;
     startTimestamp = toCopy.startTimestamp;
@@ -112,6 +117,82 @@ public final class MutableSpan implements Cloneable {
    */
   @Deprecated public boolean isEmpty() {
     return equals(EMPTY);
+  }
+
+  /**
+   * Returns the {@linkplain TraceContext#traceIdString() trace ID}
+   *
+   * @since 5.12
+   */
+  public String traceId() {
+    return traceId;
+  }
+
+  /**
+   * Calling this overrides the {@linkplain TraceContext#traceIdString() trace ID}.
+   *
+   * @see #traceId()
+   */
+  public void traceId(String traceId) {
+    if (traceId == null) throw new NullPointerException("traceId == null");
+    if (traceId.isEmpty()) throw new NullPointerException("traceId is empty");
+    this.traceId = traceId;
+  }
+
+  /**
+   * Returns the {@linkplain TraceContext#localRootIdString() local root ID}
+   *
+   * @since 5.12
+   */
+  @Nullable public String localRootId() {
+    return localRootId;
+  }
+
+  /**
+   * Calling this overrides the {@linkplain TraceContext#localRootIdString() local root ID}.
+   *
+   * @see #localRootId()
+   */
+  public void localRootId(@Nullable String localRootId) {
+    this.localRootId = localRootId == null || localRootId.isEmpty() ? null : localRootId;
+  }
+
+  /**
+   * Returns the {@linkplain TraceContext#parentIdString() parent ID} or {@code null}
+   *
+   * @since 5.12
+   */
+  @Nullable public String parentId() {
+    return parentId;
+  }
+
+  /**
+   * Calling this overrides the {@linkplain TraceContext#parentIdString() parent ID}.
+   *
+   * @see #parentId()
+   */
+  public void parentId(@Nullable String parentId) {
+    this.parentId = parentId == null || parentId.isEmpty() ? null : parentId;
+  }
+
+  /**
+   * Returns the {@linkplain TraceContext#spanId() span ID}.
+   *
+   * @since 5.12
+   */
+  public String id() {
+    return id;
+  }
+
+  /**
+   * Calling this overrides the {@linkplain TraceContext#spanId() span ID}.
+   *
+   * @see #id()
+   */
+  public void id(String id) {
+    if (id == null) throw new NullPointerException("id == null");
+    if (id.isEmpty()) throw new NullPointerException("id is empty");
+    this.id = id;
   }
 
   /**
@@ -577,6 +658,14 @@ public final class MutableSpan implements Cloneable {
     int h = hashCode;
     if (h == 0) {
       h = 1000003;
+      h ^= traceId == null ? 0 : traceId.hashCode();
+      h *= 1000003;
+      h ^= localRootId == null ? 0 : localRootId.hashCode();
+      h *= 1000003;
+      h ^= parentId == null ? 0 : parentId.hashCode();
+      h *= 1000003;
+      h ^= id == null ? 0 : id.hashCode();
+      h *= 1000003;
       h ^= kind == null ? 0 : kind.hashCode();
       h *= 1000003;
       h ^= flags;
@@ -616,7 +705,11 @@ public final class MutableSpan implements Cloneable {
     if (!(o instanceof MutableSpan)) return false;
 
     MutableSpan that = (MutableSpan) o;
-    return kind == that.kind
+    return equal(traceId, that.traceId)
+      && equal(localRootId, that.localRootId)
+      && equal(parentId, that.parentId)
+      && equal(id, that.id)
+      && kind == that.kind
       && flags == that.flags
       && startTimestamp == that.startTimestamp
       && finishTimestamp == that.finishTimestamp

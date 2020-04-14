@@ -13,7 +13,6 @@
  */
 package brave.internal.recorder;
 
-import brave.ErrorParser;
 import brave.GarbageCollectors;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
@@ -25,7 +24,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Annotation;
@@ -71,12 +69,13 @@ public class PendingSpansTest {
     }, false);
   }
 
-  void init(FinishedSpanHandler zipkinFinishedSpanHandler, boolean trackOrphans) {
+  void init(FinishedSpanHandler handler, boolean trackOrphans) {
     MutableSpan defaultSpan = new MutableSpan();
     defaultSpan.localServiceName("favistar");
     defaultSpan.localIp("1.2.3.4");
-    pendingSpans = new PendingSpans(defaultSpan, new ErrorParser(), () -> clock.incrementAndGet() * 1000L,
-      zipkinFinishedSpanHandler, trackOrphans, new AtomicBoolean());
+    pendingSpans =
+      new PendingSpans(defaultSpan, () -> clock.incrementAndGet() * 1000L, handler, trackOrphans,
+        new AtomicBoolean());
   }
 
   @Test
@@ -136,7 +135,7 @@ public class PendingSpansTest {
   public void reportOrphanedSpans_afterGC() {
     TraceContext context1 = context.toBuilder().traceId(1).spanId(1).build();
     PendingSpan span = pendingSpans.getOrCreate(null, context1, false);
-    span.state.name("foo");
+    span.span.name("foo");
     span = null; // clear reference so GC occurs
     TraceContext context2 = context.toBuilder().traceId(2).spanId(2).build();
     pendingSpans.getOrCreate(null, context2, false);
@@ -157,12 +156,16 @@ public class PendingSpansTest {
 
     pendingSpans.expungeStaleEntries();
 
-    // We also expect only the sampled span containing data to have been reported
-    assertThat(spans).hasSize(1);
-    assertThat(spans.get(0).id()).isEqualTo("0000000000000001");
-    assertThat(spans.get(0).name()).isEqualTo("foo"); // data was flushed
-    assertThat(spans.get(0).annotations())
-      .containsExactly(Annotation.create((initialClockVal + 1) * 1000, "brave.flush"));
+    assertThat(spans).hasSize(2);
+    // orphaned without data
+    assertThat(spans.get(0).id()).isEqualTo("0000000000000002");
+    // orphaned with data
+    assertThat(spans.get(1).id()).isEqualTo("0000000000000001");
+    assertThat(spans.get(1).name()).isEqualTo("foo"); // data was flushed
+
+    assertThat(spans)
+      .allSatisfy(s -> assertThat(s.annotations())
+        .containsExactly(Annotation.create((initialClockVal + 1) * 1000, "brave.flush")));
   }
 
   @Test
@@ -190,31 +193,6 @@ public class PendingSpansTest {
 
     // we also expect the clock to not have been called
     assertThat(clock.get()).isEqualTo(initialClockVal);
-  }
-
-  /** We ensure that the implicit caller of reportOrphanedSpans doesn't crash on report failure */
-  @Test
-  public void reportOrphanedSpans_whenReporterDies() {
-    init(new FinishedSpanHandler() {
-      @Override public boolean handle(TraceContext context, MutableSpan span) {
-        throw new RuntimeException();
-      }
-    }, false);
-
-    TraceContext context = this.context.toBuilder().build();
-    pendingSpans.getOrCreate(null, context, false);
-    // We drop the reference to the context, which means the next GC should attempt to flush it
-    context = null;
-
-    GarbageCollectors.blockOnGC();
-
-    // The innocent caller isn't killed due to the exception in implicitly reporting GC'd spans
-    pendingSpans.remove(this.context);
-
-    // However, the reference queue has been cleared.
-    assertThat(pendingSpans).extracting("target")
-      .asInstanceOf(InstanceOfAssertFactories.MAP)
-      .isEmpty();
   }
 
   @Test

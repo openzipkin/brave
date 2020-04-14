@@ -209,9 +209,10 @@ public abstract class Tracing implements Closeable {
     }
 
     /**
-     * Controls how {@linkplain TraceContext#sampled() remote sampled} spans report to a
-     * <a href="https://github.com/openzipkin/zipkin-reporter-java">io.zipkin.reporter2:zipkin-reporter</a>destination.
-     * This input is usually a {@link AsyncReporter} which batches spans before reporting them.
+     * Controls how {@linkplain TraceContext#sampled() remote sampled} spans report using the
+     * <a href="https://github.com/openzipkin/zipkin-reporter-java">io.zipkin.reporter2:zipkin-reporter</a>
+     * library. This input is usually a {@link AsyncReporter} which batches spans before reporting
+     * them.
      *
      * <p>For example, here's how to batch send spans via http:
      *
@@ -226,7 +227,7 @@ public abstract class Tracing implements Closeable {
      * <h3>Relationship to {@link #addFinishedSpanHandler(FinishedSpanHandler)}</h3>
      * There may only be one {@code spanReporter}. When present, this will be converted as the
      * <em>last</em> {@link FinishedSpanHandler}. This ensures any customization or redaction
-     * happen before reporting to a {@code io.zipkin.reporter2:zipkin-reporter} destination.
+     * happen spans are sent out of process.
      *
      * @see #addFinishedSpanHandler(FinishedSpanHandler)
      */
@@ -432,7 +433,7 @@ public abstract class Tracing implements Closeable {
       defaultSpan.localPort(builder.localPort);
 
       FinishedSpanHandler zipkinHandler = builder.spanReporter != Reporter.NOOP
-        ? new ZipkinFinishedSpanHandler(defaultSpan, builder.spanReporter,
+        ? new ZipkinFinishedSpanHandler(defaultSpan, builder.spanReporter, errorParser,
         builder.alwaysReportSpans)
         : FinishedSpanHandler.NOOP;
 
@@ -452,8 +453,7 @@ public abstract class Tracing implements Closeable {
       }
 
       PendingSpans pendingSpans =
-        new PendingSpans(defaultSpan, errorParser, clock, orphanedSpanHandler, builder.trackOrphans,
-          noop);
+        new PendingSpans(defaultSpan, clock, orphanedSpanHandler, builder.trackOrphans, noop);
 
       this.tracer = new Tracer(
         builder.clock,
