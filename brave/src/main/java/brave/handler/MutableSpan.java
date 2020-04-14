@@ -92,6 +92,7 @@ public final class MutableSpan implements Cloneable {
   public MutableSpan(MutableSpan toCopy) {
     if (toCopy == null) throw new NullPointerException("toCopy == null");
     traceId = toCopy.traceId;
+    localRootId = toCopy.localRootId;
     parentId = toCopy.parentId;
     id = toCopy.id;
     kind = toCopy.kind;

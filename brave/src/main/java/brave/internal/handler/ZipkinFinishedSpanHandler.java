@@ -13,12 +13,13 @@
  */
 package brave.internal.handler;
 
+import brave.ErrorParser;
+import brave.Tags;
 import brave.Tracer;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
-import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import zipkin2.Endpoint;
@@ -45,20 +46,26 @@ public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
     }
   }
 
+  final Reporter<Span> spanReporter;
+  /**
+   * Zipkin format uses the {@linkplain Tags#ERROR "error" tag}, but alternative formats may have a
+   * different tag name or a field entirely. Hence, we only create the "error" tag here, and only if
+   * not previously set.
+   */
+  final ErrorParser errorParser;
+
   final String defaultServiceName, defaultIp;
   final int defaultPort;
   final Endpoint defaultEndpoint;
-  final Reporter<Span> spanReporter;
   final boolean alwaysReportSpans;
 
   public ZipkinFinishedSpanHandler(MutableSpan defaultSpan, @Nullable Reporter<Span> spanReporter,
-    boolean alwaysReportSpans) {
+    ErrorParser errorParser, boolean alwaysReportSpans) {
     this.spanReporter = spanReporter != null ? spanReporter : new LoggingReporter();
-    // non-Zipkin models allow mixed case service names, but Zipkin does not.
-    String serviceName = defaultSpan.localServiceName();
-    defaultServiceName = serviceName != null ? serviceName.toLowerCase(Locale.ROOT) : null;
-    defaultPort = defaultSpan.localPort();
-    defaultIp = defaultSpan.localIp();
+    this.errorParser = errorParser;
+    this.defaultServiceName = defaultSpan.localServiceName();
+    this.defaultPort = defaultSpan.localPort();
+    this.defaultIp = defaultSpan.localIp();
     this.defaultEndpoint = Endpoint.newBuilder()
       .serviceName(defaultServiceName)
       .ip(defaultIp)
@@ -113,6 +120,7 @@ public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
         .build());
     }
 
+    maybeAddErrorTag(span);
     span.forEachTag(Consumer.INSTANCE, result);
     span.forEachAnnotation(Consumer.INSTANCE, result);
     if (span.shared()) result.shared(true);
@@ -123,12 +131,19 @@ public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
   // avoid re-allocating an endpoint when we have the same data
   void addLocalEndpoint(@Nullable String serviceName, @Nullable String ip, int port,
     Span.Builder span) {
-    if (serviceName != null) serviceName = serviceName.toLowerCase(Locale.ROOT);
+    // We are not comparing against the potentially lower-cased endpoint, rather values passed to
+    // Tracing.Builder. Hence, we do not need the overhead of mixed-case comparison here.
     if (equal(serviceName, defaultServiceName) && equal(ip, defaultIp) && port == defaultPort) {
       span.localEndpoint(defaultEndpoint);
     } else {
       span.localEndpoint(Endpoint.newBuilder().serviceName(serviceName).ip(ip).port(port).build());
     }
+  }
+
+  void maybeAddErrorTag(MutableSpan span) {
+    if (span.error() == null) return; // span.tag(key) iterates: check if we need to first!
+    String errorTag = span.tag("error");
+    if (errorTag == null) errorParser.error(span.error(), span);
   }
 
   @Override public String toString() {

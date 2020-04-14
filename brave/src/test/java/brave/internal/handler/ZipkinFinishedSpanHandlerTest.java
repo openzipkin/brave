@@ -13,6 +13,7 @@
  */
 package brave.internal.handler;
 
+import brave.ErrorParser;
 import brave.handler.MutableSpan;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
@@ -46,7 +47,8 @@ public class ZipkinFinishedSpanHandlerTest {
     MutableSpan defaultSpan = new MutableSpan();
     defaultSpan.localServiceName("favistar");
     defaultSpan.localIp("1.2.3.4");
-    handler = new ZipkinFinishedSpanHandler(defaultSpan, spanReporter, alwaysReportSpans);
+    handler = new ZipkinFinishedSpanHandler(defaultSpan, spanReporter, new ErrorParser(),
+      alwaysReportSpans);
   }
 
   @Test public void reportsSampledSpan() {
@@ -201,6 +203,27 @@ public class ZipkinFinishedSpanHandlerTest {
       entry("2", "2"),
       entry("3", "3")
     );
+  }
+
+  Throwable ERROR = new RuntimeException();
+
+  @Test public void backfillsErrorTag() {
+    MutableSpan span = spanWithIds();
+
+    span.error(ERROR);
+
+    assertThat(handler.convert(span).tags())
+      .containsOnly(entry("error", "RuntimeException"));
+  }
+
+  @Test public void doesntOverwriteErrorTag() {
+    MutableSpan span = spanWithIds();
+
+    span.error(ERROR);
+    span.tag("error", "");
+
+    assertThat(handler.convert(span).tags())
+      .containsOnly(entry("error", ""));
   }
 
   @Test public void addsAnnotations() {

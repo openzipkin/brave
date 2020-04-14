@@ -14,7 +14,6 @@
 package brave.internal.recorder;
 
 import brave.Clock;
-import brave.ErrorParser;
 import brave.Tracer;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
@@ -38,15 +37,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingSpan> {
   @Nullable final WeakConcurrentMap<MutableSpan, Throwable> spanToCaller;
   final MutableSpan defaultSpan;
-  final ErrorParser errorParser;
   final Clock clock;
   final FinishedSpanHandler orphanedSpanHandler;
   final AtomicBoolean noop;
 
-  public PendingSpans(MutableSpan defaultSpan, ErrorParser errorParser, Clock clock,
-    FinishedSpanHandler orphanedSpanHandler, boolean trackOrphans, AtomicBoolean noop) {
+  public PendingSpans(MutableSpan defaultSpan, Clock clock, FinishedSpanHandler orphanedSpanHandler,
+    boolean trackOrphans, AtomicBoolean noop) {
     this.defaultSpan = defaultSpan;
-    this.errorParser = errorParser;
     this.clock = clock;
     this.orphanedSpanHandler = orphanedSpanHandler;
     this.spanToCaller = trackOrphans ? new WeakConcurrentMap<>() : null;
@@ -116,15 +113,19 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
   public boolean flush(TraceContext context) {
     PendingSpan last = remove(context);
     if (last == null) return false;
-    maybeAddErrorTag(last.span);
     return true;
   }
 
-  /** @see brave.Span#finish() */
+  /**
+   * Completes the span associated with this context, if it hasn't already been finished.
+   *
+   * @param timestamp zero means use the current time
+   * @see brave.Span#finish()
+   */
+  // zero here allows us to skip overhead of using the clock when the span already finished!
   public boolean finish(TraceContext context, long timestamp) {
     PendingSpan last = remove(context);
     if (last == null) return false;
-    maybeAddErrorTag(last.span);
     last.span.finishTimestamp(timestamp != 0L ? timestamp : last.clock.currentTimeMicroseconds());
     return true;
   }
@@ -154,7 +155,6 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
         Platform.get().log(message, caller);
       }
 
-      maybeAddErrorTag(value.span);
       value.span.annotate(flushTime, "brave.flush");
       orphanedSpanHandler.handle(context, value.span);
     }
@@ -167,12 +167,5 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
     if (span.id() == null) span.id(context.spanIdString());
     if (context.debug()) span.setDebug();
     if (context.shared()) span.setShared();
-  }
-
-  /** Legacy code never called {@link brave.Span#error(Throwable)}, so call here just in case. */
-  void maybeAddErrorTag(MutableSpan span) {
-    if (span.error() == null) return;
-    String errorTag = span.tag("error");
-    if (errorTag == null) errorParser.error(span.error(), span);
   }
 }
