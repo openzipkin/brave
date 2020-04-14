@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,6 +18,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
@@ -25,7 +26,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 public class ErrorParserTest {
   @Mock SpanCustomizer customizer;
   @Mock ScopedSpan scopedSpan;
-  ErrorParser parser = new ErrorParser();
+  ErrorParser parser = ErrorParser.get();
 
   @Test public void error_customizer() {
     parser.error(new RuntimeException("this cake is a lie"), customizer);
@@ -61,5 +62,15 @@ public class ErrorParserTest {
     ErrorParser.NOOP.error(new RuntimeException("this cake is a lie"), scopedSpan);
 
     verifyNoMoreInteractions(scopedSpan);
+  }
+
+  @Test public void parse_anonymous() {
+    assertThat(ErrorParser.parse(new RuntimeException() {
+    })).isEqualTo("RuntimeException");
+  }
+
+  @Test public void parse_anonymous_message() {
+    assertThat(ErrorParser.parse(new RuntimeException("this cake is a lie") {
+    })).isEqualTo("this cake is a lie");
   }
 }

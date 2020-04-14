@@ -22,7 +22,7 @@ import static brave.http.HttpResponseParser.Default.catchAllName;
 
 /** @deprecated Since 5.10, use {@link HttpRequestParser} and {@link HttpResponseParser} */
 @Deprecated public class HttpParser {
-  static final ErrorParser DEFAULT_ERROR_PARSER = new ErrorParser();
+  static final ErrorParser DEFAULT_ERROR_PARSER = ErrorParser.get();
 
   /**
    * Override when making custom types. Typically, you'll use {@link Tracing#errorParser()}

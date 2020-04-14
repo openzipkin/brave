@@ -23,6 +23,17 @@ import brave.handler.MutableSpan;
 // This implementation works with SpanCustomizer, MutableSpan and ScopedSpan, which don't share a
 // common interface, yet both support tag and annotations.
 public class ErrorParser {
+  static final ErrorParser INSTANCE = new ErrorParser();
+
+  /**
+   * Returns a singleton default instance.
+   *
+   * @since 5.12
+   */
+  public static ErrorParser get() {
+    return INSTANCE;
+  }
+
   /** Adds no tags to the span representing the operation in error. */
   public static final ErrorParser NOOP = new ErrorParser() {
     @Override protected void error(Throwable error, Object customizer) {
@@ -44,9 +55,22 @@ public class ErrorParser {
    * this tags "error" as the message or simple name of the type.
    */
   protected void error(Throwable error, Object span) {
+    tag(span, "error", parse(error));
+  }
+
+  /**
+   * Prefers {@link Throwable#getMessage()} over the {@link Class#getSimpleName()}.
+   *
+   * @since 5.12
+   */
+  public static String parse(Throwable error) {
+    if (error == null) throw new NullPointerException("error == null");
     String message = error.getMessage();
-    if (message == null) message = error.getClass().getSimpleName();
-    tag(span, "error", message);
+    if (message != null) return message;
+    if (error.getClass().isAnonymousClass()) { // avoids ""
+      return error.getClass().getSuperclass().getSimpleName();
+    }
+    return error.getClass().getSimpleName();
   }
 
   /** Same behaviour as {@link brave.SpanCustomizer#annotate(String)} */

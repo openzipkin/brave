@@ -47,7 +47,7 @@ public class ZipkinFinishedSpanHandlerTest {
     MutableSpan defaultSpan = new MutableSpan();
     defaultSpan.localServiceName("favistar");
     defaultSpan.localIp("1.2.3.4");
-    handler = new ZipkinFinishedSpanHandler(defaultSpan, spanReporter, new ErrorParser(),
+    handler = new ZipkinFinishedSpanHandler(defaultSpan, spanReporter, ErrorParser.get(),
       alwaysReportSpans);
   }
 
