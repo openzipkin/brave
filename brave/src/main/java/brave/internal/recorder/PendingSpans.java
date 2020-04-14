@@ -66,7 +66,7 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
     PendingSpan result = get(context);
     if (result != null) return result;
 
-    MutableSpan span = newSpan(context);
+    MutableSpan span = new MutableSpan(context, defaultSpan);
     PendingSpan parentSpan = parent != null ? get(parent) : null;
 
     // save overhead calculating time if the parent is in-progress (usually is)
@@ -96,12 +96,6 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
         "Bug: unexpected to have an existing reference to a new MutableSpan!";
     }
     return newSpan;
-  }
-
-  MutableSpan newSpan(TraceContext context) {
-    MutableSpan span = new MutableSpan(defaultSpan);
-    copy(context, span);
-    return span;
   }
 
   /** @see brave.Span#abandon() */
@@ -149,7 +143,7 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
       TraceContext context = value.backupContext;
 
       if (caller != null) {
-        String message = value.span.equals(newSpan(context))
+        String message = value.span.equals(new MutableSpan(context, null))
           ? "Span " + context + " was allocated but never used"
           : "Span " + context + " neither finished nor flushed before GC";
         Platform.get().log(message, caller);
@@ -158,14 +152,5 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
       value.span.annotate(flushTime, "brave.flush");
       orphanedSpanHandler.handle(context, value.span);
     }
-  }
-
-  void copy(TraceContext context, MutableSpan span) {
-    if (span.traceId() == null) span.traceId(context.traceIdString());
-    if (span.localRootId() == null) span.localRootId(context.localRootIdString());
-    if (span.parentId() == null) span.parentId(context.parentIdString());
-    if (span.id() == null) span.id(context.spanIdString());
-    if (context.debug()) span.setDebug();
-    if (context.shared()) span.setShared();
   }
 }

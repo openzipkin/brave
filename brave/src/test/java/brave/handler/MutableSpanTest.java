@@ -14,6 +14,7 @@
 package brave.handler;
 
 import brave.Span;
+import brave.internal.InternalPropagation;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -29,6 +30,7 @@ import java.util.regex.Pattern;
 import org.junit.Test;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
@@ -210,71 +212,10 @@ public class MutableSpanTest {
   }
 
   @Test public void isEmpty() {
-    assertThat(new MutableSpan().isEmpty()).isTrue();
-    {
-      MutableSpan span = new MutableSpan();
-      span.name("a");
-      assertThat(span.isEmpty()).isFalse();
-    }
-    {
-      MutableSpan span = new MutableSpan();
-      span.startTimestamp(1);
-      assertThat(span.isEmpty()).isFalse();
-    }
-    {
-      MutableSpan span = new MutableSpan();
-      span.finishTimestamp(1);
-      assertThat(span.isEmpty()).isFalse();
-    }
-    {
-      MutableSpan span = new MutableSpan();
-      span.kind(Span.Kind.CLIENT);
-      assertThat(span.isEmpty()).isFalse();
-    }
-    {
-      MutableSpan span = new MutableSpan();
-      span.localServiceName("a");
-      assertThat(span.isEmpty()).isFalse();
-    }
-    {
-      MutableSpan span = new MutableSpan();
-      span.localIp("1.2.3.4");
-      assertThat(span.isEmpty()).isFalse();
-    }
-    {
-      MutableSpan span = new MutableSpan();
-      span.localPort(1);
-      assertThat(span.isEmpty()).isFalse();
-    }
-    {
-      MutableSpan span = new MutableSpan();
-      span.remoteServiceName("a");
-      assertThat(span.isEmpty()).isFalse();
-    }
-    {
-      MutableSpan span = new MutableSpan();
-      span.remoteIpAndPort("1.2.3.4", 1);
-      assertThat(span.isEmpty()).isFalse();
-    }
-    {
-      MutableSpan span = new MutableSpan();
-      span.annotate(1L, "a");
-      assertThat(span.isEmpty()).isFalse();
-    }
-    {
-      MutableSpan span = new MutableSpan();
-      span.error(new RuntimeException());
-      assertThat(span.isEmpty()).isFalse();
-    }
-    {
-      MutableSpan span = new MutableSpan();
-      span.tag("a", "b");
-      assertThat(span.isEmpty()).isFalse();
-    }
-    {
-      MutableSpan span = new MutableSpan();
-      span.setShared();
-      assertThat(span.isEmpty()).isFalse();
+    assertThat(permutations.get(0).get().isEmpty()).isTrue();
+
+    for (int i = 1, length = permutations.size(); i < length; i++) {
+      assertThat(permutations.get(i).get().isEmpty()).isFalse();
     }
   }
 
@@ -372,22 +313,22 @@ public class MutableSpanTest {
     },
     () -> {
       MutableSpan span = new MutableSpan();
-      span.kind(Span.Kind.CLIENT);
-      return span;
-    },
-    () -> {
-      MutableSpan span = new MutableSpan();
-      span.kind(Span.Kind.SERVER);
-      return span;
-    },
-    () -> {
-      MutableSpan span = new MutableSpan();
       span.setDebug();
       return span;
     },
     () -> {
       MutableSpan span = new MutableSpan();
       span.setShared();
+      return span;
+    },
+    () -> {
+      MutableSpan span = new MutableSpan();
+      span.kind(Span.Kind.CLIENT);
+      return span;
+    },
+    () -> {
+      MutableSpan span = new MutableSpan();
+      span.kind(Span.Kind.SERVER);
       return span;
     },
     () -> {
@@ -542,6 +483,53 @@ public class MutableSpanTest {
       MutableSpan span = constructor.get();
       assertThat(span).isEqualTo(new MutableSpan(span));
     }
+  }
+
+  @Test public void contextConstructor() {
+    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
+    MutableSpan span = new MutableSpan();
+    span.traceId("0000000000000001");
+    span.id("0000000000000002");
+    assertThat(new MutableSpan(context, null)).isEqualTo(span);
+
+    // local root ID is not a public api
+    context = InternalPropagation.instance.newTraceContext(
+      0,
+      0,
+      1,
+      2,
+      3,
+      4,
+      emptyList()
+    );
+    span.traceId("0000000000000001");
+    span.localRootId("0000000000000002");
+    span.parentId("0000000000000003");
+    span.id("0000000000000004");
+    assertThat(new MutableSpan(context, null)).isEqualTo(span);
+
+    context = context.toBuilder().shared(true).build();
+    span.setShared();
+    assertThat(new MutableSpan(context, null)).isEqualTo(span);
+
+    context = context.toBuilder().debug(true).build();
+    span.setDebug();
+    assertThat(new MutableSpan(context, null)).isEqualTo(span);
+  }
+
+  @Test public void contextConstructor_contextWins() {
+    MutableSpan span = new MutableSpan();
+    span.traceId("0000000000000001");
+    span.localRootId("0000000000000002");
+    span.parentId("0000000000000003");
+    span.id("0000000000000004");
+    span.setShared();
+    span.setDebug();
+
+    TraceContext context = TraceContext.newBuilder().traceId(10).spanId(20).build();
+
+    assertThat(new MutableSpan(context, span))
+      .isEqualTo(new MutableSpan(context, null));
   }
 
   @Test public void accessorScansTags() {
