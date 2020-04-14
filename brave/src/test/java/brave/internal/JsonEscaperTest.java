@@ -21,15 +21,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 // initially a copy of zipkin2.internal.JsonEscaperTest
 public class JsonEscaperTest {
   @Test public void testJsonEscape() {
-    assertThat(jsonEscape(new String(new char[] {0, 'a', 1})).toString())
-      .isEqualTo("\\u0000a\\u0001");
-    assertThat(jsonEscape(new String(new char[] {'"', '\\', '\t', '\b'})).toString())
-      .isEqualTo("\\\"\\\\\\t\\b");
-    assertThat(jsonEscape(new String(new char[] {'\n', '\r', '\f'})).toString())
-      .isEqualTo("\\n\\r\\f");
-    assertThat(jsonEscape("\u2028 and \u2029").toString())
-      .isEqualTo("\\u2028 and \\u2029");
-    assertThat(jsonEscape("\"foo").toString())
-      .isEqualTo("\\\"foo");
+    StringBuilder builder = new StringBuilder();
+    jsonEscape(new String(new char[] {0, 'a', 1}), builder);
+    assertThat(builder).hasToString("\\u0000a\\u0001");
+
+    builder.setLength(0);
+    jsonEscape(new String(new char[] {'"', '\\', '\t', '\b'}), builder);
+    assertThat(builder).hasToString("\\\"\\\\\\t\\b");
+
+    builder.setLength(0);
+    jsonEscape(new String(new char[] {'\n', '\r', '\f'}), builder);
+    assertThat(builder).hasToString("\\n\\r\\f");
+
+    builder.setLength(0);
+    jsonEscape("\u2028 and \u2029", builder);
+    assertThat(builder).hasToString("\\u2028 and \\u2029");
+
+    builder.setLength(0);
+    jsonEscape("\"foo", builder);
+    assertThat(builder).hasToString("\\\"foo");
   }
 }

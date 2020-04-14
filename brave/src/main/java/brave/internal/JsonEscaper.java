@@ -15,14 +15,13 @@ package brave.internal;
 
 // Initially, a copy of zipkin2.internal.JsonEscaper
 public final class JsonEscaper {
-  public static CharSequence jsonEscape(CharSequence v) {
-    int length = v.length();
-    if (length == 0) return v;
+  public static void jsonEscape(CharSequence in, StringBuilder out) {
+    int length = in.length();
+    if (length == 0) return;
 
     int afterReplacement = 0;
-    StringBuilder builder = null;
     for (int i = 0; i < length; i++) {
-      char c = v.charAt(i);
+      char c = in.charAt(i);
       String replacement;
       if (c < 0x80) {
         replacement = REPLACEMENT_CHARS[c];
@@ -35,19 +34,15 @@ public final class JsonEscaper {
         continue;
       }
       if (afterReplacement < i) { // write characters between the last replacement and now
-        if (builder == null) builder = new StringBuilder(length);
-        builder.append(v, afterReplacement, i);
+        out.append(in, afterReplacement, i);
       }
-      if (builder == null) builder = new StringBuilder(length);
-      builder.append(replacement);
+      out.append(replacement);
       afterReplacement = i + 1;
     }
-    if (builder == null) return v; // then we didn't escape anything
 
     if (afterReplacement < length) {
-      builder.append(v, afterReplacement, length);
+      out.append(in, afterReplacement, length);
     }
-    return builder;
   }
 
   /*

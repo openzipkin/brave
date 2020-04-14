@@ -24,7 +24,6 @@ import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.Endpoint;
 import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -143,8 +142,8 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-      .extracting("tracer.finishedSpanHandler.handlers")
-      .satisfies(a -> assertThat((FinishedSpanHandler[]) a).startsWith(FIREHOSE_HANDLER));
+      .extracting("tracer.finishedSpanHandler.delegate")
+      .isEqualTo(FIREHOSE_HANDLER);
   }
 
   @Test public void clock() {

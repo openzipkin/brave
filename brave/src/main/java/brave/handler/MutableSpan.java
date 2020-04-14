@@ -774,7 +774,7 @@ public final class MutableSpan implements Cloneable {
     }
     if (name != null) {
       b.append(",\"name\":\"");
-      b.append(jsonEscape(name));
+      jsonEscape(name, b);
       b.append('"');
     }
     if (startTimestamp != 0L) {
@@ -801,7 +801,7 @@ public final class MutableSpan implements Cloneable {
         b.append("{\"timestamp\":");
         b.append(annotations.get(i++));
         b.append(",\"value\":\"");
-        b.append(jsonEscape(annotations.get(i++).toString()));
+        jsonEscape(annotations.get(i++).toString(), b);
         b.append('}');
         if (i < annotationLength) b.append(',');
       }
@@ -836,9 +836,9 @@ public final class MutableSpan implements Cloneable {
 
   void writeKeyValue(StringBuilder b, String key, String value) {
     b.append('"');
-    b.append(jsonEscape(key));
+    jsonEscape(key, b);
     b.append("\":\"");
-    b.append(jsonEscape(value));
+    jsonEscape(value, b);
     b.append('"');
   }
 
@@ -848,7 +848,7 @@ public final class MutableSpan implements Cloneable {
     boolean wroteField = false;
     if (serviceName != null) {
       b.append("\"serviceName\":\"");
-      b.append(jsonEscape(serviceName));
+      jsonEscape(serviceName, b);
       b.append('"');
       wroteField = true;
     }
