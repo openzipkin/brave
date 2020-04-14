@@ -88,9 +88,30 @@ public final class MutableSpan implements Cloneable {
   public MutableSpan() {
   }
 
+  /**
+   * Creates a new instance from the given context, and defaults in the span.
+   *
+   * <p><em>Note:</em> It is unexpected to have context properties also in the span defaults. The
+   * context will win in this case, as opposed to throwing an exception.
+   *
+   * @since 5.12
+   */
+  public MutableSpan(TraceContext context, @Nullable MutableSpan defaults) {
+    this(defaults != null ? defaults : EMPTY);
+    if (context == null) throw new NullPointerException("context == null");
+    traceId(context.traceIdString());
+    localRootId(context.localRootIdString());
+    parentId(context.parentIdString());
+    id(context.spanIdString());
+    flags = 0; // don't inherit flags from the span
+    if (context.debug()) setDebug();
+    if (context.shared()) setShared();
+  }
+
   /** @since 5.12 */
   public MutableSpan(MutableSpan toCopy) {
     if (toCopy == null) throw new NullPointerException("toCopy == null");
+    if (toCopy == EMPTY) return;
     traceId = toCopy.traceId;
     localRootId = toCopy.localRootId;
     parentId = toCopy.parentId;
