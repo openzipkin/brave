@@ -28,7 +28,7 @@ public class ErrorParser {
   /**
    * Returns a singleton default instance.
    *
-   * @since 5.11
+   * @since 5.12
    */
   public static ErrorParser get() {
     return INSTANCE;
