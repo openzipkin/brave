@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -22,8 +22,6 @@ import io.grpc.MethodDescriptor;
 import io.grpc.Status;
 
 public class GrpcParser {
-  static final ErrorParser DEFAULT_ERROR_PARSER = new ErrorParser();
-
   /**
    * Override when making custom types. Typically, you'll use {@link Tracing#errorParser()}
    *
@@ -42,7 +40,7 @@ public class GrpcParser {
    * }</pre>
    */
   protected ErrorParser errorParser() {
-    return DEFAULT_ERROR_PARSER;
+    return ErrorParser.get();
   }
 
   /** Returns the span name of the request. Defaults to the full grpc method name. */

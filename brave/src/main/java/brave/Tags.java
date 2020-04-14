@@ -30,9 +30,7 @@ public final class Tags {
    */
   public static final Tag<Throwable> ERROR = new Tag<Throwable>("error") {
     @Override protected String parseValue(Throwable input, TraceContext context) {
-      String message = input.getMessage();
-      if (message == null) message = input.getClass().getSimpleName();
-      return message;
+      return ErrorParser.parse(input);
     }
   };
 

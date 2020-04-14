@@ -145,7 +145,7 @@ public abstract class Tracing implements Closeable {
     boolean traceId128Bit = false, supportsJoin = true, alwaysReportSpans = false;
     boolean trackOrphans = false;
     Propagation.Factory propagationFactory = B3Propagation.FACTORY;
-    ErrorParser errorParser = new ErrorParser();
+    ErrorParser errorParser = ErrorParser.get();
     Set<FinishedSpanHandler> finishedSpanHandlers = new LinkedHashSet<>(); // dupes not ok
 
     /**
