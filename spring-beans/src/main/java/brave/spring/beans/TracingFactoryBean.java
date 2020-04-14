@@ -30,8 +30,8 @@ import zipkin2.reporter.Reporter;
 /** Spring XML config does not support chained builders. This converts accordingly */
 public class TracingFactoryBean extends AbstractFactoryBean {
   String localServiceName;
-  Endpoint localEndpoint, endpoint;
-  Reporter<Span> spanReporter;
+  Object localEndpoint, endpoint; // don't pin zipkin class
+  Object spanReporter; // don't pin zipkin class
   List<FinishedSpanHandler> finishedSpanHandlers;
   Clock clock;
   Sampler sampler;
@@ -45,9 +45,13 @@ public class TracingFactoryBean extends AbstractFactoryBean {
   @Override protected Tracing createInstance() {
     Tracing.Builder builder = Tracing.newBuilder();
     if (localServiceName != null) builder.localServiceName(localServiceName);
-    if (localEndpoint != null) builder.endpoint(localEndpoint);
-    if (endpoint != null) builder.endpoint(endpoint);
-    if (spanReporter != null) builder.spanReporter(spanReporter);
+    if (localEndpoint == null) localEndpoint = endpoint;
+    if (localEndpoint != null) {
+      builder.endpoint((Endpoint) localEndpoint);
+    }
+    if (spanReporter != null) {
+      builder.spanReporter((Reporter<Span>) spanReporter);
+    }
     if (finishedSpanHandlers != null) {
       for (FinishedSpanHandler finishedSpanHandler : finishedSpanHandlers) {
         builder.addFinishedSpanHandler(finishedSpanHandler);
@@ -82,15 +86,15 @@ public class TracingFactoryBean extends AbstractFactoryBean {
     this.localServiceName = localServiceName;
   }
 
-  public void setLocalEndpoint(Endpoint localEndpoint) {
+  public void setLocalEndpoint(Object localEndpoint) {
     this.localEndpoint = localEndpoint;
   }
 
-  public void setEndpoint(Endpoint endpoint) {
+  public void setEndpoint(Object endpoint) {
     this.endpoint = endpoint;
   }
 
-  public void setSpanReporter(Reporter<Span> spanReporter) {
+  public void setSpanReporter(Object spanReporter) {
     this.spanReporter = spanReporter;
   }
 

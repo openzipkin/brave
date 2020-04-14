@@ -18,10 +18,9 @@ import brave.Tracer;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
 import org.apache.kafka.streams.processor.ProcessorContext;
 
-import static zipkin2.Call.propagateIfFatal;
+import static brave.internal.Throwables.propagateIfFatal;
 
 class TracingValueTransformerWithKey<K, V, VR> implements ValueTransformerWithKey<K, V, VR> {
-
   final KafkaStreamsTracing kafkaStreamsTracing;
   final Tracer tracer;
   final String spanName;

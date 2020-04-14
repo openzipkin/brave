@@ -18,10 +18,9 @@ import brave.Tracer;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.processor.ProcessorContext;
 
-import static zipkin2.Call.propagateIfFatal;
+import static brave.internal.Throwables.propagateIfFatal;
 
 class TracingTransformer<K, V, R> implements Transformer<K, V, R> {
-
   final KafkaStreamsTracing kafkaStreamsTracing;
   final Tracer tracer;
   final String spanName;

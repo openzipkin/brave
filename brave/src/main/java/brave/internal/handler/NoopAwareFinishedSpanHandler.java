@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,7 +18,7 @@ import brave.handler.MutableSpan;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import java.util.Arrays;
-import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static brave.internal.Throwables.propagateIfFatal;
@@ -27,28 +27,33 @@ import static brave.internal.Throwables.propagateIfFatal;
  * When {@code noop}, this drops input spans by returning false. Otherwise, it logs exceptions
  * instead of raising an error, as the supplied handler could have bugs.
  */
-public abstract class NoopAwareFinishedSpanHandler extends FinishedSpanHandler {
-  public static FinishedSpanHandler create(List<FinishedSpanHandler> handlers, AtomicBoolean noop) {
-    if (handlers.isEmpty()) return FinishedSpanHandler.NOOP;
-
-    if (handlers.size() == 1) {
-      FinishedSpanHandler onlyHandler = handlers.get(0);
-      return onlyHandler == FinishedSpanHandler.NOOP ? onlyHandler : new Single(onlyHandler, noop);
-    }
+public final class NoopAwareFinishedSpanHandler extends FinishedSpanHandler {
+  public static FinishedSpanHandler create(Set<FinishedSpanHandler> handlers, AtomicBoolean noop) {
+    FinishedSpanHandler[] handlersArray = handlers.toArray(new FinishedSpanHandler[0]);
+    if (handlersArray.length == 0) return FinishedSpanHandler.NOOP;
 
     boolean alwaysSampleLocal = false, supportsOrphans = false;
     for (FinishedSpanHandler handler : handlers) {
       if (handler.alwaysSampleLocal()) alwaysSampleLocal = true;
       if (handler.supportsOrphans()) supportsOrphans = true;
     }
-    return new Multiple(handlers, noop, alwaysSampleLocal, supportsOrphans);
+
+    FinishedSpanHandler handler;
+    if (handlersArray.length == 1) {
+      handler = handlersArray[0];
+    } else {
+      handler = new CompositeFinishedSpanHandler(handlersArray);
+    }
+    return new NoopAwareFinishedSpanHandler(handler, noop, alwaysSampleLocal, supportsOrphans);
   }
 
+  final FinishedSpanHandler delegate;
   final AtomicBoolean noop;
   boolean alwaysSampleLocal, supportsOrphans;
 
-  NoopAwareFinishedSpanHandler(AtomicBoolean noop, boolean alwaysSampleLocal,
-    boolean supportsOrphans) {
+  NoopAwareFinishedSpanHandler(FinishedSpanHandler delegate, AtomicBoolean noop,
+    boolean alwaysSampleLocal, boolean supportsOrphans) {
+    this.delegate = delegate;
     this.noop = noop;
     this.alwaysSampleLocal = alwaysSampleLocal;
     this.supportsOrphans = supportsOrphans;
@@ -57,7 +62,7 @@ public abstract class NoopAwareFinishedSpanHandler extends FinishedSpanHandler {
   @Override public final boolean handle(TraceContext context, MutableSpan span) {
     if (noop.get()) return false;
     try {
-      return doHandle(context, span);
+      return delegate.handle(context, span);
     } catch (Throwable t) {
       propagateIfFatal(t);
       Platform.get().log("error handling {0}", context, t);
@@ -73,35 +78,18 @@ public abstract class NoopAwareFinishedSpanHandler extends FinishedSpanHandler {
     return supportsOrphans;
   }
 
-  abstract boolean doHandle(TraceContext context, MutableSpan span);
-
-  static final class Single extends NoopAwareFinishedSpanHandler {
-    final FinishedSpanHandler delegate;
-
-    Single(FinishedSpanHandler delegate, AtomicBoolean noop) {
-      super(noop, delegate.alwaysSampleLocal(), delegate.supportsOrphans());
-      this.delegate = delegate;
-    }
-
-    @Override boolean doHandle(TraceContext context, MutableSpan span) {
-      return delegate.handle(context, span);
-    }
-
-    @Override public String toString() {
-      return delegate.toString();
-    }
+  @Override public String toString() {
+    return delegate.toString();
   }
 
-  static final class Multiple extends NoopAwareFinishedSpanHandler {
+  static final class CompositeFinishedSpanHandler extends FinishedSpanHandler {
     final FinishedSpanHandler[] handlers; // Array ensures no iterators are created at runtime
 
-    Multiple(List<FinishedSpanHandler> handlers, AtomicBoolean noop, boolean alwaysSampleLocal,
-      boolean supportsOrphans) {
-      super(noop, alwaysSampleLocal, supportsOrphans);
-      this.handlers = handlers.toArray(new FinishedSpanHandler[0]);
+    CompositeFinishedSpanHandler(FinishedSpanHandler[] handlers) {
+      this.handlers = handlers;
     }
 
-    @Override boolean doHandle(TraceContext context, MutableSpan span) {
+    @Override public boolean handle(TraceContext context, MutableSpan span) {
       for (FinishedSpanHandler handler : handlers) {
         if (!handler.handle(context, span)) return false;
       }

@@ -18,10 +18,9 @@ import brave.Tracer;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 
-import static zipkin2.Call.propagateIfFatal;
+import static brave.internal.Throwables.propagateIfFatal;
 
 class TracingProcessor<K, V> implements Processor<K, V> {
-
   final KafkaStreamsTracing kafkaStreamsTracing;
   final Tracer tracer;
   final String spanName;

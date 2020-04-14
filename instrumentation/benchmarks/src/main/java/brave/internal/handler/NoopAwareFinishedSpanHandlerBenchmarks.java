@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,6 +16,7 @@ package brave.internal.handler;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.propagation.TraceContext;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -77,7 +78,7 @@ public class NoopAwareFinishedSpanHandlerBenchmarks {
   };
 
   final FinishedSpanHandler composite =
-    NoopAwareFinishedSpanHandler.create(asList(one, two, three), noop);
+    NoopAwareFinishedSpanHandler.create(new LinkedHashSet<>(asList(one, two, three)), noop);
   final FinishedSpanHandler listIndexComposite = new FinishedSpanHandler() {
     List<FinishedSpanHandler> delegates = asList(one, two, three);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,13 +16,17 @@ package brave.internal.handler;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.propagation.TraceContext;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import static java.util.Arrays.asList;
+import static java.util.Collections.emptySet;
+import static java.util.Collections.singleton;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 import static org.mockito.Mockito.never;
@@ -39,27 +43,22 @@ public class NoopAwareFinishedSpanHandlerTest {
   @Mock FinishedSpanHandler two;
 
   @Test public void create_emptyIsNoop() {
-    assertThat(NoopAwareFinishedSpanHandler.create(asList(), noop))
-      .isEqualTo(FinishedSpanHandler.NOOP);
-  }
-
-  @Test public void create_noopPassthrough() {
-    assertThat(NoopAwareFinishedSpanHandler.create(asList(FinishedSpanHandler.NOOP), noop))
+    assertThat(NoopAwareFinishedSpanHandler.create(emptySet(), noop))
       .isEqualTo(FinishedSpanHandler.NOOP);
   }
 
   @Test public void create_single() {
-    FinishedSpanHandler handler = NoopAwareFinishedSpanHandler.create(asList(one), noop);
+    NoopAwareFinishedSpanHandler handler =
+      (NoopAwareFinishedSpanHandler) NoopAwareFinishedSpanHandler.create(singleton(one), noop);
 
-    assertThat(handler)
-      .isInstanceOf(NoopAwareFinishedSpanHandler.Single.class);
+    assertThat(handler.delegate).isSameAs(one);
 
     handler.handle(context, span);
     verify(one).handle(context, span);
   }
 
   @Test public void honorsNoop() {
-    FinishedSpanHandler handler = NoopAwareFinishedSpanHandler.create(asList(one), noop);
+    FinishedSpanHandler handler = NoopAwareFinishedSpanHandler.create(singleton(one), noop);
 
     noop.set(true);
 
@@ -68,27 +67,34 @@ public class NoopAwareFinishedSpanHandlerTest {
   }
 
   @Test public void single_options() {
-    assertThat(NoopAwareFinishedSpanHandler.create(asList(one), noop))
+    assertThat(NoopAwareFinishedSpanHandler.create(singleton(one), noop))
       .extracting(FinishedSpanHandler::alwaysSampleLocal, FinishedSpanHandler::supportsOrphans)
       .containsExactly(false, false);
 
     when(one.alwaysSampleLocal()).thenReturn(true);
     when(one.supportsOrphans()).thenReturn(true);
 
-    assertThat(NoopAwareFinishedSpanHandler.create(asList(one), noop))
+    assertThat(NoopAwareFinishedSpanHandler.create(singleton(one), noop))
       .extracting(FinishedSpanHandler::alwaysSampleLocal, FinishedSpanHandler::supportsOrphans)
       .containsExactly(true, true);
   }
 
   @Test public void create_multiple() {
-    FinishedSpanHandler handler = NoopAwareFinishedSpanHandler.create(asList(one, two), noop);
+    Set<FinishedSpanHandler> handlers = new LinkedHashSet<>();
+    handlers.add(one);
+    handlers.add(two);
+    FinishedSpanHandler handler = NoopAwareFinishedSpanHandler.create(handlers, noop);
 
-    assertThat(handler)
-      .isInstanceOf(NoopAwareFinishedSpanHandler.Multiple.class);
+    assertThat(handler).extracting("delegate.handlers")
+      .asInstanceOf(InstanceOfAssertFactories.array(FinishedSpanHandler[].class))
+      .containsExactly(one, two);
   }
 
   @Test public void multiple_options() {
-    assertThat(NoopAwareFinishedSpanHandler.create(asList(one, two), noop))
+    Set<FinishedSpanHandler> handlers = new LinkedHashSet<>();
+    handlers.add(one);
+    handlers.add(two);
+    assertThat(NoopAwareFinishedSpanHandler.create(handlers, noop))
       .extracting(FinishedSpanHandler::alwaysSampleLocal, FinishedSpanHandler::supportsOrphans)
       .containsExactly(false, false);
 
@@ -97,13 +103,16 @@ public class NoopAwareFinishedSpanHandlerTest {
     when(two.alwaysSampleLocal()).thenReturn(true);
     when(two.supportsOrphans()).thenReturn(true);
 
-    assertThat(NoopAwareFinishedSpanHandler.create(asList(one, two), noop))
+    assertThat(NoopAwareFinishedSpanHandler.create(handlers, noop))
       .extracting(FinishedSpanHandler::alwaysSampleLocal, FinishedSpanHandler::supportsOrphans)
       .containsExactly(true, true);
   }
 
   @Test public void multiple_callInSequence() {
-    FinishedSpanHandler handler = NoopAwareFinishedSpanHandler.create(asList(one, two), noop);
+    Set<FinishedSpanHandler> handlers = new LinkedHashSet<>();
+    handlers.add(one);
+    handlers.add(two);
+    FinishedSpanHandler handler = NoopAwareFinishedSpanHandler.create(handlers, noop);
     when(one.handle(context, span)).thenReturn(true);
     handler.handle(context, span);
 
@@ -112,7 +121,10 @@ public class NoopAwareFinishedSpanHandlerTest {
   }
 
   @Test public void multiple_shortCircuitWhenFirstReturnsFalse() {
-    FinishedSpanHandler handler = NoopAwareFinishedSpanHandler.create(asList(one, two), noop);
+    Set<FinishedSpanHandler> handlers = new LinkedHashSet<>();
+    handlers.add(one);
+    handlers.add(two);
+    FinishedSpanHandler handler = NoopAwareFinishedSpanHandler.create(handlers, noop);
     handler.handle(context, span);
 
     verify(one).handle(context, span);
@@ -122,7 +134,7 @@ public class NoopAwareFinishedSpanHandlerTest {
   @Test public void doesntCrashOnNonFatalThrowable() {
     Throwable[] toThrow = new Throwable[1];
     FinishedSpanHandler handler =
-      NoopAwareFinishedSpanHandler.create(asList(new FinishedSpanHandler() {
+      NoopAwareFinishedSpanHandler.create(singleton(new FinishedSpanHandler() {
         @Override public boolean handle(TraceContext context, MutableSpan span) {
           doThrowUnsafely(toThrow[0]);
           return true;

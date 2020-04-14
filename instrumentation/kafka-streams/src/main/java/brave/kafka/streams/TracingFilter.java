@@ -18,11 +18,10 @@ import brave.Tracer;
 import org.apache.kafka.streams.kstream.Predicate;
 import org.apache.kafka.streams.processor.ProcessorContext;
 
+import static brave.internal.Throwables.propagateIfFatal;
 import static brave.kafka.streams.KafkaStreamsTags.KAFKA_STREAMS_FILTERED_TAG;
-import static zipkin2.Call.propagateIfFatal;
 
 abstract class TracingFilter<K, V, R> {
-
   final KafkaStreamsTracing kafkaStreamsTracing;
   final String spanName;
   final Predicate<K, V> delegatePredicate;

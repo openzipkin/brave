@@ -93,11 +93,11 @@ public class TracerTest {
     Tracing.current().close();
   }
 
-  @Test public void reporter_hasNiceToString() {
+  @Test public void handler_hasNiceToString() {
     tracer = Tracing.newBuilder().build().tracer();
 
     assertThat(tracer.finishedSpanHandler)
-      .hasToString("LoggingReporter{name=brave.Tracer}");
+      .hasToString("LogFinishedSpanHandler{name=brave.Tracer}");
   }
 
   @Test public void sampler() {
@@ -252,15 +252,6 @@ public class TracerTest {
       .isInstanceOf(NoopSpan.class);
   }
 
-  @Test public void join_noopReporter() {
-    tracer = Tracing.newBuilder().spanReporter(Reporter.NOOP).build().tracer();
-    TraceContext fromIncomingRequest = tracer.newTrace().context();
-
-    assertThat(tracer.joinSpan(fromIncomingRequest))
-      .matches(s -> s.context().sampled()) // context is sampled, but we aren't recording
-      .isInstanceOf(NoopSpan.class);
-  }
-
   @Test public void join_ensuresSampling() {
     TraceContext notYetSampled =
       tracer.newTrace().context().toBuilder().sampled(null).build();
@@ -318,15 +309,6 @@ public class TracerTest {
       .isInstanceOf(NoopSpan.class);
   }
 
-  @Test public void toSpan_noopReporter() {
-    tracer = Tracing.newBuilder().spanReporter(Reporter.NOOP).build().tracer();
-    TraceContext context = tracer.newTrace().context();
-
-    assertThat(tracer.toSpan(context))
-      .matches(s -> s.context().sampled()) // context is sampled, but we aren't recording
-      .isInstanceOf(NoopSpan.class);
-  }
-
   @Test public void toSpan_sampledLocalIsNotNoop() {
     TraceContext sampledLocal = tracer.newTrace().context()
       .toBuilder().sampled(false).sampledLocal(true).build();
@@ -370,15 +352,6 @@ public class TracerTest {
       .isInstanceOf(NoopSpan.class);
   }
 
-  @Test public void newChild_noopReporter() {
-    tracer = Tracing.newBuilder().spanReporter(Reporter.NOOP).build().tracer();
-    TraceContext parent = tracer.newTrace().context();
-
-    assertThat(tracer.newChild(parent))
-      .matches(s -> s.context().sampled()) // context is sampled, but we aren't recording
-      .isInstanceOf(NoopSpan.class);
-  }
-
   @Test public void newChild_notSampledIsNoop() {
     TraceContext notSampled =
       tracer.newTrace().context().toBuilder().sampled(false).build();
@@ -402,8 +375,8 @@ public class TracerTest {
     }
   }
 
-  @Test public void currentSpanCustomizer_noopReporter() {
-    tracer = Tracing.newBuilder().spanReporter(Reporter.NOOP).build().tracer();
+  @Test public void currentSpanCustomizer_notSampled() {
+    tracer = Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).build().tracer();
 
     ScopedSpan parent = tracer.startScopedSpan("parent");
     try {

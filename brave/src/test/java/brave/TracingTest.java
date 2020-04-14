@@ -15,7 +15,6 @@ package brave;
 
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
-import brave.internal.handler.ZipkinFinishedSpanHandler;
 import brave.propagation.B3SinglePropagation;
 import brave.propagation.Propagation;
 import brave.propagation.StrictCurrentTraceContext;
@@ -76,7 +75,8 @@ public class TracingTest {
   @Test public void localServiceNamePreservesCase() {
     String expectedLocalServiceName = "FavStar";
     Tracing.Builder builder = Tracing.newBuilder().localServiceName(expectedLocalServiceName);
-    assertThat(builder).extracting("localServiceName").isEqualTo(expectedLocalServiceName);
+    assertThat(builder).extracting("defaultSpan.localServiceName")
+      .isEqualTo(expectedLocalServiceName);
   }
 
   @Test public void spanReporter_getsLocalEndpointInfo() {
@@ -105,8 +105,8 @@ public class TracingTest {
 
   @Test public void finishedSpanHandler_loggingByDefault() {
     try (Tracing tracing = Tracing.newBuilder().build()) {
-      assertThat(tracing.tracer().finishedSpanHandler).extracting("delegate.spanReporter")
-        .isInstanceOf(ZipkinFinishedSpanHandler.LoggingReporter.class);
+      assertThat(tracing.tracer().finishedSpanHandler)
+        .isInstanceOf(Tracing.LogFinishedSpanHandler.class);
     }
   }
 
@@ -114,8 +114,8 @@ public class TracingTest {
     try (Tracing tracing = Tracing.newBuilder()
       .addFinishedSpanHandler(FinishedSpanHandler.NOOP)
       .build()) {
-      assertThat(tracing.tracer().finishedSpanHandler).extracting("delegate.spanReporter")
-        .isInstanceOf(ZipkinFinishedSpanHandler.LoggingReporter.class);
+      assertThat(tracing.tracer().finishedSpanHandler)
+        .isInstanceOf(Tracing.LogFinishedSpanHandler.class);
     }
   }
 
@@ -134,11 +134,9 @@ public class TracingTest {
       .addFinishedSpanHandler(one)
       .addFinishedSpanHandler(two)
       .build()) {
-      assertThat(tracing.tracer().finishedSpanHandler).extracting("handlers")
-        .satisfies(handlers -> assertThat((FinishedSpanHandler[]) handlers)
-          .startsWith(one, two)
-          .hasSize(3) // zipkin and the above
-        );
+      assertThat(tracing.tracer().finishedSpanHandler).extracting("delegate.handlers")
+        .asInstanceOf(InstanceOfAssertFactories.array(FinishedSpanHandler[].class))
+        .containsExactly(one, two);
     }
   }
 
@@ -154,11 +152,8 @@ public class TracingTest {
       .addFinishedSpanHandler(finishedSpanHandler)
       .addFinishedSpanHandler(finishedSpanHandler) // dupe
       .build()) {
-      assertThat(tracing.tracer().finishedSpanHandler).extracting("handlers")
-        .satisfies(handlers -> assertThat((FinishedSpanHandler[]) handlers)
-          .startsWith(finishedSpanHandler)
-          .hasSize(2) // zipkin and the above
-        );
+      assertThat(tracing.tracer().finishedSpanHandler).extracting("delegate")
+        .isEqualTo(finishedSpanHandler);
     }
   }
 
@@ -306,12 +301,12 @@ public class TracingTest {
       .build()) {
 
       // Handlers, regardless of whether they support orphans, should be invoked in order
-      assertThat(tracing.tracer().finishedSpanHandler).extracting("handlers")
+      assertThat(tracing.tracer().finishedSpanHandler).extracting("delegate.handlers")
         .asInstanceOf(InstanceOfAssertFactories.ARRAY)
         .startsWith(one, two, three, four);
 
       // Only orphaned handlers should be invoked on the orphan path
-      assertThat(tracing.tracer().pendingSpans).extracting("orphanedSpanHandler.handlers")
+      assertThat(tracing.tracer().pendingSpans).extracting("orphanedSpanHandler.delegate.handlers")
         .asInstanceOf(InstanceOfAssertFactories.ARRAY)
         .startsWith(one, three);
     }

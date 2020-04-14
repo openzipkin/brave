@@ -542,6 +542,44 @@ public class MutableSpanTest {
     assertThat(span.tag("whoops")).isNull();
   }
 
+  @Test public void toString_testCases() {
+    assertThat(permutations.get(0).get()).hasToString("{}");
+
+    // check for simple bugs
+    for (int i = 1, length = permutations.size(); i < length; i++) {
+      assertThat(permutations.get(i).get().toString())
+        .doesNotContain("null")
+        .doesNotContain(":0");
+    }
+
+    // now, test something more interesting zipkin2.TestObjects.CLIENT_SPAN
+    MutableSpan span = new MutableSpan();
+    span.traceId("1");
+    span.localRootId("2"); // not in zipkin format
+    span.parentId("2");
+    span.id("2");
+    span.name("get");
+    span.kind(Span.Kind.CLIENT);
+    span.localServiceName("frontend");
+    span.localIp("127.0.0.1");
+    span.remoteServiceName("backend");
+    span.remoteIpAndPort("192.168.99.101", 9000);
+    span.startTimestamp(1000L);
+    span.finishTimestamp(1200L);
+    span.annotate(1100L, "foo");
+    span.tag("http.path", "/api");
+    span.tag("clnt/finagle.version", "6.45.0");
+
+    assertThat(span).hasToString("{"
+      + "\"traceId\":\"1\",\"parentId\":\"2\",\"id\":\"2\","
+      + "\"kind\":\"CLIENT\",\"name\":\"get\",\"timestamp\":1000,\"duration\":200,"
+      + "\"localEndpoint\":{\"serviceName\":\"frontend\",\"ipv4\":\"127.0.0.1\"},"
+      + "\"remoteEndpoint\":{\"serviceName\":\"backend\",\"ipv4\":\"192.168.99.101\",\"port\":9000},"
+      + "\"annotations\":[{\"timestamp\":1100,\"value\":\"foo}],"
+      + "\"tags\":{\"http.path\":\"/api\",\"clnt/finagle.version\":\"6.45.0\"}"
+      + "}");
+  }
+
   static Map<String, String> tagsToMap(MutableSpan span) {
     Map<String, String> map = new LinkedHashMap<>();
     span.forEachTag(Map::put, map);

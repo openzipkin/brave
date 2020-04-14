@@ -13,6 +13,7 @@
  */
 package brave.handler;
 
+import brave.ErrorParser;
 import brave.Span.Kind;
 import brave.SpanCustomizer;
 import brave.internal.IpLiteral;
@@ -23,6 +24,7 @@ import java.util.ArrayList;
 
 import static brave.internal.InternalPropagation.FLAG_DEBUG;
 import static brave.internal.InternalPropagation.FLAG_SHARED;
+import static brave.internal.JsonEscaper.jsonEscape;
 
 /**
  * This represents a span except for its {@link TraceContext}. It is mutable, for late adjustments.
@@ -744,6 +746,129 @@ public final class MutableSpan implements Cloneable {
       && equal(tags, that.tags)
       && equal(annotations, that.annotations)
       && equal(error, that.error);
+  }
+
+  /** Writes this span in Zipkin V2 format */
+  // Ported from zipkin2.internal.V2SpanWriter and may eventually move to a separate codec type
+  @Override public String toString() {
+    StringBuilder b = new StringBuilder();
+    if (traceId != null) {
+      b.append("\"traceId\":\"");
+      b.append(traceId);
+      b.append('"');
+    }
+    if (parentId != null) {
+      b.append(",\"parentId\":\"");
+      b.append(parentId);
+      b.append('"');
+    }
+    if (id != null) {
+      b.append(",\"id\":\"");
+      b.append(id);
+      b.append('"');
+    }
+    if (kind != null) {
+      b.append(",\"kind\":\"");
+      b.append(kind.toString());
+      b.append('"');
+    }
+    if (name != null) {
+      b.append(",\"name\":\"");
+      b.append(jsonEscape(name));
+      b.append('"');
+    }
+    if (startTimestamp != 0L) {
+      b.append(",\"timestamp\":");
+      b.append(startTimestamp);
+      if (finishTimestamp != 0L) {
+        b.append(",\"duration\":");
+        b.append(finishTimestamp - startTimestamp);
+      }
+    }
+    if (localServiceName != null || localIp != null) {
+      b.append(",\"localEndpoint\":");
+      writeEndpoint(b, localServiceName, localIp, localPort);
+    }
+    if (remoteServiceName != null || remoteIp != null) {
+      b.append(",\"remoteEndpoint\":");
+      writeEndpoint(b, remoteServiceName, remoteIp, remotePort);
+    }
+    int annotationLength = annotations != null ? annotations.size() : 0;
+    if (annotationLength > 0) {
+      b.append(",\"annotations\":");
+      b.append('[');
+      for (int i = 0; i < annotationLength; ) {
+        b.append("{\"timestamp\":");
+        b.append(annotations.get(i++));
+        b.append(",\"value\":\"");
+        b.append(jsonEscape(annotations.get(i++).toString()));
+        b.append('}');
+        if (i < annotationLength) b.append(',');
+      }
+      b.append(']');
+    }
+    int tagLength = tags != null ? tags.size() : 0;
+    if (tagLength > 0 || error != null) {
+      b.append(",\"tags\":{");
+      boolean wroteError = false;
+      for (int i = 0; i < tagLength; ) {
+        String key = tags.get(i++);
+        if (key.equals("error")) wroteError = true;
+        writeKeyValue(b, key, tags.get(i++));
+        if (i < tagLength) b.append(',');
+      }
+      if (error != null && !wroteError) {
+        if (tagLength > 0) b.append(',');
+        writeKeyValue(b, "error", ErrorParser.parse(error));
+      }
+      b.append('}');
+    }
+    if (debug()) b.append(",\"debug\":true");
+    if (shared()) b.append(",\"shared\":true");
+    b.append('}');
+    if (b.charAt(0) == ',') {
+      b.setCharAt(0, '{');
+    } else {
+      b.insert(0, '{');
+    }
+    return b.toString();
+  }
+
+  void writeKeyValue(StringBuilder b, String key, String value) {
+    b.append('"');
+    b.append(jsonEscape(key));
+    b.append("\":\"");
+    b.append(jsonEscape(value));
+    b.append('"');
+  }
+
+  static void writeEndpoint(StringBuilder b,
+    @Nullable String serviceName, @Nullable String ip, int port) {
+    b.append('{');
+    boolean wroteField = false;
+    if (serviceName != null) {
+      b.append("\"serviceName\":\"");
+      b.append(jsonEscape(serviceName));
+      b.append('"');
+      wroteField = true;
+    }
+    if (ip != null) {
+      if (wroteField) b.append(',');
+      if (IpLiteral.detectFamily(ip) == IpLiteral.IpFamily.IPv4) {
+        b.append("\"ipv4\":\"");
+      } else {
+        b.append("\"ipv6\":\"");
+      }
+      b.append(ip);
+      b.append('"');
+      wroteField = true;
+    }
+    if (port != 0) {
+      if (wroteField) b.append(',');
+      b.append("\"port\":");
+      b.append(port);
+    }
+    b.append('}');
   }
 
   static boolean equal(@Nullable Object a, @Nullable Object b) {

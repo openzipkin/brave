@@ -15,13 +15,10 @@ package brave.internal.handler;
 
 import brave.ErrorParser;
 import brave.Tags;
-import brave.Tracer;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import zipkin2.Endpoint;
 import zipkin2.Span;
 import zipkin2.reporter.Reporter;
@@ -32,20 +29,6 @@ import zipkin2.reporter.Reporter;
  * <p><em>Note:</em> This is an internal type and will change at any time.
  */
 public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
-  public static final class LoggingReporter implements Reporter<Span> {
-    final Logger logger = Logger.getLogger(Tracer.class.getName());
-
-    @Override public void report(Span span) {
-      if (span == null) throw new NullPointerException("span == null");
-      if (!logger.isLoggable(Level.INFO)) return;
-      logger.info(span.toString());
-    }
-
-    @Override public String toString() {
-      return "LoggingReporter{name=" + logger.getName() + "}";
-    }
-  }
-
   final Reporter<Span> spanReporter;
   /**
    * Zipkin format uses the {@linkplain Tags#ERROR "error" tag}, but alternative formats may have a
@@ -59,9 +42,9 @@ public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
   final Endpoint defaultEndpoint;
   final boolean alwaysReportSpans;
 
-  public ZipkinFinishedSpanHandler(MutableSpan defaultSpan, @Nullable Reporter<Span> spanReporter,
+  public ZipkinFinishedSpanHandler(MutableSpan defaultSpan, Reporter<Span> spanReporter,
     ErrorParser errorParser, boolean alwaysReportSpans) {
-    this.spanReporter = spanReporter != null ? spanReporter : new LoggingReporter();
+    this.spanReporter = spanReporter;
     this.errorParser = errorParser;
     this.defaultServiceName = defaultSpan.localServiceName();
     this.defaultPort = defaultSpan.localPort();
