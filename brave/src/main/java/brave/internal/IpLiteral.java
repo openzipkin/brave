@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -29,7 +29,7 @@ public final class IpLiteral {
   }
 
   // All the below code is from zipkin2.Endpoint, copy/pasted here to prevent a depedency.
-  enum IpFamily {
+  public enum IpFamily {
     Unknown,
     IPv4,
     IPv4Embedded,
@@ -40,7 +40,7 @@ public final class IpLiteral {
    * Adapted from code in {@code com.google.common.net.InetAddresses.ipStringToBytes}. This version
    * separates detection from parsing and checks more carefully about embedded addresses.
    */
-  static IpFamily detectFamily(String ipString) {
+  public static IpFamily detectFamily(String ipString) {
     boolean hasColon = false;
     boolean hasDot = false;
     for (int i = 0, length = ipString.length(); i < length; i++) {

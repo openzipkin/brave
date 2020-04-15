@@ -42,5 +42,11 @@
       <version>6.0.6</version>
       <scope>provided</scope>
     </dependency>
+
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-tests</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>

@@ -96,7 +96,7 @@ public class MutableSpanTest {
     // When exporting into a list, a lambda would usually need to close over the list, which results
     // in a new instance per invocation. Since there's a target type parameter, the lambda for this
     // style of conversion can be constant, reducing overhead.
-    List<Tag> listTarget = new ArrayList<>();
+    List<Tag> listTarget = new ArrayList<>(span.tagCount());
     span.forEachTag((target, key, value) -> target.add(new Tag(key, value)), listTarget);
 
     assertThat(listTarget).containsExactly(
@@ -131,6 +131,17 @@ public class MutableSpanTest {
       entry("cc-suffix", "cc=xxxx-xxxx-xxxx-xxxx"),
       entry("c", "3")
     );
+  }
+
+  @Test public void annotationCount() {
+    MutableSpan span = new MutableSpan();
+    assertThat(span.annotationCount()).isZero();
+    span.annotate(1L, "1");
+    assertThat(span.annotationCount()).isEqualTo(1);
+    span.annotate(2L, "2");
+    assertThat(span.annotationCount()).isEqualTo(2);
+    span.forEachAnnotation((t, v) -> v.equals("1") ? v : null);
+    assertThat(span.annotationCount()).isEqualTo(1);
   }
 
   /** See {@link #forEachTag_consumer_usageExplained()} */
@@ -532,6 +543,17 @@ public class MutableSpanTest {
       .isEqualTo(new MutableSpan(context, null));
   }
 
+  @Test public void tagCount() {
+    MutableSpan span = new MutableSpan();
+    assertThat(span.tagCount()).isZero();
+    span.tag("http.method", "GET");
+    assertThat(span.tagCount()).isEqualTo(1);
+    span.tag("error", "500");
+    assertThat(span.tagCount()).isEqualTo(2);
+    span.forEachTag((t, v) -> v.equals("GET") ? v : null);
+    assertThat(span.tagCount()).isEqualTo(1);
+  }
+
   @Test public void accessorScansTags() {
     MutableSpan span = new MutableSpan();
     span.tag("http.method", "GET");
@@ -540,6 +562,44 @@ public class MutableSpanTest {
 
     assertThat(span.tag("error")).isEqualTo("500");
     assertThat(span.tag("whoops")).isNull();
+  }
+
+  @Test public void toString_testCases() {
+    assertThat(permutations.get(0).get()).hasToString("{}");
+
+    // check for simple bugs
+    for (int i = 1, length = permutations.size(); i < length; i++) {
+      assertThat(permutations.get(i).get().toString())
+        .doesNotContain("null")
+        .doesNotContain(":0");
+    }
+
+    // now, test something more interesting zipkin2.TestObjects.CLIENT_SPAN
+    MutableSpan span = new MutableSpan();
+    span.traceId("1");
+    span.localRootId("2"); // not in zipkin format
+    span.parentId("2");
+    span.id("2");
+    span.name("get");
+    span.kind(Span.Kind.CLIENT);
+    span.localServiceName("frontend");
+    span.localIp("127.0.0.1");
+    span.remoteServiceName("backend");
+    span.remoteIpAndPort("192.168.99.101", 9000);
+    span.startTimestamp(1000L);
+    span.finishTimestamp(1200L);
+    span.annotate(1100L, "foo");
+    span.tag("http.path", "/api");
+    span.tag("clnt/finagle.version", "6.45.0");
+
+    assertThat(span).hasToString("{"
+      + "\"traceId\":\"1\",\"parentId\":\"2\",\"id\":\"2\","
+      + "\"kind\":\"CLIENT\",\"name\":\"get\",\"timestamp\":1000,\"duration\":200,"
+      + "\"localEndpoint\":{\"serviceName\":\"frontend\",\"ipv4\":\"127.0.0.1\"},"
+      + "\"remoteEndpoint\":{\"serviceName\":\"backend\",\"ipv4\":\"192.168.99.101\",\"port\":9000},"
+      + "\"annotations\":[{\"timestamp\":1100,\"value\":\"foo}],"
+      + "\"tags\":{\"http.path\":\"/api\",\"clnt/finagle.version\":\"6.45.0\"}"
+      + "}");
   }
 
   static Map<String, String> tagsToMap(MutableSpan span) {

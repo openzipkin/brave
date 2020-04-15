@@ -35,6 +35,14 @@
   </properties>
 
   <dependencies>
+    <!-- For deprecated HttpClientAdapter -->
+    <dependency>
+      <groupId>io.zipkin.zipkin2</groupId>
+      <artifactId>zipkin</artifactId>
+      <version>${zipkin.version}</version>
+      <optional>true</optional>
+    </dependency>
+
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-tests</artifactId>

@@ -29,12 +29,12 @@ import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
 import java.io.Closeable;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 import zipkin2.reporter.AsyncReporter;
 import zipkin2.reporter.Reporter;
 
@@ -136,9 +136,8 @@ public abstract class Tracing implements Closeable {
   @Override abstract public void close();
 
   public static final class Builder {
-    String localServiceName = "unknown", localIp;
-    int localPort; // zero means null
-    Reporter<zipkin2.Span> spanReporter;
+    final MutableSpan defaultSpan = new MutableSpan();
+    Object zipkinSpanReporter; // avoid Zipkin type
     Clock clock;
     Sampler sampler = Sampler.ALWAYS_SAMPLE;
     CurrentTraceContext currentTraceContext = CurrentTraceContext.Default.inheritable();
@@ -147,6 +146,10 @@ public abstract class Tracing implements Closeable {
     Propagation.Factory propagationFactory = B3Propagation.FACTORY;
     ErrorParser errorParser = ErrorParser.get();
     Set<FinishedSpanHandler> finishedSpanHandlers = new LinkedHashSet<>(); // dupes not ok
+
+    Builder() {
+      defaultSpan.localServiceName("unknown");
+    }
 
     /**
      * Label of the remote node in the service graph, such as "favstar". Avoid names with variables
@@ -161,7 +164,7 @@ public abstract class Tracing implements Closeable {
       if (localServiceName == null || localServiceName.isEmpty()) {
         throw new IllegalArgumentException(localServiceName + " is not a valid serviceName");
       }
-      this.localServiceName = localServiceName;
+      this.defaultSpan.localServiceName(localServiceName);
       return this;
     }
 
@@ -176,7 +179,7 @@ public abstract class Tracing implements Closeable {
     public Builder localIp(String localIp) {
       String maybeIp = IpLiteral.ipOrNull(localIp);
       if (maybeIp == null) throw new IllegalArgumentException(localIp + " is not a valid IP");
-      this.localIp = maybeIp;
+      this.defaultSpan.localIp(maybeIp);
       return this;
     }
 
@@ -189,7 +192,7 @@ public abstract class Tracing implements Closeable {
     public Builder localPort(int localPort) {
       if (localPort > 0xffff) throw new IllegalArgumentException("invalid localPort " + localPort);
       if (localPort < 0) localPort = 0;
-      this.localPort = localPort;
+      this.defaultSpan.localPort(localPort);
       return this;
     }
 
@@ -202,9 +205,9 @@ public abstract class Tracing implements Closeable {
     @Deprecated
     public Builder endpoint(zipkin2.Endpoint endpoint) {
       if (endpoint == null) throw new NullPointerException("endpoint == null");
-      this.localServiceName = endpoint.serviceName();
-      this.localIp = endpoint.ipv6() != null ? endpoint.ipv6() : endpoint.ipv4();
-      this.localPort = endpoint.portAsInt();
+      this.defaultSpan.localServiceName(endpoint.serviceName());
+      this.defaultSpan.localIp(endpoint.ipv6() != null ? endpoint.ipv6() : endpoint.ipv4());
+      this.defaultSpan.localPort(endpoint.portAsInt());
       return this;
     }
 
@@ -233,7 +236,7 @@ public abstract class Tracing implements Closeable {
      */
     public Builder spanReporter(Reporter<zipkin2.Span> spanReporter) {
       if (spanReporter == null) throw new NullPointerException("spanReporter == null");
-      this.spanReporter = spanReporter;
+      this.zipkinSpanReporter = spanReporter;
       return this;
     }
 
@@ -403,8 +406,19 @@ public abstract class Tracing implements Closeable {
     public Tracing build() {
       return new Default(this);
     }
+  }
 
-    Builder() {
+  static final class LogFinishedSpanHandler extends FinishedSpanHandler {
+    final Logger logger = Logger.getLogger(Tracer.class.getName());
+
+    @Override public boolean handle(TraceContext context, MutableSpan span) {
+      if (!logger.isLoggable(Level.INFO)) return false;
+      logger.info(span.toString());
+      return true;
+    }
+
+    @Override public String toString() {
+      return "LogFinishedSpanHandler{name=" + logger.getName() + "}";
     }
   }
 
@@ -427,29 +441,33 @@ public abstract class Tracing implements Closeable {
       this.sampler = builder.sampler;
       this.noop = new AtomicBoolean();
 
-      MutableSpan defaultSpan = new MutableSpan();
-      defaultSpan.localServiceName(builder.localServiceName);
-      defaultSpan.localIp(builder.localIp != null ? builder.localIp : Platform.get().linkLocalIp());
-      defaultSpan.localPort(builder.localPort);
+      MutableSpan defaultSpan = new MutableSpan(builder.defaultSpan); // safe copy
 
-      FinishedSpanHandler zipkinHandler = builder.spanReporter != Reporter.NOOP
-        ? new ZipkinFinishedSpanHandler(defaultSpan, builder.spanReporter, errorParser,
-        builder.alwaysReportSpans)
-        : FinishedSpanHandler.NOOP;
+      Set<FinishedSpanHandler> spanHandlers = new LinkedHashSet<>(builder.finishedSpanHandlers);
+      // When present, the Zipkin handler is invoked after the user-supplied finished span handlers.
+      if (builder.zipkinSpanReporter != null) {
+        spanHandlers.add(new ZipkinFinishedSpanHandler(defaultSpan,
+          (Reporter<zipkin2.Span>) builder.zipkinSpanReporter, errorParser,
+          builder.alwaysReportSpans)
+        );
+      }
 
+      // Make sure any exceptions caused by handlers don't crash callers
       FinishedSpanHandler finishedSpanHandler =
-        zipkinReportingFinishedSpanHandler(builder.finishedSpanHandlers, zipkinHandler, noop);
+        NoopAwareFinishedSpanHandler.create(spanHandlers, noop);
+      if (finishedSpanHandler == FinishedSpanHandler.NOOP) {
+        finishedSpanHandler = new LogFinishedSpanHandler();
+      }
 
       Set<FinishedSpanHandler> orphanedSpanHandlers = new LinkedHashSet<>();
-      for (FinishedSpanHandler handler : builder.finishedSpanHandlers) {
+      for (FinishedSpanHandler handler : spanHandlers) {
         if (handler.supportsOrphans()) orphanedSpanHandlers.add(handler);
       }
 
       FinishedSpanHandler orphanedSpanHandler = finishedSpanHandler;
-      boolean allHandlersSupportOrphans = builder.finishedSpanHandlers.equals(orphanedSpanHandlers);
+      boolean allHandlersSupportOrphans = spanHandlers.equals(orphanedSpanHandlers);
       if (!allHandlersSupportOrphans) {
-        orphanedSpanHandler =
-          zipkinReportingFinishedSpanHandler(orphanedSpanHandlers, zipkinHandler, noop);
+        orphanedSpanHandler = NoopAwareFinishedSpanHandler.create(orphanedSpanHandlers, noop);
       }
 
       PendingSpans pendingSpans =
@@ -511,16 +529,6 @@ public abstract class Tracing implements Closeable {
       // only set null if we are the outer-most instance
       CURRENT.compareAndSet(this, null);
     }
-  }
-
-  static FinishedSpanHandler zipkinReportingFinishedSpanHandler(
-    Set<FinishedSpanHandler> input, FinishedSpanHandler zipkinHandler, AtomicBoolean noop) {
-    ArrayList<FinishedSpanHandler> defensiveCopy = new ArrayList<>(input);
-    // When present, the Zipkin handler is invoked after the user-supplied finished span handlers.
-    if (zipkinHandler != FinishedSpanHandler.NOOP) defensiveCopy.add(zipkinHandler);
-
-    // Make sure any exceptions caused by handlers don't crash callers
-    return NoopAwareFinishedSpanHandler.create(defensiveCopy, noop);
   }
 
   Tracing() { // intentionally hidden constructor

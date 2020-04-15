@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
-import static java.util.Arrays.asList;
+import static java.util.Collections.singleton;
 
 public class NoopAwareFinishedSpanHandlerClassLoaderTest {
 
@@ -31,7 +31,7 @@ public class NoopAwareFinishedSpanHandlerClassLoaderTest {
   static class Handle implements Runnable {
     @Override public void run() {
       FinishedSpanHandler handler =
-        NoopAwareFinishedSpanHandler.create(asList(new FinishedSpanHandler() {
+        NoopAwareFinishedSpanHandler.create(singleton(new FinishedSpanHandler() {
           @Override public boolean handle(TraceContext context, MutableSpan span) {
             return true;
           }
@@ -49,7 +49,7 @@ public class NoopAwareFinishedSpanHandlerClassLoaderTest {
   static class ErrorHandling implements Runnable {
     @Override public void run() {
       FinishedSpanHandler handler =
-        NoopAwareFinishedSpanHandler.create(asList(new FinishedSpanHandler() {
+        NoopAwareFinishedSpanHandler.create(singleton(new FinishedSpanHandler() {
           @Override public boolean handle(TraceContext context, MutableSpan span) {
             throw new RuntimeException();
           }
