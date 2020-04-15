@@ -487,6 +487,11 @@ public final class MutableSpan implements Cloneable {
     flags |= FLAG_SHARED;
   }
 
+  /** @since 5.12 */
+  public int annotationCount() {
+    return annotations != null ? annotations.size() / 2 : 0;
+  }
+
   /**
    * Iterates over all {@linkplain SpanCustomizer#annotate(String) annotations} for purposes such as
    * copying values.
@@ -570,6 +575,11 @@ public final class MutableSpan implements Cloneable {
     if (annotations == null) annotations = new ArrayList<>();
     annotations.add(timestamp);
     annotations.add(value);
+  }
+
+  /** @since 5.12 */
+  public int tagCount() {
+    return tags != null ? tags.size() / 2 : 0;
   }
 
   /**

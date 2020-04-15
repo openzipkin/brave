@@ -96,7 +96,7 @@ public class MutableSpanTest {
     // When exporting into a list, a lambda would usually need to close over the list, which results
     // in a new instance per invocation. Since there's a target type parameter, the lambda for this
     // style of conversion can be constant, reducing overhead.
-    List<Tag> listTarget = new ArrayList<>();
+    List<Tag> listTarget = new ArrayList<>(span.tagCount());
     span.forEachTag((target, key, value) -> target.add(new Tag(key, value)), listTarget);
 
     assertThat(listTarget).containsExactly(
@@ -131,6 +131,17 @@ public class MutableSpanTest {
       entry("cc-suffix", "cc=xxxx-xxxx-xxxx-xxxx"),
       entry("c", "3")
     );
+  }
+
+  @Test public void annotationCount() {
+    MutableSpan span = new MutableSpan();
+    assertThat(span.annotationCount()).isZero();
+    span.annotate(1L, "1");
+    assertThat(span.annotationCount()).isEqualTo(1);
+    span.annotate(2L, "2");
+    assertThat(span.annotationCount()).isEqualTo(2);
+    span.forEachAnnotation((t, v) -> v.equals("1") ? v : null);
+    assertThat(span.annotationCount()).isEqualTo(1);
   }
 
   /** See {@link #forEachTag_consumer_usageExplained()} */
@@ -530,6 +541,17 @@ public class MutableSpanTest {
 
     assertThat(new MutableSpan(context, span))
       .isEqualTo(new MutableSpan(context, null));
+  }
+
+  @Test public void tagCount() {
+    MutableSpan span = new MutableSpan();
+    assertThat(span.tagCount()).isZero();
+    span.tag("http.method", "GET");
+    assertThat(span.tagCount()).isEqualTo(1);
+    span.tag("error", "500");
+    assertThat(span.tagCount()).isEqualTo(2);
+    span.forEachTag((t, v) -> v.equals("GET") ? v : null);
+    assertThat(span.tagCount()).isEqualTo(1);
   }
 
   @Test public void accessorScansTags() {
