@@ -70,19 +70,19 @@ final class BraveTracer implements Tracer {
     return new BraveSpanBuilder(tracer, operationName);
   }
 
-  @Override public <C> void inject(SpanContext spanContext, Format<C> format, C carrier) {
+  @Override public <R> void inject(SpanContext spanContext, Format<R> format, R request) {
     if (format != Format.Builtin.HTTP_HEADERS) {
       throw new UnsupportedOperationException(format + " != Format.Builtin.HTTP_HEADERS");
     }
     TraceContext traceContext = ((BraveSpanContext) spanContext).context;
-    injector.inject(traceContext, (TextMap) carrier);
+    injector.inject(traceContext, (TextMap) request);
   }
 
-  @Override public <C> BraveSpanContext extract(Format<C> format, C carrier) {
+  @Override public <R> BraveSpanContext extract(Format<R> format, R request) {
     if (format != Format.Builtin.HTTP_HEADERS) {
       throw new UnsupportedOperationException(format.toString());
     }
-    TraceContextOrSamplingFlags extractionResult = extractor.extract((TextMap) carrier);
+    TraceContextOrSamplingFlags extractionResult = extractor.extract((TextMap) request);
     return BraveSpanContext.create(extractionResult);
   }
 
@@ -91,8 +91,8 @@ final class BraveTracer implements Tracer {
   }
 
   static final Setter<TextMap, String> TEXT_MAP_SETTER = new Setter<TextMap, String>() {
-    @Override public void put(TextMap carrier, String key, String value) {
-      carrier.put(key, value);
+    @Override public void put(TextMap request, String key, String value) {
+      request.put(key, value);
     }
 
     @Override public String toString() {
@@ -102,8 +102,8 @@ final class BraveTracer implements Tracer {
 
   static final Getter<Map<String, String>, String> LC_MAP_GETTER =
     new Getter<Map<String, String>, String>() {
-      @Override public String get(Map<String, String> carrier, String key) {
-        return carrier.get(key.toLowerCase(Locale.ROOT));
+      @Override public String get(Map<String, String> request, String key) {
+        return request.get(key.toLowerCase(Locale.ROOT));
       }
 
       @Override public String toString() {

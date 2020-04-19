@@ -47,7 +47,7 @@ public class BaggagePropagationTest {
     .add(SingleBaggageField.remote(vcapRequestId))
     .add(SingleBaggageField.remote(amznTraceId)).build();
 
-  Map<String, String> carrier = new LinkedHashMap<>();
+  Map<String, String> request = new LinkedHashMap<>();
   TraceContext.Injector<Map<String, String>> injector;
   TraceContext.Extractor<Map<String, String>> extractor;
   TraceContext context;
@@ -115,9 +115,9 @@ public class BaggagePropagationTest {
     ExtraBaggageFields baggage = context.findExtra(ExtraBaggageFields.class);
     baggage.updateValue(vcapRequestId, uuid);
 
-    injector.inject(context, carrier);
+    injector.inject(context, request);
 
-    assertThat(carrier).containsEntry(vcapRequestId.name(), uuid);
+    assertThat(request).containsEntry(vcapRequestId.name(), uuid);
   }
 
   @Test public void inject_two() {
@@ -125,18 +125,18 @@ public class BaggagePropagationTest {
     baggage.updateValue(vcapRequestId, uuid);
     baggage.updateValue(amznTraceId, awsTraceId);
 
-    injector.inject(context, carrier);
+    injector.inject(context, request);
 
-    assertThat(carrier)
+    assertThat(request)
       .containsEntry(amznTraceId.name(), awsTraceId)
       .containsEntry(vcapRequestId.name(), uuid);
   }
 
   @Test public void extract_baggage() {
-    injector.inject(context, carrier);
-    carrier.put(amznTraceId.name(), awsTraceId);
+    injector.inject(context, request);
+    request.put(amznTraceId.name(), awsTraceId);
 
-    TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
+    TraceContextOrSamplingFlags extracted = extractor.extract(request);
     assertThat(extracted.context().toBuilder().extra(Collections.emptyList()).build())
       .isEqualTo(context);
     assertThat(extracted.context().extra())
@@ -147,11 +147,11 @@ public class BaggagePropagationTest {
   }
 
   @Test public void extract_two() {
-    injector.inject(context, carrier);
-    carrier.put(amznTraceId.name(), awsTraceId);
-    carrier.put(vcapRequestId.name(), uuid);
+    injector.inject(context, request);
+    request.put(amznTraceId.name(), awsTraceId);
+    request.put(vcapRequestId.name(), uuid);
 
-    TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
+    TraceContextOrSamplingFlags extracted = extractor.extract(request);
     assertThat(extracted.context().toBuilder().extra(Collections.emptyList()).build())
       .isEqualTo(context);
     assertThat(extracted.context().extra())
@@ -165,7 +165,7 @@ public class BaggagePropagationTest {
 
   @Test public void extract_field_multiple_key_names() {
     // switch to case insensitive as this example is about http :P
-    carrier = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    request = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
     BaggageField userId = BaggageField.create("userId");
     BaggageField sessionId = BaggageField.create("sessionId");
@@ -186,11 +186,11 @@ public class BaggagePropagationTest {
       .build();
     initialize();
 
-    injector.inject(context, carrier);
-    carrier.put("baggage-userId", "bob");
-    carrier.put("baggage-sessionId", "12345");
+    injector.inject(context, request);
+    request.put("baggage-userId", "bob");
+    request.put("baggage-sessionId", "12345");
 
-    context = extractor.extract(carrier).context();
+    context = extractor.extract(request).context();
 
     assertThat(userId.getValue(context)).isEqualTo("bob");
     assertThat(sessionId.getValue(context)).isEqualTo("12345");
@@ -206,11 +206,11 @@ public class BaggagePropagationTest {
       .build();
     initialize();
 
-    injector.inject(context, carrier);
-    carrier.put("userid", "bob");
-    carrier.put("sessionid", "12345");
+    injector.inject(context, request);
+    request.put("userid", "bob");
+    request.put("sessionid", "12345");
 
-    context = extractor.extract(carrier).context();
+    context = extractor.extract(request).context();
 
     assertThat(userId.getValue(context)).isNull();
     assertThat(sessionId.getValue(context)).isEqualTo("12345");
@@ -230,9 +230,9 @@ public class BaggagePropagationTest {
     userId.updateValue(context, "bob");
     sessionId.updateValue(context, "12345");
 
-    injector.inject(context, carrier);
+    injector.inject(context, request);
 
-    assertThat(carrier)
+    assertThat(request)
       .doesNotContainKey("userid")
       .containsEntry("sessionid", "12345");
   }
@@ -262,10 +262,10 @@ public class BaggagePropagationTest {
     userId.updateValue(context, "bob");
     sessionId.updateValue(context, "12345");
 
-    injector.inject(context, carrier);
+    injector.inject(context, request);
 
     // NOTE: the labels are downcased
-    assertThat(carrier).containsOnly(
+    assertThat(request).containsOnly(
       entry("b3", B3SingleFormat.writeB3SingleFormat(context)),
       entry("userid", "bob"),
       entry("sessionid", "12345"),

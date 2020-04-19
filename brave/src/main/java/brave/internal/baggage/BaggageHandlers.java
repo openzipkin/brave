@@ -57,11 +57,11 @@ public final class BaggageHandlers {
       return value; // overwrite
     }
 
-    @Override public String fromRemoteValue(String encoded) {
-      return encoded;
+    @Override public String fromRequestValue(Object request, String value) {
+      return value;
     }
 
-    @Override public String toRemoteValue(String state) {
+    @Override public String toRequestValue(String state) {
       return state;
     }
   }

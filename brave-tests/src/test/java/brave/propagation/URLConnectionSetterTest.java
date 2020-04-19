@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,10 +20,10 @@ import java.net.URLConnection;
 
 /** Example setter test */
 public class URLConnectionSetterTest extends PropagationSetterTest<URLConnection, String> {
-  final URLConnection carrier;
+  final URLConnection request;
 
   public URLConnectionSetterTest() throws IOException {
-    carrier = new URLConnection(URI.create("http://127.0.0.1:9999").toURL()) {
+    request = new URLConnection(URI.create("http://127.0.0.1:9999").toURL()) {
       @Override public void connect() throws IOException {
       }
     };
@@ -33,15 +33,15 @@ public class URLConnectionSetterTest extends PropagationSetterTest<URLConnection
     return Propagation.KeyFactory.STRING;
   }
 
-  @Override protected URLConnection carrier() {
-    return carrier;
+  @Override protected URLConnection request() {
+    return request;
   }
 
   @Override protected Propagation.Setter<URLConnection, String> setter() {
     return URLConnection::setRequestProperty;
   }
 
-  @Override protected Iterable<String> read(URLConnection carrier, String key) {
-    return carrier.getRequestProperties().get(key);
+  @Override protected Iterable<String> read(URLConnection request, String key) {
+    return request.getRequestProperties().get(key);
   }
 }

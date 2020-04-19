@@ -504,8 +504,8 @@ span = tracer.nextSpan(extractor.extract(request));
 ```
 
 ### Extracting a propagated context
-The `TraceContext.Extractor<C>` reads trace identifiers and sampling status
-from an incoming request or message. The carrier is usually a request object
+The `TraceContext.Extractor<R>` reads trace identifiers and sampling status
+from an incoming request or message. The request is usually a request object
 or headers.
 
 This utility is used in standard instrumentation like [HttpServerHandler](../instrumentation/http/src/main/java/brave/http/HttpServerHandler.java),
@@ -564,7 +564,7 @@ via `Tracing.Builder.supportsJoin(false)`. This will force a new child span on
 
 ### Implementing Propagation
 
-`TraceContext.Extractor<C>` is implemented by a `Propagation.Factory` plugin. Internally, this code
+`TraceContext.Extractor<R>` is implemented by a `Propagation.Factory` plugin. Internally, this code
 will create the union type `TraceContextOrSamplingFlags` with one of the following:
 * `TraceContext` if trace and span IDs were present.
 * `TraceIdContext` if a trace ID was present, but not span IDs.
@@ -1047,9 +1047,9 @@ from [WeakConcurrentMap](https://github.com/raphw/weak-lock-free).
 
 ### Propagation Api
 OpenTracing's Tracer type has methods to inject or extract a trace
-context from a carrier. While naming is similar, Brave optimizes for
-direct integration with carrier types (such as http request) vs routing
-through an intermediate (such as a map). Brave also considers propagation
+context from a request. While naming is similar, Brave optimizes for
+direct integration with request types (such as http request) vs routing
+through a "carrier" (such as a map). Brave also considers propagation
 a separate api from the tracer.
 
 ### Current Tracer Api

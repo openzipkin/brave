@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,8 +19,8 @@ import org.springframework.amqp.core.MessageProperties;
 
 final class SpringRabbitPropagation {
   static final Setter<MessageProperties, String> SETTER = new Setter<MessageProperties, String>() {
-    @Override public void put(MessageProperties carrier, String key, String value) {
-      carrier.setHeader(key, value);
+    @Override public void put(MessageProperties properties, String key, String value) {
+      properties.setHeader(key, value);
     }
 
     @Override public String toString() {
@@ -29,8 +29,8 @@ final class SpringRabbitPropagation {
   };
 
   static final Getter<MessageProperties, String> GETTER = new Getter<MessageProperties, String>() {
-    @Override public String get(MessageProperties carrier, String key) {
-      return (String) carrier.getHeaders().get(key);
+    @Override public String get(MessageProperties properties, String key) {
+      return (String) properties.getHeaders().get(key);
     }
 
     @Override public String toString() {

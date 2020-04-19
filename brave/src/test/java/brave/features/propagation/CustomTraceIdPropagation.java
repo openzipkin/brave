@@ -85,34 +85,34 @@ public final class CustomTraceIdPropagation<K> implements Propagation<K> {
     return allKeys;
   }
 
-  @Override public <C> TraceContext.Extractor<C> extractor(Propagation.Getter<C, K> getter) {
+  @Override public <R> TraceContext.Extractor<R> extractor(Propagation.Getter<R, K> getter) {
     return delegate.extractor(new Getter<>(getter, b3Key, b3TraceIdKey, customTraceIdKey));
   }
 
-  @Override public <C> TraceContext.Injector<C> injector(Propagation.Setter<C, K> setter) {
+  @Override public <R> TraceContext.Injector<R> injector(Propagation.Setter<R, K> setter) {
     return delegate.injector(setter);
   }
 
-  static final class Getter<C, K> implements Propagation.Getter<C, K> {
-    final Propagation.Getter<C, K> delegate;
+  static final class Getter<R, K> implements Propagation.Getter<R, K> {
+    final Propagation.Getter<R, K> delegate;
     private final K b3Key, b3TraceIdKey, customTraceIdKey;
 
-    Getter(Propagation.Getter<C, K> delegate, K b3Key, K b3TraceIdKey, K customTraceIdKey) {
+    Getter(Propagation.Getter<R, K> delegate, K b3Key, K b3TraceIdKey, K customTraceIdKey) {
       this.delegate = delegate;
       this.b3Key = b3Key;
       this.b3TraceIdKey = b3TraceIdKey;
       this.customTraceIdKey = customTraceIdKey;
     }
 
-    @Override public String get(C carrier, K key) {
+    @Override public String get(R request, K key) {
       if (key.equals(b3Key)) {
         // Don't override a valid B3 context
-        String b3 = delegate.get(carrier, key);
+        String b3 = delegate.get(request, key);
         if (b3 != null) return b3;
-        if (delegate.get(carrier, b3TraceIdKey) != null) return null;
+        if (delegate.get(request, b3TraceIdKey) != null) return null;
 
         // At this point, we know this is not a valid B3 context, check for a valid custom trace ID
-        String customTraceId = delegate.get(carrier, customTraceIdKey);
+        String customTraceId = delegate.get(request, customTraceIdKey);
         if (customTraceId == null) return null;
 
         // We still expect the trace ID to be of valid length.
@@ -131,7 +131,7 @@ public final class CustomTraceIdPropagation<K> implements Propagation<K> {
         builder.append(customTraceId.substring(spanIdIndex));
         return builder.toString();
       }
-      return delegate.get(carrier, key);
+      return delegate.get(request, key);
     }
   }
 }

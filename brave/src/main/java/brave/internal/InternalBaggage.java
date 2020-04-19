@@ -27,7 +27,7 @@ public abstract class InternalBaggage {
   public static InternalBaggage instance;
 
   /** Returns all lower-case trace context or baggage key names. */
-  // This is here to support extraction from carriers missing a get field by name function. The only
+  // This is here to support extraction from requests missing a get field by name function. The only
   // known example is OpenTracing TextMap https://github.com/opentracing/opentracing-java/issues/305
   public abstract Set<String> allKeyNames(Propagation.Factory factory);
 }

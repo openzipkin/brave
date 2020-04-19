@@ -70,22 +70,22 @@ public interface BaggageHandler<S> {
   @Nullable S updateState(S state, BaggageField field, @Nullable String value);
 
   /**
-   * Extracts any state from a remote value received by {@link Propagation.Getter#get(Object,
+   * Extracts any state from a request value received by {@link Propagation.Getter#get(Object,
    * Object)}.
    *
-   * <p>Ex. When the state is a simple string, this will just use the remote value directly.
+   * <p>Ex. When the state is a simple string, this will just use the request value directly.
    * {@linkplain #isDynamic() Dynamic values} will need to perform some decoding, such as splitting
    * on comma and equals.
    */
-  @Nullable S fromRemoteValue(String remoteValue);
+  @Nullable S fromRequestValue(Object request, String value);
 
   /**
-   * Converts any state to a remote value used by {@link Propagation.Setter#put(Object, Object,
+   * Converts any state to a request value used by {@link Propagation.Setter#put(Object, Object,
    * String)}.
    *
    * <p>Ex. When the state is a simple string, this will just be returned with no change.
    * {@linkplain #isDynamic() Dynamic values} will need to perform some encoding, such as joining on
    * equals and comma.
    */
-  String toRemoteValue(S state);
+  String toRequestValue(S state);
 }

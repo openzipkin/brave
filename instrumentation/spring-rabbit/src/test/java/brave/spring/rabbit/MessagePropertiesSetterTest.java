@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -22,22 +22,22 @@ import static brave.spring.rabbit.SpringRabbitPropagation.GETTER;
 import static brave.spring.rabbit.SpringRabbitPropagation.SETTER;
 
 public class MessagePropertiesSetterTest extends PropagationSetterTest<MessageProperties, String> {
-  MessageProperties carrier = new MessageProperties();
+  MessageProperties properties = new MessageProperties();
 
   @Override public Propagation.KeyFactory<String> keyFactory() {
     return Propagation.KeyFactory.STRING;
   }
 
-  @Override protected MessageProperties carrier() {
-    return carrier;
+  @Override protected MessageProperties request() {
+    return properties;
   }
 
   @Override protected Propagation.Setter<MessageProperties, String> setter() {
     return SETTER;
   }
 
-  @Override protected Iterable<String> read(MessageProperties carrier, String key) {
-    String result = GETTER.get(carrier, key);
+  @Override protected Iterable<String> read(MessageProperties properties, String key) {
+    String result = GETTER.get(properties, key);
     return result == null ? Collections.emptyList() : Collections.singleton(result);
   }
 }

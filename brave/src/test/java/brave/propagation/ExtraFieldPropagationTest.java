@@ -43,7 +43,7 @@ public class ExtraFieldPropagationTest {
     B3SinglePropagation.FACTORY, "x-vcap-request-id", "x-amzn-trace-id"
   );
 
-  Map<String, String> carrier = new LinkedHashMap<>();
+  Map<String, String> request = new LinkedHashMap<>();
   TraceContext.Injector<Map<String, String>> injector;
   TraceContext.Extractor<Map<String, String>> extractor;
   TraceContext context;
@@ -156,8 +156,8 @@ public class ExtraFieldPropagationTest {
     assertThat(extractor.extract(Collections.emptyMap()).extra())
       .isEmpty();
 
-    injector.inject(context, carrier);
-    TraceContext extractedContext = extractor.extract(carrier).context();
+    injector.inject(context, request);
+    TraceContext extractedContext = extractor.extract(request).context();
     assertThat(extractedContext)
       .usingRecursiveComparison()
       .isEqualTo(context);
@@ -198,18 +198,18 @@ public class ExtraFieldPropagationTest {
   @Test public void inject_extra() {
     BaggageField.getByName(context, "x-vcap-request-id").updateValue(context, uuid);
 
-    injector.inject(context, carrier);
+    injector.inject(context, request);
 
-    assertThat(carrier).containsEntry("x-vcap-request-id", uuid);
+    assertThat(request).containsEntry("x-vcap-request-id", uuid);
   }
 
   @Test public void inject_two() {
     BaggageField.getByName(context, "x-vcap-request-id").updateValue(context, uuid);
     BaggageField.getByName(context, "x-amzn-trace-id").updateValue(context, awsTraceId);
 
-    injector.inject(context, carrier);
+    injector.inject(context, request);
 
-    assertThat(carrier)
+    assertThat(request)
       .containsEntry("x-amzn-trace-id", awsTraceId)
       .containsEntry("x-vcap-request-id", uuid);
   }
@@ -224,18 +224,18 @@ public class ExtraFieldPropagationTest {
     BaggageField.getByName(context, "x-vcap-request-id").updateValue(context, uuid);
     BaggageField.getByName(context, "country-code").updateValue(context, "FO");
 
-    injector.inject(context, carrier);
+    injector.inject(context, request);
 
-    assertThat(carrier)
+    assertThat(request)
       .containsEntry("baggage-country-code", "FO")
       .containsEntry("x-vcap-request-id", uuid);
   }
 
   @Test public void extract_extra() {
-    injector.inject(context, carrier);
-    carrier.put("x-amzn-trace-id", awsTraceId);
+    injector.inject(context, request);
+    request.put("x-amzn-trace-id", awsTraceId);
 
-    TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
+    TraceContextOrSamplingFlags extracted = extractor.extract(request);
     assertThat(extracted.context().toBuilder().extra(Collections.emptyList()).build())
       .isEqualTo(context);
     assertThat(extracted.context().extra())
@@ -246,11 +246,11 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void extract_two() {
-    injector.inject(context, carrier);
-    carrier.put("x-amzn-trace-id", awsTraceId);
-    carrier.put("x-vcap-request-id", uuid);
+    injector.inject(context, request);
+    request.put("x-amzn-trace-id", awsTraceId);
+    request.put("x-vcap-request-id", uuid);
 
-    TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
+    TraceContextOrSamplingFlags extracted = extractor.extract(request);
     assertThat(extracted.context().toBuilder().extra(Collections.emptyList()).build())
       .isEqualTo(context);
     assertThat(extracted.context().extra())
@@ -269,11 +269,11 @@ public class ExtraFieldPropagationTest {
       .build();
     initialize();
 
-    injector.inject(context, carrier);
-    carrier.put("baggage-country-code", "FO");
-    carrier.put("x-vcap-request-id", uuid);
+    injector.inject(context, request);
+    request.put("baggage-country-code", "FO");
+    request.put("x-vcap-request-id", uuid);
 
-    TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
+    TraceContextOrSamplingFlags extracted = extractor.extract(request);
     assertThat(extracted.context().toBuilder().extra(Collections.emptyList()).build())
       .isEqualTo(context);
     assertThat(extracted.context().extra())
@@ -294,10 +294,10 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void getAll_extracted() {
-    injector.inject(context, carrier);
-    carrier.put("x-amzn-trace-id", awsTraceId);
+    injector.inject(context, request);
+    request.put("x-amzn-trace-id", awsTraceId);
 
-    TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
+    TraceContextOrSamplingFlags extracted = extractor.extract(request);
 
     assertThat(ExtraFieldPropagation.getAll(extracted))
       .hasSize(1)
@@ -305,9 +305,9 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void getAll_extractedWithContext() {
-    carrier.put("x-amzn-trace-id", awsTraceId);
+    request.put("x-amzn-trace-id", awsTraceId);
 
-    TraceContextOrSamplingFlags extracted = extractor.extract(carrier);
+    TraceContextOrSamplingFlags extracted = extractor.extract(request);
 
     assertThat(ExtraFieldPropagation.getAll(extracted))
       .hasSize(1)
@@ -315,11 +315,11 @@ public class ExtraFieldPropagationTest {
   }
 
   @Test public void getAll_two() {
-    injector.inject(context, carrier);
-    carrier.put("x-amzn-trace-id", awsTraceId);
-    carrier.put("x-vcap-request-id", uuid);
+    injector.inject(context, request);
+    request.put("x-amzn-trace-id", awsTraceId);
+    request.put("x-vcap-request-id", uuid);
 
-    context = extractor.extract(carrier).context();
+    context = extractor.extract(request).context();
 
     assertThat(ExtraFieldPropagation.getAll(context))
       .hasSize(2)
@@ -334,7 +334,7 @@ public class ExtraFieldPropagationTest {
 
   @Test public void extract_field_multiple_prefixes() {
     // switch to case insensitive as this example is about http :P
-    carrier = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    request = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     factory = newFactoryBuilder(B3Propagation.FACTORY)
       .addField("userId")
       .addField("sessionId")
@@ -343,11 +343,11 @@ public class ExtraFieldPropagationTest {
       .build();
     initialize();
 
-    injector.inject(context, carrier);
-    carrier.put("baggage-userId", "bob");
-    carrier.put("baggage-sessionId", "12345");
+    injector.inject(context, request);
+    request.put("baggage-userId", "bob");
+    request.put("baggage-sessionId", "12345");
 
-    context = extractor.extract(carrier).context();
+    context = extractor.extract(request).context();
 
     assertThat(ExtraFieldPropagation.get(context, "userId"))
       .isEqualTo("bob");
@@ -362,11 +362,11 @@ public class ExtraFieldPropagationTest {
       .build();
     initialize();
 
-    injector.inject(context, carrier);
-    carrier.put("userid", "bob");
-    carrier.put("sessionid", "12345");
+    injector.inject(context, request);
+    request.put("userid", "bob");
+    request.put("sessionid", "12345");
 
-    context = extractor.extract(carrier).context();
+    context = extractor.extract(request).context();
 
     // Redaction also effects inbound propagation
     assertThat(ExtraFieldPropagation.get(context, "userid"))
@@ -386,9 +386,9 @@ public class ExtraFieldPropagationTest {
     ExtraFieldPropagation.set(context, "userid", "bob");
     ExtraFieldPropagation.set(context, "sessionid", "12345");
 
-    injector.inject(context, carrier);
+    injector.inject(context, request);
 
-    assertThat(carrier)
+    assertThat(request)
       .doesNotContainKey("userid")
       .containsEntry("sessionid", "12345");
   }
@@ -405,10 +405,10 @@ public class ExtraFieldPropagationTest {
     ExtraFieldPropagation.set(context, "userId", "bob");
     ExtraFieldPropagation.set(context, "sessionId", "12345");
 
-    injector.inject(context, carrier);
+    injector.inject(context, request);
 
     // NOTE: the labels are downcased
-    assertThat(carrier).containsOnly(
+    assertThat(request).containsOnly(
       entry("b3", B3SingleFormat.writeB3SingleFormat(context)),
       entry("userid", "bob"),
       entry("sessionid", "12345"),
@@ -435,8 +435,8 @@ public class ExtraFieldPropagationTest {
   }
 
   TraceContext extractWithAmazonTraceId() {
-    injector.inject(context, carrier);
-    carrier.put("x-amzn-trace-id", awsTraceId);
-    return extractor.extract(carrier).context();
+    injector.inject(context, request);
+    request.put("x-amzn-trace-id", awsTraceId);
+    return extractor.extract(request).context();
   }
 }

@@ -167,80 +167,80 @@ public final class B3Propagation<K> implements Propagation<K> {
     return fields;
   }
 
-  @Override public <C> TraceContext.Injector<C> injector(Setter<C, K> setter) {
+  @Override public <R> TraceContext.Injector<R> injector(Setter<R, K> setter) {
     if (setter == null) throw new NullPointerException("setter == null");
     return new B3Injector<>(this, setter);
   }
 
-  static final class B3Injector<C, K> implements TraceContext.Injector<C> {
+  static final class B3Injector<R, K> implements TraceContext.Injector<R> {
     final B3Propagation<K> propagation;
-    final Setter<C, K> setter;
+    final Setter<R, K> setter;
 
-    B3Injector(B3Propagation<K> propagation, Setter<C, K> setter) {
+    B3Injector(B3Propagation<K> propagation, Setter<R, K> setter) {
       this.propagation = propagation;
       this.setter = setter;
     }
 
-    @Override public void inject(TraceContext context, C carrier) {
+    @Override public void inject(TraceContext context, R request) {
       Format[] formats = propagation.injectFormats;
-      if (carrier instanceof Request) {
-        Span.Kind kind = ((Request) carrier).spanKind();
+      if (request instanceof Request) {
+        Span.Kind kind = ((Request) request).spanKind();
         formats = propagation.kindToInjectFormats.get(kind);
       }
 
       for (Format format : formats) {
         switch (format) {
           case SINGLE:
-            setter.put(carrier, propagation.b3Key, writeB3SingleFormat(context));
+            setter.put(request, propagation.b3Key, writeB3SingleFormat(context));
             break;
           case SINGLE_NO_PARENT:
-            setter.put(carrier, propagation.b3Key, writeB3SingleFormatWithoutParentId(context));
+            setter.put(request, propagation.b3Key, writeB3SingleFormatWithoutParentId(context));
             break;
           case MULTI:
-            injectMulti(context, carrier);
+            injectMulti(context, request);
             break;
         }
       }
     }
 
-    void injectMulti(TraceContext context, C carrier) {
-      setter.put(carrier, propagation.traceIdKey, context.traceIdString());
-      setter.put(carrier, propagation.spanIdKey, context.spanIdString());
+    void injectMulti(TraceContext context, R request) {
+      setter.put(request, propagation.traceIdKey, context.traceIdString());
+      setter.put(request, propagation.spanIdKey, context.spanIdString());
       String parentId = context.parentIdString();
-      if (parentId != null) setter.put(carrier, propagation.parentSpanIdKey, parentId);
+      if (parentId != null) setter.put(request, propagation.parentSpanIdKey, parentId);
       if (context.debug()) {
-        setter.put(carrier, propagation.debugKey, "1");
+        setter.put(request, propagation.debugKey, "1");
       } else if (context.sampled() != null) {
-        setter.put(carrier, propagation.sampledKey, context.sampled() ? "1" : "0");
+        setter.put(request, propagation.sampledKey, context.sampled() ? "1" : "0");
       }
     }
   }
 
-  @Override public <C> TraceContext.Extractor<C> extractor(Getter<C, K> getter) {
+  @Override public <R> TraceContext.Extractor<R> extractor(Getter<R, K> getter) {
     if (getter == null) throw new NullPointerException("getter == null");
     return new B3Extractor<>(this, getter);
   }
 
-  static final class B3Extractor<C, K> implements TraceContext.Extractor<C> {
+  static final class B3Extractor<R, K> implements TraceContext.Extractor<R> {
     final B3Propagation<K> propagation;
-    final Getter<C, K> getter;
+    final Getter<R, K> getter;
 
-    B3Extractor(B3Propagation<K> propagation, Getter<C, K> getter) {
+    B3Extractor(B3Propagation<K> propagation, Getter<R, K> getter) {
       this.propagation = propagation;
       this.getter = getter;
     }
 
-    @Override public TraceContextOrSamplingFlags extract(C carrier) {
-      if (carrier == null) throw new NullPointerException("carrier == null");
+    @Override public TraceContextOrSamplingFlags extract(R request) {
+      if (request == null) throw new NullPointerException("request == null");
 
       // try to extract single-header format
-      String b3 = getter.get(carrier, propagation.b3Key);
+      String b3 = getter.get(request, propagation.b3Key);
       TraceContextOrSamplingFlags extracted = b3 != null ? parseB3SingleFormat(b3) : null;
       if (extracted != null) return extracted;
 
       // Start by looking at the sampled state as this is used regardless
       // Official sampled value is 1, though some old instrumentation send true
-      String sampled = getter.get(carrier, propagation.sampledKey);
+      String sampled = getter.get(request, propagation.sampledKey);
       Boolean sampledV;
       if (sampled == null) {
         sampledV = null; // defer decision
@@ -266,17 +266,17 @@ public final class B3Propagation<K> implements Propagation<K> {
 
       // The only flag we action is 1, but it could be that any integer is present.
       // Here, we leniently parse as debug is not a primary consideration of the trace context.
-      boolean debug = "1".equals(getter.get(carrier, propagation.debugKey));
+      boolean debug = "1".equals(getter.get(request, propagation.debugKey));
 
-      String traceIdString = getter.get(carrier, propagation.traceIdKey);
+      String traceIdString = getter.get(request, propagation.traceIdKey);
       // It is ok to go without a trace ID, if sampling or debug is set
       if (traceIdString == null) return TraceContextOrSamplingFlags.create(sampledV, debug);
 
       // Try to parse the trace IDs into the context
       TraceContext.Builder result = TraceContext.newBuilder();
       if (result.parseTraceId(traceIdString, propagation.traceIdKey)
-        && result.parseSpanId(getter, carrier, propagation.spanIdKey)
-        && result.parseParentId(getter, carrier, propagation.parentSpanIdKey)) {
+        && result.parseSpanId(getter, request, propagation.spanIdKey)
+        && result.parseParentId(getter, request, propagation.parentSpanIdKey)) {
         if (sampledV != null) result.sampled(sampledV.booleanValue());
         if (debug) result.debug(true);
         return TraceContextOrSamplingFlags.create(result.build());

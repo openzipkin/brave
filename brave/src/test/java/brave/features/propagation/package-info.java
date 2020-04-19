@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,6 +14,6 @@
 /**
  * Before, we had the same algorithm for encoding B3 copy pasted a couple times. We now have a type
  * {@link brave.propagation.Propagation} which supplies an implementation such as B3. This includes
- * common functions such as how to extract and inject based on map-like carriers.
+ * common functions such as how to extract and inject header-based requests.
  */
 package brave.features.propagation;

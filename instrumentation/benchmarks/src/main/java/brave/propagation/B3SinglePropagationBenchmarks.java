@@ -82,8 +82,8 @@ public class B3SinglePropagationBenchmarks {
   static final Map<String, String> nothingIncoming = Collections.emptyMap();
 
   @Benchmark public void inject() {
-    Map<String, String> carrier = new LinkedHashMap<>();
-    b3Injector.inject(context, carrier);
+    Map<String, String> request = new LinkedHashMap<>();
+    b3Injector.inject(context, request);
   }
 
   @Benchmark public TraceContextOrSamplingFlags extract_128() {
