@@ -70,13 +70,13 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
     PendingSpan parentSpan = parent != null ? get(parent) : null;
 
     // save overhead calculating time if the parent is in-progress (usually is)
-    TickClock clock;
+    Clock clock;
     if (parentSpan != null) {
       clock = parentSpan.clock;
       if (start) span.startTimestamp(clock.currentTimeMicroseconds());
     } else {
       long currentTimeMicroseconds = this.clock.currentTimeMicroseconds();
-      clock = new TickClock(currentTimeMicroseconds, System.nanoTime());
+      clock = ClockFactory.build(currentTimeMicroseconds, System.nanoTime());
       if (start) span.startTimestamp(currentTimeMicroseconds);
     }
 

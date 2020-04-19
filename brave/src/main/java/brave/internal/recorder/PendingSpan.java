@@ -30,10 +30,10 @@ import java.lang.ref.WeakReference;
  */
 public final class PendingSpan extends WeakReference<TraceContext> {
   final MutableSpan span;
-  final TickClock clock;
+  final Clock clock;
   final TraceContext backupContext; // only used on abandon
 
-  PendingSpan(TraceContext context, MutableSpan span, TickClock clock) {
+  PendingSpan(TraceContext context, MutableSpan span, Clock clock) {
     super(context);
     this.span = span;
     this.clock = clock;
