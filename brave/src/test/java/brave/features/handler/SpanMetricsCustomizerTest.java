@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,19 +19,28 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
-public class MetricsFinishedSpanHandlerTest {
+public class SpanMetricsCustomizerTest {
   SimpleMeterRegistry registry = new SimpleMeterRegistry();
+  SpanMetricsCustomizer spanMetricsCustomizer = new SpanMetricsCustomizer(registry, "span", "foo");
+
   List<Span> spans = new ArrayList<>();
-  Tracing tracing = Tracing.newBuilder()
-    .spanReporter(spans::add)
-    .addFinishedSpanHandler(new MetricsFinishedSpanHandler(registry, "span", "foo"))
-    .build();
+  Tracing tracing;
+
+  @Before public void setup() {
+    Tracing.Builder builder = Tracing.newBuilder().spanReporter(spans::add);
+
+    // It is typical for multiple customizers to collaborate on a builder.
+    // This example is simplified to use only one customizer.
+    spanMetricsCustomizer.customize(builder);
+    tracing = builder.build();
+  }
 
   @After public void after() {
     tracing.close();

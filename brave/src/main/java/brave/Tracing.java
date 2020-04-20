@@ -141,8 +141,8 @@ public abstract class Tracing implements Closeable {
     Clock clock;
     Sampler sampler = Sampler.ALWAYS_SAMPLE;
     CurrentTraceContext currentTraceContext = CurrentTraceContext.Default.inheritable();
-    boolean traceId128Bit = false, supportsJoin = true, alwaysReportSpans = false;
-    boolean trackOrphans = false;
+    boolean traceId128Bit = false, supportsJoin = true;
+    boolean alwaysSampleLocal = false, alwaysReportSpans = false, trackOrphans = false;
     Propagation.Factory propagationFactory = B3Propagation.FACTORY;
     ErrorParser errorParser = ErrorParser.get();
     Set<FinishedSpanHandler> finishedSpanHandlers = new LinkedHashSet<>(); // dupes not ok
@@ -330,9 +330,8 @@ public abstract class Tracing implements Closeable {
      *
      * <h3>Advanced notes</h3>
      *
-     * <p>When {@link FinishedSpanHandler#alwaysSampleLocal()} is {@code true}, handlers here
-     * receive data even when spans are not sampled remotely. This setting is often used for metrics
-     * aggregation.
+     * <p>When {@link #alwaysSampleLocal()}, handlers here receive data even when spans are not
+     * sampled remotely. This setting is often used for metrics aggregation.
      *
      * <h3>Relationship to {@link #spanReporter(Reporter)}</h3>
      * This is similar to {@link #spanReporter(Reporter)} except for a few things:
@@ -349,7 +348,7 @@ public abstract class Tracing implements Closeable {
      *
      * @param handler skipped if {@link FinishedSpanHandler#NOOP} or already added
      * @see #spanReporter(Reporter)
-     * @see #alwaysReportSpans()
+     * @see #alwaysSampleLocal()
      * @see TraceContext#sampledLocal()
      */
     public Builder addFinishedSpanHandler(FinishedSpanHandler handler) {
@@ -359,6 +358,30 @@ public abstract class Tracing implements Closeable {
           Platform.get().log("Please check configuration as %s was added twice", handler, null);
         }
       }
+      return this;
+    }
+
+    /**
+     * When true, all spans become real spans even if they aren't sampled remotely. This allows
+     * finished span handlers (such as metrics) to consider attributes that are not always visible
+     * before-the-fact, such as http paths. Defaults to false and affects {@link
+     * TraceContext#sampledLocal()}.
+     *
+     * <h3>Advanced example: Secondary Sampling</h3>
+     * Besides metrics, another primary use case is to implement a <a href="https://github.com/openzipkin-contrib/zipkin-secondary-sampling">sampling
+     * overlay</a>, such as boosting the sample rate for a subset of the network depending on the
+     * value of a {@link BaggageField baggage field}. A handler like this will report when either
+     * the trace is normally sampled, or secondarily sampled via a custom header. This assumes your
+     * backend can properly process the partial traces implied when using conditional sampling. For
+     * example, if your sampling condition is not consistent on a call tree, the resulting data
+     * could appear broken.
+     *
+     * @see #addFinishedSpanHandler(FinishedSpanHandler)
+     * @see TraceContext#sampledLocal()
+     * @since 5.12
+     */
+    public Builder alwaysSampleLocal() {
+      this.alwaysSampleLocal = true;
       return this;
     }
 
@@ -455,6 +478,11 @@ public abstract class Tracing implements Closeable {
       // Make sure any exceptions caused by handlers don't crash callers
       FinishedSpanHandler finishedSpanHandler =
         NoopAwareFinishedSpanHandler.create(spanHandlers, noop);
+      boolean alwaysSampleLocal = builder.alwaysSampleLocal;
+      for (FinishedSpanHandler handler : spanHandlers) {
+        // Handle deprecated FinishedSpanHandler.alwaysSampleLocal
+        if (handler.alwaysSampleLocal()) alwaysSampleLocal = true;
+      }
       if (finishedSpanHandler == FinishedSpanHandler.NOOP) {
         finishedSpanHandler = new LogFinishedSpanHandler();
       }
@@ -482,7 +510,7 @@ public abstract class Tracing implements Closeable {
         builder.currentTraceContext,
         builder.traceId128Bit || propagationFactory.requires128BitTraceId(),
         builder.supportsJoin && propagationFactory.supportsJoin(),
-        finishedSpanHandler.alwaysSampleLocal(),
+        alwaysSampleLocal,
         noop
       );
       // assign current IFF there's no instance already current

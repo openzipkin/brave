@@ -620,27 +620,28 @@ maintained throughout the trace, across requests consistently. Sampling
 has disadvantages. For example, statistics on sampled data is usually
 misleading by nature of not observing all durations.
 
-`FinishedSpanHandler` returns `alwaysSampleLocal()` to indicate whether
-it should see all data, or just all data sent to Zipkin. You can override
-this to true to observe all operations.
+Call `Tracing.Builder.alwaysSampleLocal()` to indicate if all
+`FinishedSpanHandler`s should see all data, vs default which is only
+when data sampled remotely (`TraceContext.sampled()`). This easiest way
+to configure multiple aspects is with a `TracingCustomizer`.
 
-Here's an example of metrics handling:
+Here's an example that generates duration metrics, regardless of remote sampling:
 ```java
-tracingBuilder.addFinishedSpanHandler(new FinishedSpanHandler() {
-  @Override public boolean alwaysSampleLocal() {
-    return true; // since we want to always see timestamps, we have to always record
-  }
-
+// Metrics wants duration of all operations, not just ones sampled remotely
+customizer = b -> b.alwaysSampleLocal().addFinishedSpanHandler(new FinishedSpanHandler() {
   @Override public boolean handle(TraceContext context, MutableSpan span) {
     if (namesToAlwaysTime.contains(span.name())) {
       registry.timer("spans", "name", span.name())
-          .record(span.finishTimestamp() - span.startTimestamp(), MICROSECONDS);
+              .record(span.finishTimestamp() - span.startTimestamp(), MICROSECONDS);
     }
     return true; // retain the span
   }
 });
+
+// Later, your configuration library invokes the customize method
+customizer.customize(tracingBuilder);
 ```
-An example of metrics handling is [here](src/test/java/brave/features/handler/MetricsFinishedSpanHandler.java)
+A span metrics example is [here](src/test/java/brave/features/handler/SpanMetricsCustomizer.java)
 
 ## Current Tracing Component
 Brave supports a "current tracing component" concept which should only
