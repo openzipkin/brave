@@ -1,4 +1,4 @@
-Brave Api (v4)
+Brave Core Library
 ==============
 
 Brave is a library used to capture and report latency information about
