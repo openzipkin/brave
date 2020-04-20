@@ -480,6 +480,7 @@ public abstract class Tracing implements Closeable {
         NoopAwareFinishedSpanHandler.create(spanHandlers, noop);
       boolean alwaysSampleLocal = builder.alwaysSampleLocal;
       for (FinishedSpanHandler handler : spanHandlers) {
+        // Handle deprecated FinishedSpanHandler.alwaysSampleLocal
         if (handler.alwaysSampleLocal()) alwaysSampleLocal = true;
       }
       if (finishedSpanHandler == FinishedSpanHandler.NOOP) {
