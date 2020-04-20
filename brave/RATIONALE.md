@@ -4,7 +4,7 @@ Brave Core Library Rationale
 Brave's design lends from past experience and similar open source work.
 Quite a lot of decisions were driven by portability with Brave 3, and the
 dozens of individuals involved in that. Later decisions focus on what we
-learned from the previous major. For example, Brave 5 was the last version of
+learned since the previous major. For example, Brave 5 was the last version of
 Brave 4, minus deprecation. This provides continuity, yet allows innovation
 through minor revisions.
 
