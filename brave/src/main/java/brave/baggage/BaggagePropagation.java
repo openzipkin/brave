@@ -259,64 +259,66 @@ public class BaggagePropagation<K> implements Propagation<K> {
     return delegate.keys();
   }
 
-  @Override public <C> Injector<C> injector(Setter<C, K> setter) {
+  @Override public <R> Injector<R> injector(Setter<R, K> setter) {
     return new BaggageInjector<>(this, setter);
   }
 
-  @Override public <C> Extractor<C> extractor(Getter<C, K> getter) {
+  @Override public <R> Extractor<R> extractor(Getter<R, K> getter) {
     return new BaggageExtractor<>(this, getter);
   }
 
-  static final class BaggageInjector<C, K> implements Injector<C> {
+  static final class BaggageInjector<R, K> implements Injector<R> {
     final BaggagePropagation<K> propagation;
-    final Injector<C> delegate;
-    final Propagation.Setter<C, K> setter;
+    final Injector<R> delegate;
+    final Propagation.Setter<R, K> setter;
 
-    BaggageInjector(BaggagePropagation<K> propagation, Setter<C, K> setter) {
+    BaggageInjector(BaggagePropagation<K> propagation, Setter<R, K> setter) {
       this.propagation = propagation;
       this.delegate = propagation.delegate.injector(setter);
       this.setter = setter;
     }
 
-    @Override public void inject(TraceContext traceContext, C carrier) {
-      delegate.inject(traceContext, carrier);
+    @Override public void inject(TraceContext traceContext, R request) {
+      delegate.inject(traceContext, request);
       ExtraBaggageFields extra = traceContext.findExtra(ExtraBaggageFields.class);
       if (extra == null) return;
-      inject(extra, carrier);
+      inject(extra, request);
     }
 
-    void inject(ExtraBaggageFields extraBaggageFields, C carrier) {
+    void inject(ExtraBaggageFields extraBaggageFields, R request) {
       for (int i = 0, length = propagation.handlersWithKeys.length; i < length; i++) {
         BaggageHandlerWithKeys<K> handlerWithKeys = propagation.handlersWithKeys[i];
-        String encoded = extraBaggageFields.getRemoteValue(handlerWithKeys.handler);
-        if (encoded == null) continue;
-        for (K key : handlerWithKeys.keys) setter.put(carrier, key, encoded);
+        String value = extraBaggageFields.getRequestValue(handlerWithKeys.handler);
+        if (value == null) continue;
+        for (K key : handlerWithKeys.keys) setter.put(request, key, value);
       }
     }
   }
 
-  static final class BaggageExtractor<C, K> implements Extractor<C> {
+  static final class BaggageExtractor<R, K> implements Extractor<R> {
     final BaggagePropagation<K> propagation;
-    final Extractor<C> delegate;
-    final Propagation.Getter<C, K> getter;
+    final Extractor<R> delegate;
+    final Propagation.Getter<R, K> getter;
 
-    BaggageExtractor(BaggagePropagation<K> propagation, Getter<C, K> getter) {
+    BaggageExtractor(BaggagePropagation<K> propagation, Getter<R, K> getter) {
       this.propagation = propagation;
       this.delegate = propagation.delegate.extractor(getter);
       this.getter = getter;
     }
 
-    @Override public TraceContextOrSamplingFlags extract(C carrier) {
-      TraceContextOrSamplingFlags result = delegate.extract(carrier);
+    @Override public TraceContextOrSamplingFlags extract(R request) {
+      TraceContextOrSamplingFlags result = delegate.extract(request);
 
       // always allocate in case values are added late
       ExtraBaggageFields extraBaggageFields = propagation.factory.stateFactory.create();
       for (int i = 0, length = propagation.handlersWithKeys.length; i < length; i++) {
         BaggageHandlerWithKeys<K> handlerWithKeys = propagation.handlersWithKeys[i];
         for (K key : handlerWithKeys.keys) { // possibly multiple keys when prefixes are in use
-          String maybeEncoded = getter.get(carrier, key);
-          if (maybeEncoded != null) { // accept the first match
-            if (extraBaggageFields.putRemoteValue(handlerWithKeys.handler, maybeEncoded)) break;
+          String value = getter.get(request, key);
+          if (value != null) { // accept the first match
+            if (extraBaggageFields.putRequestValue(handlerWithKeys.handler, request, value)) {
+              break;
+            }
           }
         }
       }

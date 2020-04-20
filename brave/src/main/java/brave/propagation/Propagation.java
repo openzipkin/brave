@@ -13,24 +13,25 @@
  */
 package brave.propagation;
 
+import brave.Request;
 import brave.internal.Nullable;
 import java.util.List;
 
 import static brave.propagation.Propagation.KeyFactory.STRING;
 
 /**
- * Injects and extracts {@link TraceContext trace identifiers} as text into carriers that travel
+ * Injects and extracts {@link TraceContext trace identifiers} as text into requests that travel
  * in-band across process boundaries. Identifiers are often encoded as messaging or RPC request
  * headers.
  *
- * <h3>Propagation example: Http</h3>
+ * <h3>Propagation example: HTTP</h3>
  *
- * <p>When using http, the carrier of propagated data on both the client (injector) and server
- * (extractor) side is usually an http request. Propagation is usually implemented via library-
- * specific request interceptors, where the client-side injects span identifiers and the server-side
- * extracts them.
+ * <p>When using HTTP, the client (injector) and server (extractor) use request headers. The client
+ * {@linkplain TraceContext.Injector#inject injects} the trace context into headers before the
+ * request is sent to the server. The server {@linkplain TraceContext.Extractor#extract extracts} a
+ * trace context from these headers before processing the request.
  *
- * @param <K> Usually, but not always a String
+ * @param <K> Usually, but not always, a {@link String}.
  */
 public interface Propagation<K> {
   Propagation<String> B3_STRING = B3Propagation.FACTORY.create(STRING);
@@ -60,6 +61,10 @@ public interface Propagation<K> {
       return false;
     }
 
+    /**
+     * @param <K> Usually, but not always, a {@link String}.
+     * @see KeyFactory#STRING
+     */
     public abstract <K> Propagation<K> create(KeyFactory<K> keyFactory);
 
     /**
@@ -80,7 +85,11 @@ public interface Propagation<K> {
     }
   }
 
-  /** Creates keys for use in propagated contexts */
+  /**
+   * Creates keys for use in propagated contexts.
+   *
+   * @param <K> Usually, but not always, a {@link String}.
+   */
   interface KeyFactory<K> {
     KeyFactory<String> STRING = new KeyFactory<String>() { // retrolambda no likey
       @Override public String create(String name) {
@@ -95,17 +104,22 @@ public interface Propagation<K> {
     K create(String name);
   }
 
-  /** Replaces a propagated key with the given value */
-  interface Setter<C, K> {
+  /**
+   * Replaces a propagated key with the given value.
+   *
+   * @param <R> Usually, but not always, an instance of {@link Request}.
+   * @param <K> Usually, but not always, a {@link String}.
+   */
+  interface Setter<R, K> {
     // BRAVE6: make this a charsequence as there's no need to allocate a string
-    void put(C carrier, K key, String value);
+    void put(R request, K key, String value);
   }
 
   /**
-   * The propagation fields defined. If your carrier is reused, you should delete the fields here
+   * The propagation fields defined. If your request is reused, you should delete the fields here
    * before calling {@link Setter#put(Object, Object, String)}.
    *
-   * <p>For example, if the carrier is a single-use or immutable request object, you don't need to
+   * <p>For example, if the request is a single-use or immutable request object, you don't need to
    * clear fields as they couldn't have been set before. If it is a mutable, retryable object,
    * successive calls should clear these fields first.
    *
@@ -129,16 +143,23 @@ public interface Propagation<K> {
    * {@link java.net.HttpURLConnection#addRequestProperty(String, String)}
    *
    * @param setter invoked for each propagation key to add.
+   * @param <R> Usually, but not always, an instance of {@link Request}.
    */
-  <C> TraceContext.Injector<C> injector(Setter<C, K> setter);
+  <R> TraceContext.Injector<R> injector(Setter<R, K> setter);
 
-  /** Gets the first value of the given propagation key or returns null */
-  interface Getter<C, K> {
-    @Nullable String get(C carrier, K key);
+  /**
+   * Gets the first value of the given propagation key or returns {@code null}.
+   *
+   * @param <R> Usually, but not always, an instance of {@link Request}.
+   * @param <K> Usually, but not always, a {@link String}.
+   */
+  interface Getter<R, K> {
+    @Nullable String get(R request, K key);
   }
 
   /**
    * @param getter invoked for each propagation key to get.
+   * @param <R> Usually, but not always, an instance of {@link Request}.
    */
-  <C> TraceContext.Extractor<C> extractor(Getter<C, K> getter);
+  <R> TraceContext.Extractor<R> extractor(Getter<R, K> getter);
 }

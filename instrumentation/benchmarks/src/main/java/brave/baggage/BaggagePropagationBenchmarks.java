@@ -74,8 +74,8 @@ public class BaggagePropagationBenchmarks {
   static final Map<String, String> nothingIncoming = Collections.emptyMap();
 
   @Benchmark public void inject() {
-    Map<String, String> carrier = new LinkedHashMap<>();
-    injector.inject(context, carrier);
+    Map<String, String> request = new LinkedHashMap<>();
+    injector.inject(context, request);
   }
 
   @Benchmark public TraceContextOrSamplingFlags extract() {

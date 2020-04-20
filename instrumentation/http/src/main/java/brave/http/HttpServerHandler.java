@@ -123,7 +123,7 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
    * @deprecated Since 5.7, use {@link #handleReceive(HttpServerRequest)}
    */
   @Deprecated public <C> Span handleReceive(Extractor<C> extractor, C carrier, Req request) {
-    if (request == null) throw new NullPointerException("request == null");
+    if (carrier == null) throw new NullPointerException("request == null");
 
     HttpServerRequest serverRequest;
     if (request instanceof HttpServerRequest) {

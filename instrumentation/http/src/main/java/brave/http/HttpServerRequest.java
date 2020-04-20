@@ -25,8 +25,8 @@ import brave.propagation.Propagation.Getter;
  */
 public abstract class HttpServerRequest extends HttpRequest {
   static final Getter<HttpServerRequest, String> GETTER = new Getter<HttpServerRequest, String>() {
-    @Override public String get(HttpServerRequest carrier, String key) {
-      return carrier.header(key);
+    @Override public String get(HttpServerRequest request, String key) {
+      return request.header(key);
     }
 
     @Override public String toString() {

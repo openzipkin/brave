@@ -56,14 +56,14 @@ public final class TraceContext extends SamplingFlags {
    * injector.inject(span.context(), connection);
    * }</pre>
    */
-  public interface Injector<C> {
+  public interface Injector<R> {
     /**
      * Usually calls a setter for each propagation field to send downstream.
      *
      * @param traceContext possibly unsampled.
-     * @param carrier holds propagation fields. For example, an outgoing message or http request.
+     * @param request holds propagation fields. For example, an outgoing message or http request.
      */
-    void inject(TraceContext traceContext, C carrier);
+    void inject(TraceContext traceContext, R request);
   }
 
   /**
@@ -71,15 +71,15 @@ public final class TraceContext extends SamplingFlags {
    *
    * @see brave.Tracer#nextSpan(TraceContextOrSamplingFlags)
    */
-  public interface Extractor<C> {
+  public interface Extractor<R> {
 
     /**
-     * Returns either a trace context or sampling flags parsed from the carrier. If nothing was
+     * Returns either a trace context or sampling flags parsed from the request. If nothing was
      * parsable, sampling flags will be set to {@link SamplingFlags#EMPTY}.
      *
-     * @param carrier holds propagation fields. For example, an incoming message or http request.
+     * @param request holds propagation fields. For example, an incoming message or http request.
      */
-    TraceContextOrSamplingFlags extract(C carrier);
+    TraceContextOrSamplingFlags extract(R request);
   }
 
   public static Builder newBuilder() {
@@ -363,7 +363,7 @@ public final class TraceContext extends SamplingFlags {
      * <p>Example use:
      * <pre>{@code
      * // Attempt to parse the trace ID or break out if unsuccessful for any reason
-     * String traceIdString = getter.get(carrier, key);
+     * String traceIdString = getter.get(request, key);
      * if (!builder.parseTraceId(traceIdString, propagation.traceIdKey)) {
      *   return TraceContextOrSamplingFlags.EMPTY;
      * }
@@ -414,8 +414,8 @@ public final class TraceContext extends SamplingFlags {
     }
 
     /** Parses the parent id from the input string. Returns true if the ID was missing or valid. */
-    final <C, K> boolean parseParentId(Propagation.Getter<C, K> getter, C carrier, K key) {
-      String parentIdString = getter.get(carrier, key);
+    final <R, K> boolean parseParentId(Propagation.Getter<R, K> getter, R request, K key) {
+      String parentIdString = getter.get(request, key);
       if (parentIdString == null) return true; // absent parent is ok
       int length = parentIdString.length();
       if (invalidIdLength(key, length, 16)) return false;
@@ -427,8 +427,8 @@ public final class TraceContext extends SamplingFlags {
     }
 
     /** Parses the span id from the input string. Returns true if the ID is valid. */
-    final <C, K> boolean parseSpanId(Propagation.Getter<C, K> getter, C carrier, K key) {
-      String spanIdString = getter.get(carrier, key);
+    final <R, K> boolean parseSpanId(Propagation.Getter<R, K> getter, R request, K key) {
+      String spanIdString = getter.get(request, key);
       if (isNull(key, spanIdString)) return false;
       int length = spanIdString.length();
       if (invalidIdLength(key, length, 16)) return false;

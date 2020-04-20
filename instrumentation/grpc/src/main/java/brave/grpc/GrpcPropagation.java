@@ -99,47 +99,47 @@ final class GrpcPropagation<K> implements Propagation<K> {
     return delegate.keys();
   }
 
-  @Override public <C> Injector<C> injector(Setter<C, K> setter) {
+  @Override public <R> Injector<R> injector(Setter<R, K> setter) {
     return new GrpcInjector<>(this, setter);
   }
 
-  @Override public <C> Extractor<C> extractor(Getter<C, K> getter) {
+  @Override public <R> Extractor<R> extractor(Getter<R, K> getter) {
     return new GrpcExtractor<>(this, getter);
   }
 
-  static final class GrpcInjector<C, K> implements Injector<C> {
-    final Injector<C> delegate;
-    final Propagation.Setter<C, K> setter;
+  static final class GrpcInjector<R, K> implements Injector<R> {
+    final Injector<R> delegate;
+    final Propagation.Setter<R, K> setter;
 
-    GrpcInjector(GrpcPropagation<K> propagation, Setter<C, K> setter) {
+    GrpcInjector(GrpcPropagation<K> propagation, Setter<R, K> setter) {
       this.delegate = propagation.delegate.injector(setter);
       this.setter = setter;
     }
 
-    @Override public void inject(TraceContext context, C carrier) {
-      if (carrier instanceof GrpcClientRequest) {
+    @Override public void inject(TraceContext context, R request) {
+      if (request instanceof GrpcClientRequest) {
         byte[] serialized = TraceContextBinaryFormat.toBytes(context);
-        ((GrpcClientRequest) carrier).setMetadata(GRPC_TRACE_BIN, serialized);
+        ((GrpcClientRequest) request).setMetadata(GRPC_TRACE_BIN, serialized);
         TagsBin tags = context.findExtra(TagsBin.class);
-        if (tags != null) ((GrpcClientRequest) carrier).setMetadata(GRPC_TAGS_BIN, tags);
+        if (tags != null) ((GrpcClientRequest) request).setMetadata(GRPC_TAGS_BIN, tags);
       }
-      delegate.inject(context, carrier);
+      delegate.inject(context, request);
     }
   }
 
-  static final class GrpcExtractor<C, K> implements Extractor<C> {
-    final Extractor<C> delegate;
-    final Propagation.Getter<C, K> getter;
+  static final class GrpcExtractor<R, K> implements Extractor<R> {
+    final Extractor<R> delegate;
+    final Propagation.Getter<R, K> getter;
 
-    GrpcExtractor(GrpcPropagation<K> propagation, Getter<C, K> getter) {
+    GrpcExtractor(GrpcPropagation<K> propagation, Getter<R, K> getter) {
       this.delegate = propagation.delegate.extractor(getter);
       this.getter = getter;
     }
 
-    @Override public TraceContextOrSamplingFlags extract(C carrier) {
-      if (!(carrier instanceof GrpcServerRequest)) return delegate.extract(carrier);
+    @Override public TraceContextOrSamplingFlags extract(R request) {
+      if (!(request instanceof GrpcServerRequest)) return delegate.extract(request);
 
-      GrpcServerRequest serverRequest = (GrpcServerRequest) carrier;
+      GrpcServerRequest serverRequest = (GrpcServerRequest) request;
 
       // First, check if we are propagating gRPC tags.
       TagsBin tagsBin = serverRequest.getMetadata(GRPC_TAGS_BIN);
@@ -152,7 +152,7 @@ final class GrpcPropagation<K> implements Propagation<K> {
       }
 
       // Finally, try to extract an incoming, non-gRPC trace context. If tags exist, propagate them.
-      TraceContextOrSamplingFlags result = delegate.extract(carrier);
+      TraceContextOrSamplingFlags result = delegate.extract(request);
       if (tagsBin == null) return result;
       return result.toBuilder().addExtra(tagsBin).build();
     }

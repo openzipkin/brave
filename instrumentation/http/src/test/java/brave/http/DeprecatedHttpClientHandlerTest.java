@@ -95,11 +95,11 @@ import static org.mockito.Mockito.when;
     verify(injector).inject(context, request);
   }
 
-  @Test public void handleSend_injectsTheTraceContext_onTheCarrier() {
-    HttpClientRequest customCarrier = mock(HttpClientRequest.class);
-    TraceContext context = handler.handleSend(injector, customCarrier, request).context();
+  @Test public void handleSend_injectsTheTraceContext_onTheRequest() {
+    HttpClientRequest customRequest = mock(HttpClientRequest.class);
+    TraceContext context = handler.handleSend(injector, customRequest, request).context();
 
-    verify(injector).inject(context, customCarrier);
+    verify(injector).inject(context, customRequest);
   }
 
   @Test public void handleSend_addsClientAddressWhenOnlyServiceName() {

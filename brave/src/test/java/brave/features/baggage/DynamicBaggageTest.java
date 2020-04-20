@@ -64,9 +64,9 @@ public class DynamicBaggageTest extends ExtraBaggageFieldsTest {
     extraBaggageFields.updateValue(field2, "2");
     extraBaggageFields.updateValue(field3, "3");
 
-    assertThat(extraBaggageFields.getRemoteValue(singleValueHandler))
+    assertThat(extraBaggageFields.getRequestValue(singleValueHandler))
       .isEqualTo("1");
-    assertThat(extraBaggageFields.getRemoteValue(dynamicHandler))
+    assertThat(extraBaggageFields.getRequestValue(dynamicHandler))
       .contains(""
         + "two=2\n"
         + "three=3");

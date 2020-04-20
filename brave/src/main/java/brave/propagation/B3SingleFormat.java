@@ -78,7 +78,7 @@ public final class B3SingleFormat {
   }
 
   /**
-   * Like {@link #writeB3SingleFormatWithoutParentId(TraceContext)}, but for carriers with byte
+   * Like {@link #writeB3SingleFormatWithoutParentId(TraceContext)}, but for requests with byte
    * array or byte buffer values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
    */
   public static byte[] writeB3SingleFormatWithoutParentIdAsBytes(TraceContext context) {
@@ -102,7 +102,7 @@ public final class B3SingleFormat {
   }
 
   /**
-   * Like {@link #writeB3SingleFormat(TraceContext)}, but for carriers with byte array or byte
+   * Like {@link #writeB3SingleFormat(TraceContext)}, but for requests with byte array or byte
    * buffer values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
    */
   public static byte[] writeB3SingleFormatAsBytes(TraceContext context) {

@@ -112,18 +112,19 @@ public final class ExtraBaggageFields {
   }
 
   /**
-   * Returns true if state derived from the remote value was assigned to handler.
+   * Returns true if state derived from the request value was assigned to handler.
    *
    * @see Propagation.Getter
    */
-  public boolean putRemoteValue(BaggageHandler handler, String remoteValue) {
+  public boolean putRequestValue(BaggageHandler handler, Object request, String value) {
     if (handler == null) throw new NullPointerException("handler == null");
-    if (remoteValue == null) throw new NullPointerException("remoteValue == null");
+    if (request == null) throw new NullPointerException("request == null");
+    if (value == null) throw new NullPointerException("value == null");
 
     int index = indexOf(handler);
     if (index == -1) return false;
 
-    Object state = handlers[index].fromRemoteValue(remoteValue);
+    Object state = handlers[index].fromRequestValue(request, value);
     if (state == null) return false;
     // Unsynchronized as only called during extraction when the object is new.
     putState(index, state);
@@ -131,11 +132,11 @@ public final class ExtraBaggageFields {
   }
 
   /**
-   * Returns a remote value to use for the state in this handler.
+   * Returns a request value to use for the state in this handler.
    *
    * @see Propagation.Setter
    */
-  @Nullable public String getRemoteValue(BaggageHandler handler) {
+  @Nullable public String getRequestValue(BaggageHandler handler) {
     if (handler == null) throw new NullPointerException("handler == null");
 
     int index = indexOf(handler);
@@ -143,7 +144,7 @@ public final class ExtraBaggageFields {
 
     Object maybeValue = getState(index);
     if (maybeValue == null) return null;
-    return handlers[index].toRemoteValue(maybeValue);
+    return handlers[index].toRequestValue(maybeValue);
   }
 
   final BaggageHandler[] handlers;

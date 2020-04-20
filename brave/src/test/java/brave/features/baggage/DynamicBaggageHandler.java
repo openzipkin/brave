@@ -77,7 +77,7 @@ final class DynamicBaggageHandler implements BaggageHandler<Map<BaggageField, St
   }
 
   @Override
-  public Map<BaggageField, String> fromRemoteValue(String encoded) {
+  public Map<BaggageField, String> fromRequestValue(Object request, String encoded) {
     Properties decoded = new Properties();
     try {
       decoded.load(new StringReader(encoded));
@@ -92,7 +92,7 @@ final class DynamicBaggageHandler implements BaggageHandler<Map<BaggageField, St
     return result;
   }
 
-  @Override public String toRemoteValue(Map<BaggageField, String> state) {
+  @Override public String toRequestValue(Map<BaggageField, String> state) {
     Properties encoded = new Properties();
     state.forEach((f, v) -> encoded.put(f.name(), v));
     StringBuilder result = new StringBuilder();
