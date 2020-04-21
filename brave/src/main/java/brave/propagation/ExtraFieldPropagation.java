@@ -249,11 +249,11 @@ import static java.util.Collections.unmodifiableList;
     return delegate.keys();
   }
 
-  @Override public <C> Injector<C> injector(Setter<C, K> setter) {
+  @Override public <R> Injector<R> injector(Setter<R, K> setter) {
     return delegate.injector(setter);
   }
 
-  @Override public <C> Extractor<C> extractor(Getter<C, K> getter) {
+  @Override public <R> Extractor<R> extractor(Getter<R, K> getter) {
     return delegate.extractor(getter);
   }
 

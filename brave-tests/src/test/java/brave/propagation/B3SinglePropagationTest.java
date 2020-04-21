@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -54,9 +54,9 @@ public class B3SinglePropagationTest extends PropagationTest<String> {
     return 0;
   }
 
-  @Override protected void inject(Map<String, String> carrier, SamplingFlags flags) {
+  @Override protected void inject(Map<String, String> request, SamplingFlags flags) {
     char sampledChar = sampledChar(flags.sampled(), flags.debug());
-    if (sampledChar != 0) carrier.put("b3", String.valueOf(sampledChar));
+    if (sampledChar != 0) request.put("b3", String.valueOf(sampledChar));
   }
 
   @Test public void extractTraceContext_sampledFalse() {

@@ -311,4 +311,23 @@ public class TracingTest {
         .startsWith(one, three);
     }
   }
+
+  /**
+   * This ensures deprecated overloads of {@link FinishedSpanHandler#alwaysSampleLocal()} are
+   * considered.
+   */
+  @Test public void finishedSpanHandler_affectsAlwaysSampleLocal() {
+    FinishedSpanHandler one = mock(FinishedSpanHandler.class);
+    when(one.alwaysSampleLocal()).thenReturn(false);
+    FinishedSpanHandler two = mock(FinishedSpanHandler.class);
+    when(two.alwaysSampleLocal()).thenReturn(true);
+
+    try (Tracing tracing = Tracing.newBuilder()
+      .addFinishedSpanHandler(one)
+      .addFinishedSpanHandler(two)
+      .build()) {
+
+      assertThat(tracing.tracer().alwaysSampleLocal).isTrue();
+    }
+  }
 }

@@ -16,6 +16,8 @@ package brave.handler;
 import brave.Span;
 import brave.Tag;
 import brave.Tracer;
+import brave.Tracing;
+import brave.TracingCustomizer;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.TraceContext;
 
@@ -28,7 +30,7 @@ import brave.propagation.TraceContext;
  * <p>When Zipkin's reporter is {@link zipkin2.reporter.Reporter#NOOP} or the context is
  * unsampled, this will still receive spans where {@link TraceContext#sampledLocal()} is true.
  *
- * @see #alwaysSampleLocal()
+ * @see Tracing.Builder#alwaysSampleLocal()
  * @since 5.4
  */
 public abstract class FinishedSpanHandler {
@@ -129,14 +131,12 @@ public abstract class FinishedSpanHandler {
   }
 
   /**
-   * When true, all spans become real spans even if they aren't sampled remotely. This allows
-   * finished span handlers (such as metrics) to consider attributes that are not always visible
-   * before-the-fact, such as http paths. Defaults to false and affects {@link
-   * TraceContext#sampledLocal()}.
-   *
-   * @see #handle(TraceContext, MutableSpan)
+   * @since 5.4
+   * @deprecated Since 5.12, set {@link Tracing.Builder#alwaysSampleLocal()}. Tip: the same {@link
+   * TracingCustomizer} that {@linkplain Tracing.Builder#addFinishedSpanHandler(FinishedSpanHandler)
+   * adds this handler} can also also set {@link Tracing.Builder#alwaysSampleLocal()}.
    */
-  public boolean alwaysSampleLocal() {
+  @Deprecated public boolean alwaysSampleLocal() {
     return false;
   }
 }

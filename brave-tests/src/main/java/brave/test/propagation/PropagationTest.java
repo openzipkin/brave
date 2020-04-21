@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -41,7 +41,7 @@ public abstract class PropagationTest<K> {
    * There's currently no standard API to just inject sampling flags, as IDs are intended to be
    * propagated.
    */
-  protected abstract void inject(Map<K, String> carrier, SamplingFlags samplingFlags);
+  protected abstract void inject(Map<K, String> request, SamplingFlags samplingFlags);
 
   protected Map<K, String> map = new LinkedHashMap<>();
   MapEntry<K> mapEntry = new MapEntry<>();
@@ -147,12 +147,12 @@ public abstract class PropagationTest<K> {
     public MapEntry() {
     }
 
-    @Override public void put(Map<K, String> carrier, K key, String value) {
-      carrier.put(key, value);
+    @Override public void put(Map<K, String> request, K key, String value) {
+      request.put(key, value);
     }
 
-    @Override public String get(Map<K, String> carrier, K key) {
-      return carrier.get(key);
+    @Override public String get(Map<K, String> request, K key) {
+      return request.get(key);
     }
   }
 

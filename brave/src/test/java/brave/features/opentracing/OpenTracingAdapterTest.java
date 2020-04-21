@@ -106,8 +106,8 @@ public class OpenTracingAdapterTest {
       .sampled(true).build();
 
     Map<String, String> map = new LinkedHashMap<>();
-    TextMapAdapter carrier = new TextMapAdapter(map);
-    opentracing.inject(new BraveSpanContext(context), Format.Builtin.HTTP_HEADERS, carrier);
+    TextMapAdapter request = new TextMapAdapter(map);
+    opentracing.inject(new BraveSpanContext(context), Format.Builtin.HTTP_HEADERS, request);
 
     assertThat(map).containsExactly(
       entry("X-B3-TraceId", "0000000000000001"),

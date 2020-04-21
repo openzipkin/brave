@@ -58,9 +58,9 @@ public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
   }
 
   /**
-   * This is the last in the chain of finished span handlers. A predecessor may have set {@link
-   * #alwaysSampleLocal()}, so we have to double-check here that the span was sampled to Zipkin.
-   * Otherwise, we could accidentally send 100% data.
+   * This is the last in the chain of finished span handlers. When {@link
+   * brave.Tracing.Builder#alwaysSampleLocal()} is called, we have to double-check here that the
+   * span was only remotely sampled (to Zipkin). Otherwise, we could accidentally send 100% data.
    */
   @Override public boolean handle(TraceContext context, MutableSpan span) {
     if (!alwaysReportSpans && !Boolean.TRUE.equals(context.sampled())) return true;

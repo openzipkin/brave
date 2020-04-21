@@ -26,8 +26,8 @@ import brave.propagation.TraceContext;
  */
 public abstract class HttpClientRequest extends HttpRequest {
   static final Setter<HttpClientRequest, String> SETTER = new Setter<HttpClientRequest, String>() {
-    @Override public void put(HttpClientRequest carrier, String key, String value) {
-      carrier.header(key, value);
+    @Override public void put(HttpClientRequest request, String key, String value) {
+      request.header(key, value);
     }
 
     @Override public String toString() {

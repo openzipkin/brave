@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -43,11 +43,11 @@ public class B3PropagationTest extends PropagationTest<String> {
     if (debug != null) map.put("X-B3-Flags", debug ? "1" : "0");
   }
 
-  @Override protected void inject(Map<String, String> carrier, SamplingFlags flags) {
+  @Override protected void inject(Map<String, String> request, SamplingFlags flags) {
     if (flags.debug()) {
-      carrier.put("X-B3-Flags", "1");
+      request.put("X-B3-Flags", "1");
     } else if (flags.sampled() != null) {
-      carrier.put("X-B3-Sampled", flags.sampled() ? "1" : "0");
+      request.put("X-B3-Sampled", flags.sampled() ? "1" : "0");
     }
   }
 

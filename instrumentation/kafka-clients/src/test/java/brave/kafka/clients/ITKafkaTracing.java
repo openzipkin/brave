@@ -205,13 +205,13 @@ public class ITKafkaTracing extends ITKafka {
       return Collections.singletonList(key);
     }
 
-    @Override public <C> TraceContext.Injector<C> injector(Setter<C, K> setter) {
-      return (traceContext, carrier) -> setter.put(carrier, key, traceContext.traceIdString());
+    @Override public <R> TraceContext.Injector<R> injector(Setter<R, K> setter) {
+      return (traceContext, request) -> setter.put(request, key, traceContext.traceIdString());
     }
 
-    @Override public <C> TraceContext.Extractor<C> extractor(Getter<C, K> getter) {
-      return carrier -> {
-        String result = getter.get(carrier, key);
+    @Override public <R> TraceContext.Extractor<R> extractor(Getter<R, K> getter) {
+      return request -> {
+        String result = getter.get(request, key);
         if (result == null) return TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY);
         return TraceContextOrSamplingFlags.create(TraceIdContext.newBuilder()
           .traceId(HexCodec.lowerHexToUnsignedLong(result))

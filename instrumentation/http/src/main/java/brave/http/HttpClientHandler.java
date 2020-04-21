@@ -182,7 +182,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
    * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest)}.
    */
   @Deprecated public <C> Span handleSend(Injector<C> injector, C carrier, Req request, Span span) {
-    if (request == null) throw new NullPointerException("request == null");
+    if (request == null) throw new NullPointerException("carrier == null");
     if (span == null) throw new NullPointerException("span == null");
 
     injector.inject(span.context(), carrier);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -21,13 +21,13 @@ import org.apache.kafka.common.header.Headers;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 final class KafkaPropagation {
-  static final Setter<Headers, String> SETTER = (carrier, key, value) -> {
-    carrier.remove(key);
-    carrier.add(key, value.getBytes(UTF_8));
+  static final Setter<Headers, String> SETTER = (headers, key, value) -> {
+    headers.remove(key);
+    headers.add(key, value.getBytes(UTF_8));
   };
 
-  static final Getter<Headers, String> GETTER = (carrier, key) -> {
-    Header header = carrier.lastHeader(key);
+  static final Getter<Headers, String> GETTER = (headers, key) -> {
+    Header header = headers.lastHeader(key);
     if (header == null || header.value() == null) return null;
     return new String(header.value(), UTF_8);
   };
