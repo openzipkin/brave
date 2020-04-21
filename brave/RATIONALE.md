@@ -44,26 +44,54 @@ design incubated in [Spring Cloud Sleuth](https://github.com/spring-cloud/spring
 Our care and docs around error handling in general is credit to [Nike Wingtips](https://github.com/Nike-Inc/wingtips#warning-about-error-handling-when-using-try-with-resources-to-autoclose-spans).
 
 ### Why we don't tag "error=false"
-It may seem useful to tag lack of error as "error=false". This causes far more
-damage than good. Firstly, neither here nor in Zipkin, could we define a value
-range for the "error" tag. There are far too many different frameworks to
-believe normalization is possible.
+"error=false" is almost always the result of mis-mapping from OpenTracing who
+defined a boolean error bit, but not a string message.
+https://github.com/opentracing/specification/blob/master/semantic_conventions.yaml#L15
 
-Next, even when we think something is successful, it might not be. For example,
-one-way RPC give no response back. If you tag "error=false", you could confuse
-users when it was an error.
+Zipkin by extension Brave's "error" tag is about the error code or message.
+There are very few times you will not know a message of some kind. The only
+known examples are some RPC frameworks who only have a boolean bit in some
+error cases. End users will typically not be implementing such low-level
+instrumentation, so should not be steered towards such an edge case, especially
+when more meaningful and better messages almost always exist, in worst case the
+type name of the error.
+
+Regardless, no one could define a value range for the "error" (message) tag.
+There are far too many different frameworks with different people involved. It
+is better to steer instrumentors towards getting the best short error message.
+
+Zipkin's tag system allows empty values, and its query api allows tag key only
+searches. When considered in this context, the value of the "error" tag is less
+important than its existence. This also provides an option for those few edge
+cases where there's only a single bit known.. just set the value to empty.
+
+Since OpenTracing caused people to think about error in boolean terms, it is
+worth mentioning some glitches this creates in isolated or aggregate traces.
+
+When someone thinks in terms of boolean, they are led to think "error=false" is
+something that should be added on success, or by default. However, this is full
+of problems. For example, errors can happen late and depending on backend,
+overwriting a false with true can cause problems when aggregating error counts.
+Next, even when someone thinks something might be success there is no value
+gained in asserting this. For example, one-way RPC give no response back. If
+you tag "error=false", it could not only be wrong, but also not correctable
+later. In short, it is more likely to cause confusion by adding "error=false"
+vs not adding a tag at all.
 
 It is particularly important to understand users writing instrumentation will
 make mistakes. If we suggest an erroneous practice, it will hurt them in
-surprising ways. For example, mistakes were made in OpenTracing where users
-colored all spans red by misunderstanding success.
+surprising ways. For example, what was described above resulted in support load
+as OpenTracing users colored all spans red by mistake. Knowing pitfalls is
+important, but not steering users into pitfalls is more important.
 
 To avoid leading people into problems, we have never described the "error" tag
 in boolean terms. It is the the code or message a person instead. For example,
 if you know you have an error, but don't know what it is, tag "error" -> "".
 This conveys "I don't know the error message". If instead, we said tag "true",
 it would tempt people to think "not false". This would be a slippery slope back
-into the "error=false" debacle.
+into the "error=false" debacle. In any case, if anyone is in a position where
+they are inclined to tag "error" -> "", they probably already need help. As
+mentioned above, this is almost never the case in practice.
 
 Users who have a success code, and want to tag it should just use a different
 tag name than "error" to convey that. For example, gRPC has a status which
