@@ -43,6 +43,44 @@ Brave 4.19 added `ErrorParser`, internally used by `Span.error(Throwable)`. This
 design incubated in [Spring Cloud Sleuth](https://github.com/spring-cloud/spring-cloud-sleuth) prior to becoming a primary type here.
 Our care and docs around error handling in general is credit to [Nike Wingtips](https://github.com/Nike-Inc/wingtips#warning-about-error-handling-when-using-try-with-resources-to-autoclose-spans).
 
+### Why we don't tag "error=false"
+It may seem useful to tag lack of error as "error=false". This causes far more
+damage than good. Firstly, neither here nor in Zipkin, could we define a value
+range for the "error" tag. There are far too many different frameworks to
+believe normalization is possible.
+
+Next, even when we think something is successful, it might not be. For example,
+one-way RPC give no response back. If you tag "error=false", you could confuse
+users when it was an error.
+
+It is particularly important to understand users writing instrumentation will
+make mistakes. If we suggest an erroneous practice, it will hurt them in
+surprising ways. For example, mistakes were made in OpenTracing where users
+colored all spans red by misunderstanding success.
+
+To avoid leading people into problems, we have never described the "error" tag
+in boolean terms. It is the the code or message a person instead. For example,
+if you know you have an error, but don't know what it is, tag "error" -> "".
+This conveys "I don't know the error message". If instead, we said tag "true",
+it would tempt people to think "not false". This would be a slippery slope back
+into the "error=false" debacle.
+
+Users who have a success code, and want to tag it should just use a different
+tag name than "error" to convey that. For example, gRPC has a status which
+includes success, as does HTTP. In other words, the "error" tag does not need
+to be overloaded to say the opposite. The better practice is to use an
+appropriate alternative tag, such as "http.status_code".
+
+### Error overrides
+In some cases, the "error" code added may be misrepresentative. We formerly had
+users complaining about junk service diagrams because 404 was classified as an
+error. `HTTP GET` returning 404 is sometimes treated like `Map.containsKey` in
+certain REST dialects. You can imagine how aggregate service error stats become
+with this in mind.
+
+For this reason, all abstractions we make should have a default mapping, yet
+allow users to change the primary "error" status if they know better.
+
 ## Recorder architecture
 Much of Brave 4's architecture is borrowed from Finagle, whose design
 implies a separation between the propagated trace context and the data

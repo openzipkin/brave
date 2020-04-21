@@ -24,8 +24,9 @@ import brave.propagation.TraceContext;
  * <p>Here's an example that changes the span name and records the HTTP url instead of the path.
  * <pre>{@code
  * httpTracing = httpTracing.toBuilder()
- *   .clientRequestParser((request, context, span) -> {
- *     span.name(spanName(adapter, request)); // default span name
+ *   .clientRequestParser((req, context, span) -> {
+ *     String method = req.method();
+ *     if (method != null) span.name(method);
  *     HttpTags.URL.tag(req, context, span); // the whole url, not just the path
  *   }).build();
  * }</pre>

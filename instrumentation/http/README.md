@@ -59,10 +59,6 @@ overrideSpanName = new HttpRequestParser.Default() {
 Note that span name can be overwritten any time, for example, when
 parsing the response, which is the case when route-based names are used.
 
-This increased performance and allows easier access to baggage. For
-example, a common request was to add a baggage as tags. This can now be
-done in the parser instead of the FinishedSpanHandler, if desired.
-
 ### Baggage
 To add baggage fields as span tags, use the context parameter like so:
 
@@ -266,7 +262,7 @@ try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
 
 ### Supporting HttpResponse.request()
 
-`HttpResponse.request()` is request that initiated the HTTP response. Since
+`HttpResponse.request()` is request that initiated the HTTP response.
 
 Implementations should return the last wire-level request that caused the
 response or error. HTTP properties like path and headers might be different,
