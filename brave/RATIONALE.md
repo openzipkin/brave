@@ -1,4 +1,135 @@
-# brave rationale
+Brave Core Library Rationale
+==============
+
+Brave's design lends from past experience and similar open source work.
+Quite a lot of decisions were driven by portability with Brave 3, and the
+dozens of individuals involved in that. Later decisions focus on what we
+learned since the previous major. For example, Brave 5 was the last version of
+Brave 4, minus deprecation. This provides continuity, yet allows innovation
+through minor revisions.
+
+While many ideas are our own, there are notable aspects borrowed or adapted
+from others. It is our goal to cite when we learned something through a prior
+library, as that allows people to research any rationale that predates our
+usage.
+
+Below is always incomplete, and always improvable. We don't document every
+thought as it would betray productivity and make this document unreadable.
+Rationale here should be limited to impactful designs, and aspects non-obvious,
+non-conventional or subtle.
+
+## Public namespace
+Brave 4's public namespace is more defensive that the past, using a package
+accessor design from [OkHttp](https://github.com/square/okhttp).
+
+## Stateful Span object
+Brave 4 allows you to pass around a Span object which can report itself
+to Zipkin when finished. This is better than using thread contexts in
+some cases, particularly where many async hops are in use. The Span api
+is derived from OpenTracing, narrowed to more cleanly match Zipkin's
+abstraction. As a result, a bridge from Brave 4 to OpenTracing v0.20.2
+is relatively little code. It should be able to implement future
+versions of OpenTracing as well.
+
+## ScopedSpan type
+Brave 4.19 introduced `ScopedSpan` which derives influence primarily from
+[OpenCensus SpanBuilder.startScopedSpan() Api](https://github.com/census-instrumentation/opencensus-java/blob/f852100ad9b77522fabd3c0b29e78202aed3a26e/api/src/main/java/io/opencensus/trace/SpanBuilder.java#L229), a convenience type to
+start work and ensure scope is visible downstream. One main difference here is
+we assume the scoped span is used in the same thread, so mark it as such. Also,
+we reduce the size of the api to help secure users against code drift.
+
+## Error Handling
+Brave 4.19 added `ErrorParser`, internally used by `Span.error(Throwable)`. This
+design incubated in [Spring Cloud Sleuth](https://github.com/spring-cloud/spring-cloud-sleuth) prior to becoming a primary type here.
+Our care and docs around error handling in general is credit to [Nike Wingtips](https://github.com/Nike-Inc/wingtips#warning-about-error-handling-when-using-try-with-resources-to-autoclose-spans).
+
+## Recorder architecture
+Much of Brave 4's architecture is borrowed from Finagle, whose design
+implies a separation between the propagated trace context and the data
+collected in process. For example, Brave's MutableSpanMap is the same
+overall design as Finagle's. The internals of MutableSpanMap were adapted
+from [WeakConcurrentMap](https://github.com/raphw/weak-lock-free).
+
+## Propagation Api
+OpenTracing's Tracer type has methods to inject or extract a trace
+context from a carrier. While naming is similar, Brave optimizes for
+direct integration with carrier types (such as http request) vs routing
+through an intermediate (such as a map). Brave also considers propagation
+a separate api from the tracer.
+
+## Current Tracer Api
+The first design work of `Tracing.currentTracer()` started in [Brave 3](https://github.com/openzipkin/brave/pull/210),
+which was itself influenced by Finagle's implicit Tracer api. This feature
+is noted as edge-case, when other means to get a reference to a trace are
+impossible. The only instrumentation that needed this was JDBC.
+
+Returning a possibly null reference from `Tracing.currentTracer()` implies:
+* Users never cache the reference returned (noted in javadocs)
+* Less code and type constraints on Tracer vs a lazy forwarding delegate
+* Less documentation as we don't have to explain what a Noop tracer does
+
+## CurrentTraceContext Api
+The first design of `CurrentTraceContext` was borrowed from `ContextUtils`
+in Google's [instrumentation-java](https://github.com/google/instrumentation-java) project.
+This was possible because of high collaboration between the projects and
+an almost identical goal. Slight departures including naming (which prefers
+Guice's naming conventions), and that the object scoped is a TraceContext
+vs a Span.
+
+Propagating a trace context instead of a span is a right fit for several reasons:
+* `TraceContext` can be created without a reference to a tracer
+* Common tasks like making child spans and staining log context only need the context
+* Brave's recorder is keyed on context, so there's no feature loss in this choice
+
+## Local Sampling flag
+The [Census](https://opencensus.io/) project has a concept of a [SampledSpanStore](https://github.com/census-instrumentation/opencensus-java/blob/master/api/src/main/java/io/opencensus/trace/export/SampledSpanStore.java).
+Typically, you configure a span name pattern or choose [individual spans](https://github.com/census-instrumentation/opencensus-java/blob/660e8f375bb483a3eb817940b3aa8534f86da314/api/src/main/java/io/opencensus/trace/EndSpanOptions.java#L65)
+for local (in-process) storage. This storage is used to power
+administrative pages named zPages. For example, [Tracez](https://github.com/census-instrumentation/opencensus-java/blob/660e8f375bb483a3eb817940b3aa8534f86da314/contrib/zpages/src/main/java/io/opencensus/contrib/zpages/TracezZPageHandler.java#L220)
+displays spans sampled locally which have errors or crossed a latency
+threshold.
+
+The "sample local" vocab in Census was re-used in Brave to describe the
+act of keeping data that isn't going to necessarily end up in Zipkin.
+
+The main difference in Brave is implementation. For example, the `sampledLocal`
+flag in Brave is a part of the TraceContext and so can be triggered when
+headers are parsed. This is needed to provide custom sampling mechanisms.
+Also, Brave has a small core library and doesn't package any specific
+storage abstraction, admin pages or latency processors. As such, we can't
+define specifically what sampled local means as Census' could. All it
+means is that `FinishedSpanHandler` will see data for that trace context.
+
+## FinishedSpanHandler Api
+Brave had for a long time re-used zipkin's Reporter library, which is
+like Census' SpanExporter in so far that they both allow pushing a specific
+format elsewhere, usually to a service. Brave's [FinishedSpanHandler](https://github.com/openzipkin/brave/blob/master/brave/src/main/java/brave/handler/FinishedSpanHandler.java)
+is a little more like Census' [SpanExporter.Handler](https://github.com/census-instrumentation/opencensus-java/blob/master/api/src/main/java/io/opencensus/trace/export/SpanExporter.java)
+in so far as the structure includes the trace context.. something we need
+access to in order to do things like advanced sampling.
+
+Where it differs is that the `MutableSpan` in Brave is.. well.. mutable,
+and this allows you to cheaply change data. Also, it isn't a struct based
+on a proto, so it can hold references to objects like `Exception`. This
+allows us to render data into different formats such as [Amazon's stack frames](https://docs.aws.amazon.com/xray/latest/devguide/xray-api-segmentdocuments.html)
+without having to guess what will be needed by parsing up front. As
+error parsing is deferred, overhead is less in cases where errors are not
+recorded (such as is the case on spans intentionally dropped).
+
+## Rate-limiting sampler
+`RateLimitingSampler` was made to allow Amazon X-Ray rules to be
+expressed in Brave. We considered their [Reservoir design](https://github.com/aws/aws-xray-sdk-java/blob/2.0.1/aws-xray-recorder-sdk-core/src/main/java/com/amazonaws/xray/strategy/sampling/reservoir/Reservoir.java).
+Our implementation differs as it removes a race condition and attempts
+to be more fair by distributing accept decisions every decisecond.
+
+## Baggage
+The name Baggage was first introduced by Brown University in [Pivot Tracing](https://people.mpi-sws.org/~jcmace/papers/mace2015pivot.pdf)
+as maps, sets and tuples. They then spun baggage out as a standalone component,
+[BaggageContext](https://people.mpi-sws.org/~jcmace/papers/mace2018universal.pdf)
+and considered some of the nuances of making it general purpose. The
+implementations proposed in these papers are different to the implementation
+here, but conceptually the goal is the same: to propagate "arbitrary stuff"
+with a request.
 
 ## CorrelationScopeDecorator
 
