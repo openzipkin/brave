@@ -10,9 +10,9 @@ Note: A Dubbo Provider is a server, and a Dubbo Consumer is a client in
 Zipkin terminology.
 
 ## Configuration
-The filter "tracing" requires an extension of type `brave.Tracing` named
-"tracing" configured. Once that's configured, you assign the filter to
-your providers and consumers like so:
+The filter "tracing" requires an extension of type `brave.rpc.RpcTracing` named
+"rpcTracing" configured. Once that's configured, you assign the filter to your
+providers and consumers like so:
 
 Here's an example of with Spring 2.5+ [XML](http://dubbo.apache.org/en-us/docs/user/references/xml/dubbo-consumer.html)
 ```xml

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,9 +13,11 @@
  */
 package brave.dubbo;
 
+import java.io.IOException;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
+import org.apache.dubbo.rpc.RpcException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -103,5 +105,17 @@ public class DubboParserTest {
     when(url.getServiceInterface()).thenReturn("");
 
     assertThat(DubboParser.service(invocation)).isNull();
+  }
+
+  @Test public void errorCodes() {
+    assertThat(DubboParser.errorCode(null))
+      .isEqualTo(DubboParser.errorCode(new IOException("timeout")))
+      .isNull();
+
+    // Prove that we don't map codes to human readable names defined in RpcException
+    for (int i = 0; i < 8; i++) {
+      assertThat(DubboParser.errorCode(new RpcException(i)))
+        .isEqualTo(String.valueOf(i));
+    }
   }
 }

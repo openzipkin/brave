@@ -17,7 +17,6 @@ import brave.Clock;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
-import brave.test.Unsupported;
 import com.alibaba.dubbo.config.ApplicationConfig;
 import com.alibaba.dubbo.config.ReferenceConfig;
 import com.alibaba.dubbo.rpc.RpcContext;
@@ -150,7 +149,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     client.get().sayHello("jorge");
 
     assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).name())
-      .isEqualTo("greeterservice/sayhello");
+      .isEqualTo("brave.dubbo.rpc.greeterservice/sayhello");
   }
 
   @Test public void onTransportException_addsErrorTag() {
@@ -170,12 +169,12 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, ".*RemotingException.*");
   }
 
-  @Test public void flushesSpanOneWay() {
+  @Test public void finishesOneWay() {
     RpcContext.getContext().asyncCall(() -> {
       client.get().sayHello("romeo");
     });
 
-    Unsupported.takeOneWayRpcSpan(this, Span.Kind.CLIENT);
+    reporter.takeRemoteSpan(Span.Kind.CLIENT);
   }
 
   @Test public void addsErrorTag_onUnimplemented() {

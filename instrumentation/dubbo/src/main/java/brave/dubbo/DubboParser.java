@@ -13,10 +13,15 @@
  */
 package brave.dubbo;
 
+import brave.Span;
 import brave.internal.Nullable;
+import brave.internal.Platform;
+import java.net.InetSocketAddress;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
+import org.apache.dubbo.rpc.RpcContext;
+import org.apache.dubbo.rpc.RpcException;
 import org.apache.dubbo.rpc.support.RpcUtils;
 
 final class DubboParser {
@@ -27,7 +32,7 @@ final class DubboParser {
    * <p>Like {@link RpcUtils#getMethodName(Invocation)}, except without re-reading fields or
    * returning an unhelpful "$invoke" method name.
    */
-  static @Nullable String method(Invocation invocation) {
+  @Nullable static String method(Invocation invocation) {
     String methodName = invocation.getMethodName();
     if ("$invoke".equals(methodName) || "$invokeAsync".equals(methodName)) {
       Object[] arguments = invocation.getArguments();
@@ -45,12 +50,40 @@ final class DubboParser {
    *
    * <p>This was chosen as the {@link URL#getServiceName() service name} is deprecated for it.
    */
-  static @Nullable String service(Invocation invocation) {
+  @Nullable static String service(Invocation invocation) {
     Invoker<?> invoker = invocation.getInvoker();
     if (invoker == null) return null;
     URL url = invoker.getUrl();
     if (url == null) return null;
     String service = url.getServiceInterface();
     return service != null && !service.isEmpty() ? service : null;
+  }
+
+  static boolean parseRemoteIpAndPort(Span span) {
+    RpcContext rpcContext = RpcContext.getContext();
+    InetSocketAddress remoteAddress = rpcContext.getRemoteAddress();
+    if (remoteAddress == null) return false;
+    return span.remoteIpAndPort(
+      Platform.get().getHostString(remoteAddress),
+      remoteAddress.getPort()
+    );
+  }
+
+  /**
+   * We decided to not map Dubbo codes to human readable names like {@link
+   * RpcException#BIZ_EXCEPTION} even though we defined "rpc.error_code" as a human readable name.
+   *
+   * <p>The reason was a comparison with HTTP status codes, and the choice was between returning
+   * just numbers or reusing "UNKNOWN_EXCEPTION" which is defined in Dubbo for code "0" for any
+   * unknown code. Returning numbers was the less bad option as it doesn't conflate code words.
+   *
+   * <p>Later, we can revert this back to code words, but once this gets into the RPC mapping for
+   * Dubbo it will be hard to change.
+   */
+  @Nullable static String errorCode(Throwable error) {
+    if (error instanceof RpcException) {
+      return String.valueOf(((RpcException) error).getCode());
+    }
+    return null;
   }
 }

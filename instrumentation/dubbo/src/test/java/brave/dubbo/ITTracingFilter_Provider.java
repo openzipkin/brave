@@ -18,8 +18,8 @@ import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.rpc.RpcRuleSampler;
 import brave.rpc.RpcTracing;
-import org.apache.dubbo.common.beanutil.JavaBeanDescriptor;
 import org.apache.dubbo.config.ReferenceConfig;
+import org.apache.dubbo.config.bootstrap.DubboBootstrap;
 import org.apache.dubbo.rpc.RpcContext;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,25 +35,28 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 public class ITTracingFilter_Provider extends ITTracingFilter {
   @Before public void setup() {
     server.service.setFilter("tracing");
+    server.service.setGeneric("true");
     server.service.setInterface(GreeterService.class);
     server.service.setRef((method, parameterTypes, args) -> {
-      JavaBeanDescriptor arg = (JavaBeanDescriptor) args[0];
-      if (arg.getProperty("value").equals("bad")) {
-        throw new IllegalArgumentException();
-      }
-      String value = currentTraceContext.get() != null
+      String arg = (String) args[0];
+      if (arg.equals("bad")) throw new IllegalArgumentException();
+      return currentTraceContext.get() != null
         ? currentTraceContext.get().traceIdString()
         : "";
-      arg.setProperty("value", value);
-      return args[0];
     });
     init();
     server.start();
 
+    String url = "dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean";
     client = new ReferenceConfig<>();
-    client.setApplication(application);
+    client.setGeneric("true");
     client.setInterface(GreeterService.class);
-    client.setUrl("dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean");
+    client.setUrl(url);
+
+    DubboBootstrap.getInstance().application(application)
+      .service(server.service)
+      .reference(client)
+      .start();
 
     // perform a warmup request to allow CI to fail quicker
     client.get().sayHello("jorge");
@@ -111,7 +114,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     client.get().sayHello("jorge");
 
     assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).name())
-      .isEqualTo("genericservice/sayhello");
+      .isEqualTo("brave.dubbo.greeterservice/sayhello");
   }
 
   @Test public void addsErrorTagOnException() {

@@ -19,9 +19,9 @@ import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.rpc.RpcRuleSampler;
 import brave.rpc.RpcTracing;
-import brave.test.Unsupported;
 import brave.test.util.AssertableCallback;
 import org.apache.dubbo.config.ReferenceConfig;
+import org.apache.dubbo.config.bootstrap.DubboBootstrap;
 import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.RpcException;
 import org.junit.After;
@@ -44,16 +44,21 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
 
     String url = "dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean";
     client = new ReferenceConfig<>();
-    client.setApplication(application);
+    client.setGeneric("true");
     client.setFilter("tracing");
     client.setInterface(GreeterService.class);
     client.setUrl(url);
 
     wrongClient = new ReferenceConfig<>();
-    wrongClient.setApplication(application);
+    wrongClient.setGeneric("true");
     wrongClient.setFilter("tracing");
     wrongClient.setInterface(GraterService.class);
     wrongClient.setUrl(url);
+
+    DubboBootstrap.getInstance().application(application)
+      .reference(client)
+      .reference(wrongClient)
+      .start();
 
     init();
 
@@ -201,7 +206,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     client.get().sayHello("jorge");
 
     assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).name())
-      .isEqualTo("greeterservice/sayhello");
+      .isEqualTo("brave.dubbo.greeterservice/sayhello");
   }
 
   @Test public void onTransportException_addsErrorTag() {
@@ -221,12 +226,12 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, ".*RemotingException.*");
   }
 
-  @Test public void flushesSpanOneWay() {
+  @Test public void finishesOneWaySpan() {
     RpcContext.getContext().asyncCall(() -> {
       client.get().sayHello("romeo");
     });
 
-    Unsupported.takeOneWayRpcSpan(this, Span.Kind.CLIENT);
+    reporter.takeRemoteSpan(Span.Kind.CLIENT);
   }
 
   @Test public void addsErrorTag_onUnimplemented() {

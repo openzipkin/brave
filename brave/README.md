@@ -199,53 +199,6 @@ span.tag("error", error.getCode());
 span.finish();
 ```
 
-#### One-Way RPC tracing
-
-Sometimes you need to model an asynchronous operation, where there is a
-request, but no response. In normal RPC tracing, you use `span.finish()`
-which indicates the response was received. In one-way tracing, you use
-`span.flush()` instead, as you don't expect a response.
-
-Here's how a client might model a one-way operation
-```java
-// start a new span representing a client request
-oneWaySend = tracer.nextSpan().name(service + "/" + method).kind(CLIENT);
---snip--
-
-// Add the trace context to the request, so it can be propagated in-band
-tracing.propagation().injector(Request::addHeader)
-                     .inject(oneWaySend.context(), request);
-
-// fire off the request asynchronously, totally dropping any response
-request.execute();
-
-// start the client side and flush instead of finish
-oneWaySend.start().flush();
-```
-
-And here's how a server might handle this..
-```java
-// pull the context out of the incoming request
-extractor = tracing.propagation().extractor(Request::getHeader);
-
-// convert that context to a span which you can name and add tags to
-oneWayReceive = nextSpan(tracer, extractor.extract(request))
-    .name("process-request")
-    .kind(SERVER)
-    ... add tags etc.
-
-// start the server side and flush instead of finish
-oneWayReceive.start().flush();
-
-// you should not modify this span anymore as it is complete. However,
-// you can create children to represent follow-up work.
-next = tracer.newSpan(oneWayReceive.context()).name("step2").start();
-```
-
-**Note** The above propagation logic is a simplified version of our [http handlers](https://github.com/openzipkin/brave/tree/master/instrumentation/http#http-server).
-
-There's a working example of a one-way span [here](src/test/java/brave/features/async/OneWaySpanTest.java).
-
 ## Sampling
 
 Sampling may be employed to reduce the data collected and reported out
