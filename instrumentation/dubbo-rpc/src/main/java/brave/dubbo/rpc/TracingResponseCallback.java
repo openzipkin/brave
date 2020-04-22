@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,6 +16,7 @@ package brave.dubbo.rpc;
 import brave.Span;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
 import com.alibaba.dubbo.remoting.exchange.ResponseCallback;
 
 import static brave.dubbo.rpc.TracingFilter.onError;
@@ -60,7 +61,7 @@ final class TracingResponseCallback {
     }
 
     @Override public void done(Object response) {
-      try (CurrentTraceContext.Scope ws = current.maybeScope(span.context())) {
+      try (Scope ws = current.maybeScope(span.context())) {
         delegate.done(response);
       } finally {
         super.done(response);
@@ -68,7 +69,7 @@ final class TracingResponseCallback {
     }
 
     @Override public void caught(Throwable exception) {
-      try (CurrentTraceContext.Scope ws = current.maybeScope(span.context())) {
+      try (Scope ws = current.maybeScope(span.context())) {
         delegate.caught(exception);
       } finally {
         super.caught(exception);

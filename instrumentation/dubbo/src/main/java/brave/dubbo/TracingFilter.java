@@ -17,14 +17,16 @@ import brave.Span;
 import brave.Span.Kind;
 import brave.Tracer;
 import brave.Tracing;
-import brave.internal.Platform;
-import brave.propagation.TraceContext;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.TraceContext.Extractor;
+import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.rpc.RpcRequest;
 import brave.rpc.RpcTracing;
 import brave.sampler.SamplerFunction;
-import java.net.InetSocketAddress;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.common.extension.Activate;
@@ -36,21 +38,20 @@ import org.apache.dubbo.rpc.Invoker;
 import org.apache.dubbo.rpc.Result;
 import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.RpcException;
-import org.apache.dubbo.rpc.protocol.dubbo.FutureAdapter;
-import org.apache.dubbo.rpc.support.RpcUtils;
 
 import static brave.dubbo.DubboClientRequest.SETTER;
 import static brave.dubbo.DubboServerRequest.GETTER;
+import static brave.internal.Throwables.propagateIfFatal;
 import static brave.sampler.SamplerFunctions.deferDecision;
 
 @Activate(group = {CommonConstants.PROVIDER, CommonConstants.CONSUMER}, value = "tracing")
 // http://dubbo.apache.org/en-us/docs/dev/impls/filter.html
 // public constructor permitted to allow dubbo to instantiate this
 public final class TracingFilter implements Filter {
-
+  CurrentTraceContext currentTraceContext;
+  Extractor<DubboServerRequest> extractor;
+  Injector<DubboClientRequest> injector;
   Tracer tracer;
-  TraceContext.Extractor<DubboServerRequest> extractor;
-  TraceContext.Injector<DubboClientRequest> injector;
   SamplerFunction<RpcRequest> clientSampler = deferDecision(), serverSampler = deferDecision();
   volatile boolean isInit = false;
 
@@ -61,10 +62,8 @@ public final class TracingFilter implements Filter {
    */
   public void setTracing(Tracing tracing) {
     if (tracing == null) throw new NullPointerException("rpcTracing == null");
-    tracer = tracing.tracer();
-    extractor = tracing.propagation().extractor(GETTER);
-    injector = tracing.propagation().injector(SETTER);
-    isInit = true;
+    if (isInit) return; // don't override an existing Rpc Tracing
+    setRpcTracing(RpcTracing.create(tracing));
   }
 
   /**
@@ -74,7 +73,11 @@ public final class TracingFilter implements Filter {
    */
   public void setRpcTracing(RpcTracing rpcTracing) {
     if (rpcTracing == null) throw new NullPointerException("rpcTracing == null");
-    setTracing(rpcTracing.tracing());
+    // we don't guard on init because we intentionally want to overwrite any call to setTracing
+    currentTraceContext = rpcTracing.tracing().currentTraceContext();
+    extractor = rpcTracing.tracing().propagation().extractor(GETTER);
+    injector = rpcTracing.tracing().propagation().injector(SETTER);
+    tracer = rpcTracing.tracing().tracer();
     clientSampler = rpcTracing.clientSampler();
     serverSampler = rpcTracing.serverSampler();
     isInit = true;
@@ -104,45 +107,35 @@ public final class TracingFilter implements Filter {
 
     if (!span.isNoop()) {
       span.kind(kind);
-      String service = invoker.getInterface().getSimpleName();
-      String method = RpcUtils.getMethodName(invocation);
+      String service = DubboParser.service(invocation);
+      String method = DubboParser.method(invocation);
       span.name(service + "/" + method);
-      parseRemoteAddress(rpcContext, span);
+      DubboParser.parseRemoteIpAndPort(span);
       span.start();
     }
 
-    boolean isOneway = false, deferFinish = false;
-    Tracer.SpanInScope scope = tracer.withSpanInScope(span);
+    boolean deferFinish = false;
+    Scope scope = currentTraceContext.newScope(span.context());
     Throwable error = null;
     try {
       Result result = invoker.invoke(invocation);
-      if (result.hasException()) {
-        onError(result.getException(), span);
-      }
-      isOneway = RpcUtils.isOneway(invoker.getUrl(), invocation);
+      error = result.getException();
       Future<Object> future = rpcContext.getFuture(); // the case on async client invocation
-      if (!isOneway && future instanceof FutureAdapter) {
+      if (future instanceof CompletableFuture) {
         deferFinish = true;
-        ((FutureAdapter<Object>) future).whenComplete((v, t) -> {
-          if (t != null) {
-            onError(t, span);
-            span.finish();
-          } else {
-            span.finish();
-          }
+        ((CompletableFuture<?>) future).whenComplete((v, t) -> {
+          if (t != null) onError(t, span);
+          span.finish();
         });
       }
       return result;
-    } catch (Error | RuntimeException e) {
+    } catch (Throwable e) {
+      propagateIfFatal(e);
       error = e;
       throw e;
     } finally {
       if (error != null) onError(error, span);
-      if (isOneway) {
-        span.flush();
-      } else if (!deferFinish) {
-        span.finish();
-      }
+      if (!deferFinish) span.finish();
       scope.close();
     }
   }
@@ -161,16 +154,9 @@ public final class TracingFilter implements Filter {
       : tracer.nextSpan(extracted);
   }
 
-  static void parseRemoteAddress(RpcContext rpcContext, Span span) {
-    InetSocketAddress remoteAddress = rpcContext.getRemoteAddress();
-    if (remoteAddress == null) return;
-    span.remoteIpAndPort(Platform.get().getHostString(remoteAddress), remoteAddress.getPort());
-  }
-
   static void onError(Throwable error, Span span) {
     span.error(error);
-    if (error instanceof RpcException) {
-      span.tag("dubbo.error_code", Integer.toString(((RpcException) error).getCode()));
-    }
+    String errorCode = DubboParser.errorCode(error);
+    if (errorCode != null) span.tag("dubbo.error_code", errorCode);
   }
 }

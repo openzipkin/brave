@@ -13,9 +13,11 @@
  */
 package brave.dubbo;
 
+import java.io.IOException;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
+import org.apache.dubbo.rpc.RpcException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -103,5 +105,30 @@ public class DubboParserTest {
     when(url.getServiceInterface()).thenReturn("");
 
     assertThat(DubboParser.service(invocation)).isNull();
+  }
+
+  @Test public void errorCodes() {
+    assertThat(DubboParser.errorCode(null))
+      .isEqualTo(DubboParser.errorCode(new IOException("timeout")))
+      .isNull();
+
+    assertThat(DubboParser.errorCode(new RpcException(0)))
+      .isEqualTo("UNKNOWN_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(1)))
+      .isEqualTo("NETWORK_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(2)))
+      .isEqualTo("TIMEOUT_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(3)))
+      .isEqualTo("BIZ_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(4)))
+      .isEqualTo("FORBIDDEN_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(5)))
+      .isEqualTo("SERIALIZATION_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(6)))
+      .isEqualTo("NO_INVOKER_AVAILABLE_AFTER_FILTER");
+    assertThat(DubboParser.errorCode(new RpcException(7)))
+      .isEqualTo("LIMIT_EXCEEDED_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(8)))
+      .isEqualTo("8"); // this will catch drift if Dubbo adds another code
   }
 }

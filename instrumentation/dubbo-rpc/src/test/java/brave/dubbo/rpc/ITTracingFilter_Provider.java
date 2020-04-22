@@ -110,7 +110,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     client.get().sayHello("jorge");
 
     assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).name())
-      .isEqualTo("genericservice/sayhello");
+      .isEqualTo("brave.dubbo.rpc.greeterservice/sayhello");
   }
 
   @Test public void addsErrorTagOnException() {

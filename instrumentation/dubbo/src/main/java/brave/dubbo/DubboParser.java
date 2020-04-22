@@ -13,10 +13,15 @@
  */
 package brave.dubbo;
 
+import brave.Span;
 import brave.internal.Nullable;
+import brave.internal.Platform;
+import java.net.InetSocketAddress;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
+import org.apache.dubbo.rpc.RpcContext;
+import org.apache.dubbo.rpc.RpcException;
 import org.apache.dubbo.rpc.support.RpcUtils;
 
 final class DubboParser {
@@ -27,7 +32,7 @@ final class DubboParser {
    * <p>Like {@link RpcUtils#getMethodName(Invocation)}, except without re-reading fields or
    * returning an unhelpful "$invoke" method name.
    */
-  static @Nullable String method(Invocation invocation) {
+  @Nullable static String method(Invocation invocation) {
     String methodName = invocation.getMethodName();
     if ("$invoke".equals(methodName) || "$invokeAsync".equals(methodName)) {
       Object[] arguments = invocation.getArguments();
@@ -45,12 +50,49 @@ final class DubboParser {
    *
    * <p>This was chosen as the {@link URL#getServiceName() service name} is deprecated for it.
    */
-  static @Nullable String service(Invocation invocation) {
+  @Nullable static String service(Invocation invocation) {
     Invoker<?> invoker = invocation.getInvoker();
     if (invoker == null) return null;
     URL url = invoker.getUrl();
     if (url == null) return null;
     String service = url.getServiceInterface();
     return service != null && !service.isEmpty() ? service : null;
+  }
+
+  static boolean parseRemoteIpAndPort(Span span) {
+    RpcContext rpcContext = RpcContext.getContext();
+    InetSocketAddress remoteAddress = rpcContext.getRemoteAddress();
+    if (remoteAddress == null) return false;
+    return span.remoteIpAndPort(
+      Platform.get().getHostString(remoteAddress),
+      remoteAddress.getPort()
+    );
+  }
+
+  @Nullable static String errorCode(Throwable error) {
+    if (error instanceof RpcException) {
+      int code = ((RpcException) error).getCode();
+      switch (code) { // requires maintenance if constants are updated
+        case RpcException.UNKNOWN_EXCEPTION:
+          return "UNKNOWN_EXCEPTION";
+        case RpcException.NETWORK_EXCEPTION:
+          return "NETWORK_EXCEPTION";
+        case RpcException.TIMEOUT_EXCEPTION:
+          return "TIMEOUT_EXCEPTION";
+        case RpcException.BIZ_EXCEPTION:
+          return "BIZ_EXCEPTION";
+        case RpcException.FORBIDDEN_EXCEPTION:
+          return "FORBIDDEN_EXCEPTION";
+        case RpcException.SERIALIZATION_EXCEPTION:
+          return "SERIALIZATION_EXCEPTION";
+        case RpcException.NO_INVOKER_AVAILABLE_AFTER_FILTER:
+          return "NO_INVOKER_AVAILABLE_AFTER_FILTER";
+        case RpcException.LIMIT_EXCEEDED_EXCEPTION:
+          return "LIMIT_EXCEEDED_EXCEPTION";
+        default:
+          return String.valueOf(code);
+      }
+    }
+    return null;
   }
 }

@@ -16,6 +16,8 @@ package brave.dubbo.rpc;
 import com.alibaba.dubbo.common.URL;
 import com.alibaba.dubbo.rpc.Invocation;
 import com.alibaba.dubbo.rpc.Invoker;
+import com.alibaba.dubbo.rpc.RpcException;
+import java.io.IOException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -103,5 +105,25 @@ public class DubboParserTest {
     when(invoker.getUrl()).thenReturn(url);
 
     assertThat(DubboParser.service(invocation)).isNull();
+  }
+  @Test public void errorCodes() {
+    assertThat(DubboParser.errorCode(null))
+      .isEqualTo(DubboParser.errorCode(new IOException("timeout")))
+      .isNull();
+
+    assertThat(DubboParser.errorCode(new RpcException(0)))
+      .isEqualTo("UNKNOWN_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(1)))
+      .isEqualTo("NETWORK_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(2)))
+      .isEqualTo("TIMEOUT_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(3)))
+      .isEqualTo("BIZ_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(4)))
+      .isEqualTo("FORBIDDEN_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(5)))
+      .isEqualTo("SERIALIZATION_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(6)))
+      .isEqualTo("6"); // this will catch drift if Dubbo adds another code
   }
 }
