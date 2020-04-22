@@ -16,7 +16,11 @@ package brave.dubbo;
 import brave.Span;
 import brave.internal.Nullable;
 import brave.internal.Platform;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.net.InetSocketAddress;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
@@ -25,6 +29,40 @@ import org.apache.dubbo.rpc.RpcException;
 import org.apache.dubbo.rpc.support.RpcUtils;
 
 final class DubboParser {
+  static final Map<Integer, String> ERROR_CODE_NUMBER_TO_NAME = errorCodeNumberToName();
+
+  /**
+   * Dubbo adds error codes sometimes. For example, they added two in the last two years. If we did
+   * a simple switch/case of each code, like {@link RpcException#BIZ_EXCEPTION}, new code names
+   * would not be seen until an upgrade of Brave. That, or we'd have to fall back to a code number
+   * until the upgrade of Brave converged.
+   *
+   * <p>This uses reflection instead, which is unlikely to fail as Dubbo's error codes are public
+   * constants.
+   */
+  static Map<Integer, String> errorCodeNumberToName() {
+    Map<Integer, String> result = new LinkedHashMap<>();
+    for (Field field : RpcException.class.getDeclaredFields()) {
+      if (Modifier.isPublic(field.getModifiers())
+        && Modifier.isStatic(field.getModifiers())
+        && Modifier.isFinal(field.getModifiers())
+        && field.getType() == int.class
+      ) {
+        try {
+          result.put((Integer) field.get(null), field.getName());
+        } catch (Exception e) {
+          assert false : e.getMessage(); // make all unit tests fail
+
+          // We don't use isAccessible() (deprecated) or canAccess() (Java 9 method)
+          // A failure to read a public constant an extreme case, but won't crash anything nor would
+          // prevent the normal "error" tag from working.
+          Platform.get().log("Error reading error code %s", field, e);
+        }
+      }
+    }
+    return result;
+  }
+
   /**
    * Returns the method name of the invocation or the first string arg of an "$invoke" or
    * "$invokeAsync" method.
@@ -70,19 +108,12 @@ final class DubboParser {
   }
 
   /**
-   * We decided to not map Dubbo codes to human readable names like {@link
-   * RpcException#BIZ_EXCEPTION} even though we defined "rpc.error_code" as a human readable name.
-   *
-   * <p>The reason was a comparison with HTTP status codes, and the choice was between returning
-   * just numbers or reusing "UNKNOWN_EXCEPTION" which is defined in Dubbo for code "0" for any
-   * unknown code. Returning numbers was the less bad option as it doesn't conflate code words.
-   *
-   * <p>Later, we can revert this back to code words, but once this gets into the RPC mapping for
-   * Dubbo it will be hard to change.
+   * On occasion, (roughly once a year) Dubbo adds more error code numbers. When this occurs, do not
+   * use the symbol name, in the switch statement, as it will affect the minimum version.
    */
   @Nullable static String errorCode(Throwable error) {
     if (error instanceof RpcException) {
-      return String.valueOf(((RpcException) error).getCode());
+      return ERROR_CODE_NUMBER_TO_NAME.get(((RpcException) error).getCode());
     }
     return null;
   }

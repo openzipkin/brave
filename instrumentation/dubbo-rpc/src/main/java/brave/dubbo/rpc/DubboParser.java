@@ -69,19 +69,28 @@ final class DubboParser {
   }
 
   /**
-   * We decided to not map Dubbo codes to human readable names like {@link
-   * RpcException#BIZ_EXCEPTION} even though we defined "rpc.error_code" as a human readable name.
-   *
-   * <p>The reason was a comparison with HTTP status codes, and the choice was between returning
-   * just numbers or reusing "UNKNOWN_EXCEPTION" which is defined in Dubbo for code "0" for any
-   * unknown code. Returning numbers was the less bad option as it doesn't conflate code words.
-   *
-   * <p>Later, we can revert this back to code words, but once this gets into the RPC mapping for
-   * Dubbo it will be hard to change.
+   * This library is no-longer being released, so it should not have any maintenance on error codes.
+   * The error codes here were defined in 2012.
    */
   @Nullable static String errorCode(Throwable error) {
     if (error instanceof RpcException) {
-      return String.valueOf(((RpcException) error).getCode());
+      int code = ((RpcException) error).getCode();
+      switch (code) {
+        case RpcException.UNKNOWN_EXCEPTION:
+          return "UNKNOWN_EXCEPTION";
+        case RpcException.NETWORK_EXCEPTION:
+          return "NETWORK_EXCEPTION";
+        case RpcException.TIMEOUT_EXCEPTION:
+          return "TIMEOUT_EXCEPTION";
+        case RpcException.BIZ_EXCEPTION:
+          return "BIZ_EXCEPTION";
+        case RpcException.FORBIDDEN_EXCEPTION:
+          return "FORBIDDEN_EXCEPTION";
+        case RpcException.SERIALIZATION_EXCEPTION:
+          return "SERIALIZATION_EXCEPTION";
+        default:
+          return String.valueOf(code);
+      }
     }
     return null;
   }

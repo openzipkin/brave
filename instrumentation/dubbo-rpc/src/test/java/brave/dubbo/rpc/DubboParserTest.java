@@ -112,10 +112,19 @@ public class DubboParserTest {
       .isEqualTo(DubboParser.errorCode(new IOException("timeout")))
       .isNull();
 
-    // Prove that we don't map codes to human readable names defined in RpcException
-    for (int i = 0; i < 6; i++) {
-      assertThat(DubboParser.errorCode(new RpcException(i)))
-        .isEqualTo(String.valueOf(i));
-    }
+    assertThat(DubboParser.errorCode(new RpcException(0)))
+      .isEqualTo("UNKNOWN_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(1)))
+      .isEqualTo("NETWORK_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(2)))
+      .isEqualTo("TIMEOUT_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(3)))
+      .isEqualTo("BIZ_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(4)))
+      .isEqualTo("FORBIDDEN_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(5)))
+      .isEqualTo("SERIALIZATION_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(6)))
+      .isEqualTo("6"); // this will catch drift if Dubbo adds another code
   }
 }
