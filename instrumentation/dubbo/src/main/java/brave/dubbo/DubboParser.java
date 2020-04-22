@@ -16,7 +16,11 @@ package brave.dubbo;
 import brave.Span;
 import brave.internal.Nullable;
 import brave.internal.Platform;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.net.InetSocketAddress;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
@@ -25,6 +29,36 @@ import org.apache.dubbo.rpc.RpcException;
 import org.apache.dubbo.rpc.support.RpcUtils;
 
 final class DubboParser {
+  static final Map<Integer, String> ERROR_CODE_NUMBER_TO_NAME = errorCodeNumberToName();
+
+  /**
+   * Dubbo adds error codes sometimes. For example, they added two in the last two years. If we did
+   * a simple switch/case of each code, like {@link RpcException#BIZ_EXCEPTION}, new code names
+   * would not be seen until an upgrade of Brave. That, or we'd have to fall back to a code number
+   * until the upgrade of Brave converged.
+   *
+   * <p>This uses reflection instead, which is unlikely to fail as Dubbo's error codes are public
+   * constants.
+   */
+  static Map<Integer, String> errorCodeNumberToName() {
+    Map<Integer, String> result = new LinkedHashMap<>();
+    for (Field field : RpcException.class.getDeclaredFields()) {
+      if (Modifier.isStatic(field.getModifiers()) && field.getType() == int.class) {
+        try {
+          result.put((Integer) field.get(null), field.getName());
+        } catch (Exception e) {
+          assert false : e.getMessage(); // make all unit tests fail
+
+          // We don't use isAccessible() (deprecated) or canAccess() (Java 9 method)
+          // A failure to read a public constant an extreme case, but won't crash anything nor would
+          // prevent the normal "error" tag from working.
+          Platform.get().log("Error reading error code %s", field, e);
+        }
+      }
+    }
+    return result;
+  }
+
   /**
    * Returns the method name of the invocation or the first string arg of an "$invoke" or
    * "$invokeAsync" method.
@@ -70,32 +104,12 @@ final class DubboParser {
   }
 
   /**
-   * On occasion, (roughly once a year) Dubbo adds more error code numbers. When this occurs, do
-   * not use the symbol name, in the switch statement, as it will affect the minimum version.
+   * On occasion, (roughly once a year) Dubbo adds more error code numbers. When this occurs, do not
+   * use the symbol name, in the switch statement, as it will affect the minimum version.
    */
   @Nullable static String errorCode(Throwable error) {
     if (error instanceof RpcException) {
-      int code = ((RpcException) error).getCode();
-      switch (code) { // requires maintenance if constants are updated
-        case RpcException.UNKNOWN_EXCEPTION:
-          return "UNKNOWN_EXCEPTION";
-        case RpcException.NETWORK_EXCEPTION:
-          return "NETWORK_EXCEPTION";
-        case RpcException.TIMEOUT_EXCEPTION:
-          return "TIMEOUT_EXCEPTION";
-        case RpcException.BIZ_EXCEPTION:
-          return "BIZ_EXCEPTION";
-        case RpcException.FORBIDDEN_EXCEPTION:
-          return "FORBIDDEN_EXCEPTION";
-        case RpcException.SERIALIZATION_EXCEPTION:
-          return "SERIALIZATION_EXCEPTION";
-        case RpcException.NO_INVOKER_AVAILABLE_AFTER_FILTER:
-          return "NO_INVOKER_AVAILABLE_AFTER_FILTER";
-        case 7: // RpcException.LIMIT_EXCEEDED_EXCEPTION Added in 2.7.3
-          return "LIMIT_EXCEEDED_EXCEPTION";
-        default:
-          return String.valueOf(code);
-      }
+      return ERROR_CODE_NUMBER_TO_NAME.get(((RpcException) error).getCode());
     }
     return null;
   }

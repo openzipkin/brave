@@ -129,6 +129,6 @@ public class DubboParserTest {
     assertThat(DubboParser.errorCode(new RpcException(7)))
       .isEqualTo("LIMIT_EXCEEDED_EXCEPTION");
     assertThat(DubboParser.errorCode(new RpcException(8)))
-      .isEqualTo("8"); // this will catch drift if Dubbo adds another code
+      .isNull(); // This test will drift with a new error code name if Dubbo adds one.
   }
 }
