@@ -43,7 +43,11 @@ final class DubboParser {
   static Map<Integer, String> errorCodeNumberToName() {
     Map<Integer, String> result = new LinkedHashMap<>();
     for (Field field : RpcException.class.getDeclaredFields()) {
-      if (Modifier.isStatic(field.getModifiers()) && field.getType() == int.class) {
+      if (Modifier.isPublic(field.getModifiers())
+        && Modifier.isStatic(field.getModifiers())
+        && Modifier.isFinal(field.getModifiers())
+        && field.getType() == int.class
+      ) {
         try {
           result.put((Integer) field.get(null), field.getName());
         } catch (Exception e) {
