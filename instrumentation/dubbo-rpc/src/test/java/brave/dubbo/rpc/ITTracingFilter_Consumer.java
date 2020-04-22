@@ -188,7 +188,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
 
     Span span =
       reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, ".*Not found exported service.*");
-    assertThat(span.tags().get("dubbo.error_code")).isEqualTo("1");
+    assertThat(span.tags().get("dubbo.error_code")).isEqualTo("NETWORK_EXCEPTION");
   }
 
   /** Ensures the span completes on asynchronous invocation. */

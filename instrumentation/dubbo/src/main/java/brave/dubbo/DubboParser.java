@@ -70,19 +70,32 @@ final class DubboParser {
   }
 
   /**
-   * We decided to not map Dubbo codes to human readable names like {@link
-   * RpcException#BIZ_EXCEPTION} even though we defined "rpc.error_code" as a human readable name.
-   *
-   * <p>The reason was a comparison with HTTP status codes, and the choice was between returning
-   * just numbers or reusing "UNKNOWN_EXCEPTION" which is defined in Dubbo for code "0" for any
-   * unknown code. Returning numbers was the less bad option as it doesn't conflate code words.
-   *
-   * <p>Later, we can revert this back to code words, but once this gets into the RPC mapping for
-   * Dubbo it will be hard to change.
+   * On occasion, (roughly once a year) Dubbo adds more error code numbers. When this occurs, do
+   * not use the symbol name, in the switch statement, as it will affect the minimum version.
    */
   @Nullable static String errorCode(Throwable error) {
     if (error instanceof RpcException) {
-      return String.valueOf(((RpcException) error).getCode());
+      int code = ((RpcException) error).getCode();
+      switch (code) { // requires maintenance if constants are updated
+        case RpcException.UNKNOWN_EXCEPTION:
+          return "UNKNOWN_EXCEPTION";
+        case RpcException.NETWORK_EXCEPTION:
+          return "NETWORK_EXCEPTION";
+        case RpcException.TIMEOUT_EXCEPTION:
+          return "TIMEOUT_EXCEPTION";
+        case RpcException.BIZ_EXCEPTION:
+          return "BIZ_EXCEPTION";
+        case RpcException.FORBIDDEN_EXCEPTION:
+          return "FORBIDDEN_EXCEPTION";
+        case RpcException.SERIALIZATION_EXCEPTION:
+          return "SERIALIZATION_EXCEPTION";
+        case RpcException.NO_INVOKER_AVAILABLE_AFTER_FILTER:
+          return "NO_INVOKER_AVAILABLE_AFTER_FILTER";
+        case 7: // RpcException.LIMIT_EXCEEDED_EXCEPTION Added in 2.7.3
+          return "LIMIT_EXCEEDED_EXCEPTION";
+        default:
+          return String.valueOf(code);
+      }
     }
     return null;
   }
