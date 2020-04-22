@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -106,24 +106,16 @@ public class DubboParserTest {
 
     assertThat(DubboParser.service(invocation)).isNull();
   }
+
   @Test public void errorCodes() {
     assertThat(DubboParser.errorCode(null))
       .isEqualTo(DubboParser.errorCode(new IOException("timeout")))
       .isNull();
 
-    assertThat(DubboParser.errorCode(new RpcException(0)))
-      .isEqualTo("UNKNOWN_EXCEPTION");
-    assertThat(DubboParser.errorCode(new RpcException(1)))
-      .isEqualTo("NETWORK_EXCEPTION");
-    assertThat(DubboParser.errorCode(new RpcException(2)))
-      .isEqualTo("TIMEOUT_EXCEPTION");
-    assertThat(DubboParser.errorCode(new RpcException(3)))
-      .isEqualTo("BIZ_EXCEPTION");
-    assertThat(DubboParser.errorCode(new RpcException(4)))
-      .isEqualTo("FORBIDDEN_EXCEPTION");
-    assertThat(DubboParser.errorCode(new RpcException(5)))
-      .isEqualTo("SERIALIZATION_EXCEPTION");
-    assertThat(DubboParser.errorCode(new RpcException(6)))
-      .isEqualTo("6"); // this will catch drift if Dubbo adds another code
+    // Prove that we don't map codes to human readable names defined in RpcException
+    for (int i = 0; i < 6; i++) {
+      assertThat(DubboParser.errorCode(new RpcException(i)))
+        .isEqualTo(String.valueOf(i));
+    }
   }
 }
