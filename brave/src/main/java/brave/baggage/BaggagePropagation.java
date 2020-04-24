@@ -274,7 +274,8 @@ public class BaggagePropagation<K> implements Propagation<K> {
     List<String> baggageKeyNames = ExtraBaggageContext.getAllKeyNames(emptyExtraction);
     if (baggageKeyNames.isEmpty()) return propagation.keys();
 
-    List<String> result = new ArrayList<>(propagation.keys());
+    List<String> result = new ArrayList<>(propagation.keys().size() + baggageKeyNames.size());
+    result.addAll(propagation.keys());
     result.addAll(baggageKeyNames);
     return Collections.unmodifiableList(result);
   }
