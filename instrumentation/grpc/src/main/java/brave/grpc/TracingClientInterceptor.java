@@ -32,6 +32,7 @@ import io.grpc.ForwardingClientCallListener.SimpleForwardingClientCallListener;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
+import java.util.Map;
 
 import static brave.grpc.GrpcClientRequest.SETTER;
 
@@ -42,6 +43,7 @@ final class TracingClientInterceptor implements ClientInterceptor {
   final SamplerFunction<RpcRequest> sampler;
   final Injector<GrpcClientRequest> injector;
   final GrpcClientParser parser;
+  final Map<String, Metadata.Key<String>> nameToKey;
 
   TracingClientInterceptor(GrpcTracing grpcTracing) {
     tracer = grpcTracing.rpcTracing.tracing().tracer();
@@ -49,6 +51,7 @@ final class TracingClientInterceptor implements ClientInterceptor {
     sampler = grpcTracing.rpcTracing.clientSampler();
     injector = grpcTracing.propagation.injector(SETTER);
     parser = grpcTracing.clientParser;
+    nameToKey = grpcTracing.nameToKey;
   }
 
   /**
@@ -61,7 +64,8 @@ final class TracingClientInterceptor implements ClientInterceptor {
   public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(MethodDescriptor<ReqT, RespT> method,
     CallOptions callOptions, Channel next) {
     TraceContext invocationContext = currentTraceContext.get();
-    GrpcClientRequest request = new GrpcClientRequest(method);
+
+    GrpcClientRequest request = new GrpcClientRequest(nameToKey, method);
     Span span = tracer.nextSpanWithParent(sampler, request, invocationContext);
 
     Throwable error = null;

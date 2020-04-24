@@ -15,7 +15,6 @@ package brave.internal.baggage;
 
 import brave.baggage.BaggageField;
 import brave.internal.Nullable;
-import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.List;
@@ -68,24 +67,4 @@ public interface BaggageHandler<S> {
    * @see BaggageField#updateValue(TraceContextOrSamplingFlags, String)
    */
   @Nullable S updateState(S state, BaggageField field, @Nullable String value);
-
-  /**
-   * Extracts any state from a request value received by {@link Propagation.Getter#get(Object,
-   * Object)}.
-   *
-   * <p>Ex. When the state is a simple string, this will just use the request value directly.
-   * {@linkplain #isDynamic() Dynamic values} will need to perform some decoding, such as splitting
-   * on comma and equals.
-   */
-  @Nullable S fromRequestValue(Object request, String value);
-
-  /**
-   * Converts any state to a request value used by {@link Propagation.Setter#put(Object, Object,
-   * String)}.
-   *
-   * <p>Ex. When the state is a simple string, this will just be returned with no change.
-   * {@linkplain #isDynamic() Dynamic values} will need to perform some encoding, such as joining on
-   * equals and comma.
-   */
-  String toRequestValue(S state);
 }

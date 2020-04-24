@@ -29,6 +29,7 @@ import io.grpc.ServerCall.Listener;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.Status;
+import java.util.Map;
 
 import static brave.grpc.GrpcServerRequest.GETTER;
 
@@ -39,6 +40,7 @@ final class TracingServerInterceptor implements ServerInterceptor {
   final Extractor<GrpcServerRequest> extractor;
   final SamplerFunction<RpcRequest> sampler;
   final GrpcServerParser parser;
+  final Map<String, Metadata.Key<String>> nameToKey;
   final boolean grpcPropagationFormatEnabled;
 
   TracingServerInterceptor(GrpcTracing grpcTracing) {
@@ -47,13 +49,15 @@ final class TracingServerInterceptor implements ServerInterceptor {
     extractor = grpcTracing.propagation.extractor(GETTER);
     sampler = grpcTracing.rpcTracing.serverSampler();
     parser = grpcTracing.serverParser;
+    nameToKey = grpcTracing.nameToKey;
     grpcPropagationFormatEnabled = grpcTracing.grpcPropagationFormatEnabled;
   }
 
   @Override
   public <ReqT, RespT> Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
     Metadata headers, ServerCallHandler<ReqT, RespT> next) {
-    GrpcServerRequest request = new GrpcServerRequest(call.getMethodDescriptor(), headers);
+    GrpcServerRequest request =
+      new GrpcServerRequest(nameToKey, call.getMethodDescriptor(), headers);
     TraceContextOrSamplingFlags extracted = extractor.extract(request);
     Span span = nextSpan(extracted, request).kind(Span.Kind.SERVER);
     parser.onStart(call, headers, span.customizer());

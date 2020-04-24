@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,13 +17,15 @@ import brave.internal.Nullable;
 import brave.propagation.Propagation.Getter;
 import brave.rpc.RpcServerRequest;
 import io.grpc.Metadata;
+import io.grpc.Metadata.Key;
 import io.grpc.MethodDescriptor;
+import java.util.Map;
 
 // intentionally not yet public until we add tag parsing functionality
 final class GrpcServerRequest extends RpcServerRequest {
-  static final Getter<GrpcServerRequest, Metadata.Key<String>> GETTER =
-    new Getter<GrpcServerRequest, Metadata.Key<String>>() { // retrolambda no like
-      @Override public String get(GrpcServerRequest request, Metadata.Key<String> key) {
+  static final Getter<GrpcServerRequest, String> GETTER =
+    new Getter<GrpcServerRequest, String>() { // retrolambda no like
+      @Override public String get(GrpcServerRequest request, String key) {
         return request.getMetadata(key);
       }
 
@@ -32,13 +34,20 @@ final class GrpcServerRequest extends RpcServerRequest {
       }
     };
 
+  final Map<String, Key<String>> nameToKey;
   final String fullMethodName;
   final Metadata metadata;
 
-  GrpcServerRequest(MethodDescriptor<?, ?> methodDescriptor, Metadata metadata) {
+  GrpcServerRequest(
+    Map<String, Key<String>> nameToKey,
+    MethodDescriptor<?, ?> methodDescriptor,
+    Metadata metadata
+  ) {
+    if (nameToKey == null) throw new NullPointerException("nameToKey == null");
     if (methodDescriptor == null) throw new NullPointerException("methodDescriptor == null");
-    this.fullMethodName = methodDescriptor.getFullMethodName();
     if (metadata == null) throw new NullPointerException("metadata == null");
+    this.nameToKey = nameToKey;
+    this.fullMethodName = methodDescriptor.getFullMethodName();
     this.metadata = metadata;
   }
 
@@ -54,7 +63,13 @@ final class GrpcServerRequest extends RpcServerRequest {
     return GrpcParser.service(fullMethodName);
   }
 
-  @Nullable <T> T getMetadata(Metadata.Key<T> key) {
+  @Nullable String getMetadata(String name) {
+    if (name == null) throw new NullPointerException("name == null");
+    Key<String> key = nameToKey.get(name);
+    if (key == null) {
+      assert false : "We currently don't support getting metadata except propagation fields";
+      return null;
+    }
     return metadata.get(key);
   }
 }

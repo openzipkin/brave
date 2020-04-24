@@ -21,7 +21,7 @@ import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class B3SinglePropagationTest extends PropagationTest<String> {
+public class B3SinglePropagationTest extends PropagationTest {
   @Override protected Class<? extends Supplier<Propagation<String>>> propagationSupplier() {
     return PropagationSupplier.class;
   }
@@ -60,7 +60,7 @@ public class B3SinglePropagationTest extends PropagationTest<String> {
   }
 
   @Test public void extractTraceContext_sampledFalse() {
-    MapEntry<String> mapEntry = new MapEntry<>();
+    MapEntry mapEntry = new MapEntry();
     map.put("b3", "0");
 
     SamplingFlags result = propagation.extractor(mapEntry).extract(map).samplingFlags();
@@ -70,7 +70,7 @@ public class B3SinglePropagationTest extends PropagationTest<String> {
   }
 
   @Test public void extractTraceContext_malformed() {
-    MapEntry<String> mapEntry = new MapEntry<>();
+    MapEntry mapEntry = new MapEntry();
     map.put("b3", "not-a-tumor");
 
     SamplingFlags result = propagation.extractor(mapEntry).extract(map).samplingFlags();
@@ -80,7 +80,7 @@ public class B3SinglePropagationTest extends PropagationTest<String> {
   }
 
   @Test public void extractTraceContext_malformed_uuid() {
-    MapEntry<String> mapEntry = new MapEntry<>();
+    MapEntry mapEntry = new MapEntry();
     map.put("b3", "b970dafd-0d95-40aa-95d8-1d8725aebe40");
 
     SamplingFlags result = propagation.extractor(mapEntry).extract(map).samplingFlags();
@@ -90,7 +90,7 @@ public class B3SinglePropagationTest extends PropagationTest<String> {
   }
 
   @Test public void extractTraceContext_debug_with_ids() {
-    MapEntry<String> mapEntry = new MapEntry<>();
+    MapEntry mapEntry = new MapEntry();
 
     map.put("b3", "4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-d");
 

@@ -21,15 +21,10 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public class KafkaConsumerRequestSetterTest
-  extends PropagationSetterTest<KafkaConsumerRequest, String> {
+public class KafkaConsumerRequestSetterTest extends PropagationSetterTest<KafkaConsumerRequest> {
   KafkaConsumerRequest request = new KafkaConsumerRequest(
     new ConsumerRecord<>("topic", 0, 1L, "key", "value")
   );
-
-  @Override public Propagation.KeyFactory<String> keyFactory() {
-    return Propagation.KeyFactory.STRING;
-  }
 
   @Override protected KafkaConsumerRequest request() {
     return request;

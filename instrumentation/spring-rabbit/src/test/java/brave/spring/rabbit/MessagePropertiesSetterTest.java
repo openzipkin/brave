@@ -13,7 +13,7 @@
  */
 package brave.spring.rabbit;
 
-import brave.propagation.Propagation;
+import brave.propagation.Propagation.Setter;
 import brave.test.propagation.PropagationSetterTest;
 import java.util.Collections;
 import org.springframework.amqp.core.MessageProperties;
@@ -21,18 +21,14 @@ import org.springframework.amqp.core.MessageProperties;
 import static brave.spring.rabbit.SpringRabbitPropagation.GETTER;
 import static brave.spring.rabbit.SpringRabbitPropagation.SETTER;
 
-public class MessagePropertiesSetterTest extends PropagationSetterTest<MessageProperties, String> {
+public class MessagePropertiesSetterTest extends PropagationSetterTest<MessageProperties> {
   MessageProperties properties = new MessageProperties();
-
-  @Override public Propagation.KeyFactory<String> keyFactory() {
-    return Propagation.KeyFactory.STRING;
-  }
 
   @Override protected MessageProperties request() {
     return properties;
   }
 
-  @Override protected Propagation.Setter<MessageProperties, String> setter() {
+  @Override protected Setter<MessageProperties, String> setter() {
     return SETTER;
   }
 

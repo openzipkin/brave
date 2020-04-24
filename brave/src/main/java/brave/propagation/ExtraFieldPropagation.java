@@ -202,7 +202,14 @@ import static java.util.Collections.unmodifiableList;
       this.extraKeyNames = extraKeyNames;
     }
 
-    @Override public <K> ExtraFieldPropagation<K> create(Propagation.KeyFactory<K> keyFactory) {
+    /** {@inheritDoc} */
+    @Override public ExtraFieldPropagation<String> get() {
+      return create(KeyFactory.STRING);
+    }
+
+    /** {@inheritDoc} */
+    @Deprecated @Override
+    public <K> ExtraFieldPropagation<K> create(Propagation.KeyFactory<K> keyFactory) {
       List<K> extraKeys = new ArrayList<>();
       for (String extraKeyName : extraKeyNames) extraKeys.add(keyFactory.create(extraKeyName));
       return new ExtraFieldPropagation<>(delegate.create(keyFactory), unmodifiableList(extraKeys));
@@ -229,13 +236,7 @@ import static java.util.Collections.unmodifiableList;
     this.extraKeys = extraKeys;
   }
 
-  /**
-   * Returns the extra keys this component can extract. This result is lowercase and does not
-   * include any {@link #keys() trace context keys}.
-   *
-   * @deprecated Since 5.11 do not use this, as it was only added for OpenTracing. brave-opentracing
-   * works around this.
-   */
+  /** @deprecated Since 5.12 use {@link BaggagePropagation#allKeyNames(Propagation)} instead. */
   @Deprecated public List<K> extraKeys() {
     return extraKeys;
   }

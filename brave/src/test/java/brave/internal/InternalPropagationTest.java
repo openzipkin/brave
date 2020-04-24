@@ -13,9 +13,9 @@
  */
 package brave.internal;
 
-import brave.propagation.B3SinglePropagation;
-import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.SamplingFlags;
+import brave.propagation.TraceContext;
+import java.util.Collections;
 import org.junit.Test;
 
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
@@ -38,10 +38,13 @@ public class InternalPropagationTest {
     SamplingFlags.EMPTY.toString(); // ensure wired
   }
 
-  @Test public void extraKeyNames() {
-    ExtraFieldPropagation.Factory factory =
-      ExtraFieldPropagation.newFactory(B3SinglePropagation.FACTORY, "user-id", "session-id");
-    assertThat(InternalPropagation.instance.extraKeyNames(factory))
-      .containsExactly("user-id", "session-id");
+  @Test public void shallowCopy() {
+    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).debug(true)
+      .extra(Collections.singletonList(1L)).build();
+
+    assertThat(InternalPropagation.instance.shallowCopy(context))
+      .isNotSameAs(context)
+      .usingRecursiveComparison()
+      .isEqualTo(context);
   }
 }

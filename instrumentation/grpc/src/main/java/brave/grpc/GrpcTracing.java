@@ -20,6 +20,7 @@ import brave.rpc.RpcTracing;
 import io.grpc.ClientInterceptor;
 import io.grpc.Metadata;
 import io.grpc.ServerInterceptor;
+import java.util.Map;
 
 public final class GrpcTracing {
   public static GrpcTracing create(Tracing tracing) {
@@ -98,19 +99,21 @@ public final class GrpcTracing {
   }
 
   final RpcTracing rpcTracing;
-  final Propagation<Metadata.Key<String>> propagation;
+  final Propagation<String> propagation;
   final GrpcClientParser clientParser;
   final GrpcServerParser serverParser;
+  final Map<String, Metadata.Key<String>> nameToKey;
   final boolean grpcPropagationFormatEnabled;
 
   GrpcTracing(Builder builder) { // intentionally hidden constructor
     rpcTracing = builder.rpcTracing;
     grpcPropagationFormatEnabled = builder.grpcPropagationFormatEnabled;
-    Propagation.Factory propagationFactory = rpcTracing.tracing().propagationFactory();
     if (grpcPropagationFormatEnabled) {
-      propagationFactory = GrpcPropagation.newFactory(propagationFactory);
+      propagation = GrpcPropagation.create(rpcTracing.tracing().propagation());
+    } else {
+      propagation = rpcTracing.tracing().propagation();
     }
-    propagation = propagationFactory.create(AsciiMetadataKeyFactory.INSTANCE);
+    nameToKey = GrpcPropagation.nameToKey(propagation);
     clientParser = builder.clientParser;
     serverParser = builder.serverParser;
   }

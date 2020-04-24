@@ -24,19 +24,5 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class InternalBaggageTest {
-  @Test public void allKeyNames_baggagePropagation() {
-    Propagation.Factory factory = BaggagePropagation.newFactoryBuilder(B3SinglePropagation.FACTORY)
-      .add(SingleBaggageField.local(BaggageField.create("redacted")))
-      .add(SingleBaggageField.remote(BaggageField.create("user-id")))
-      .add(SingleBaggageField.remote(BaggageField.create("session-id"))).build();
-    assertThat(InternalBaggage.instance.allKeyNames(factory))
-      .containsExactly("b3", "user-id", "session-id");
-  }
 
-  @Test public void allKeyNames_extraFieldPropagation() {
-    ExtraFieldPropagation.Factory factory =
-      ExtraFieldPropagation.newFactory(B3SinglePropagation.FACTORY, "user-id", "session-id");
-    assertThat(InternalBaggage.instance.allKeyNames(factory))
-      .containsExactly("b3", "user-id", "session-id");
-  }
 }

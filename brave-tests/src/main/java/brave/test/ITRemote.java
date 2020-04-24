@@ -84,7 +84,7 @@ public abstract class ITRemote {
       Collections.emptyList()
     );
 
-    return tracing.propagationFactory().decorate(context);
+    return propagationFactory.decorate(context);
   }
 
   protected final CurrentTraceContext currentTraceContext;

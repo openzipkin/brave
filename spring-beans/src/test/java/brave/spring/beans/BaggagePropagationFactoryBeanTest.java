@@ -13,14 +13,11 @@
  */
 package brave.spring.beans;
 
-import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagation;
 import brave.baggage.BaggagePropagationCustomizer;
 import brave.propagation.B3Propagation;
 import brave.propagation.B3SinglePropagation;
 import brave.propagation.Propagation;
-import org.assertj.core.api.InstanceOfAssertFactories;
-import org.assertj.core.api.ObjectArrayAssert;
 import org.junit.After;
 import org.junit.Test;
 
@@ -80,17 +77,17 @@ public class BaggagePropagationFactoryBeanTest {
       + "</bean>"
     );
 
-    assertThatHandlersWithKeyNames()
-      .extracting("handler.field")
-      .usingFieldByFieldElementComparator()
-      .containsExactly(BaggageField.create("userId"));
-    assertThatHandlersWithKeyNames()
-      .flatExtracting("keyNames")
-      .containsExactly("baggage_user_id", "baggage-user-id");
+    Propagation<String> propagation =
+      context.getBean("propagationFactory", Propagation.Factory.class).get();
+
+    assertThat(BaggagePropagation.allKeyNames(propagation)).endsWith(
+      "baggage_user_id",
+      "baggage-user-id"
+    );
   }
 
   /** Spring is graceful about a single field being substitutable for a list of size one */
-  @Test public void config_no_lists() {
+  @Test public void configs_no_list() {
     context = new XmlBeans(""
       + "<bean id=\"userIdBaggageField\" class=\"brave.baggage.BaggageField\" factory-method=\"create\">\n"
       + "  <constructor-arg value=\"userId\" />\n"
@@ -105,13 +102,11 @@ public class BaggagePropagationFactoryBeanTest {
       + "</bean>"
     );
 
-    assertThatHandlersWithKeyNames()
-      .extracting("handler.field")
-      .usingFieldByFieldElementComparator()
-      .containsExactly(BaggageField.create("userId"));
-    assertThatHandlersWithKeyNames()
-      .flatExtracting("keyNames")
-      .containsExactly("userid");
+    Propagation<String> propagation =
+      context.getBean("propagationFactory", Propagation.Factory.class).get();
+
+    assertThat(BaggagePropagation.allKeyNames(propagation))
+      .endsWith("userid");
   }
 
   @Test public void propagationFactory() {
@@ -159,11 +154,5 @@ public class BaggagePropagationFactoryBeanTest {
 
     verify(CUSTOMIZER_ONE).customize(any(BaggagePropagation.FactoryBuilder.class));
     verify(CUSTOMIZER_TWO).customize(any(BaggagePropagation.FactoryBuilder.class));
-  }
-
-  ObjectArrayAssert<Object> assertThatHandlersWithKeyNames() {
-    return assertThat(context.getBean("propagationFactory", Propagation.Factory.class))
-      .extracting("handlersWithKeyNames")
-      .asInstanceOf(InstanceOfAssertFactories.ARRAY);
   }
 }

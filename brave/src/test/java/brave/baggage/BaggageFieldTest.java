@@ -39,7 +39,7 @@ public class BaggageFieldTest {
   Propagation.Factory factory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
     .add(SingleBaggageField.newBuilder(REQUEST_ID).addKeyName("x-vcap-request-id").build())
     .add(SingleBaggageField.remote(AMZN_TRACE_ID)).build();
-  Propagation<String> propagation = factory.create(Propagation.KeyFactory.STRING);
+  Propagation<String> propagation = factory.get();
   Extractor<Map<String, String>> extractor = propagation.extractor(Map::get);
 
   TraceContextOrSamplingFlags emptyExtraction = extractor.extract(Collections.emptyMap());

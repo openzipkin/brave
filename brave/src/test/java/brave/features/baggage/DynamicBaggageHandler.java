@@ -15,7 +15,7 @@ package brave.features.baggage;
 
 import brave.baggage.BaggageField;
 import brave.internal.Nullable;
-import brave.internal.baggage.BaggageHandler;
+import brave.internal.baggage.RemoteBaggageHandler;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -32,9 +32,20 @@ import static com.google.common.base.Objects.equal;
  * This accepts any fields, but only uses one remote value. This is an example, but not of good
  * performance.
  */
-final class DynamicBaggageHandler implements BaggageHandler<Map<BaggageField, String>> {
-  static BaggageHandler<Map<BaggageField, String>> create() {
-    return new DynamicBaggageHandler();
+final class DynamicBaggageHandler implements RemoteBaggageHandler<Map<BaggageField, String>> {
+  static RemoteBaggageHandler<Map<BaggageField, String>> create(String keyName) {
+    if (keyName == null) throw new NullPointerException("keyName == null");
+    return new DynamicBaggageHandler(keyName);
+  }
+
+  final List<String> keyNames;
+
+  DynamicBaggageHandler(String keyName) {
+    this.keyNames = Collections.singletonList(keyName);
+  }
+
+  @Override public List<String> keyNames() {
+    return keyNames;
   }
 
   @Override public boolean isDynamic() {
@@ -77,7 +88,7 @@ final class DynamicBaggageHandler implements BaggageHandler<Map<BaggageField, St
   }
 
   @Override
-  public Map<BaggageField, String> fromRequestValue(Object request, String encoded) {
+  public Map<BaggageField, String> fromRemoteValue(Object request, String encoded) {
     Properties decoded = new Properties();
     try {
       decoded.load(new StringReader(encoded));
@@ -92,7 +103,7 @@ final class DynamicBaggageHandler implements BaggageHandler<Map<BaggageField, St
     return result;
   }
 
-  @Override public String toRequestValue(Map<BaggageField, String> state) {
+  @Override public String toRemoteValue(Map<BaggageField, String> state) {
     Properties encoded = new Properties();
     state.forEach((f, v) -> encoded.put(f.name(), v));
     StringBuilder result = new StringBuilder();

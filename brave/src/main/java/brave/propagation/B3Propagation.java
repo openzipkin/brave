@@ -42,6 +42,17 @@ public final class B3Propagation<K> implements Propagation<K> {
 
   public static final Propagation.Factory FACTORY = newFactoryBuilder().build();
 
+  static final Propagation<String> INSTANCE = FACTORY.get();
+
+  /**
+   * Returns a singleton default instance.
+   *
+   * @since 5.12
+   */
+  public static Propagation<String> get() {
+    return INSTANCE;
+  }
+
   public static FactoryBuilder newFactoryBuilder() {
     return new FactoryBuilder();
   }
@@ -266,7 +277,7 @@ public final class B3Propagation<K> implements Propagation<K> {
 
       // The only flag we action is 1, but it could be that any integer is present.
       // Here, we leniently parse as debug is not a primary consideration of the trace context.
-      boolean debug = "1".equals(getter.get(request, propagation.debugKey));
+      boolean debug = "1" .equals(getter.get(request, propagation.debugKey));
 
       String traceIdString = getter.get(request, propagation.traceIdKey);
       // It is ok to go without a trace ID, if sampling or debug is set
@@ -292,6 +303,10 @@ public final class B3Propagation<K> implements Propagation<K> {
     Factory(FactoryBuilder builder) {
       this.injectFormat = builder.injectFormat;
       this.kindToInjectFormats = new EnumMap<>(builder.kindToInjectFormats);
+    }
+
+    @Override public Propagation<String> get() {
+      return create(KeyFactory.STRING);
     }
 
     @Override public <K1> Propagation<K1> create(KeyFactory<K1> keyFactory) {

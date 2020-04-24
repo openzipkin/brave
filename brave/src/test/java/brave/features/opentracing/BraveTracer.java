@@ -14,12 +14,12 @@
 package brave.features.opentracing;
 
 import brave.Tracing;
-import brave.baggage.BaggageField;
-import brave.internal.InternalBaggage;
+import brave.baggage.BaggagePropagation;
 import brave.propagation.Propagation;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
 import io.opentracing.Scope;
 import io.opentracing.ScopeManager;
@@ -30,6 +30,7 @@ import io.opentracing.propagation.Format;
 import io.opentracing.propagation.TextMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -43,15 +44,17 @@ final class BraveTracer implements Tracer {
   final Tracing tracing;
   final brave.Tracer tracer;
   final TraceContext.Injector<TextMap> injector;
-  final TraceContext.Extractor<TextMap> extractor;
+  final Extractor<TextMap> extractor;
 
   BraveTracer(brave.Tracing tracing) {
     this.tracing = tracing;
     tracer = tracing.tracer();
     injector = tracing.propagation().injector(TEXT_MAP_SETTER);
-    BaggageField.create("foo"); // ensure the below instance exists
-    Set<String> allKeyNames = InternalBaggage.instance.allKeyNames(tracing.propagationFactory());
-    extractor = new TextMapExtractorAdaptor(tracing.propagation(), allKeyNames);
+    Set<String> lcPropagationKeys = new LinkedHashSet<>();
+    for (String keyName : BaggagePropagation.allKeyNames(tracing.propagation())) {
+      lcPropagationKeys.add(keyName.toLowerCase(Locale.ROOT));
+    }
+    extractor = new TextMapExtractorAdaptor(tracing.propagation(), lcPropagationKeys);
   }
 
   @Override public ScopeManager scopeManager() {
@@ -116,12 +119,12 @@ final class BraveTracer implements Tracer {
    *
    * <p>See https://github.com/opentracing/opentracing-java/issues/305
    */
-  static final class TextMapExtractorAdaptor implements TraceContext.Extractor<TextMap> {
-    final Set<String> allNames;
-    final TraceContext.Extractor<Map<String, String>> delegate;
+  static final class TextMapExtractorAdaptor implements Extractor<TextMap> {
+    final Set<String> lcPropagationKeys;
+    final Extractor<Map<String, String>> delegate;
 
-    TextMapExtractorAdaptor(Propagation<String> propagation, Set<String> allNames) {
-      this.allNames = allNames;
+    TextMapExtractorAdaptor(Propagation<String> propagation, Set<String> lcPropagationKeys) {
+      this.lcPropagationKeys = lcPropagationKeys;
       this.delegate = propagation.extractor(LC_MAP_GETTER);
     }
 
@@ -131,7 +134,7 @@ final class BraveTracer implements Tracer {
       for (Iterator<Map.Entry<String, String>> it = entries.iterator(); it.hasNext(); ) {
         Map.Entry<String, String> next = it.next();
         String inputKey = next.getKey().toLowerCase(Locale.ROOT);
-        if (allNames.contains(inputKey)) {
+        if (lcPropagationKeys.contains(inputKey)) {
           cache.put(inputKey, next.getValue());
         }
       }

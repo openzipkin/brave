@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,19 +14,21 @@
 package brave.grpc;
 
 import io.grpc.Metadata;
+import io.grpc.Metadata.Key;
 import org.junit.Test;
 
 import static brave.grpc.TestObjects.METHOD_DESCRIPTOR;
+import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class GrpcClientRequestTest {
+  Key<String> b3Key = Key.of("b3", Metadata.ASCII_STRING_MARSHALLER);
   Metadata metadata = new Metadata();
-  GrpcClientRequest request = new GrpcClientRequest(METHOD_DESCRIPTOR);
-  Metadata.Key<String> b3Key = AsciiMetadataKeyFactory.INSTANCE.create("b3");
+  GrpcClientRequest request = new GrpcClientRequest(singletonMap("b3", b3Key), METHOD_DESCRIPTOR);
 
   @Test public void metadata() {
-    request.metadata(metadata).setMetadata(b3Key, "1");
+    request.metadata(metadata).setMetadata("b3", "1");
 
     assertThat(metadata.get(b3Key))
       .isEqualTo("1");
@@ -35,14 +37,14 @@ public class GrpcClientRequestTest {
   @Test public void metadata_replace() {
     metadata.put(b3Key, "0");
 
-    request.metadata(metadata).setMetadata(b3Key, "1");
+    request.metadata(metadata).setMetadata("b3", "1");
 
     assertThat(request.metadata.get(b3Key))
       .isEqualTo("1");
   }
 
   @Test public void metadata_null() {
-    assertThatThrownBy(() -> request.setMetadata(b3Key, "1"))
+    assertThatThrownBy(() -> request.setMetadata("b3", "1"))
       .isNotInstanceOf(NullPointerException.class)
       .hasMessage("This code should never be called when null");
   }

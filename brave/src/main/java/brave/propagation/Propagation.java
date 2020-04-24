@@ -14,10 +14,9 @@
 package brave.propagation;
 
 import brave.Request;
+import brave.baggage.BaggagePropagation;
 import brave.internal.Nullable;
 import java.util.List;
-
-import static brave.propagation.Propagation.KeyFactory.STRING;
 
 /**
  * Injects and extracts {@link TraceContext trace identifiers} as text into requests that travel
@@ -31,14 +30,14 @@ import static brave.propagation.Propagation.KeyFactory.STRING;
  * request is sent to the server. The server {@linkplain TraceContext.Extractor#extract extracts} a
  * trace context from these headers before processing the request.
  *
- * @param <K> Usually, but not always, a {@link String}.
+ * @param <K> Deprecated except when a {@link String}.
  */
 public interface Propagation<K> {
-  Propagation<String> B3_STRING = B3Propagation.FACTORY.create(STRING);
+  Propagation<String> B3_STRING = B3Propagation.get();
   /**
    * @deprecated Since 5.9, use {@link B3Propagation#newFactoryBuilder()} to control inject formats.
    */
-  @Deprecated Propagation<String> B3_SINGLE_STRING = B3SinglePropagation.FACTORY.create(STRING);
+  @Deprecated Propagation<String> B3_SINGLE_STRING = B3SinglePropagation.FACTORY.get();
 
   abstract class Factory {
     /**
@@ -62,10 +61,23 @@ public interface Propagation<K> {
     }
 
     /**
-     * @param <K> Usually, but not always, a {@link String}.
+     * @param <K> Deprecated except when a {@link String}.
      * @see KeyFactory#STRING
+     * @deprecated Since 5.12, use {@link #get()}
      */
+    @Deprecated
     public abstract <K> Propagation<K> create(KeyFactory<K> keyFactory);
+
+    /**
+     * Returns a possibly cached propagation instance.
+     *
+     * <p>Implementations should override and implement this method directly.
+     *
+     * @since 5.12
+     */
+    public Propagation<String> get() {
+      return create(KeyFactory.STRING);
+    }
 
     /**
      * Decorates the input such that it can propagate extra state, such as a timestamp or baggage.
@@ -86,10 +98,9 @@ public interface Propagation<K> {
   }
 
   /**
-   * Creates keys for use in propagated contexts.
-   *
-   * @param <K> Usually, but not always, a {@link String}.
+   * @deprecated since 5.12 non-string keys are no longer supported
    */
+  @Deprecated
   interface KeyFactory<K> {
     KeyFactory<String> STRING = new KeyFactory<String>() { // retrolambda no likey
       @Override public String create(String name) {
@@ -108,7 +119,7 @@ public interface Propagation<K> {
    * Replaces a propagated key with the given value.
    *
    * @param <R> Usually, but not always, an instance of {@link Request}.
-   * @param <K> Usually, but not always, a {@link String}.
+   * @param <K> Deprecated except when a {@link String}.
    */
   interface Setter<R, K> {
     // BRAVE6: make this a charsequence as there's no need to allocate a string
@@ -128,6 +139,8 @@ public interface Propagation<K> {
    * <p><em>Note:</em> If your implementation carries baggage, such as correlation IDs, do not
    * return the names of those fields here. If you do, they will be deleted, which can interfere
    * with user headers.
+   *
+   * @see BaggagePropagation#allKeyNames(Propagation)
    */
   // The use cases of this are:
   // * allow pre-allocation of fields, especially in systems like gRPC Metadata
@@ -151,7 +164,7 @@ public interface Propagation<K> {
    * Gets the first value of the given propagation key or returns {@code null}.
    *
    * @param <R> Usually, but not always, an instance of {@link Request}.
-   * @param <K> Usually, but not always, a {@link String}.
+   * @param <K> Deprecated except when a {@link String}.
    */
   interface Getter<R, K> {
     @Nullable String get(R request, K key);

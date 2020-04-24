@@ -15,7 +15,7 @@ package brave.propagation;
 
 import brave.Tracing;
 import brave.baggage.BaggageField;
-import brave.internal.baggage.BaggagePropagationTest;
+import brave.baggage.BaggagePropagationTest;
 import brave.propagation.CurrentTraceContext.Scope;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -25,7 +25,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static brave.propagation.ExtraFieldPropagation.newFactoryBuilder;
-import static brave.propagation.Propagation.KeyFactory.STRING;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -49,8 +48,8 @@ public class ExtraFieldPropagationTest {
   TraceContext context;
 
   @Before public void initialize() {
-    injector = factory.create(STRING).injector(Map::put);
-    extractor = factory.create(STRING).extractor(Map::get);
+    injector = factory.get().injector(Map::put);
+    extractor = factory.get().extractor(Map::get);
     context = factory.decorate(TraceContext.newBuilder()
       .traceId(1L)
       .spanId(2L)
@@ -63,7 +62,7 @@ public class ExtraFieldPropagationTest {
    * trace.
    */
   @Test public void keysDontIncludeExtra() {
-    assertThat(factory.create(Propagation.KeyFactory.STRING).keys())
+    assertThat(factory.get().keys())
       .isEqualTo(Propagation.B3_SINGLE_STRING.keys());
   }
 
@@ -71,7 +70,7 @@ public class ExtraFieldPropagationTest {
    * Ensures OpenTracing 0.31 can read the extra keys, as its TextMap has no get by name function.
    */
   @Test public void extraKeysDontIncludeTraceContextKeys() {
-    assertThat(factory.create(Propagation.KeyFactory.STRING).extraKeys())
+    assertThat(factory.get().extraKeys())
       .containsExactly("x-vcap-request-id", "x-amzn-trace-id");
   }
 

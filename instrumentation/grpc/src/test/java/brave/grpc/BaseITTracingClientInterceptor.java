@@ -59,9 +59,9 @@ import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 import static org.junit.Assume.assumeTrue;
 
 public abstract class BaseITTracingClientInterceptor extends ITRemote {
-  TestServer server = new TestServer(propagationFactory);
-  ManagedChannel client;
   GrpcTracing grpcTracing = GrpcTracing.create(tracing);
+  TestServer server = new TestServer(grpcTracing.nameToKey, grpcTracing.propagation);
+  ManagedChannel client;
 
   @Before public void setup() throws IOException {
     server.start();

@@ -61,13 +61,10 @@ public abstract class Tracing implements Closeable {
    * When a trace leaves the process, it needs to be propagated, usually via headers. This utility
    * is used to inject or extract a trace context from remote requests.
    */
-  // Implementations should override and cache this as a field.
-  public Propagation<String> propagation() {
-    return propagationFactory().create(Propagation.KeyFactory.STRING);
-  }
+  public abstract Propagation<String> propagation();
 
-  /** This supports edge cases like GRPC Metadata propagation which doesn't use String keys. */
-  abstract public Propagation.Factory propagationFactory();
+  /** @deprecated Since 5.12 use {@link #propagation()} as non-string keys are unsupported. */
+  @Deprecated public abstract Propagation.Factory propagationFactory();
 
   /**
    * Sampler is responsible for deciding if a particular trace should be "sampled", i.e. whether the
@@ -459,7 +456,7 @@ public abstract class Tracing implements Closeable {
       this.clock = builder.clock != null ? builder.clock : Platform.get().clock();
       this.errorParser = builder.errorParser;
       this.propagationFactory = builder.propagationFactory;
-      this.stringPropagation = builder.propagationFactory.create(Propagation.KeyFactory.STRING);
+      this.stringPropagation = builder.propagationFactory.get();
       this.currentTraceContext = builder.currentTraceContext;
       this.sampler = builder.sampler;
       this.noop = new AtomicBoolean();

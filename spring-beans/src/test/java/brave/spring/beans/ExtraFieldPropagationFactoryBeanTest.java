@@ -13,13 +13,12 @@
  */
 package brave.spring.beans;
 
-import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagation;
 import brave.propagation.B3Propagation;
 import brave.propagation.B3SinglePropagation;
 import brave.propagation.ExtraFieldCustomizer;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
-import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.After;
 import org.junit.Test;
 
@@ -73,15 +72,13 @@ public class ExtraFieldPropagationFactoryBeanTest {
       + "</bean>"
     );
 
-    assertThat(context.getBean("propagationFactory", Propagation.Factory.class))
-      .extracting("delegate.handlersWithKeyNames")
-      .asInstanceOf(InstanceOfAssertFactories.ARRAY)
-      .extracting("handler.field")
-      .usingFieldByFieldElementComparator()
-      .containsExactly(
-        BaggageField.create("customer-id"),
-        BaggageField.create("x-vcap-request-id")
-      );
+    Propagation<String> propagation =
+      context.getBean("propagationFactory", Propagation.Factory.class).get();
+
+    assertThat(BaggagePropagation.allKeyNames(propagation)).endsWith(
+      "customer-id",
+      "x-vcap-request-id"
+    );
   }
 
   public static final ExtraFieldCustomizer CUSTOMIZER_ONE = mock(ExtraFieldCustomizer.class);

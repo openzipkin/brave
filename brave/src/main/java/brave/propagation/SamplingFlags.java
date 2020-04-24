@@ -52,10 +52,6 @@ public class SamplingFlags {
       @Override public TraceContext withFlags(TraceContext context, int flags) {
         return context.withFlags(flags);
       }
-
-      @Override public String[] extraKeyNames(ExtraFieldPropagation.Factory factory) {
-        return factory.extraKeyNames;
-      }
     };
   }
 

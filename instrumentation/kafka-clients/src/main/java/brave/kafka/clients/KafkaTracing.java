@@ -17,6 +17,7 @@ import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.Tracing;
+import brave.baggage.BaggagePropagation;
 import brave.messaging.MessagingRequest;
 import brave.messaging.MessagingTracing;
 import brave.propagation.B3Propagation;
@@ -133,13 +134,16 @@ public final class KafkaTracing {
     this.processorExtractor = propagation.extractor(KafkaPropagation.GETTER);
     this.producerInjector = propagation.injector(KafkaProducerRequest::setHeader);
     this.consumerInjector = propagation.injector(KafkaConsumerRequest::setHeader);
-    this.propagationKeys = new LinkedHashSet<>(propagation.keys());
-    // When baggage or similar is in use, the result != TraceContextOrSamplingFlags.EMPTY
-    this.emptyExtraction = propagation.extractor((c, k) -> null).extract(Boolean.TRUE);
     this.producerSampler = messagingTracing.producerSampler();
     this.consumerSampler = messagingTracing.consumerSampler();
     this.remoteServiceName = builder.remoteServiceName;
     this.singleRootSpanOnReceiveBatch = builder.singleRootSpanOnReceiveBatch;
+
+    this.propagationKeys = new LinkedHashSet<>(propagation.keys());
+    this.propagationKeys.addAll(BaggagePropagation.allKeyNames(propagation));
+
+    // When baggage or similar is in use, the result != TraceContextOrSamplingFlags.EMPTY
+    this.emptyExtraction = propagation.extractor((c, k) -> null).extract(Boolean.TRUE);
   }
 
   /** @since 5.9 exposed for Kafka Streams tracing. */
@@ -219,7 +223,7 @@ public final class KafkaTracing {
 
   /** When an upstream context was not present, lookup keys are unlikely added */
   static void addTags(ConsumerRecord<?, ?> record, SpanCustomizer result) {
-    if (record.key() instanceof String && !"".equals(record.key())) {
+    if (record.key() instanceof String && !"" .equals(record.key())) {
       result.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
     }
     result.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic());

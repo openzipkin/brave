@@ -13,31 +13,28 @@
  */
 package brave.propagation;
 
+import brave.propagation.Propagation.Setter;
 import brave.test.propagation.PropagationSetterTest;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLConnection;
 
 /** Example setter test */
-public class URLConnectionSetterTest extends PropagationSetterTest<URLConnection, String> {
+public class URLConnectionSetterTest extends PropagationSetterTest<URLConnection> {
   final URLConnection request;
 
   public URLConnectionSetterTest() throws IOException {
     request = new URLConnection(URI.create("http://127.0.0.1:9999").toURL()) {
-      @Override public void connect() throws IOException {
+      @Override public void connect() {
       }
     };
-  }
-
-  @Override public Propagation.KeyFactory<String> keyFactory() {
-    return Propagation.KeyFactory.STRING;
   }
 
   @Override protected URLConnection request() {
     return request;
   }
 
-  @Override protected Propagation.Setter<URLConnection, String> setter() {
+  @Override protected Setter<URLConnection, String> setter() {
     return URLConnection::setRequestProperty;
   }
 

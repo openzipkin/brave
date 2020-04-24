@@ -11,15 +11,14 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.internal.baggage;
+package brave.baggage;
 
-import brave.baggage.BaggageField;
-import brave.baggage.BaggagePropagation;
-import brave.baggage.BaggagePropagationConfig;
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+import brave.internal.baggage.ExtraBaggageFields;
 import brave.propagation.B3Propagation;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.B3SinglePropagation;
+import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -32,7 +31,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static brave.baggage.BaggagePropagation.newFactoryBuilder;
-import static brave.propagation.Propagation.KeyFactory.STRING;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
@@ -53,8 +51,8 @@ public class BaggagePropagationTest {
   TraceContext context;
 
   @Before public void initialize() {
-    injector = factory.create(STRING).injector(Map::put);
-    extractor = factory.create(STRING).extractor(Map::get);
+    injector = factory.get().injector(Map::put);
+    extractor = factory.get().extractor(Map::get);
     context = factory.decorate(TraceContext.newBuilder()
       .traceId(1L)
       .spanId(2L)
@@ -66,7 +64,7 @@ public class BaggagePropagationTest {
    * Ensure baggage isn't leaked. This prevents tools from deleting entries when clearing a trace.
    */
   @Test public void keysDontIncludeBaggage() {
-    assertThat(factory.create(Propagation.KeyFactory.STRING).keys())
+    assertThat(factory.get().keys())
       .isEqualTo(B3Propagation.B3_STRING.keys());
   }
 
@@ -282,5 +280,21 @@ public class BaggagePropagationTest {
       .add(userIdConfig);
     assertThatThrownBy(() -> builder.add(userIdConfig))
       .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test public void allKeyNames_baggagePropagation() {
+    Propagation.Factory factory = BaggagePropagation.newFactoryBuilder(B3SinglePropagation.FACTORY)
+      .add(SingleBaggageField.local(BaggageField.create("redacted"))) // local shouldn't return
+      .add(SingleBaggageField.remote(BaggageField.create("user-id")))
+      .add(SingleBaggageField.remote(BaggageField.create("session-id"))).build();
+    assertThat(BaggagePropagation.allKeyNames(factory.get()))
+      .containsExactly("b3", "user-id", "session-id");
+  }
+
+  @Test public void allKeyNames_extraFieldPropagation() {
+    ExtraFieldPropagation.Factory factory =
+      ExtraFieldPropagation.newFactory(B3SinglePropagation.FACTORY, "user-id", "session-id");
+    assertThat(BaggagePropagation.allKeyNames(factory.get()))
+      .containsExactly("b3", "user-id", "session-id");
   }
 }
