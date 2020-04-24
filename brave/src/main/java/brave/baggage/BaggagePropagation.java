@@ -259,7 +259,7 @@ public class BaggagePropagation<K> implements Propagation<K> {
    * {@link ExtraFieldPropagation} internally wraps {@link BaggagePropagation}.
    *
    * <p>This is different than {@link BaggageField#getAll(TraceContext)}, as propagation keys may be
-   * different than {@link BaggageField#name() baggage field names}.
+   * different than {@linkplain BaggageField#name() baggage field names}.
    *
    * @param propagation used to extract configuration
    * @return a list of remote propagation key names used for trace context and baggage.
