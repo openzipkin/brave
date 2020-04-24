@@ -13,33 +13,29 @@
  */
 package brave.grpc;
 
-import brave.baggage.BaggageField;
-import brave.internal.baggage.BaggageHandlers;
-import brave.internal.baggage.ExtraBaggageFields;
+import brave.baggage.BaggagePropagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import io.grpc.Metadata;
+import io.grpc.Metadata.Key;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /** see {@link GrpcTracing.Builder#grpcPropagationFormatEnabled} for documentation. */
-final class GrpcPropagation<K> implements Propagation<K> {
-  static final BaggageField GRPC_TAGS_FIELD = BaggageField.create("grpc-tags");
-
-  static final ExtraBaggageFields.Factory GRPC_TAGS_FACTORY =
-    ExtraBaggageFields.newFactory(BaggageHandlers.string(GRPC_TAGS_FIELD));
-
+final class GrpcPropagation implements Propagation<String> {
   /**
    * This creates a compatible metadata key based on Census, except this extracts a brave trace
    * context as opposed to a census span context
    */
-  static final Metadata.Key<byte[]> GRPC_TRACE_BIN =
-    Metadata.Key.of("grpc-trace-bin", Metadata.BINARY_BYTE_MARSHALLER);
+  static final Key<byte[]> GRPC_TRACE_BIN =
+    Key.of("grpc-trace-bin", Metadata.BINARY_BYTE_MARSHALLER);
   /** This stashes the tag context in "extra" so it isn't lost */
-  static final Metadata.Key<TagsBin> GRPC_TAGS_BIN =
-    Metadata.Key.of("grpc-tags-bin", new Metadata.BinaryMarshaller<TagsBin>() {
+  static final Key<TagsBin> GRPC_TAGS_BIN =
+    Key.of("grpc-tags-bin", new Metadata.BinaryMarshaller<TagsBin>() {
       @Override public byte[] toBytes(TagsBin value) {
         return value.bytes;
       }
@@ -50,6 +46,18 @@ final class GrpcPropagation<K> implements Propagation<K> {
       }
     });
 
+  /** Creates constant keys for use in propagating trace identifiers or baggage. */
+  static Map<String, Key<String>> nameToKey(Propagation<String> propagation) {
+    Map<String, Key<String>> result = new LinkedHashMap<>();
+    for (String keyName : propagation.keys()) {
+      result.put(keyName, Key.of(keyName, Metadata.ASCII_STRING_MARSHALLER));
+    }
+    for (String keyName : BaggagePropagation.allKeyNames(propagation)) {
+      result.put(keyName, Key.of(keyName, Metadata.ASCII_STRING_MARSHALLER));
+    }
+    return result;
+  }
+
   /** {@linkplain TraceContext#extra() extra field} that passes through bytes metdata. */
   static final class TagsBin {
     final byte[] bytes;
@@ -59,59 +67,34 @@ final class GrpcPropagation<K> implements Propagation<K> {
     }
   }
 
-  static Propagation.Factory newFactory(Propagation.Factory delegate) {
+  static Propagation<String> create(Propagation<String> delegate) {
     if (delegate == null) throw new NullPointerException("delegate == null");
-    return new Factory(delegate);
+    return new GrpcPropagation(delegate);
   }
 
-  static final class Factory extends Propagation.Factory {
-    final Propagation.Factory delegate;
+  final Propagation<String> delegate;
 
-    Factory(Propagation.Factory delegate) {
-      this.delegate = delegate;
-    }
-
-    @Override public boolean supportsJoin() {
-      return false;
-    }
-
-    @Override public boolean requires128BitTraceId() {
-      return true;
-    }
-
-    @Override public final <K> Propagation<K> create(KeyFactory<K> keyFactory) {
-      return new GrpcPropagation<>(this, keyFactory);
-    }
-
-    @Override public TraceContext decorate(TraceContext context) {
-      TraceContext result = delegate.decorate(context);
-      return GRPC_TAGS_FACTORY.decorate(result);
-    }
+  GrpcPropagation(Propagation<String> delegate) {
+    this.delegate = delegate;
   }
 
-  final Propagation<K> delegate;
-
-  GrpcPropagation(Factory factory, KeyFactory<K> keyFactory) {
-    this.delegate = factory.delegate.create(keyFactory);
-  }
-
-  @Override public List<K> keys() {
+  @Override public List<String> keys() {
     return delegate.keys();
   }
 
-  @Override public <R> Injector<R> injector(Setter<R, K> setter) {
+  @Override public <R> Injector<R> injector(Setter<R, String> setter) {
     return new GrpcInjector<>(this, setter);
   }
 
-  @Override public <R> Extractor<R> extractor(Getter<R, K> getter) {
+  @Override public <R> Extractor<R> extractor(Getter<R, String> getter) {
     return new GrpcExtractor<>(this, getter);
   }
 
-  static final class GrpcInjector<R, K> implements Injector<R> {
+  static final class GrpcInjector<R> implements Injector<R> {
     final Injector<R> delegate;
-    final Propagation.Setter<R, K> setter;
+    final Setter<R, String> setter;
 
-    GrpcInjector(GrpcPropagation<K> propagation, Setter<R, K> setter) {
+    GrpcInjector(GrpcPropagation propagation, Setter<R, String> setter) {
       this.delegate = propagation.delegate.injector(setter);
       this.setter = setter;
     }
@@ -119,19 +102,24 @@ final class GrpcPropagation<K> implements Propagation<K> {
     @Override public void inject(TraceContext context, R request) {
       if (request instanceof GrpcClientRequest) {
         byte[] serialized = TraceContextBinaryFormat.toBytes(context);
-        ((GrpcClientRequest) request).setMetadata(GRPC_TRACE_BIN, serialized);
+        Metadata metadata = ((GrpcClientRequest) request).metadata;
+        metadata.removeAll(GRPC_TRACE_BIN);
+        metadata.put(GRPC_TRACE_BIN, serialized);
         TagsBin tags = context.findExtra(TagsBin.class);
-        if (tags != null) ((GrpcClientRequest) request).setMetadata(GRPC_TAGS_BIN, tags);
+        if (tags != null) {
+          metadata.removeAll(GRPC_TAGS_BIN);
+          metadata.put(GRPC_TAGS_BIN, tags);
+        }
       }
       delegate.inject(context, request);
     }
   }
 
-  static final class GrpcExtractor<R, K> implements Extractor<R> {
+  static final class GrpcExtractor<R> implements Extractor<R> {
     final Extractor<R> delegate;
-    final Propagation.Getter<R, K> getter;
+    final Propagation.Getter<R, String> getter;
 
-    GrpcExtractor(GrpcPropagation<K> propagation, Getter<R, K> getter) {
+    GrpcExtractor(GrpcPropagation propagation, Getter<R, String> getter) {
       this.delegate = propagation.delegate.extractor(getter);
       this.getter = getter;
     }
@@ -139,13 +127,13 @@ final class GrpcPropagation<K> implements Propagation<K> {
     @Override public TraceContextOrSamplingFlags extract(R request) {
       if (!(request instanceof GrpcServerRequest)) return delegate.extract(request);
 
-      GrpcServerRequest serverRequest = (GrpcServerRequest) request;
+      Metadata metadata = ((GrpcClientRequest) request).metadata;
 
       // First, check if we are propagating gRPC tags.
-      TagsBin tagsBin = serverRequest.getMetadata(GRPC_TAGS_BIN);
+      TagsBin tagsBin = metadata.get(GRPC_TAGS_BIN);
 
       // Next, check to see if there is a gRPC formatted trace context: use it if parsable.
-      byte[] bytes = serverRequest.getMetadata(GRPC_TRACE_BIN);
+      byte[] bytes = metadata.get(GRPC_TRACE_BIN);
       if (bytes != null) {
         TraceContext maybeContext = TraceContextBinaryFormat.parseBytes(bytes, tagsBin);
         if (maybeContext != null) return TraceContextOrSamplingFlags.create(maybeContext);

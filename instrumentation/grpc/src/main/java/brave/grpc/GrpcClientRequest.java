@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,13 +18,15 @@ import brave.propagation.Propagation.Setter;
 import brave.rpc.RpcClientRequest;
 import io.grpc.ClientCall;
 import io.grpc.Metadata;
+import io.grpc.Metadata.Key;
 import io.grpc.MethodDescriptor;
+import java.util.Map;
 
 // intentionally not yet public until we add tag parsing functionality
 final class GrpcClientRequest extends RpcClientRequest {
-  static final Setter<GrpcClientRequest, Metadata.Key<String>> SETTER =
-    new Setter<GrpcClientRequest, Metadata.Key<String>>() { // retrolambda no like
-      @Override public void put(GrpcClientRequest request, Metadata.Key<String> key, String value) {
+  static final Setter<GrpcClientRequest, String> SETTER =
+    new Setter<GrpcClientRequest, String>() { // retrolambda no like
+      @Override public void put(GrpcClientRequest request, String key, String value) {
         request.setMetadata(key, value);
       }
 
@@ -33,11 +35,14 @@ final class GrpcClientRequest extends RpcClientRequest {
       }
     };
 
+  final Map<String, Key<String>> nameToKey;
   final String fullMethodName;
   @Nullable volatile Metadata metadata; // nullable due to lifecycle of gRPC request
 
-  GrpcClientRequest(MethodDescriptor<?, ?> methodDescriptor) {
+  GrpcClientRequest(Map<String, Key<String>> nameToKey, MethodDescriptor<?, ?> methodDescriptor) {
+    if (nameToKey == null) throw new NullPointerException("nameToKey == null");
     if (methodDescriptor == null) throw new NullPointerException("methodDescriptor == null");
+    this.nameToKey = nameToKey;
     this.fullMethodName = methodDescriptor.getFullMethodName();
   }
 
@@ -59,10 +64,18 @@ final class GrpcClientRequest extends RpcClientRequest {
     return this;
   }
 
-  <T> void setMetadata(Metadata.Key<T> key, T value) {
+  void setMetadata(String name, String value) {
+    if (name == null) throw new NullPointerException("name == null");
+    if (value == null) throw new NullPointerException("value == null");
+
     Metadata metadata = this.metadata;
     if (metadata == null) {
       assert false : "This code should never be called when null";
+      return;
+    }
+    Key<String> key = nameToKey.get(name);
+    if (key == null) {
+      assert false : "We currently don't support setting metadata except propagation fields";
       return;
     }
     metadata.removeAll(key);

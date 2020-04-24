@@ -36,7 +36,7 @@ class TestServer {
 
   TestServer(Propagation.Factory propagationFactory) {
     extractor =
-      propagationFactory.create(Propagation.KeyFactory.STRING).extractor(DubboServerRequest.GETTER);
+      propagationFactory.get().extractor(DubboServerRequest.GETTER);
     linkLocalIp = Platform.get().linkLocalIp();
     if (linkLocalIp != null) {
       // avoid dubbo's logic which might pick docker ip

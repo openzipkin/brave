@@ -119,9 +119,40 @@ from [WeakConcurrentMap](https://github.com/raphw/weak-lock-free).
 ## Propagation Api
 OpenTracing's Tracer type has methods to inject or extract a trace
 context from a carrier. While naming is similar, Brave optimizes for
-direct integration with carrier types (such as http request) vs routing
+direct integration with request types (such as HTTP request) vs routing
 through an intermediate (such as a map). Brave also considers propagation
 a separate api from the tracer.
+
+### Deprecation of Propagation K parameter
+
+The Propagation `<K>` parameter allowed integration with requests that had
+headers, but didn't use String types. This was over-generalized, as in practice
+only gRPC instrumentation ever used this key type (`Metadata.Key`).
+
+Removing this `<K>` parameter dramatically simplifies the model as it removes
+the need to explain the key factory and the edge case it supported, which can
+be accomplished differently.
+
+For example, and equivalent functionality works via internally converting and
+caching gRPC propagation keys like so:
+```java
+/** Creates constant keys for use in propagating trace identifiers or baggage. */
+static Map<String, Key<String>> nameToKey(Propagation<String> propagation) {
+  Map<String, Key<String>> result = new LinkedHashMap<>();
+  for (String keyName : propagation.keys()) {
+    result.put(keyName, Key.of(keyName, Metadata.ASCII_STRING_MARSHALLER));
+  }
+  for (String keyName : BaggagePropagation.baggageKeyNames(propagation)) {
+    result.put(keyName, Key.of(keyName, Metadata.ASCII_STRING_MARSHALLER));
+  }
+  return result;
+}
+```
+
+In summary, even though we have a generic parameter, only `Propagation<String>`
+will be used in practice. We keep the generic parameter to avoid an API breaks
+on a frequently used type, even if seeing it is a distraction and having it at
+all was a mistake in hindsight.
 
 ## Current Tracer Api
 The first design work of `Tracing.currentTracer()` started in [Brave 3](https://github.com/openzipkin/brave/pull/210),

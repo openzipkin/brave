@@ -14,17 +14,19 @@
 package brave.internal.baggage;
 
 import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 public final class BaggageHandlers {
-  /** Only handles a single field value. */
+  /** Only handles a single non-remote field. */
   public static BaggageHandler<String> string(BaggageField onlyField) {
     if (onlyField == null) throw new NullPointerException("onlyField == null");
     return new StringBaggageHandler(onlyField);
   }
 
-  static final class StringBaggageHandler implements BaggageHandler<String> {
+  static class StringBaggageHandler implements BaggageHandler<String> {
     final BaggageField field;
     final List<BaggageField> fieldList;
 
@@ -56,12 +58,32 @@ public final class BaggageHandlers {
     @Override public String updateState(String state, BaggageField field, String value) {
       return value; // overwrite
     }
+  }
 
-    @Override public String fromRequestValue(Object request, String value) {
+  /** Only handles a single remote field value. */
+  public static RemoteBaggageHandler<String> string(SingleBaggageField field) {
+    List<String> keyNameList = Collections.unmodifiableList(new ArrayList<>(field.keyNames()));
+    return new RemoteStringBaggageHandler(field.field(), keyNameList);
+  }
+
+  static final class RemoteStringBaggageHandler extends StringBaggageHandler
+    implements RemoteBaggageHandler<String> {
+    final List<String> keyNames;
+
+    RemoteStringBaggageHandler(BaggageField field, List<String> keyNames) {
+      super(field);
+      this.keyNames = keyNames;
+    }
+
+    @Override public List<String> keyNames() {
+      return keyNames;
+    }
+
+    @Override public String fromRemoteValue(Object request, String value) {
       return value;
     }
 
-    @Override public String toRequestValue(String state) {
+    @Override public String toRemoteValue(String state) {
       return state;
     }
   }

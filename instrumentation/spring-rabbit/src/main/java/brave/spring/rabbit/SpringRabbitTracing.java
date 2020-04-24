@@ -16,6 +16,7 @@ package brave.spring.rabbit;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracing;
+import brave.baggage.BaggagePropagation;
 import brave.messaging.MessagingRequest;
 import brave.messaging.MessagingTracing;
 import brave.propagation.B3Propagation;
@@ -119,12 +120,17 @@ public final class SpringRabbitTracing {
     this.processorExtractor = propagation.extractor(SpringRabbitPropagation.GETTER);
     this.producerInjector = propagation.injector(MessageProducerRequest.SETTER);
     this.consumerInjector = propagation.injector(MessageConsumerRequest.SETTER);
-    this.propagationKeys = propagation.keys().toArray(new String[0]);
-    // When baggage or similar is in use, the result != TraceContextOrSamplingFlags.EMPTY
-    this.emptyExtraction = propagation.extractor((c, k) -> null).extract(Boolean.TRUE);
     this.producerSampler = messagingTracing.producerSampler();
     this.consumerSampler = messagingTracing.consumerSampler();
     this.remoteServiceName = builder.remoteServiceName;
+
+    List<String> propagationKeys = new ArrayList<>(propagation.keys());
+    propagationKeys.addAll(BaggagePropagation.allKeyNames(propagation));
+    this.propagationKeys = propagationKeys.toArray(new String[0]);
+
+    // When baggage or similar is in use, the result != TraceContextOrSamplingFlags.EMPTY
+    this.emptyExtraction = propagation.extractor((c, k) -> null).extract(Boolean.TRUE);
+
     Field beforePublishPostProcessorsField = null;
     try {
       beforePublishPostProcessorsField =

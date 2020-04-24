@@ -13,32 +13,31 @@
  */
 package brave.grpc;
 
-import brave.propagation.Propagation;
+import brave.propagation.Propagation.Setter;
 import brave.test.propagation.PropagationSetterTest;
 import io.grpc.Metadata;
+import io.grpc.Metadata.Key;
 import java.util.Collections;
+import java.util.Map;
 
 import static brave.grpc.GrpcClientRequest.SETTER;
 import static brave.grpc.TestObjects.METHOD_DESCRIPTOR;
 
-public class GrpcClientRequestSetterTest
-  extends PropagationSetterTest<GrpcClientRequest, Metadata.Key<String>> {
-  GrpcClientRequest request = new GrpcClientRequest(METHOD_DESCRIPTOR).metadata(new Metadata());
-
-  @Override public AsciiMetadataKeyFactory keyFactory() {
-    return AsciiMetadataKeyFactory.INSTANCE;
-  }
+public class GrpcClientRequestSetterTest extends PropagationSetterTest<GrpcClientRequest> {
+  Map<String, Key<String>> nameToKey = GrpcPropagation.nameToKey(propagation);
+  GrpcClientRequest request =
+    new GrpcClientRequest(nameToKey, METHOD_DESCRIPTOR).metadata(new Metadata());
 
   @Override protected GrpcClientRequest request() {
     return request;
   }
 
-  @Override protected Propagation.Setter<GrpcClientRequest, Metadata.Key<String>> setter() {
+  @Override protected Setter<GrpcClientRequest, String> setter() {
     return SETTER;
   }
 
-  @Override protected Iterable<String> read(GrpcClientRequest request, Metadata.Key<String> key) {
-    Iterable<String> result = request.metadata.getAll(key);
+  @Override protected Iterable<String> read(GrpcClientRequest request, String key) {
+    Iterable<String> result = request.metadata.getAll(nameToKey.get(key));
     return result != null ? result : Collections.emptyList();
   }
 }

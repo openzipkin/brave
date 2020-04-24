@@ -14,10 +14,11 @@
 package brave.features.baggage;
 
 import brave.baggage.BaggageField;
-import brave.internal.baggage.BaggageHandler;
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.internal.baggage.BaggageHandlers;
 import brave.internal.baggage.ExtraBaggageFields;
 import brave.internal.baggage.ExtraBaggageFieldsTest;
+import brave.internal.baggage.RemoteBaggageHandler;
 import java.util.Map;
 import org.junit.Test;
 
@@ -25,8 +26,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /** This is an internal feature until we settle on an encoding format. */
 public class DynamicBaggageTest extends ExtraBaggageFieldsTest {
-  BaggageHandler<String> singleValueHandler = BaggageHandlers.string(field1);
-  BaggageHandler<Map<BaggageField, String>> dynamicHandler = DynamicBaggageHandler.create();
+  RemoteBaggageHandler<String> singleValueHandler = BaggageHandlers.string(
+    SingleBaggageField.remote(field1));
+  RemoteBaggageHandler<Map<BaggageField, String>> dynamicHandler =
+    DynamicBaggageHandler.create("baggage");
 
   @Override protected boolean isEmpty(Object state) {
     return state == null || (state instanceof Map && ((Map) state).isEmpty());
@@ -64,9 +67,9 @@ public class DynamicBaggageTest extends ExtraBaggageFieldsTest {
     extraBaggageFields.updateValue(field2, "2");
     extraBaggageFields.updateValue(field3, "3");
 
-    assertThat(extraBaggageFields.getRequestValue(singleValueHandler))
+    assertThat(extraBaggageFields.getRemoteValue(singleValueHandler))
       .isEqualTo("1");
-    assertThat(extraBaggageFields.getRequestValue(dynamicHandler))
+    assertThat(extraBaggageFields.getRemoteValue(dynamicHandler))
       .contains(""
         + "two=2\n"
         + "three=3");

@@ -15,7 +15,6 @@ package brave.features.propagation;
 
 import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
-import brave.propagation.Propagation.KeyFactory;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import java.util.Map;
@@ -39,7 +38,7 @@ public class HackedTraceIdTest {
   // CustomTraceIdPropagation.Factory substitutes for B3Propagation.FACTORY in real config.
   Propagation.Factory propagationFactory =
     CustomTraceIdPropagation.create(B3Propagation.FACTORY, customTraceIdName);
-  Propagation<String> propagation = propagationFactory.create(KeyFactory.STRING);
+  Propagation<String> propagation = propagationFactory.get();
   Extractor<Map<String, String>> extractor = propagation.extractor(Map::get);
   Map<String, String> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 

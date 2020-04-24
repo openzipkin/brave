@@ -63,7 +63,7 @@ public class B3PropagationTest {
 
   @Test public void keys_defaultToAll() {
     propagation = B3Propagation.newFactoryBuilder()
-      .build().create(Propagation.KeyFactory.STRING);
+      .build().get();
 
     assertThat(propagation.keys()).containsExactly(
       "b3",
@@ -79,7 +79,7 @@ public class B3PropagationTest {
     propagation = B3Propagation.newFactoryBuilder()
       .injectFormat(Span.Kind.PRODUCER, Format.MULTI)
       .injectFormat(Span.Kind.CONSUMER, Format.MULTI)
-      .build().create(Propagation.KeyFactory.STRING);
+      .build().get();
 
     assertThat(propagation.keys()).containsExactly(
       "X-B3-TraceId",
@@ -95,7 +95,7 @@ public class B3PropagationTest {
       .injectFormat(Format.SINGLE)
       .injectFormat(Span.Kind.CLIENT, Format.SINGLE)
       .injectFormat(Span.Kind.SERVER, Format.SINGLE)
-      .build().create(Propagation.KeyFactory.STRING);
+      .build().get();
 
     assertThat(propagation.keys()).containsOnly("b3");
   }
@@ -194,7 +194,7 @@ public class B3PropagationTest {
   @Test public void canConfigureSingle() {
     propagation = B3Propagation.newFactoryBuilder()
       .injectFormat(Format.SINGLE_NO_PARENT)
-      .build().create(Propagation.KeyFactory.STRING);
+      .build().get();
 
     Map<String, String> request = new LinkedHashMap<>(); // not a brave.Request
     propagation.<Map<String, String>>injector(Map::put).inject(context, request);
@@ -207,7 +207,7 @@ public class B3PropagationTest {
   @Test public void canConfigureBasedOnKind() {
     propagation = B3Propagation.newFactoryBuilder()
       .injectFormats(Span.Kind.CLIENT, Format.SINGLE, Format.MULTI)
-      .build().create(Propagation.KeyFactory.STRING);
+      .build().get();
 
     ClientRequest request = new ClientRequest();
     propagation.injector(ClientRequest::header).inject(context, request);

@@ -21,12 +21,8 @@ import java.util.Map;
 
 import static brave.http.HttpClientRequest.SETTER;
 
-public class HttpClientRequestSetterTest extends PropagationSetterTest<HttpClientRequest, String> {
+public class HttpClientRequestSetterTest extends PropagationSetterTest<HttpClientRequest> {
   Map<String, String> headers = new LinkedHashMap<>();
-
-  @Override public Propagation.KeyFactory<String> keyFactory() {
-    return Propagation.KeyFactory.STRING;
-  }
 
   @Override protected HttpClientRequest request() {
     return new HttpClientRequest() {

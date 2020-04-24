@@ -47,7 +47,7 @@ public class BaggagePropagationBenchmarks {
   static final Propagation.Factory factory =
     BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
       .add(SingleBaggageField.remote(BAGGAGE_FIELD)).build();
-  static final Propagation<String> propagation = factory.create(Propagation.KeyFactory.STRING);
+  static final Propagation<String> propagation = factory.get();
   static final Injector<Map<String, String>> injector = propagation.injector(Map::put);
   static final Extractor<Map<String, String>> extractor = propagation.extractor(Map::get);
 

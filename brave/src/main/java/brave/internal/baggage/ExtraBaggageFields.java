@@ -14,6 +14,7 @@
 package brave.internal.baggage;
 
 import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagationConfig;
 import brave.internal.Nullable;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
@@ -56,6 +57,16 @@ public final class ExtraBaggageFields {
       BaggageHandler handler = handlers[i];
       if (!handler.isDynamic()) continue;
       result.addAll(handler.currentFields(stateArray != null ? stateArray[i] : null));
+    }
+    return Collections.unmodifiableList(result);
+  }
+
+  public List<String> getAllKeyNames() {
+    List<String> result = new ArrayList<>();
+    for (BaggageHandler handler : handlers) {
+      if (handler instanceof RemoteBaggageHandler) {
+        result.addAll(((RemoteBaggageHandler) handler).keyNames());
+      }
     }
     return Collections.unmodifiableList(result);
   }
@@ -115,8 +126,9 @@ public final class ExtraBaggageFields {
    * Returns true if state derived from the request value was assigned to handler.
    *
    * @see Propagation.Getter
+   * @see BaggagePropagationConfig.SingleBaggageField#remote(BaggageField)
    */
-  public boolean putRequestValue(BaggageHandler handler, Object request, String value) {
+  public boolean putRemoteValue(RemoteBaggageHandler handler, Object request, String value) {
     if (handler == null) throw new NullPointerException("handler == null");
     if (request == null) throw new NullPointerException("request == null");
     if (value == null) throw new NullPointerException("value == null");
@@ -124,7 +136,7 @@ public final class ExtraBaggageFields {
     int index = indexOf(handler);
     if (index == -1) return false;
 
-    Object state = handlers[index].fromRequestValue(request, value);
+    Object state = handler.fromRemoteValue(request, value);
     if (state == null) return false;
     // Unsynchronized as only called during extraction when the object is new.
     putState(index, state);
@@ -135,8 +147,9 @@ public final class ExtraBaggageFields {
    * Returns a request value to use for the state in this handler.
    *
    * @see Propagation.Setter
+   * @see BaggagePropagationConfig.SingleBaggageField#remote(BaggageField)
    */
-  @Nullable public String getRequestValue(BaggageHandler handler) {
+  @Nullable public String getRemoteValue(RemoteBaggageHandler handler) {
     if (handler == null) throw new NullPointerException("handler == null");
 
     int index = indexOf(handler);
@@ -144,7 +157,7 @@ public final class ExtraBaggageFields {
 
     Object maybeValue = getState(index);
     if (maybeValue == null) return null;
-    return handlers[index].toRequestValue(maybeValue);
+    return handler.toRemoteValue(maybeValue);
   }
 
   final BaggageHandler[] handlers;

@@ -58,7 +58,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
   protected C client;
   protected HttpTracing httpTracing = HttpTracing.create(tracing);
   protected Extractor<RecordedRequest> extractor =
-    propagationFactory.create(Propagation.KeyFactory.STRING).extractor(RecordedRequest::getHeader);
+    propagationFactory.get().extractor(RecordedRequest::getHeader);
 
   @Before public void setup() throws IOException {
     client = newClient(server.getPort());

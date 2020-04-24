@@ -14,23 +14,14 @@
 package brave.baggage;
 
 import brave.Tracing;
-import brave.baggage.BaggagePropagation.BaggageHandlerWithKeyNames;
-import brave.internal.InternalBaggage;
-import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.baggage.BaggageContext;
 import brave.internal.baggage.ExtraBaggageContext;
-import brave.propagation.ExtraFieldPropagation;
-import brave.propagation.Propagation;
-import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 /**
  * Defines a trace context scoped field, usually but not always analogous to an HTTP header. Fields
@@ -309,27 +300,5 @@ public final class BaggageField {
   @Nullable static TraceContext currentTraceContext() {
     Tracing tracing = Tracing.current();
     return tracing != null ? tracing.currentTraceContext().get() : null;
-  }
-
-  static {
-    InternalBaggage.instance = new InternalBaggage() {
-      @Override public Set<String> allKeyNames(Propagation.Factory factory) {
-        Set<String> allKeyNames = new LinkedHashSet<>();
-        for (String key : factory.create(Propagation.KeyFactory.STRING).keys()) {
-          allKeyNames.add(key.toLowerCase(Locale.ROOT));
-        }
-        if (factory instanceof ExtraFieldPropagation.Factory) {
-          SamplingFlags.EMPTY.toString(); // ensure InternalPropagation is wired
-          allKeyNames.addAll(Arrays.asList(InternalPropagation.instance.extraKeyNames(
-            (ExtraFieldPropagation.Factory) factory)));
-        } else if (factory instanceof BaggagePropagation.Factory) {
-          BaggagePropagation.Factory baggageFactory = (BaggagePropagation.Factory) factory;
-          for (BaggageHandlerWithKeyNames next : baggageFactory.handlersWithKeyNames) {
-            allKeyNames.addAll(Arrays.asList(next.keyNames));
-          }
-        }
-        return allKeyNames;
-      }
-    };
   }
 }

@@ -32,6 +32,15 @@ public final class ExtraBaggageContext extends BaggageContext {
     return INSTANCE;
   }
 
+  public static List<String> getAllKeyNames(TraceContextOrSamplingFlags extracted) {
+    if (extracted.context() != null) return getAllKeyNames(extracted.context());
+    return getAllKeyNames(extracted.extra());
+  }
+
+  public static List<String> getAllKeyNames(TraceContext context) {
+    return getAllKeyNames(context.extra());
+  }
+
   public static List<BaggageField> getAllFields(TraceContextOrSamplingFlags extracted) {
     if (extracted.context() != null) return getAllFields(extracted.context());
     return getAllFields(extracted.extra());
@@ -70,6 +79,12 @@ public final class ExtraBaggageContext extends BaggageContext {
     return updateValue(field, context.extra(), value);
   }
 
+  static List<String> getAllKeyNames(List<Object> extra) {
+    ExtraBaggageFields fields = findExtra(ExtraBaggageFields.class, extra);
+    if (fields == null) return Collections.emptyList();
+    return fields.getAllKeyNames();
+  }
+
   static List<BaggageField> getAllFields(List<Object> extra) {
     ExtraBaggageFields fields = findExtra(ExtraBaggageFields.class, extra);
     if (fields == null) return Collections.emptyList();
@@ -99,7 +114,7 @@ public final class ExtraBaggageContext extends BaggageContext {
     return fields != null && fields.updateValue(field, value);
   }
 
-  static <T> T findExtra(Class<T> type, List<Object> extra) {
+  public static <T> T findExtra(Class<T> type, List<Object> extra) {
     if (type == null) throw new NullPointerException("type == null");
     for (int i = 0, length = extra.size(); i < length; i++) {
       Object nextExtra = extra.get(i);
