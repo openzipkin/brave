@@ -45,7 +45,7 @@ public final class HttpServletRequestWrapper extends HttpServerRequest {
 
   /**
    * This sets the client IP:port to the {@linkplain HttpServletRequest#getRemoteAddr() remote
-   * address} if the {@link #parseClientIpAndPort default parsing} fails.
+   * address} if the {@link #parseClientIpFromXForwardedFor default parsing} fails.
    */
   @Override public boolean parseClientIpAndPort(Span span) {
     if (parseClientIpFromXForwardedFor(span)) return true;

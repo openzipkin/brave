@@ -223,7 +223,7 @@ public final class KafkaTracing {
 
   /** When an upstream context was not present, lookup keys are unlikely added */
   static void addTags(ConsumerRecord<?, ?> record, SpanCustomizer result) {
-    if (record.key() instanceof String && !"" .equals(record.key())) {
+    if (record.key() instanceof String && !"".equals(record.key())) {
       result.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
     }
     result.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic());

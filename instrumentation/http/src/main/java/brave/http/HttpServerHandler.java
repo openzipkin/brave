@@ -32,7 +32,7 @@ import brave.sampler.SamplerFunction;
  *   <li>Extract any trace IDs from headers and start the span</li>
  *   <li>Put the span in scope so things like log integration works</li>
  *   <li>Process the request</li>
- *   <li>Catch any errors</li>
+ *   <li>If there was a Throwable, add it to the span</li>
  *   <li>Complete the span</li>
  * </ol>
  * <pre>{@code

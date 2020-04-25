@@ -247,9 +247,8 @@ public final class BaggageField {
   }
 
   /**
-   * Like {@link #updateValue(TraceContextOrSamplingFlags, String)} except for use cases that
-   * precede a span. For example, a {@linkplain TraceContextOrSamplingFlags#traceIdContext() trace
-   * ID context}.
+   * Like {@link #updateValue(TraceContext, String)} except for use cases that precede a span. For
+   * example, a {@linkplain TraceContextOrSamplingFlags#traceIdContext() trace ID context}.
    *
    * @since 5.11
    */

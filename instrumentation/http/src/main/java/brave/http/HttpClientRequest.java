@@ -43,7 +43,7 @@ public abstract class HttpClientRequest extends HttpRequest {
    * Sets a request header with the indicated name. {@code null} values are unsupported.
    *
    * <p>This is only used when {@link TraceContext.Injector#inject(TraceContext, Object) injecting}
-   * a trace context as internally implemented by {link HttpClientHandler}. Calls during sampling or
+   * a trace context as internally implemented by {@link HttpClientHandler}. Calls during sampling or
    * parsing are invalid and may be ignored by instrumentation.
    *
    * @see #SETTER

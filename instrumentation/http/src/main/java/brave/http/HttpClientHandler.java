@@ -35,7 +35,7 @@ import static brave.http.HttpClientAdapters.FromResponseAdapter;
  *   <li>Start the span and add trace headers to the request</li>
  *   <li>Put the span in scope so things like log integration works</li>
  *   <li>Invoke the request</li>
- *   <li>Catch any errors</li>
+ *   <li>If there was a Throwable, add it to the span</li>
  *   <li>Complete the span</li>
  * </ol>
  *

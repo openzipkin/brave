@@ -77,7 +77,7 @@ httpTracing = httpTracing.toBuilder()
 
 ## Sampling Policy
 The default sampling policy is to use the default (trace ID) sampler for
-server and client requests.
+client and server requests.
 
 For example, if there's a incoming request that has no trace IDs in its
 headers, the sampler indicated by `Tracing.Builder.sampler` decides whether
