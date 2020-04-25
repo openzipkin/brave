@@ -167,37 +167,59 @@ void userCode() {
 }
 ```
 
-### RPC tracing
+### Request tracing
 Check for [instrumentation written here](../instrumentation/) and [Zipkin's list](https://zipkin.io/pages/existing_instrumentations.html)
-before rolling your own RPC instrumentation!
+before rolling your own Request instrumentation!
 
-RPC tracing is often done automatically by interceptors. Under the scenes,
-they add tags and events that relate to their role in an RPC operation.
+Brave includes two fundamental types to support tracing interprocess
+communication `brave.Request` and `brave.Response`. These types represent the
+following communication patterns, defined by the [Zipkin Api][https://zipkin.io/zipkin-api/#/default/post_spans]
+and returned by `spanKind()`:
 
-Note: this is intentionally not an HTTP example, as we have [a special layer](../instrumentation/http)
-for that.
+ * CLIENT
+ * SERVER
+ * PRODUCER
+ * CONSUMER
 
-Here's an example of a client span:
+Once you model your request, you generally need to...
+1. Start the span and add trace headers to the request
+2. Put the span in scope so things like log integration works
+3. Invoke the request
+4. Catch any errors
+5. Complete the span
+
+Here's a simplified example:
 ```java
-// before you send a request, add metadata that describes the operation
-span = tracer.nextSpan().name(service + "/" + method).kind(CLIENT);
-span.tag("myrpc.version", "1.0.0");
-span.remoteServiceName("backend");
-span.remoteIpAndPort("172.3.4.1", 8108);
-
-// Add the trace context to the request, so it can be propagated in-band
-tracing.propagation().injector(Request::addHeader)
-                     .inject(span.context(), request);
-
-// when the request is scheduled, start the span
+requestWrapper = new ClientRequestWrapper(request);
+span = tracer.nextSpan(sampler, requestWrapper); // 1.
+tracing.propagation().injector(ClientRequestWrapper::addHeader)
+                     .inject(span.context(), requestWrapper);
+span.kind(request.spanKind());
+span.name("Report");
 span.start();
-
-// if there is an error, tag the span
-span.tag("error", error.getCode());
-
-// when the response is complete, finish the span
-span.finish();
+try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
+  return invoke(request); // 3.
+} catch (Throwable e) {
+  span.error(error); // 4.
+  throw e;
+} finally {
+  span.finish(); // 5.
+}
 ```
+
+The above code is example only. Abstractions exist that handle aspects
+including sampling, header processing and data parsing:
+ * [HTTP](../instrumentation/http/README.md) is CLIENT/SERVER
+ * [Messaging](../instrumentation/rpc/README.md) is PRODUCER/CONSUMER
+ * [RPC](../instrumentation/rpc/README.md) is CLIENT/SERVER
+
+You should use these abstractions instead of modeling your own, as there are
+modeling gotchas that might not be intuitive at first. For example, a common
+mistake is using CLIENT kind for long lived connections such as database pools
+or chat sessions. Doing so, however, can result in confusing data, such as
+incorrect service diagrams or server calls being attached to the wrong trace.
+If you have doubts, please chat with a maintainer on [Gitter](https://gitter.im/openzipkin/zipkin]
+as it might save you grief later!
 
 ## Sampling
 
