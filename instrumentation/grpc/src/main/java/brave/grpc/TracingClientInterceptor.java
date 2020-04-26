@@ -54,12 +54,6 @@ final class TracingClientInterceptor implements ClientInterceptor {
     nameToKey = grpcTracing.nameToKey;
   }
 
-  /**
-   * This sets as span in scope both for the interception and for the start of the request. It does
-   * not set a span in scope during the response listener as it is unexpected it would be used at
-   * that fine granularity. If users want access to the span in a response listener, they will need
-   * to wrap the executor with one that's aware of the current context.
-   */
   @Override
   public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(MethodDescriptor<ReqT, RespT> method,
     CallOptions callOptions, Channel next) {
@@ -78,9 +72,7 @@ final class TracingClientInterceptor implements ClientInterceptor {
           try (Scope scope = currentTraceContext.maybeScope(span.context())) {
             parser.onStart(method, callOptions, headers, span.customizer());
 
-            // Ensures callbacks execute on the invocation context. For example, if a user has code
-            // to invoke a producer once headers are received, this ensures the producer is a child
-            // of the invocation (usually server) as opposed to the child of the client.
+            // See RATIONALE.md which notes response callbacks are in the invocation context
             responseListener = new TraceContextCallListener<>(
               responseListener,
               currentTraceContext,

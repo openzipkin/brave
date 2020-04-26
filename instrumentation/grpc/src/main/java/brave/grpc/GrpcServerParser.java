@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -22,5 +22,21 @@ public class GrpcServerParser extends GrpcParser {
   protected <ReqT, RespT> void onStart(ServerCall<ReqT, RespT> call, Metadata headers,
     SpanCustomizer span) {
     span.name(spanName(call.getMethodDescriptor()));
+  }
+
+  /**
+   * @since 4.8
+   * @deprecated Since 5.12 use {@link ServerCall.Listener#onMessage(Object)}.
+   */
+  @Deprecated @Override protected <M> void onMessageSent(M message, SpanCustomizer span) {
+    super.onMessageSent(message, span);
+  }
+
+  /**
+   * @since 4.8
+   * @deprecated Since 5.12 use {@link ServerCall#sendMessage(Object)}.
+   */
+  @Deprecated @Override protected <M> void onMessageReceived(M message, SpanCustomizer span) {
+    super.onMessageReceived(message, span);
   }
 }

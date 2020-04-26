@@ -17,8 +17,10 @@ import brave.ErrorParser;
 import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.internal.Nullable;
+import io.grpc.ClientCall;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
+import io.grpc.ServerCall;
 import io.grpc.Status;
 
 public class GrpcParser {
@@ -48,12 +50,20 @@ public class GrpcParser {
     return methodDescriptor.getFullMethodName();
   }
 
-  /** Override to customize the span based on a message sent to the peer. */
-  protected <M> void onMessageSent(M message, SpanCustomizer span) {
+  /**
+   * @since 4.8
+   * @deprecated Since 5.12 use {@link ClientCall#sendMessage(Object)} or {@link
+   * ServerCall.Listener#onMessage(Object)}.
+   */
+  @Deprecated protected <M> void onMessageSent(M message, SpanCustomizer span) {
   }
 
-  /** Override to customize the span based on the message received from the peer. */
-  protected <M> void onMessageReceived(M message, SpanCustomizer span) {
+  /**
+   * @since 4.8
+   * @deprecated Since 5.12 use {@link ClientCall.Listener#onMessage(Object)} or {@link
+   * ServerCall#sendMessage(Object)}.
+   */
+  @Deprecated protected <M> void onMessageReceived(M message, SpanCustomizer span) {
   }
 
   /**

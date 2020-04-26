@@ -14,6 +14,8 @@
 package brave.grpc;
 
 import brave.Clock;
+import brave.CurrentSpanCustomizer;
+import brave.ScopedSpan;
 import brave.SpanCustomizer;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.SamplingFlags;
@@ -27,7 +29,8 @@ import io.grpc.CallOptions;
 import io.grpc.Channel;
 import io.grpc.ClientCall;
 import io.grpc.ClientInterceptor;
-import io.grpc.ForwardingClientCall;
+import io.grpc.ForwardingClientCall.SimpleForwardingClientCall;
+import io.grpc.ForwardingClientCallListener.SimpleForwardingClientCallListener;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Metadata;
@@ -41,6 +44,7 @@ import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.After;
 import org.junit.Before;
@@ -270,7 +274,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
         @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
           MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
           tracing.tracer().currentSpanCustomizer().annotate("before");
-          return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(
+          return new SimpleForwardingClientCall<ReqT, RespT>(
             next.newCall(method, callOptions)) {
             @Override
             public void start(Listener<RespT> responseListener, Metadata headers) {
@@ -341,6 +345,89 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
 
     // all response messages are tagged to the same span
     assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).tags()).hasSize(10);
+  }
+
+  /**
+   * This shows that a {@link ClientInterceptor} can see the server server span when processing the
+   * request and response.
+   */
+  @Test public void messageTagging_unary() {
+    initMessageTaggingClient();
+
+    ScopedSpan span = tracing.tracer().startScopedSpan("parent");
+    try {
+      GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
+    } finally {
+      span.finish();
+    }
+
+    assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).tags())
+      .containsOnlyKeys("grpc.message_send.1");
+
+    // Response processing happens on the invocation (parent) trace context
+    assertThat(reporter.takeLocalSpan().tags())
+      .containsOnlyKeys("grpc.message_recv.1");
+  }
+
+  @Test public void messageTagging_streaming() {
+    initMessageTaggingClient();
+
+    ScopedSpan span = tracing.tracer().startScopedSpan("parent");
+    try {
+      Iterator<HelloReply> replies = GreeterGrpc.newBlockingStub(client)
+        .sayHelloWithManyReplies(HELLO_REQUEST);
+      assertThat(replies).toIterable().hasSize(10);
+    } finally {
+      span.finish();
+    }
+
+    assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).tags())
+      .containsOnlyKeys("grpc.message_send.1");
+
+    // Response processing happens on the invocation (parent) trace context
+    // Intentionally verbose here to show 10 replies
+    assertThat(reporter.takeLocalSpan().tags()).containsOnlyKeys(
+      "grpc.message_recv.1",
+      "grpc.message_recv.2",
+      "grpc.message_recv.3",
+      "grpc.message_recv.4",
+      "grpc.message_recv.5",
+      "grpc.message_recv.6",
+      "grpc.message_recv.7",
+      "grpc.message_recv.8",
+      "grpc.message_recv.9",
+      "grpc.message_recv.10"
+    );
+  }
+
+  void initMessageTaggingClient() {
+    SpanCustomizer customizer = CurrentSpanCustomizer.create(tracing);
+    AtomicInteger sends = new AtomicInteger(1);
+    AtomicInteger recvs = new AtomicInteger(1);
+
+    closeClient(client);
+    client = newClient(
+      new ClientInterceptor() {
+        @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
+          MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
+          return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
+            @Override public void start(Listener<RespT> responseListener, Metadata headers) {
+              super.start(new SimpleForwardingClientCallListener<RespT>(responseListener) {
+                @Override public void onMessage(RespT message) {
+                  customizer.tag("grpc.message_recv." + recvs.getAndIncrement(),
+                    message.toString());
+                  delegate().onMessage(message);
+                }
+              }, headers);
+            }
+
+            @Override public void sendMessage(ReqT message) {
+              customizer.tag("grpc.message_send." + sends.getAndIncrement(), message.toString());
+              delegate().sendMessage(message);
+            }
+          };
+        }
+      }, grpcTracing.newClientInterceptor());
   }
 
   /**
