@@ -8,11 +8,15 @@ This rationale applies equally to CLIENT and PRODUCER spans.
 Asynchronous code is often modeled in terms of callbacks. For example, the
 following pseudo code represents a chain of 3 client calls.
 ```java
+// Assume you are reactive: assembling a call doesn't invoke it.
+call = client.call("1")
+             .flatMap((r) -> client.call("2"))
+             .flatMap((r) -> client.call("3"));
+
 ScopedSpan parent = tracer.startScopedSpan("parent");
 try {
-  client.call("1")
-        .flatMap((r) -> client.call("2"))
-        .flatMap((r) -> client.call("3"));
+  // In reactive style, subscribe attaches the trace context
+  call.subscribe(subscriber);
 } finally {
   parent.finish();
 }
@@ -43,12 +47,14 @@ try {
   parent.finish();
 }
 
-// asynchronous
+// reactive
+call = client.call("1")
+             .flatMap((r) -> client.call("2"))
+             .flatMap((r) -> client.call("3"));
+
 ScopedSpan parent = tracer.startScopedSpan("parent");
 try {
-  client.call("1")
-        .flatMap((r) -> client.call("2"))
-        .flatMap((r) -> client.call("3"));
+  call.subscribe(subscriber);
 } finally {
   parent.finish();
 }
