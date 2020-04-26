@@ -167,21 +167,14 @@ void userCode() {
 }
 ```
 
-### Request tracing
-Check for [instrumentation written here](../instrumentation/) and [Zipkin's list](https://zipkin.io/pages/existing_instrumentations.html)
-before rolling your own Request instrumentation!
+### Remote spans
+Check for [instrumentation and abstractions](../instrumentation/) and [Zipkin's list](https://zipkin.io/pages/existing_instrumentations.html)
+for common patterns like client-server or messaging communication. Please at
+least read [this doc](../instrumentation/README.md) before deciding to write
+your own code to represent remote communication.
 
-Brave includes two fundamental types to support tracing interprocess
-communication `brave.Request` and `brave.Response`. These types represent the
-following communication patterns, defined by the [Zipkin Api][https://zipkin.io/zipkin-api/#/default/post_spans]
-and returned by `spanKind()`:
-
- * CLIENT
- * SERVER
- * PRODUCER
- * CONSUMER
-
-Once you model your request, you generally need to...
+If you really think that the existing abstractions do not match your need, and
+you want to model your request yourself, you generally need to...
 1. Start the span and add trace headers to the request
 2. Put the span in scope so things like log integration works
 3. Invoke the request
@@ -206,20 +199,6 @@ try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
   span.finish(); // 5.
 }
 ```
-
-The above code is example only. Abstractions exist that handle aspects
-including sampling, header processing and data parsing:
- * [HTTP](../instrumentation/http/README.md) is CLIENT/SERVER
- * [Messaging](../instrumentation/rpc/README.md) is PRODUCER/CONSUMER
- * [RPC](../instrumentation/rpc/README.md) is CLIENT/SERVER
-
-You should use these abstractions instead of modeling your own, as there are
-modeling gotchas that might not be intuitive at first. For example, a common
-mistake is using CLIENT kind for long lived connections such as database pools
-or chat sessions. Doing so, however, can result in confusing data, such as
-incorrect service diagrams or server calls being attached to the wrong trace.
-If you have doubts, please chat with a maintainer on [Gitter](https://gitter.im/openzipkin/zipkin]
-as it might save you grief later!
 
 ## Sampling
 
