@@ -140,7 +140,7 @@ work.
 
 If you end up in a position where you still believe you need a custom model,
 please contact us before committing to it. There may be an alternative not yet
-documented, that might prefer. Moreover, folks usually want support and we
+documented, you might prefer. Moreover, folks usually want support and we
 cannot support every idea. It is better to understand this before you commit to
 something bespoke. In short, please reach out on [gitter](https://gitter.im/openzipkin/zipkin),
 as there are usually others around to help.
