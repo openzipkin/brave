@@ -87,6 +87,9 @@ rate, if a data dependency is important, you can consider mapping it as a tag.
 This rationale was first mentioned in the below javascript issue.
 https://github.com/openzipkin/zipkin-js/issues/176#issuecomment-355636603
 
+It was later built upon during an [Armeria](https://github.com/line/armeria) pow-wow:
+https://github.com/openzipkin/openzipkin.github.io/wiki/2018-08-06-Zipkin-and-Armeria-at-LINE-Fukuoka#teaching-brave-to-use-armerias-requestcontext
+
 ## Calling `Span.finish()` while the context is in scope
 Instrumentation should call `Span.finish()` with the same context in scope as
 opposed to clearing or using a different span context.
