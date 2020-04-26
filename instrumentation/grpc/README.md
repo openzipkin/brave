@@ -1,7 +1,6 @@
 # brave-instrumentation-grpc
 This contains tracing client and server interceptors for [grpc](https://github.com/grpc/grpc-java).
 
-
 The `GrpcTracing` class holds a reference to a tracing component,
 instructions on what to put into gRPC spans, and interceptors.
 
@@ -35,19 +34,6 @@ By default, the following are added to both gRPC client and server spans:
   * "grpc.status_code" when the status is not OK.
   * "error", when there is an exception or status is not OK.
 
-Ex. To add a tag corresponding to a message sent to a server, you can do
-something like this:
-
-```java
-grpcTracing = grpcTracing.toBuilder()
-    .clientParser(new GrpcClientParser() {
-      @Override protected <M> void onMessageSent(M message, SpanCustomizer span) {
-        span.tag("grpc.message_sent", message.toString());
-      }
-    })
-    .build();
-```
-
 If you just want to control span naming policy, override `spanName` in
 your client or server parser.
 
@@ -58,6 +44,41 @@ overrideSpanName = new GrpcClientParser() {
     return methodDescriptor.getType().name();
   }
 };
+```
+
+## Message processing
+
+## Message processing callback context
+If you need to process messages, streaming or otherwise, you can use normal
+gRPC interceptors. The current span will be the following, regardless of
+message count per request (streaming):
+
+* `ClientInterceptor`
+  * `ClientCall.sendMessage()` - the client trace context
+  * `ClientCall.Listener.onMessage()` - the invocation trace context (aka parent)
+  Why is discussed in the main [instrumentation rationale](../RATIONALE.md).
+* `ServerInterceptor`
+  * `ServerCall.Listener.onMessage()` - the server trace context
+  * `ServerCall.sendMessage()` - the server trace context
+  Both sides are in the server context, as otherwise would be a new trace.
+
+Ex. To annotate the time each message sent to a server, you can do this:
+```java
+SpanCustomizer span = CurrentSpanCustomizer.create(tracing);
+
+// Make sure this is ordered before the tracing interceptor! Otherwise, it will
+// not see the current span.
+managedChannelBuilder.intercept(new ClientInterceptor() {
+  public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
+    MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
+    return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
+      public void sendMessage(ReqT message) {
+        span.annotate("grpc.send_message");
+        delegate().sendMessage(message);
+      }
+    };
+  }
+}, grpcTracing.newClientInterceptor());
 ```
 
 ## Sampling Policy

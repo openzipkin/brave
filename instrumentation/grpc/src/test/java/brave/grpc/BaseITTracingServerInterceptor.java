@@ -13,6 +13,7 @@
  */
 package brave.grpc;
 
+import brave.CurrentSpanCustomizer;
 import brave.SpanCustomizer;
 import brave.internal.Nullable;
 import brave.propagation.B3SingleFormat;
@@ -27,6 +28,8 @@ import io.grpc.ClientCall;
 import io.grpc.ClientInterceptor;
 import io.grpc.ClientInterceptors;
 import io.grpc.ForwardingClientCall.SimpleForwardingClientCall;
+import io.grpc.ForwardingServerCall;
+import io.grpc.ForwardingServerCallListener;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Metadata;
@@ -45,6 +48,7 @@ import io.grpc.examples.helloworld.HelloRequest;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.After;
 import org.junit.Before;
@@ -270,6 +274,59 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
       .isEqualTo("helloworld.greeter/sayhello");
 
     // @After will also check that sayHelloWithManyReplies was not sampled
+  }
+
+  /**
+   * This shows that a {@link ServerInterceptor} can see the server server span when processing the
+   * request and response.
+   */
+  @Test public void bodyTaggingExample() throws IOException {
+    SpanCustomizer customizer = CurrentSpanCustomizer.create(tracing);
+    AtomicInteger sends = new AtomicInteger();
+    AtomicInteger recvs = new AtomicInteger();
+
+    init(new ServerInterceptor() {
+      @Override public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
+        Metadata headers, ServerCallHandler<ReqT, RespT> next) {
+        call = new ForwardingServerCall.SimpleForwardingServerCall<ReqT, RespT>(call) {
+          @Override public void sendMessage(RespT message) {
+            delegate().sendMessage(message);
+            customizer.tag("grpc.message_send." + sends.getAndIncrement(), message.toString());
+          }
+        };
+        return new ForwardingServerCallListener.SimpleForwardingServerCallListener<ReqT>(next.startCall(call, headers)) {
+          @Override public void onMessage(ReqT message) {
+            customizer.tag("grpc.message_recv." + recvs.getAndIncrement(), message.toString());
+            delegate().onMessage(message);
+          }
+        };
+      }
+    });
+
+    GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
+
+    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags()).containsOnlyKeys(
+      "grpc.message_recv.0", "grpc.message_send.0"
+    );
+
+    Iterator<HelloReply> replies = GreeterGrpc.newBlockingStub(client)
+      .sayHelloWithManyReplies(HELLO_REQUEST);
+    assertThat(replies).toIterable().hasSize(10);
+
+    // Intentionally verbose here to show that only one recv and 10 replies
+    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags()).containsOnlyKeys(
+      "grpc.message_recv.1",
+      "grpc.message_send.1",
+      "grpc.message_send.2",
+      "grpc.message_send.3",
+      "grpc.message_send.4",
+      "grpc.message_send.5",
+      "grpc.message_send.6",
+      "grpc.message_send.7",
+      "grpc.message_send.8",
+      "grpc.message_send.9",
+      "grpc.message_send.10"
+    );
   }
 
   Channel clientWithB3SingleHeader(TraceContext parent) {
