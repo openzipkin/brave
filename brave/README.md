@@ -167,36 +167,37 @@ void userCode() {
 }
 ```
 
-### RPC tracing
-Check for [instrumentation written here](../instrumentation/) and [Zipkin's list](https://zipkin.io/pages/existing_instrumentations.html)
-before rolling your own RPC instrumentation!
+### Remote spans
+Check for [instrumentation and abstractions](../instrumentation/) and [Zipkin's list](https://zipkin.io/pages/existing_instrumentations.html)
+for common patterns like client-server or messaging communication. Please at
+least read [this doc](../instrumentation/README.md) before deciding to write
+your own code to represent remote communication.
 
-RPC tracing is often done automatically by interceptors. Under the scenes,
-they add tags and events that relate to their role in an RPC operation.
+If you really think that the existing abstractions do not match your need, and
+you want to model your request yourself, you generally need to...
+1. Start the span and add trace headers to the request
+2. Put the span in scope so things like log integration works
+3. Invoke the request
+4. Catch any errors
+5. Complete the span
 
-Note: this is intentionally not an HTTP example, as we have [a special layer](../instrumentation/http)
-for that.
-
-Here's an example of a client span:
+Here's a simplified example:
 ```java
-// before you send a request, add metadata that describes the operation
-span = tracer.nextSpan().name(service + "/" + method).kind(CLIENT);
-span.tag("myrpc.version", "1.0.0");
-span.remoteServiceName("backend");
-span.remoteIpAndPort("172.3.4.1", 8108);
-
-// Add the trace context to the request, so it can be propagated in-band
-tracing.propagation().injector(Request::addHeader)
-                     .inject(span.context(), request);
-
-// when the request is scheduled, start the span
+requestWrapper = new ClientRequestWrapper(request);
+span = tracer.nextSpan(sampler, requestWrapper); // 1.
+tracing.propagation().injector(ClientRequestWrapper::addHeader)
+                     .inject(span.context(), requestWrapper);
+span.kind(request.spanKind());
+span.name("Report");
 span.start();
-
-// if there is an error, tag the span
-span.tag("error", error.getCode());
-
-// when the response is complete, finish the span
-span.finish();
+try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
+  return invoke(request); // 3.
+} catch (Throwable e) {
+  span.error(error); // 4.
+  throw e;
+} finally {
+  span.finish(); // 5.
+}
 ```
 
 ## Sampling

@@ -95,14 +95,52 @@ We worked very hard to make writing new instrumentation easy and efficient.
 Most of our built-in instrumentation are 50-100 lines of code, yet allow
 flexible configuration of tags and sampling policy.
 
-If you need to write new http instrumentation, check [our docs](http/README.md),
-as this shows how to write it in a way that is least effort for you and
-easy for others to configure. For example, we have a standard [test suite](http-tests)
-you can use to make sure things interop, and standard configuration works.
+Brave includes two fundamental types to support tracing interprocess
+communication `brave.Request` and `brave.Response`. These types represent the
+following communication patterns, defined by the [Zipkin Api][https://zipkin.io/zipkin-api/#/default/post_spans]
+and returned by `spanKind()`:
 
-If you need to do something not http, you'll want to use our [tracer library](../brave/README.md).
-If you are in this position, you may find our [feature tests](../brave/src/test/java/brave/features)
-helpful.
+ * CLIENT
+ * SERVER
+ * PRODUCER
+ * CONSUMER
 
-Regardless, you may need support along the way. Please reach out on [gitter](https://gitter.im/openzipkin/zipkin),
-as there's usually others around to help.
+Brave includes abstractions for the above that handle aspects including
+sampling, header processing and data parsing:
+ * [HTTP](http/README.md) is CLIENT/SERVER
+ * [Messaging](messaging/README.md) is PRODUCER/CONSUMER
+ * [RPC](rpc/README.md) is CLIENT/SERVER
+
+You should use these abstractions instead of modeling your own. Not only are
+they well thought through, but they also include tests to prevent common
+mistakes. For example, [HTTP tests](http-tests) makes sure spans are modeled
+consistently and uniform configuration works.
+
+Using abstractions also helps avoid modeling gotchas that might not be
+intuitive at first.
+
+For example, a common mistake is using CLIENT kind for long lived connections
+such as database pools or chat sessions. Doing so, however, can result in
+confusing data, such as incorrect service diagrams or server calls being
+attached to the wrong trace.
+
+It is also a common misconception that a grouping of CLIENT spans should itself
+be a CLIENT span. A logical span that serves only to group others, is a local
+span (Span.kind() is unset). CLIENT spans represent a single remote request. It
+is relatively common to use a local span as the parent of multiple CLIENT
+requests, or to represent a single request that was served from a local cache.
+
+Some features that already exist are subtle, yet proven with tests. It is best
+to look for tests in the "features" package before deciding something doesn't
+work.
+* [Core feature tests](../brave/src/test/java/brave/features)
+* [HTTP feature tests](http-tests/src/test/java/brave/http/features)
+* [Messaging feature tests](messaging/src/test/java/brave/rpc/features)
+* [RPC feature tests](rpc/src/test/java/brave/rpc/features)
+
+If you end up in a position where you still believe you need a custom model,
+please contact us before committing to it. There may be an alternative not yet
+documented, you might prefer. Moreover, folks usually want support and we
+cannot support every idea. It is better to understand this before you commit to
+something bespoke. In short, please reach out on [gitter](https://gitter.im/openzipkin/zipkin),
+as there are usually others around to help.
