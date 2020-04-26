@@ -24,7 +24,7 @@ callbacks run in the invocation context, which cause new spans to appear as
 as a siblings, as opposed to children of the previous callback (in this case
 a client).
 
-This may sound intuitive to those thinking in terms of callback nesting depth,
+This may sound unintuitive to those thinking in terms of callback nesting depth,
 but having a consistent structure allows traces to appear similar regardless of
 imperative vs async invocation. It also is more easy to reason with, but we'll
 touch on that later.
