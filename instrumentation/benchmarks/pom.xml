@@ -248,7 +248,7 @@
     </dependency>
     <dependency>
       <groupId>io.grpc</groupId>
-      <artifactId>grpc-core</artifactId>
+      <artifactId>grpc-testing</artifactId>
       <version>${grpc.version}</version>
     </dependency>
   </dependencies>
