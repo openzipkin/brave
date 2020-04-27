@@ -14,59 +14,58 @@
 package brave.dubbo.rpc;
 
 import brave.Span;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.propagation.TraceContext;
 import com.alibaba.dubbo.remoting.exchange.ResponseCallback;
-import org.junit.Before;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-public class TracingResponseCallbackTest extends ITTracingFilter {
-  @Before public void setup() {
-    init();
-  }
+public class TracingResponseCallbackTest {
+  Span span = mock(Span.class);
+  TraceContext invocationContext = TraceContext.newBuilder().traceId(1).spanId(2).build();
+  CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.create();
 
   @Test public void done_should_finish_span() {
-    Span span = tracing.tracer().nextSpan().start();
+    ResponseCallback callback =
+      TracingResponseCallback.create(null, span, currentTraceContext, invocationContext);
 
-    ResponseCallback tracingResponseCallback =
-      TracingResponseCallback.create(null, span, currentTraceContext);
-    tracingResponseCallback.done(null);
+    callback.done(null);
 
-    reporter.takeLocalSpan();
+    verify(span).finish();
   }
 
-  @Test public void caught_should_tag() {
-    Span span = tracing.tracer().nextSpan().start();
+  @Test public void done_should_finish_span_caught() {
+    ResponseCallback callback =
+      TracingResponseCallback.create(null, span, currentTraceContext, invocationContext);
 
-    ResponseCallback tracingResponseCallback =
-      TracingResponseCallback.create(null, span, currentTraceContext);
-    tracingResponseCallback.caught(new Exception("Test exception"));
+    Throwable error = new Exception("Test exception");
+    callback.caught(error);
 
-    reporter.takeLocalSpanWithError("Test exception");
+    verify(span).error(error);
+    verify(span).finish();
   }
 
   @Test public void done_should_forward_then_finish_span() {
-    Span span = tracing.tracer().nextSpan().start();
-
     ResponseCallback delegate = mock(ResponseCallback.class);
-    ResponseCallback tracingResponseCallback =
-      TracingResponseCallback.create(delegate, span, currentTraceContext);
+
+    ResponseCallback callback =
+      TracingResponseCallback.create(delegate, span, currentTraceContext, invocationContext);
 
     Object result = new Object();
-    tracingResponseCallback.done(result);
+    callback.done(result);
 
     verify(delegate).done(result);
-    reporter.takeLocalSpan();
+    verify(span).finish();
   }
 
   @Test public void done_should_have_span_in_scope() {
-    Span span = tracing.tracer().nextSpan().start();
-
     ResponseCallback delegate = new ResponseCallback() {
       @Override public void done(Object response) {
-        assertThat(currentTraceContext.get()).isSameAs(span.context());
+        assertThat(currentTraceContext.get()).isSameAs(invocationContext);
       }
 
       @Override public void caught(Throwable exception) {
@@ -74,28 +73,33 @@ public class TracingResponseCallbackTest extends ITTracingFilter {
       }
     };
 
-    TracingResponseCallback.create(delegate, span, currentTraceContext)
-      .done(new Object());
+    ResponseCallback callback =
+      TracingResponseCallback.create(delegate, span, currentTraceContext, invocationContext);
 
-    reporter.takeLocalSpan();
+    Object result = new Object();
+    callback.done(result);
+
+    verify(span).finish();
   }
 
-  @Test public void caught_should_forward_then_tag() {
-    Span span = tracing.tracer().nextSpan().start();
-
+  @Test public void done_should_have_span_in_scope_caught() {
     ResponseCallback delegate = new ResponseCallback() {
       @Override public void done(Object response) {
         throw new AssertionError();
       }
 
       @Override public void caught(Throwable exception) {
-        assertThat(currentTraceContext.get()).isSameAs(span.context());
+        assertThat(currentTraceContext.get()).isSameAs(invocationContext);
       }
     };
 
-    TracingResponseCallback.create(delegate, span, currentTraceContext)
-      .caught(new Exception("Test exception"));
+    ResponseCallback callback =
+      TracingResponseCallback.create(delegate, span, currentTraceContext, invocationContext);
 
-    reporter.takeLocalSpanWithError("Test exception");
+    Throwable error = new Exception("Test exception");
+    callback.caught(error);
+
+    verify(span).error(error);
+    verify(span).finish();
   }
 }

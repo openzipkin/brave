@@ -34,7 +34,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class ITTracingFilter_Provider extends ITTracingFilter {
-
   @Before public void setup() {
     server.service.setFilter("tracing");
     server.service.setInterface(GreeterService.class);
@@ -71,7 +70,6 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
   @Test public void createsChildWhenJoinDisabled() {
     tracing = tracingBuilder(NEVER_SAMPLE).supportsJoin(false).build();
-    rpcTracing = RpcTracing.create(tracing);
     init();
 
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
@@ -84,7 +82,6 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
   @Test public void samplingDisabled() {
     tracing = tracingBuilder(NEVER_SAMPLE).build();
-    rpcTracing = RpcTracing.create(tracing);
     init();
 
     client.get().sayHello("jorge");
@@ -121,11 +118,11 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
   }
 
   @Test public void customSampler() {
-    rpcTracing = RpcTracing.newBuilder(tracing).serverSampler(RpcRuleSampler.newBuilder()
+    RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).serverSampler(RpcRuleSampler.newBuilder()
       .putRule(methodEquals("sayGoodbye"), NEVER_SAMPLE)
       .putRule(serviceEquals("brave.dubbo"), ALWAYS_SAMPLE)
       .build()).build();
-    init();
+    init().setRpcTracing(rpcTracing);
 
     // unsampled
     client.get().sayGoodbye("jorge");

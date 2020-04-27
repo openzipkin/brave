@@ -15,8 +15,9 @@ package brave.dubbo;
 
 import brave.internal.Platform;
 import brave.propagation.Propagation;
-import brave.propagation.TraceContext;
+import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -31,13 +32,12 @@ import org.apache.dubbo.rpc.service.GenericService;
 
 class TestServer {
   final BlockingQueue<TraceContextOrSamplingFlags> requestQueue = new LinkedBlockingQueue<>();
-  final TraceContext.Extractor<DubboServerRequest> extractor;
+  final Extractor<Map<String, String>> extractor;
   final ServiceConfig<GenericService> service;
   final String linkLocalIp;
 
   TestServer(Propagation.Factory propagationFactory, ApplicationConfig application) {
-    extractor =
-      propagationFactory.get().extractor(DubboServerRequest.GETTER);
+    extractor = propagationFactory.get().extractor(Map::get);
     linkLocalIp = Platform.get().linkLocalIp();
     if (linkLocalIp != null) {
       // avoid dubbo's logic which might pick docker ip
@@ -50,11 +50,7 @@ class TestServer {
     service.setProtocol(new ProtocolConfig("dubbo", PickUnusedPort.get()));
     service.setInterface(GreeterService.class);
     service.setRef((method, parameterTypes, args) -> {
-      RpcContext context = RpcContext.getContext();
-      DubboServerRequest request =
-        new DubboServerRequest(context.getInvocation(), context.getAttachments());
-      requestQueue.add(extractor.extract(request));
-
+      requestQueue.add(extractor.extract(RpcContext.getContext().getAttachments()));
       return args[0];
     });
   }

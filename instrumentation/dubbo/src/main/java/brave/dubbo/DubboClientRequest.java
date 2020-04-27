@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,47 +13,72 @@
  */
 package brave.dubbo;
 
+import brave.Span;
+import brave.propagation.Propagation;
 import brave.propagation.Propagation.Setter;
 import brave.rpc.RpcClientRequest;
 import java.util.Map;
+import org.apache.dubbo.common.URL;
 import org.apache.dubbo.rpc.Invocation;
+import org.apache.dubbo.rpc.Invoker;
 
 // intentionally not yet public until we add tag parsing functionality
-final class DubboClientRequest extends RpcClientRequest {
-  static final Setter<DubboClientRequest, String> SETTER =
-    new Setter<DubboClientRequest, String>() {
+final class DubboClientRequest extends RpcClientRequest implements DubboRequest {
+  static final Setter<DubboClientRequest, String> SETTER = new Setter<DubboClientRequest, String>() {
       @Override public void put(DubboClientRequest request, String key, String value) {
-        request.putAttachment(key, value);
+        request.propagationField(key, value);
       }
 
       @Override public String toString() {
-        return "DubboClientRequest::putAttachment";
+        return "DubboClientRequest::propagationField";
       }
     };
 
+  final Invoker<?> invoker;
   final Invocation invocation;
   final Map<String, String> attachments;
 
-  DubboClientRequest(Invocation invocation, Map<String, String> attachments) {
+  DubboClientRequest(Invoker<?> invoker, Invocation invocation, Map<String, String> attachments) {
+    if (invoker == null) throw new NullPointerException("invoker == null");
     if (invocation == null) throw new NullPointerException("invocation == null");
+    this.invoker = invoker;
     this.invocation = invocation;
-    if (attachments == null) throw new NullPointerException("attachments == null");
     this.attachments = attachments;
   }
 
-  @Override public Object unwrap() {
-    return this;
+  @Override public Invoker<?> invoker() {
+    return invoker;
   }
 
+  @Override public Invocation invocation() {
+    return invocation;
+  }
+
+  /** Returns the {@link Invocation}. */
+  @Override public Invocation unwrap() {
+    return invocation;
+  }
+
+  /**
+   * Returns the method name of the invocation or the first string arg of an "$invoke" or
+   * "$invokeAsync" method.
+   */
   @Override public String method() {
     return DubboParser.method(invocation);
   }
 
+  /**
+   * Returns the {@link URL#getServiceInterface() service interface} of the invocation.
+   */
   @Override public String service() {
     return DubboParser.service(invocation);
   }
 
-  String putAttachment(String key, String value) {
-    return attachments.put(key, value);
+  boolean parseRemoteIpAndPort(Span span) {
+    return DubboParser.parseRemoteIpAndPort(span);
+  }
+
+  void propagationField(String keyName, String value) {
+    attachments.put(keyName, value);
   }
 }
