@@ -89,9 +89,14 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>@maven-compiler-plugin.version@</version>
         <configuration>
-          <excludes>
-            <exclude>**/IT*.java</exclude>
-          </excludes>
+          <!-- Only compiling types involved in integration tests avoids an otherwise unnecessary
+               Mockito dependency -->
+          <includes>
+            <include>**/BaseIT*.java</include>
+            <include>**/GreeterImpl.java</include>
+            <include>**/PickUnusedPort.java</include>
+            <include>**/TestServer.java</include>
+          </includes>
         </configuration>
       </plugin>
       <plugin>

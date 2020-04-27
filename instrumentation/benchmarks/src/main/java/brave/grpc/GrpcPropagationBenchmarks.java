@@ -21,9 +21,12 @@ import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
+import io.grpc.CallOptions;
 import io.grpc.Metadata;
 import io.grpc.Metadata.Key;
 import io.grpc.MethodDescriptor;
+import io.grpc.internal.NoopClientCall;
+import io.grpc.internal.NoopServerCall;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -84,15 +87,14 @@ public class GrpcPropagationBenchmarks {
     bothNameToKey = nameToKey(both);
 
   static final GrpcServerRequest
-    incomingB3 = new GrpcServerRequest(b3NameToKey, methodDescriptor, new Metadata()),
-    incomingBoth = new GrpcServerRequest(bothNameToKey, methodDescriptor, new Metadata()),
-    incomingBothNoTags = new GrpcServerRequest(b3NameToKey, methodDescriptor, new Metadata()),
-    nothingIncoming = new GrpcServerRequest(emptyMap(), methodDescriptor, new Metadata());
+    incomingB3 = new GrpcServerRequest(b3NameToKey, new NoopServerCall<>(), new Metadata()),
+    incomingBoth = new GrpcServerRequest(bothNameToKey, new NoopServerCall<>(), new Metadata()),
+    incomingBothNoTags = new GrpcServerRequest(b3NameToKey, new NoopServerCall<>(), new Metadata()),
+    nothingIncoming = new GrpcServerRequest(emptyMap(), new NoopServerCall<>(), new Metadata());
 
   static final byte[] tagsBytes;
 
   static {
-
     try {
       ByteArrayOutputStream bytes = new ByteArrayOutputStream();
       bytes.write(0); // version
@@ -107,19 +109,18 @@ public class GrpcPropagationBenchmarks {
     }
 
     contextWithTags = context.toBuilder().extra(singletonList(new TagsBin(tagsBytes))).build();
-    b3Injector.inject(context, new GrpcClientRequest(b3NameToKey, methodDescriptor)
-      .metadata(incomingB3.metadata));
-    bothInjector.inject(contextWithTags,
-      new GrpcClientRequest(bothNameToKey, methodDescriptor)
-        .metadata(incomingBoth.metadata));
-    bothInjector.inject(context,
-      new GrpcClientRequest(bothNameToKey, methodDescriptor)
-        .metadata(incomingBothNoTags.metadata));
+    b3Injector.inject(context, noopRequest(b3NameToKey, incomingB3.headers));
+    bothInjector.inject(contextWithTags, noopRequest(bothNameToKey, incomingBoth.headers));
+    bothInjector.inject(context, noopRequest(bothNameToKey, incomingBothNoTags.headers));
+  }
+
+  static GrpcClientRequest noopRequest(Map<String, Key<String>> nameToKey, Metadata headers) {
+    return new GrpcClientRequest(nameToKey, methodDescriptor, CallOptions.DEFAULT,
+      new NoopClientCall<>(), headers);
   }
 
   @Benchmark public void inject_b3() {
-    GrpcClientRequest request =
-      new GrpcClientRequest(b3NameToKey, methodDescriptor).metadata(new Metadata());
+    GrpcClientRequest request = noopRequest(b3NameToKey, new Metadata());
     b3Injector.inject(context, request);
   }
 
@@ -132,14 +133,12 @@ public class GrpcPropagationBenchmarks {
   }
 
   @Benchmark public void inject_both() {
-    GrpcClientRequest request =
-      new GrpcClientRequest(bothNameToKey, methodDescriptor).metadata(new Metadata());
+    GrpcClientRequest request = noopRequest(bothNameToKey, new Metadata());
     bothInjector.inject(contextWithTags, request);
   }
 
   @Benchmark public void inject_both_no_tags() {
-    GrpcClientRequest request =
-      new GrpcClientRequest(bothNameToKey, methodDescriptor).metadata(new Metadata());
+    GrpcClientRequest request = noopRequest(bothNameToKey, new Metadata());
     bothInjector.inject(context, request);
   }
 

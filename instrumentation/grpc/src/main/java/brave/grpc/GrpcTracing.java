@@ -13,7 +13,6 @@
  */
 package brave.grpc;
 
-import brave.ErrorParser;
 import brave.Tracing;
 import brave.propagation.Propagation;
 import brave.rpc.RpcTracing;
@@ -41,36 +40,38 @@ public final class GrpcTracing {
 
   public static final class Builder {
     final RpcTracing rpcTracing;
-    GrpcClientParser clientParser;
-    GrpcServerParser serverParser;
+    GrpcClientParser clientParser = new GrpcClientParser();
+    GrpcServerParser serverParser = new GrpcServerParser();
     boolean grpcPropagationFormatEnabled = false;
+
+    // for interop with old parsers
+    MessageProcessor clientMessageProcessor = MessageProcessor.NOOP;
+    MessageProcessor serverMessageProcessor = MessageProcessor.NOOP;
 
     Builder(RpcTracing rpcTracing) {
       if (rpcTracing == null) throw new NullPointerException("rpcTracing == null");
       this.rpcTracing = rpcTracing;
-      // override to re-use any custom error parser from the tracing component
-      ErrorParser errorParser = rpcTracing.tracing().errorParser();
-      clientParser = new GrpcClientParser() {
-        @Override protected ErrorParser errorParser() {
-          return errorParser;
-        }
-      };
-      serverParser = new GrpcServerParser() {
-        @Override protected ErrorParser errorParser() {
-          return errorParser;
-        }
-      };
+    }
+
+    Builder(GrpcTracing grpcTracing) {
+      rpcTracing = grpcTracing.rpcTracing;
+      clientParser = grpcTracing.clientParser;
+      serverParser = grpcTracing.serverParser;
+      clientMessageProcessor = grpcTracing.clientMessageProcessor;
+      serverMessageProcessor = grpcTracing.serverMessageProcessor;
     }
 
     public Builder clientParser(GrpcClientParser clientParser) {
       if (clientParser == null) throw new NullPointerException("clientParser == null");
       this.clientParser = clientParser;
+      this.clientMessageProcessor = clientParser;
       return this;
     }
 
     public Builder serverParser(GrpcServerParser serverParser) {
       if (serverParser == null) throw new NullPointerException("serverParser == null");
       this.serverParser = serverParser;
+      this.serverMessageProcessor = serverParser;
       return this;
     }
 
@@ -105,6 +106,9 @@ public final class GrpcTracing {
   final Map<String, Metadata.Key<String>> nameToKey;
   final boolean grpcPropagationFormatEnabled;
 
+  // for toBuilder()
+  final MessageProcessor clientMessageProcessor, serverMessageProcessor;
+
   GrpcTracing(Builder builder) { // intentionally hidden constructor
     rpcTracing = builder.rpcTracing;
     grpcPropagationFormatEnabled = builder.grpcPropagationFormatEnabled;
@@ -116,12 +120,12 @@ public final class GrpcTracing {
     nameToKey = GrpcPropagation.nameToKey(propagation);
     clientParser = builder.clientParser;
     serverParser = builder.serverParser;
+    clientMessageProcessor = builder.clientMessageProcessor;
+    serverMessageProcessor = builder.serverMessageProcessor;
   }
 
   public Builder toBuilder() {
-    return new Builder(rpcTracing)
-      .clientParser(clientParser)
-      .serverParser(serverParser);
+    return new Builder(this);
   }
 
   /** This interceptor traces outbound calls */

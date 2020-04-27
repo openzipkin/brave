@@ -103,9 +103,9 @@
     <okhttp.version>4.3.1</okhttp.version>
     <httpclient.version>4.5.11</httpclient.version>
 
-    <grpc.version>1.27.0</grpc.version>
+    <grpc.version>1.29.0</grpc.version>
     <!-- prefer grpc's version of netty -->
-    <netty.version>4.1.42.Final</netty.version>
+    <netty.version>4.1.48.Final</netty.version>
 
     <sparkjava.version>2.9.1</sparkjava.version>
     <junit.version>4.13</junit.version>

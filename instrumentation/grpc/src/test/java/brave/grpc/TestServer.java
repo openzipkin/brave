@@ -37,13 +37,13 @@ class TestServer {
   final Server server;
 
   TestServer(Map<String, Key<String>> nameToKey, Propagation<String> propagation) {
-    extractor = propagation.extractor(GrpcServerRequest.GETTER);
+    extractor = propagation.extractor(GrpcServerRequest::propagationField);
     server = ServerBuilder.forPort(PickUnusedPort.get())
       .addService(ServerInterceptors.intercept(new GreeterImpl(null), new ServerInterceptor() {
 
         @Override
         public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
-          Metadata metadata, ServerCallHandler<ReqT, RespT> next) {
+          Metadata headers, ServerCallHandler<ReqT, RespT> next) {
           Long delay = delayQueue.poll();
           if (delay != null) {
             try {
@@ -53,12 +53,8 @@ class TestServer {
               throw new AssertionError("interrupted sleeping " + delay);
             }
           }
-          requestQueue.add(extractor.extract(new GrpcServerRequest(
-            nameToKey,
-            call.getMethodDescriptor(),
-            metadata
-          )));
-          return next.startCall(call, metadata);
+          requestQueue.add(extractor.extract(new GrpcServerRequest(nameToKey, call, headers)));
+          return next.startCall(call, headers);
         }
       }))
       .build();

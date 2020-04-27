@@ -28,8 +28,8 @@ import io.grpc.ClientCall;
 import io.grpc.ClientInterceptor;
 import io.grpc.ClientInterceptors;
 import io.grpc.ForwardingClientCall.SimpleForwardingClientCall;
-import io.grpc.ForwardingServerCall;
-import io.grpc.ForwardingServerCallListener;
+import io.grpc.ForwardingServerCall.SimpleForwardingServerCall;
+import io.grpc.ForwardingServerCallListener.SimpleForwardingServerCallListener;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Metadata;
@@ -41,6 +41,7 @@ import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
+import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.examples.helloworld.GreeterGrpc;
 import io.grpc.examples.helloworld.HelloReply;
@@ -62,11 +63,10 @@ import static brave.sampler.Sampler.ALWAYS_SAMPLE;
 import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public abstract class BaseITTracingServerInterceptor extends ITRemote {
-  RpcTracing rpcTracing = RpcTracing.create(tracing);
-  GrpcTracing grpcTracing = GrpcTracing.create(rpcTracing);
+  GrpcTracing grpcTracing = GrpcTracing.create(tracing);
   Server server;
   ManagedChannel client;
 
@@ -124,8 +124,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
 
   @Test public void createsChildWhenJoinDisabled() throws IOException {
     tracing = tracingBuilder(NEVER_SAMPLE).supportsJoin(false).build();
-    rpcTracing = RpcTracing.create(tracing);
-    grpcTracing = GrpcTracing.create(rpcTracing);
+    grpcTracing = GrpcTracing.create(tracing);
     init();
 
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
@@ -137,8 +136,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
 
   @Test public void samplingDisabled() throws IOException {
     tracing = tracingBuilder(NEVER_SAMPLE).build();
-    rpcTracing = RpcTracing.create(tracing);
-    grpcTracing = GrpcTracing.create(rpcTracing);
+    grpcTracing = GrpcTracing.create(tracing);
     init();
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
@@ -183,25 +181,22 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
       .isEqualTo("helloworld.greeter/sayhello");
   }
 
+  /** {@link GreeterImpl} is trained to throw an {@link IllegalArgumentException} on error */
   @Test public void addsErrorTagOnException() {
-    try {
-      GreeterGrpc.newBlockingStub(client)
-        .sayHello(HelloRequest.newBuilder().setName("bad").build());
-      failBecauseExceptionWasNotThrown(StatusRuntimeException.class);
-    } catch (StatusRuntimeException e) {
-      Span span = reporter.takeRemoteSpanWithError(Span.Kind.SERVER, "UNKNOWN");
-      assertThat(span.tags().get("grpc.status_code")).isEqualTo("UNKNOWN");
-    }
+    assertThatThrownBy(() -> GreeterGrpc.newBlockingStub(client)
+      .sayHello(HelloRequest.newBuilder().setName("bad").build()));
+
+    Span span = reporter.takeRemoteSpanWithError(Span.Kind.SERVER, "IllegalArgumentException");
+    assertThat(span.tags()).containsEntry("grpc.status_code", "UNKNOWN");
   }
 
   @Test public void addsErrorTagOnRuntimeException() {
-    try {
-      GreeterGrpc.newBlockingStub(client)
-        .sayHello(HelloRequest.newBuilder().setName("testerror").build());
-      failBecauseExceptionWasNotThrown(StatusRuntimeException.class);
-    } catch (StatusRuntimeException e) {
-      reporter.takeRemoteSpanWithError(Span.Kind.SERVER, "testerror");
-    }
+    assertThatThrownBy(() -> GreeterGrpc.newBlockingStub(client)
+      .sayHello(HelloRequest.newBuilder().setName("testerror").build()))
+      .isInstanceOf(StatusRuntimeException.class);
+
+    Span span = reporter.takeRemoteSpanWithError(Span.Kind.SERVER, "testerror");
+    assertThat(span.tags().get("grpc.status_code")).isNull();
   }
 
   @Test
@@ -276,6 +271,72 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
     // @After will also check that sayHelloWithManyReplies was not sampled
   }
 
+  // Make sure we work well with bad user interceptors.
+
+  @Test public void userInterceptor_ThrowsOnStartCall() throws IOException {
+    init(new ServerInterceptor() {
+      @Override public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(
+        ServerCall<ReqT, RespT> call, Metadata metadata, ServerCallHandler<ReqT, RespT> next) {
+        throw new IllegalStateException("I'm a bad interceptor.");
+      }
+    });
+
+    assertThatThrownBy(() -> GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST))
+      .isInstanceOf(StatusRuntimeException.class);
+    reporter.takeRemoteSpanWithError(Span.Kind.SERVER, "I'm a bad interceptor.");
+  }
+
+  @Test public void userInterceptor_throwsOnSendMessage() throws IOException {
+    init(new ServerInterceptor() {
+      @Override public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(
+        ServerCall<ReqT, RespT> call, Metadata metadata, ServerCallHandler<ReqT, RespT> next) {
+        return next.startCall(new SimpleForwardingServerCall<ReqT, RespT>(call) {
+          @Override public void sendMessage(RespT message) {
+            throw new IllegalStateException("I'm a bad interceptor.");
+          }
+        }, metadata);
+      }
+    });
+
+    assertThatThrownBy(() -> GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST))
+      .isInstanceOf(StatusRuntimeException.class);
+    reporter.takeRemoteSpanWithError(Span.Kind.SERVER, "I'm a bad interceptor.");
+  }
+
+  @Test public void userInterceptor_throwsOnClose() throws IOException {
+    init(new ServerInterceptor() {
+      @Override public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(
+        ServerCall<ReqT, RespT> call, Metadata metadata, ServerCallHandler<ReqT, RespT> next) {
+        return next.startCall(new SimpleForwardingServerCall<ReqT, RespT>(call) {
+          @Override public void close(Status status, Metadata trailers) {
+            throw new IllegalStateException("I'm a bad interceptor.");
+          }
+        }, metadata);
+      }
+    });
+
+    assertThatThrownBy(() -> GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST))
+      .isInstanceOf(StatusRuntimeException.class);
+    reporter.takeRemoteSpanWithError(Span.Kind.SERVER, "I'm a bad interceptor.");
+  }
+
+  @Test public void userInterceptor_throwsOnOnHalfClose() throws IOException {
+    init(new ServerInterceptor() {
+      @Override public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(
+        ServerCall<ReqT, RespT> call, Metadata metadata, ServerCallHandler<ReqT, RespT> next) {
+        return new SimpleForwardingServerCallListener<ReqT>(next.startCall(call, metadata)) {
+          @Override public void onHalfClose() {
+            throw new IllegalStateException("I'm a bad interceptor.");
+          }
+        };
+      }
+    });
+
+    assertThatThrownBy(() -> GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST))
+      .isInstanceOf(StatusRuntimeException.class);
+    reporter.takeRemoteSpanWithError(Span.Kind.SERVER, "I'm a bad interceptor.");
+  }
+
   /**
    * This shows that a {@link ServerInterceptor} can see the server server span when processing the
    * request and response.
@@ -286,15 +347,16 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
     AtomicInteger recvs = new AtomicInteger();
 
     init(new ServerInterceptor() {
-      @Override public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
-        Metadata headers, ServerCallHandler<ReqT, RespT> next) {
-        call = new ForwardingServerCall.SimpleForwardingServerCall<ReqT, RespT>(call) {
+      @Override
+      public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(
+        ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
+        call = new SimpleForwardingServerCall<ReqT, RespT>(call) {
           @Override public void sendMessage(RespT message) {
             delegate().sendMessage(message);
             customizer.tag("grpc.message_send." + sends.getAndIncrement(), message.toString());
           }
         };
-        return new ForwardingServerCallListener.SimpleForwardingServerCallListener<ReqT>(next.startCall(call, headers)) {
+        return new SimpleForwardingServerCallListener<ReqT>(next.startCall(call, headers)) {
           @Override public void onMessage(ReqT message) {
             customizer.tag("grpc.message_recv." + recvs.getAndIncrement(), message.toString());
             delegate().onMessage(message);
@@ -305,7 +367,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags()).containsOnlyKeys(
+    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags()).containsKeys(
       "grpc.message_recv.0", "grpc.message_send.0"
     );
 
@@ -314,7 +376,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
     assertThat(replies).toIterable().hasSize(10);
 
     // Intentionally verbose here to show that only one recv and 10 replies
-    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags()).containsOnlyKeys(
+    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags()).containsKeys(
       "grpc.message_recv.1",
       "grpc.message_send.1",
       "grpc.message_send.2",

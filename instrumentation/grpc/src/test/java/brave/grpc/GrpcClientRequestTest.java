@@ -13,39 +13,65 @@
  */
 package brave.grpc;
 
+import io.grpc.CallOptions;
+import io.grpc.ClientCall;
 import io.grpc.Metadata;
 import io.grpc.Metadata.Key;
+import io.grpc.MethodDescriptor;
 import org.junit.Test;
 
-import static brave.grpc.TestObjects.METHOD_DESCRIPTOR;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 public class GrpcClientRequestTest {
   Key<String> b3Key = Key.of("b3", Metadata.ASCII_STRING_MARSHALLER);
-  Metadata metadata = new Metadata();
-  GrpcClientRequest request = new GrpcClientRequest(singletonMap("b3", b3Key), METHOD_DESCRIPTOR);
+  MethodDescriptor<?, ?> methodDescriptor = TestObjects.METHOD_DESCRIPTOR;
+  CallOptions callOptions = CallOptions.DEFAULT;
+  ClientCall<?, ?> call = mock(ClientCall.class);
+  Metadata headers = new Metadata();
+  GrpcClientRequest request =
+    new GrpcClientRequest(singletonMap("b3", b3Key), methodDescriptor, callOptions, call, headers);
 
-  @Test public void metadata() {
-    request.metadata(metadata).setMetadata("b3", "1");
-
-    assertThat(metadata.get(b3Key))
-      .isEqualTo("1");
+  @Test public void service() {
+    assertThat(request.service()).isEqualTo("helloworld.Greeter");
   }
 
-  @Test public void metadata_replace() {
-    metadata.put(b3Key, "0");
-
-    request.metadata(metadata).setMetadata("b3", "1");
-
-    assertThat(request.metadata.get(b3Key))
-      .isEqualTo("1");
+  @Test public void method() {
+    assertThat(request.method()).isEqualTo("SayHello");
   }
 
-  @Test public void metadata_null() {
-    assertThatThrownBy(() -> request.setMetadata("b3", "1"))
-      .isNotInstanceOf(NullPointerException.class)
-      .hasMessage("This code should never be called when null");
+  @Test public void unwrap() {
+    assertThat(request.unwrap()).isSameAs(call);
+  }
+
+  @Test public void methodDescriptor() {
+    assertThat(request.methodDescriptor()).isSameAs(methodDescriptor);
+  }
+
+  @Test public void callOptions() {
+    assertThat(request.callOptions()).isSameAs(callOptions);
+  }
+
+  @Test public void call() {
+    assertThat(request.call()).isSameAs(call);
+  }
+
+  @Test public void propagationField() {
+    request.propagationField("b3", "d");
+
+    assertThat(headers.get(b3Key)).isEqualTo("d");
+  }
+
+  @Test public void propagationField_replace() {
+    headers.put(b3Key, "0");
+
+    request.propagationField("b3", "1");
+
+    assertThat(request.headers.get(b3Key)).isEqualTo("1");
+  }
+
+  @Test public void propagationField_null() {
+    assertThat(request.headers.get(b3Key)).isNull();
   }
 }

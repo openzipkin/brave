@@ -14,16 +14,15 @@
 package brave.grpc;
 
 import brave.ErrorParser;
+import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.internal.Nullable;
-import io.grpc.ClientCall;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
-import io.grpc.ServerCall;
 import io.grpc.Status;
 
-public class GrpcParser {
+public class GrpcParser extends MessageProcessor {
   /**
    * Override when making custom types. Typically, you'll use {@link Tracing#errorParser()}
    *
@@ -51,31 +50,19 @@ public class GrpcParser {
   }
 
   /**
-   * @since 4.8
-   * @deprecated Since 5.12 use {@link ClientCall#sendMessage(Object)} or {@link
-   * ServerCall.Listener#onMessage(Object)}.
-   */
-  @Deprecated protected <M> void onMessageSent(M message, SpanCustomizer span) {
-  }
-
-  /**
-   * @since 4.8
-   * @deprecated Since 5.12 use {@link ClientCall.Listener#onMessage(Object)} or {@link
-   * ServerCall#sendMessage(Object)}.
-   */
-  @Deprecated protected <M> void onMessageReceived(M message, SpanCustomizer span) {
-  }
-
-  /**
    * Override to change what data from the status or trailers are parsed into the span modeling it.
-   * By default, this tags "grpc.status_code" and "error" when it is not OK.
+   * By default, this tags "grpc.status_code" when it is not OK, and "error" if there was no {@link
+   * Status#getCause()}.
+   *
+   * <p><em>Note</em>: {@link Status#getCause()} will be set as {@link Span#error(Throwable)} by
+   * default. You don't need to parse it here.
    */
   protected void onClose(Status status, Metadata trailers, SpanCustomizer span) {
-    if (status != null && status.getCode() != Status.Code.OK) {
-      String code = String.valueOf(status.getCode());
-      span.tag("grpc.status_code", code);
-      span.tag("error", code);
-    }
+    if (status == null || status.isOk()) return;
+
+    String code = String.valueOf(status.getCode());
+    span.tag("grpc.status_code", code);
+    if (status.getCause() == null) span.tag("error", code);
   }
 
   static @Nullable String method(String fullMethodName) {

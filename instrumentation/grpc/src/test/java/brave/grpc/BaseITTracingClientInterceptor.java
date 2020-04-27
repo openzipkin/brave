@@ -58,8 +58,7 @@ import static brave.rpc.RpcRequestMatchers.serviceEquals;
 import static brave.sampler.Sampler.ALWAYS_SAMPLE;
 import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowableOfType;
-import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.Assume.assumeTrue;
 
 public abstract class BaseITTracingClientInterceptor extends ITRemote {
@@ -228,26 +227,20 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
   @Test public void onTransportException_addsErrorTag() {
     server.stop();
 
-    StatusRuntimeException thrown = catchThrowableOfType(
-      () -> GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST),
-      StatusRuntimeException.class);
+    assertThatThrownBy(() -> GraterGrpc.newBlockingStub(client).seyHallo(HELLO_REQUEST))
+      .isInstanceOf(StatusRuntimeException.class);
 
-    Span span =
-      reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, thrown.getStatus().getCode().toString());
-    assertThat(span.tags().get("grpc.status_code"))
-      .isEqualTo(span.tags().get("error"));
+    // The error format of the exception message can differ from the span's "error" tag in CI
+    Span span = reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, ".*Connection refused.*");
+    assertThat(span.tags()).containsEntry("grpc.status_code", "UNAVAILABLE");
   }
 
   @Test public void addsErrorTag_onUnimplemented() {
-    try {
-      GraterGrpc.newBlockingStub(client).seyHallo(HELLO_REQUEST);
-      failBecauseExceptionWasNotThrown(StatusRuntimeException.class);
-    } catch (StatusRuntimeException e) {
-    }
+    assertThatThrownBy(() -> GraterGrpc.newBlockingStub(client).seyHallo(HELLO_REQUEST))
+      .isInstanceOf(StatusRuntimeException.class);
 
     Span span = reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, "UNIMPLEMENTED");
-    assertThat(span.tags().get("grpc.status_code"))
-      .isEqualTo(span.tags().get("error"));
+    assertThat(span.tags().get("grpc.status_code")).isEqualTo("UNIMPLEMENTED");
   }
 
   @Test public void addsErrorTag_onCanceledFuture() {
@@ -257,8 +250,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     assumeTrue("lost race on cancel", resp.cancel(true));
 
     Span span = reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, "CANCELLED");
-    assertThat(span.tags().get("grpc.status_code"))
-      .isEqualTo(span.tags().get("error"));
+    assertThat(span.tags().get("grpc.status_code")).isEqualTo("CANCELLED");
   }
 
   /**
@@ -273,13 +265,16 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
       new ClientInterceptor() {
         @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
           MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
-          tracing.tracer().currentSpanCustomizer().annotate("before");
-          return new SimpleForwardingClientCall<ReqT, RespT>(
-            next.newCall(method, callOptions)) {
+          return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
             @Override
             public void start(Listener<RespT> responseListener, Metadata headers) {
               tracing.tracer().currentSpanCustomizer().annotate("start");
               super.start(responseListener, headers);
+            }
+
+            @Override public void sendMessage(ReqT message) {
+              tracing.tracer().currentSpanCustomizer().annotate("sendMessage");
+              super.sendMessage(message);
             }
           };
         }
@@ -291,7 +286,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
 
     assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).annotations())
       .extracting(Annotation::value)
-      .containsOnly("before", "start");
+      .containsOnly("start", "sendMessage");
   }
 
   @Test public void clientParserTest() {
@@ -318,7 +313,12 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     }).build();
     client = newClient();
 
-    GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
+    ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
+    try {
+      GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
+    } finally {
+      parent.finish();
+    }
 
     Span span = reporter.takeRemoteSpan(Span.Kind.CLIENT);
     assertThat(span.name()).isEqualTo("unary");
@@ -326,9 +326,10 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
       "grpc.message_received", "grpc.message_sent",
       "grpc.message_received.visible", "grpc.message_sent.visible"
     );
+    reporter.takeLocalSpan();
   }
 
-  @Test public void clientParserTestStreamingResponse() {
+  @Test public void deprecated_clientParserTestStreamingResponse() {
     closeClient(client);
     grpcTracing = grpcTracing.toBuilder().clientParser(new GrpcClientParser() {
       int receiveCount = 0;
@@ -347,6 +348,46 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).tags()).hasSize(10);
   }
 
+  // Make sure we work well with bad user interceptors.
+
+  @Test public void userInterceptor_throwsOnStart() {
+    closeClient(client);
+    client = newClient(new ClientInterceptor() {
+      @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
+        MethodDescriptor<ReqT, RespT> methodDescriptor, CallOptions callOptions, Channel channel) {
+        ClientCall<ReqT, RespT> call = channel.newCall(methodDescriptor, callOptions);
+        return new SimpleForwardingClientCall<ReqT, RespT>(call) {
+          @Override public void start(Listener<RespT> responseListener, Metadata headers) {
+            throw new IllegalStateException("I'm a bad interceptor.");
+          }
+        };
+      }
+    }, grpcTracing.newClientInterceptor());
+
+    assertThatThrownBy(() -> GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST))
+      .isInstanceOf(IllegalStateException.class);
+    reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, "I'm a bad interceptor.");
+  }
+
+  @Test public void userInterceptor_throwsOnHalfClose() {
+    closeClient(client);
+    client = newClient(new ClientInterceptor() {
+      @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
+        MethodDescriptor<ReqT, RespT> methodDescriptor, CallOptions callOptions, Channel channel) {
+        ClientCall<ReqT, RespT> call = channel.newCall(methodDescriptor, callOptions);
+        return new SimpleForwardingClientCall<ReqT, RespT>(call) {
+          @Override public void halfClose() {
+            throw new IllegalStateException("I'm a bad interceptor.");
+          }
+        };
+      }
+    }, grpcTracing.newClientInterceptor());
+
+    assertThatThrownBy(() -> GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST))
+      .isInstanceOf(IllegalStateException.class);
+    reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, "I'm a bad interceptor.");
+  }
+
   /**
    * This shows that a {@link ClientInterceptor} can see the server server span when processing the
    * request and response.
@@ -362,11 +403,11 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     }
 
     assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).tags())
-      .containsOnlyKeys("grpc.message_send.1");
+      .containsKey("grpc.message_send.1");
 
     // Response processing happens on the invocation (parent) trace context
     assertThat(reporter.takeLocalSpan().tags())
-      .containsOnlyKeys("grpc.message_recv.1");
+      .containsKey("grpc.message_recv.1");
   }
 
   @Test public void messageTagging_streaming() {
@@ -382,11 +423,11 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     }
 
     assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).tags())
-      .containsOnlyKeys("grpc.message_send.1");
+      .containsKey("grpc.message_send.1");
 
     // Response processing happens on the invocation (parent) trace context
     // Intentionally verbose here to show 10 replies
-    assertThat(reporter.takeLocalSpan().tags()).containsOnlyKeys(
+    assertThat(reporter.takeLocalSpan().tags()).containsKeys(
       "grpc.message_recv.1",
       "grpc.message_recv.2",
       "grpc.message_recv.3",

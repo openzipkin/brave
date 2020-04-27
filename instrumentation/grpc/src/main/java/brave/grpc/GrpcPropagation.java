@@ -102,7 +102,7 @@ final class GrpcPropagation implements Propagation<String> {
     @Override public void inject(TraceContext context, R request) {
       if (request instanceof GrpcClientRequest) {
         byte[] serialized = TraceContextBinaryFormat.toBytes(context);
-        Metadata metadata = ((GrpcClientRequest) request).metadata;
+        Metadata metadata = ((GrpcClientRequest) request).headers;
         metadata.removeAll(GRPC_TRACE_BIN);
         metadata.put(GRPC_TRACE_BIN, serialized);
         TagsBin tags = context.findExtra(TagsBin.class);
@@ -127,7 +127,7 @@ final class GrpcPropagation implements Propagation<String> {
     @Override public TraceContextOrSamplingFlags extract(R request) {
       if (!(request instanceof GrpcServerRequest)) return delegate.extract(request);
 
-      Metadata metadata = ((GrpcClientRequest) request).metadata;
+      Metadata metadata = ((GrpcClientRequest) request).headers;
 
       // First, check if we are propagating gRPC tags.
       TagsBin tagsBin = metadata.get(GRPC_TAGS_BIN);

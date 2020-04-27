@@ -13,63 +13,79 @@
  */
 package brave.grpc;
 
-import brave.internal.Nullable;
 import brave.propagation.Propagation.Getter;
 import brave.rpc.RpcServerRequest;
 import io.grpc.Metadata;
 import io.grpc.Metadata.Key;
-import io.grpc.MethodDescriptor;
+import io.grpc.ServerCall;
+import io.grpc.ServerInterceptor;
 import java.util.Map;
 
 // intentionally not yet public until we add tag parsing functionality
 final class GrpcServerRequest extends RpcServerRequest {
-  static final Getter<GrpcServerRequest, String> GETTER =
-    new Getter<GrpcServerRequest, String>() { // retrolambda no like
-      @Override public String get(GrpcServerRequest request, String key) {
-        return request.getMetadata(key);
-      }
+  static final Getter<GrpcServerRequest, String> GETTER = new Getter<GrpcServerRequest, String>() {
+    @Override public String get(GrpcServerRequest request, String key) {
+      return request.propagationField(key);
+    }
 
-      @Override public String toString() {
-        return "GrpcServerRequest::getMetadata";
-      }
-    };
+    @Override public String toString() {
+      return "GrpcServerRequest::propagationField";
+    }
+  };
 
   final Map<String, Key<String>> nameToKey;
-  final String fullMethodName;
-  final Metadata metadata;
+  final ServerCall<?, ?> call;
+  final Metadata headers;
 
-  GrpcServerRequest(
-    Map<String, Key<String>> nameToKey,
-    MethodDescriptor<?, ?> methodDescriptor,
-    Metadata metadata
-  ) {
+  GrpcServerRequest(Map<String, Key<String>> nameToKey, ServerCall<?, ?> call, Metadata headers) {
     if (nameToKey == null) throw new NullPointerException("nameToKey == null");
-    if (methodDescriptor == null) throw new NullPointerException("methodDescriptor == null");
-    if (metadata == null) throw new NullPointerException("metadata == null");
+    if (call == null) throw new NullPointerException("call == null");
+    if (headers == null) throw new NullPointerException("headers == null");
     this.nameToKey = nameToKey;
-    this.fullMethodName = methodDescriptor.getFullMethodName();
-    this.metadata = metadata;
+    this.call = call;
+    this.headers = headers;
   }
 
+  /** Returns the {@link #call()} */
   @Override public Object unwrap() {
-    return this;
+    return call;
   }
 
   @Override public String method() {
-    return GrpcParser.method(fullMethodName);
+    return GrpcParser.method(call.getMethodDescriptor().getFullMethodName());
   }
 
   @Override public String service() {
-    return GrpcParser.service(fullMethodName);
+    // MethodDescriptor.getServiceName() is not in our floor version: gRPC 1.2
+    return GrpcParser.service(call.getMethodDescriptor().getFullMethodName());
   }
 
-  @Nullable String getMetadata(String name) {
-    if (name == null) throw new NullPointerException("name == null");
-    Key<String> key = nameToKey.get(name);
+  /**
+   * Returns the {@linkplain ServerCall server call} passed to {@link
+   * ServerInterceptor#interceptCall}.
+   *
+   * @since 5.12
+   */
+  public ServerCall<?, ?> call() {
+    return call;
+  }
+
+  /**
+   * Returns the {@linkplain Metadata headers} passed to {@link ServerInterceptor#interceptCall}.
+   *
+   * @since 5.12
+   */
+  public Metadata headers() {
+    return headers;
+  }
+
+  String propagationField(String keyName) {
+    if (keyName == null) throw new NullPointerException("keyName == null");
+    Key<String> key = nameToKey.get(keyName);
     if (key == null) {
-      assert false : "We currently don't support getting metadata except propagation fields";
+      assert false : "We currently don't support getting headers except propagation fields";
       return null;
     }
-    return metadata.get(key);
+    return headers.get(key);
   }
 }
