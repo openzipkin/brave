@@ -23,28 +23,22 @@ import org.junit.Test;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class GrpcClientRequestTest {
   Key<String> b3Key = Key.of("b3", Metadata.ASCII_STRING_MARSHALLER);
-  MethodDescriptor<?, ?> methodDescriptor = mock(MethodDescriptor.class);
-  CallOptions callOptions = mock(CallOptions.class);
+  MethodDescriptor<?, ?> methodDescriptor = TestObjects.METHOD_DESCRIPTOR;
+  CallOptions callOptions = CallOptions.DEFAULT;
   ClientCall<?, ?> call = mock(ClientCall.class);
   Metadata headers = new Metadata();
   GrpcClientRequest request =
     new GrpcClientRequest(singletonMap("b3", b3Key), methodDescriptor, callOptions, call, headers);
 
   @Test public void service() {
-    when(methodDescriptor.getFullMethodName()).thenReturn("brave.grpc.GreeterService/sayHello");
-
-    assertThat(request.service())
-      .isEqualTo("brave.grpc.GreeterService");
+    assertThat(request.service()).isEqualTo("helloworld.Greeter");
   }
 
   @Test public void method() {
-    when(methodDescriptor.getFullMethodName()).thenReturn("brave.grpc.GreeterService/sayHello");
-
-    assertThat(request.method()).isEqualTo("sayHello");
+    assertThat(request.method()).isEqualTo("SayHello");
   }
 
   @Test public void unwrap() {

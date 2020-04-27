@@ -13,6 +13,7 @@
  */
 package brave.grpc;
 
+import io.grpc.CallOptions;
 import io.grpc.Metadata;
 import io.grpc.Metadata.Key;
 import io.grpc.MethodDescriptor;
@@ -26,7 +27,7 @@ import static org.mockito.Mockito.when;
 
 public class GrpcServerRequestTest {
   Key<String> b3Key = Key.of("b3", Metadata.ASCII_STRING_MARSHALLER);
-  MethodDescriptor methodDescriptor = mock(MethodDescriptor.class);
+  MethodDescriptor<?, ?> methodDescriptor = TestObjects.METHOD_DESCRIPTOR;
   ServerCall call = mock(ServerCall.class);
   Metadata headers = new Metadata();
   GrpcServerRequest request =
@@ -34,17 +35,14 @@ public class GrpcServerRequestTest {
 
   @Test public void service() {
     when(call.getMethodDescriptor()).thenReturn(methodDescriptor);
-    when(methodDescriptor.getFullMethodName()).thenReturn("brave.grpc.GreeterService/sayHello");
 
-    assertThat(request.service())
-      .isEqualTo("brave.grpc.GreeterService");
+    assertThat(request.service()).isEqualTo("helloworld.Greeter");
   }
 
   @Test public void method() {
     when(call.getMethodDescriptor()).thenReturn(methodDescriptor);
-    when(methodDescriptor.getFullMethodName()).thenReturn("brave.grpc.GreeterService/sayHello");
 
-    assertThat(request.method()).isEqualTo("sayHello");
+    assertThat(request.service()).isEqualTo("helloworld.Greeter");
   }
 
   @Test public void unwrap() {

@@ -27,8 +27,8 @@ import static org.mockito.Mockito.mock;
 
 public class GrpcClientResponseTest {
   Key<String> b3Key = Key.of("b3", Metadata.ASCII_STRING_MARSHALLER);
-  MethodDescriptor<?, ?> methodDescriptor = mock(MethodDescriptor.class);
-  CallOptions callOptions = mock(CallOptions.class);
+  MethodDescriptor<?, ?> methodDescriptor = TestObjects.METHOD_DESCRIPTOR;
+  CallOptions callOptions = CallOptions.DEFAULT;
   ClientCall<?, ?> call = mock(ClientCall.class);
   Metadata headers = new Metadata();
   GrpcClientRequest request =

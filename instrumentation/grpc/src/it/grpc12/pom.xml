@@ -89,15 +89,9 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>@maven-compiler-plugin.version@</version>
         <configuration>
-          <!-- Do not include normal tests as they don't need to run against an old version of gRPC.
-               Also, unit tests use a Mockito plugin to mock final classes, "mock-maker-inline",
-               which is known to fail in CI (Travis) even when it passes locally. -->
-          <includes>
-            <include>**/BaseIT*.java</include>
-            <include>**/GreeterImpl.java</include>
-            <include>**/PickUnusedPort.java</include>
-            <include>**/TestServer.java</include>
-          </includes>
+          <excludes>
+            <exclude>**/IT*.java</exclude>
+          </excludes>
         </configuration>
       </plugin>
       <plugin>
