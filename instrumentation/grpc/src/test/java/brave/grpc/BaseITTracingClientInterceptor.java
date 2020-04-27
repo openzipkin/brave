@@ -59,7 +59,6 @@ import static brave.sampler.Sampler.ALWAYS_SAMPLE;
 import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.junit.Assume.assumeTrue;
 
 public abstract class BaseITTracingClientInterceptor extends ITRemote {
@@ -228,11 +227,11 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
   @Test public void onTransportException_addsErrorTag() {
     server.stop();
 
-    StatusRuntimeException thrown = catchThrowableOfType(
-      () -> GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST),
-      StatusRuntimeException.class);
+    assertThatThrownBy(() -> GraterGrpc.newBlockingStub(client).seyHallo(HELLO_REQUEST))
+      .isInstanceOf(StatusRuntimeException.class);
 
-    Span span = reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, thrown.getCause().getMessage());
+    // The error format of the exception message can differ from the span's "error" tag in CI
+    Span span = reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, ".*Connection refused.*");
     assertThat(span.tags()).containsEntry("grpc.status_code", "UNAVAILABLE");
   }
 
