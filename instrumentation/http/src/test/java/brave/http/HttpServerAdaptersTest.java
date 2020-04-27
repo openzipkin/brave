@@ -41,7 +41,8 @@ import static org.mockito.Mockito.when;
     toRequestAdapter = new HttpServerAdapters.ToRequestAdapter(request, request);
     fromRequestAdapter = new HttpServerAdapters.FromRequestAdapter<>(requestAdapter, request);
     toResponseAdapter = new HttpServerAdapters.ToResponseAdapter(response, response);
-    fromResponseAdapter = new HttpServerAdapters.FromResponseAdapter<>(responseAdapter, response);
+    fromResponseAdapter =
+      new HttpServerAdapters.FromResponseAdapter<>(responseAdapter, response, null);
   }
 
   @Test public void toRequestAdapter_parseClientIpAndPort_falseOnNoMatch() {

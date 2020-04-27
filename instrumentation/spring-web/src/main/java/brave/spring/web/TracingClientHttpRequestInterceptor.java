@@ -27,6 +27,7 @@ import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.web.client.HttpStatusCodeException;
 
 public final class TracingClientHttpRequestInterceptor implements ClientHttpRequestInterceptor {
   public static ClientHttpRequestInterceptor create(Tracing tracing) {
@@ -49,17 +50,15 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
     ClientHttpRequestExecution execution) throws IOException {
     HttpRequestWrapper request = new HttpRequestWrapper(req);
     Span span = handler.handleSend(request);
-    ClientHttpResponse result = null;
+    ClientHttpResponse response = null;
     Throwable error = null;
     try (Scope ws = currentTraceContext.newScope(span.context())) {
-      return result = execution.execute(req, body);
+      return response = execution.execute(req, body);
     } catch (Throwable e) {
       error = e;
       throw e;
     } finally {
-      ClientHttpResponseWrapper
-        response = result != null ? new ClientHttpResponseWrapper(request, result, error) : null;
-      handler.handleReceive(response, error, span);
+      handler.handleReceive(new ClientHttpResponseWrapper(request, response, error), span);
     }
   }
 
@@ -98,11 +97,11 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
 
   static final class ClientHttpResponseWrapper extends HttpClientResponse {
     final HttpRequestWrapper request;
-    final ClientHttpResponse response;
+    @Nullable final ClientHttpResponse response;
     @Nullable final Throwable error;
 
-    ClientHttpResponseWrapper(
-      HttpRequestWrapper request, ClientHttpResponse response, @Nullable Throwable error) {
+    ClientHttpResponseWrapper(HttpRequestWrapper request, @Nullable ClientHttpResponse response,
+      @Nullable Throwable error) {
       this.request = request;
       this.response = response;
       this.error = error;
@@ -122,7 +121,11 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
 
     @Override public int statusCode() {
       try {
-        return response.getRawStatusCode();
+        int result = response != null ? response.getRawStatusCode() : 0;
+        if (result <= 0 && error instanceof HttpStatusCodeException) {
+          result = ((HttpStatusCodeException) error).getRawStatusCode();
+        }
+        return result;
       } catch (Exception e) {
         return 0;
       }

@@ -14,13 +14,13 @@
 package brave.sparkjava;
 
 import brave.Span;
-import brave.Tracer;
-import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.http.HttpServerHandler;
 import brave.http.HttpServerRequest;
 import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
 import brave.servlet.HttpServletRequestWrapper;
 import brave.servlet.HttpServletResponseWrapper;
 import spark.ExceptionHandler;
@@ -35,11 +35,11 @@ public final class SparkTracing {
     return new SparkTracing(httpTracing);
   }
 
-  final Tracer tracer;
+  final CurrentTraceContext currentTraceContext;
   final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
 
   SparkTracing(HttpTracing httpTracing) { // intentionally hidden constructor
-    tracer = httpTracing.tracing().tracer();
+    currentTraceContext = httpTracing.tracing().currentTraceContext();
     handler = HttpServerHandler.create(httpTracing);
   }
 
@@ -48,17 +48,18 @@ public final class SparkTracing {
       // Add servlet attribute "http.route" if this or similar is merged:
       // https://github.com/perwendel/spark/pull/1126
       Span span = handler.handleReceive(HttpServletRequestWrapper.create(request.raw()));
-      request.attribute(SpanInScope.class.getName(), tracer.withSpanInScope(span));
+      request.attribute(Span.class.getName(), span);
+      request.attribute(Scope.class.getName(), currentTraceContext.newScope(span.context()));
     };
   }
 
   public Filter afterAfter() {
     return (req, res) -> {
-      Span span = tracer.currentSpan();
+      Span span = req.attribute(Span.class.getName());
       if (span == null) return;
       HttpServerResponse response = HttpServletResponseWrapper.create(req.raw(), res.raw(), null);
-      handler.handleSend(response, response.error(), span);
-      ((SpanInScope) req.attribute(SpanInScope.class.getName())).close();
+      handler.handleSend(response, span);
+      ((Scope) req.attribute(Scope.class.getName())).close();
     };
   }
 
@@ -67,12 +68,12 @@ public final class SparkTracing {
       try {
         delegate.handle(error, req, res);
       } finally {
-        Span span = tracer.currentSpan();
+        Span span = req.attribute(Span.class.getName());
         if (span != null) {
           HttpServerResponse response =
             HttpServletResponseWrapper.create(req.raw(), res.raw(), error);
-          handler.handleSend(response, response.error(), span);
-          ((SpanInScope) req.attribute(SpanInScope.class.getName())).close();
+          handler.handleSend(response, span);
+          ((Scope) req.attribute(Scope.class.getName())).close();
         }
       }
     };

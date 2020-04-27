@@ -104,7 +104,7 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     @Override public void process(HttpResponse response, HttpContext context) {
       Span span = (Span) context.removeAttribute(Span.class.getName());
       if (span == null) return;
-      handler.handleReceive(new HttpResponseWrapper(response, context), null, span);
+      handler.handleReceive(new HttpResponseWrapper(response, context, null), span);
     }
   }
 
@@ -229,7 +229,7 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
       removeScope(context);
       Span currentSpan = (Span) context.removeAttribute(Span.class.getName());
       if (currentSpan != null) {
-        handler.handleReceive(null, ex, currentSpan);
+        handler.handleReceive(new HttpResponseWrapper(null, context, ex), currentSpan);
       }
       requestProducer.failed(ex);
     }
@@ -271,7 +271,7 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
       removeScope(context);
       Span currentSpan = (Span) context.removeAttribute(Span.class.getName());
       if (currentSpan != null) {
-        handler.handleReceive(null, ex, currentSpan);
+        handler.handleReceive(new HttpResponseWrapper(null, context, ex), currentSpan);
       }
       responseConsumer.failed(ex);
     }
@@ -337,12 +337,19 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
 
   static final class HttpResponseWrapper extends HttpClientResponse {
     @Nullable final HttpRequestWrapper request;
-    final HttpResponse response;
+    @Nullable final HttpResponse response;
+    @Nullable final Throwable error;
 
-    HttpResponseWrapper(HttpResponse response, HttpContext context) {
+    HttpResponseWrapper(
+      @Nullable HttpResponse response,
+      HttpContext context,
+      @Nullable Throwable error
+    ) {
+      if (context == null) throw new NullPointerException("context == null");
       HttpRequest request = HttpClientContext.adapt(context).getRequest();
       this.request = request != null ? new HttpRequestWrapper(request, context) : null;
       this.response = response;
+      this.error = error;
     }
 
     @Override public Object unwrap() {
@@ -354,10 +361,11 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     }
 
     @Override public Throwable error() {
-      return null; // HttpAsyncRequestProducer cannot see the response and error at the same time
+      return error;
     }
 
     @Override public int statusCode() {
+      if (response == null) return 0;
       StatusLine statusLine = response.getStatusLine();
       return statusLine != null ? statusLine.getStatusCode() : 0;
     }

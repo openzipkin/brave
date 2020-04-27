@@ -119,7 +119,7 @@ public abstract class ServletRuntime {
         HttpServletResponse res = (HttpServletResponse) e.getSuppliedResponse();
         HttpServerResponse response =
           brave.servlet.HttpServletResponseWrapper.create(req, res, e.getThrowable());
-        handler.handleSend(response, response.error(), span);
+        handler.handleSend(response, span);
       }
 
       // Per Servlet 3 section 2.3.3.3, we can't see the final HTTP status, yet. defer to onComplete

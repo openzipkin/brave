@@ -29,6 +29,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -51,15 +52,28 @@ import static org.mockito.Mockito.when;
   @Mock Object response;
 
   @Before public void init() {
-    httpTracing = HttpTracing.newBuilder(Tracing.newBuilder().spanReporter(spans::add).build())
-      .clientSampler(sampler).clientParser(parser).build();
-    handler = HttpClientHandler.create(httpTracing, adapter);
-
+    init(httpTracingBuilder(tracingBuilder()));
     when(adapter.method(request)).thenReturn("GET");
   }
 
+  void init(HttpTracing.Builder builder) {
+    close();
+    httpTracing = builder.build();
+    handler = HttpClientHandler.create(httpTracing, adapter);
+  }
+
+  HttpTracing.Builder httpTracingBuilder(Tracing.Builder tracingBuilder) {
+    return HttpTracing.newBuilder(tracingBuilder.build())
+      .clientSampler(sampler).clientParser(parser);
+  }
+
+  Tracing.Builder tracingBuilder() {
+    return Tracing.newBuilder().spanReporter(spans::add);
+  }
+
   @After public void close() {
-    Tracing.current().close();
+    Tracing current = Tracing.current();
+    if (current != null) current.close();
   }
 
   @Test public void handleSend_defaultsToMakeNewTrace() {
@@ -84,9 +98,9 @@ import static org.mockito.Mockito.when;
   @Test public void handleSend_makesRequestBasedSamplingDecision() {
     // request sampler says false eventhough trace ID sampler would have said true
     when(sampler.trySample(any(FromRequestAdapter.class))).thenReturn(false);
+    init(httpTracingBuilder(tracingBuilder()));
 
-    assertThat(handler.handleSend(injector, request).isNoop())
-      .isTrue();
+    assertThat(handler.handleSend(injector, request).isNoop()).isTrue();
   }
 
   @Test public void handleSend_injectsTheTraceContext() {
@@ -132,5 +146,13 @@ import static org.mockito.Mockito.when;
     handler.handleReceive(response, null, span);
 
     verify(parser).response(eq(adapter), eq(response), isNull(), eq(span));
+  }
+
+  @Test public void handleReceive_oneOfResponseError() {
+    brave.Span span = mock(brave.Span.class);
+
+    assertThatThrownBy(() -> handler.handleReceive(null, null, span))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Either the response or error parameters may be null, but not both");
   }
 }

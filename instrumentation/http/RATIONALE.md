@@ -96,3 +96,16 @@ The `TraceContext` parameter of the parsers provides advanced data handling,
 such as `BaggagePropagation.get(context, "field-name")`. This is explicitly
 passed to avoid reliance on expensive span scoping which no longer occurs
 around parse events.
+
+## Why does `HttpHandler.handleFinish` have no error parameter?
+
+HttpHandler finish hooks once had two parameters: one for the response and one
+for an error. In practice, "http.status_code" sometimes ends up in an
+exception, and parsers usually don't look at exception subtypes. For example,
+the following exceptions include a code and optionally a cause of it:
+* `org.springframework.web.client.HttpStatusCodeException`
+* `javax.ws.rs.WebApplicationException`
+
+Since `Response.error()` exists anyway, it is better to be consistent than have
+those writing parsers have to pin to framework specific code in order to know
+the status code.

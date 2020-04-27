@@ -36,7 +36,7 @@ public class HttpResponseWrapperTest {
   @Test public void request() {
     when(context.getRequest()).thenReturn(request);
 
-    assertThat(new HttpResponseWrapper(response, context).request().unwrap())
+    assertThat(new HttpResponseWrapper(response, context, null).request().unwrap())
       .isSameAs(request);
   }
 
@@ -44,10 +44,15 @@ public class HttpResponseWrapperTest {
     when(response.getStatusLine()).thenReturn(statusLine);
     when(statusLine.getStatusCode()).thenReturn(200);
 
-    assertThat(new HttpResponseWrapper(response, context).statusCode()).isEqualTo(200);
+    assertThat(new HttpResponseWrapper(response, context, null).statusCode()).isEqualTo(200);
   }
 
   @Test public void statusCode_zeroWhenNoStatusLine() {
-    assertThat(new HttpResponseWrapper(response, context).statusCode()).isZero();
+    assertThat(new HttpResponseWrapper(response, context, null).statusCode()).isZero();
+  }
+
+  @Test public void statusCode_zeroWhenNoResponse() {
+    assertThat(new HttpResponseWrapper(null, context, new IllegalArgumentException()).statusCode())
+      .isZero();
   }
 }

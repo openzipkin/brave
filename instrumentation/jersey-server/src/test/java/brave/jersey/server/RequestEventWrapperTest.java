@@ -14,8 +14,10 @@
 package brave.jersey.server;
 
 import brave.jersey.server.TracingApplicationEventListener.RequestEventWrapper;
+import javax.ws.rs.ClientErrorException;
 import org.glassfish.jersey.server.ContainerRequest;
 import org.glassfish.jersey.server.ContainerResponse;
+import org.glassfish.jersey.server.internal.process.MappableException;
 import org.glassfish.jersey.server.monitoring.RequestEvent;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -51,6 +53,18 @@ public class RequestEventWrapperTest {
     when(response.getStatus()).thenReturn(200);
 
     assertThat(new RequestEventWrapper(event).statusCode()).isEqualTo(200);
+  }
+
+  @Test public void statusCode_exception() {
+    when(event.getException()).thenReturn(new ClientErrorException(400));
+
+    assertThat(new RequestEventWrapper(event).statusCode()).isEqualTo(400);
+  }
+
+  @Test public void statusCode_mappableException() {
+    when(event.getException()).thenReturn(new MappableException(new ClientErrorException(400)));
+
+    assertThat(new RequestEventWrapper(event).statusCode()).isEqualTo(400);
   }
 
   @Test public void statusCode_zeroNoResponse() {

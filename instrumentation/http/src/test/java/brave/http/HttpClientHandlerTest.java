@@ -15,7 +15,7 @@ package brave.http;
 
 import brave.SpanCustomizer;
 import brave.Tracing;
-import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
@@ -81,7 +81,7 @@ public class HttpClientHandlerTest {
     when(response.finishTimestamp()).thenReturn(124000L);
 
     brave.Span span = handler.handleSend(request);
-    handler.handleReceive(response, null, span);
+    handler.handleReceive(response, span);
 
     assertThat(spans.get(0).durationAsLong()).isEqualTo(1000L);
   }
@@ -117,17 +117,9 @@ public class HttpClientHandlerTest {
     verify(clientSampler).trySample(request);
   }
 
-  @Test public void nextSpan_samplerSeesHttpClientRequest() {
-    SamplerFunction<HttpRequest> clientSampler = mock(SamplerFunction.class);
-    init(httpTracingBuilder(tracingBuilder()).clientSampler(clientSampler));
-
-    handler.nextSpan(request);
-
-    verify(clientSampler).trySample(request);
-  }
-
   @Test public void handleSendWithParent_overrideContext() {
-    try (Scope ws = httpTracing.tracing.currentTraceContext().newScope(context)) {
+    try (
+      CurrentTraceContext.Scope ws = httpTracing.tracing.currentTraceContext().newScope(context)) {
       brave.Span span = handler.handleSendWithParent(request, null);
 
       // If the overwrite was successful, we have a root span.
@@ -136,7 +128,7 @@ public class HttpClientHandlerTest {
   }
 
   @Test public void handleSendWithParent_overrideNull() {
-    try (Scope ws = httpTracing.tracing.currentTraceContext().newScope(null)) {
+    try (CurrentTraceContext.Scope ws = httpTracing.tracing.currentTraceContext().newScope(null)) {
       brave.Span span = handler.handleSendWithParent(request, context);
 
       // If the overwrite was successful, we have a child span.
@@ -149,7 +141,7 @@ public class HttpClientHandlerTest {
     when(span.context()).thenReturn(context);
     when(span.customizer()).thenReturn(span);
 
-    handler.handleReceive(mock(HttpClientResponse.class), null, span);
+    handler.handleReceive(mock(HttpClientResponse.class), span);
 
     verify(span).isNoop();
     verify(span).context();
@@ -164,8 +156,9 @@ public class HttpClientHandlerTest {
     when(span.customizer()).thenReturn(span);
 
     Exception error = new RuntimeException("peanuts");
+    when(response.error()).thenReturn(error);
 
-    handler.handleReceive(mock(HttpClientResponse.class), error, span);
+    handler.handleReceive(response, span);
 
     verify(span).isNoop();
     verify(span).context();
@@ -175,12 +168,62 @@ public class HttpClientHandlerTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void handleReceive_oneOfResponseError() {
+  @Test public void handleReceive_responseRequired() {
     brave.Span span = mock(brave.Span.class);
 
-    assertThatThrownBy(() -> handler.handleReceive(null, null, span))
-      .isInstanceOf(IllegalArgumentException.class)
-      .hasMessage("Either the response or error parameters may be null, but not both");
+    assertThatThrownBy(() -> handler.handleReceive(null, span))
+      .isInstanceOf(NullPointerException.class)
+      .hasMessage("response == null");
+  }
+
+  @Test public void deprecatedHandleReceive_externalTimestamps() {
+    when(request.startTimestamp()).thenReturn(123000L);
+    when(response.finishTimestamp()).thenReturn(124000L);
+
+    brave.Span span = handler.handleSend(request);
+    handler.handleReceive(response, null, span);
+
+    assertThat(spans.get(0).durationAsLong()).isEqualTo(1000L);
+  }
+
+  @Test public void deprecatedNextSpan_samplerSeesHttpClientRequest() {
+    SamplerFunction<HttpRequest> clientSampler = mock(SamplerFunction.class);
+    init(httpTracingBuilder(tracingBuilder()).clientSampler(clientSampler));
+
+    handler.nextSpan(request);
+
+    verify(clientSampler).trySample(request);
+  }
+
+  @Test public void deprecatedHandleReceive_finishesSpanEvenIfUnwrappedNull() {
+    brave.Span span = mock(brave.Span.class);
+    when(span.context()).thenReturn(context);
+    when(span.customizer()).thenReturn(span);
+
+    handler.handleReceive(mock(HttpClientResponse.class), null, span);
+
+    verify(span).isNoop();
+    verify(span).context();
+    verify(span).customizer();
+    verify(span).finish();
+    verifyNoMoreInteractions(span);
+  }
+
+  @Test public void deprecatedHandleReceive_finishesSpanEvenIfUnwrappedNull_withError() {
+    brave.Span span = mock(brave.Span.class);
+    when(span.context()).thenReturn(context);
+    when(span.customizer()).thenReturn(span);
+
+    Exception error = new RuntimeException("peanuts");
+
+    handler.handleReceive(mock(HttpClientResponse.class), error, span);
+
+    verify(span).isNoop();
+    verify(span).context();
+    verify(span).customizer();
+    verify(span).error(error);
+    verify(span).finish();
+    verifyNoMoreInteractions(span);
   }
 
   @Test public void handleSend_oldSamplerDoesntSeeNullWhenUnwrappedNull() {
@@ -227,7 +270,10 @@ public class HttpClientHandlerTest {
         }
       }));
 
-    handler.handleReceive(response, null, mock(brave.Span.class));
+    brave.Span span = mock(brave.Span.class);
+    when(span.isNoop()).thenReturn(false);
+
+    handler.handleReceive(response, null, span);
 
     assertThat(reachedAssertion).isTrue();
   }

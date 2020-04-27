@@ -14,9 +14,12 @@
 package brave.http;
 
 import brave.Span;
+import brave.SpanCustomizer;
 import brave.Tracer;
+import brave.Tracer.SpanInScope;
 import brave.http.HttpServerAdapters.FromResponseAdapter;
 import brave.internal.Nullable;
+import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.SamplerFunction;
@@ -36,20 +39,19 @@ import brave.sampler.SamplerFunction;
  *   <li>Complete the span</li>
  * </ol>
  * <pre>{@code
- * HttpServerRequestWrapper wrapper = new HttpServerRequestWrapper(request);
- * Span span = handler.handleReceive(wrapper); // 1.
- * Result result = null;
+ * HttpServerRequestWrapper requestWrapper = new HttpServerRequestWrapper(request);
+ * Span span = handler.handleReceive(requestWrapper); // 1.
+ * HttpServerResponse response = null;
  * Throwable error = null;
  * try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
- *   return result = process(request); // 3.
- * } catch (RuntimeException | Error e) {
+ *   return response = process(request); // 3.
+ * } catch (Throwable e) {
  *   error = e; // 4.
  *   throw e;
  * } finally {
- *   HttpServerResponseWrapper response = result != null
- *     ? new HttpServerResponseWrapper(wrapper, result, error)
- *     : null;
- *   handler.handleSend(response, error, span); // 5.
+ *   HttpServerResponseWrapper responseWrapper =
+ *     new HttpServerResponseWrapper(requestWrapper, response, error);
+ *   handler.handleSend(responseWrapper, span); // 5.
  * }
  * }</pre>
  *
@@ -138,7 +140,7 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
 
   @Override void parseRequest(HttpRequest request, Span span) {
     ((HttpServerRequest) request).parseClientIpAndPort(span);
-    requestParser.parse(request, span.context(), span.customizer());
+    super.parseRequest(request, span);
   }
 
   /** Creates a potentially noop span representing this request */
@@ -154,23 +156,47 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
   }
 
   /**
+   * @since 4.3
+   * @deprecated Since 5.12, use {@link #handleSend(HttpServerResponse, Span)}
+   */
+  public void handleSend(@Nullable Resp response, @Nullable Throwable error, Span span) {
+    if (span == null) throw new NullPointerException("span == null");
+    if (response == null && error == null) {
+      throw new IllegalArgumentException(
+        "Either the response or error parameters may be null, but not both");
+    }
+
+    if (response == null) {
+      span.error(error).finish();
+      return;
+    }
+
+    HttpServerResponse serverResponse;
+    if (response instanceof HttpServerResponse) {
+      serverResponse = (HttpServerResponse) response;
+      if (serverResponse.error() == null && error != null) {
+        span.error(error);
+      }
+    } else {
+      serverResponse = new FromResponseAdapter<>(adapter, response, error);
+    }
+    handleFinish(serverResponse, span);
+  }
+
+  /**
    * Finishes the server span after assigning it tags according to the response or error.
    *
    * <p>This is typically called once the response headers are sent, and after the span is {@link
-   * brave.Tracer.SpanInScope#close() no longer in scope}.
+   * SpanInScope#close() no longer in scope}.
    *
-   * <p>Note: Either the response or error parameters may be null, but not both.
+   * <p><em>Note</em>: It is valid to have a {@link HttpServerResponse} that only includes an
+   * {@linkplain HttpServerResponse#error() error}. However, it is better to also include the
+   * {@linkplain HttpServerResponse#request() request}.
    *
-   * @see HttpTracing#serverResponseParser()
-   * @since 4.3
+   * @see HttpResponseParser#parse(HttpResponse, TraceContext, SpanCustomizer)
+   * @since 5.12
    */
-  public void handleSend(@Nullable Resp response, @Nullable Throwable error, Span span) {
-    HttpServerResponse serverResponse;
-    if (response == null || response instanceof HttpServerResponse) {
-      serverResponse = (HttpServerResponse) response;
-    } else {
-      serverResponse = new FromResponseAdapter<>(adapter, response);
-    }
-    handleFinish(serverResponse, error, span);
+  public void handleSend(HttpServerResponse response, Span span) {
+    handleFinish(response, span);
   }
 }

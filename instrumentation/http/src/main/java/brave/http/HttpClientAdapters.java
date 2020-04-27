@@ -193,12 +193,19 @@ import brave.internal.Nullable;
   @Deprecated static final class FromResponseAdapter<Res> extends HttpClientResponse {
     final HttpClientAdapter<?, Res> adapter;
     final Res response;
+    @Nullable final Throwable error;
 
-    FromResponseAdapter(HttpClientAdapter<?, Res> adapter, Res response) {
+    FromResponseAdapter(
+      HttpClientAdapter<?, Res> adapter, Res response, @Nullable Throwable error) {
       if (adapter == null) throw new NullPointerException("adapter == null");
-      this.adapter = adapter;
       if (response == null) throw new NullPointerException("response == null");
+      this.adapter = adapter;
       this.response = response;
+      this.error = error;
+    }
+
+    @Override public Throwable error() {
+      return error;
     }
 
     @Override public Object unwrap() {
