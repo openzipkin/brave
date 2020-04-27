@@ -97,7 +97,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
     this.tracer = httpTracing.tracing().tracer();
     this.sampler = httpTracing.tracing().sampler();
     this.httpSampler = httpTracing.clientRequestSampler();
-    this.serverName = !"" .equals(httpTracing.serverName()) ? httpTracing.serverName() : null;
+    this.serverName = !"".equals(httpTracing.serverName()) ? httpTracing.serverName() : null;
     // The following allows us to add the method: handleSend(HttpClientRequest request) without
     // duplicating logic from the superclass or deprecated handleReceive methods.
     this.defaultInjector = httpTracing.tracing().propagation().injector(HttpClientRequest.SETTER);
