@@ -17,8 +17,10 @@ import brave.Clock;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
+import com.alibaba.dubbo.common.extension.ExtensionLoader;
 import com.alibaba.dubbo.config.ApplicationConfig;
 import com.alibaba.dubbo.config.ReferenceConfig;
+import com.alibaba.dubbo.rpc.Filter;
 import com.alibaba.dubbo.rpc.RpcContext;
 import com.alibaba.dubbo.rpc.RpcException;
 import org.junit.Before;
@@ -29,16 +31,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class ITTracingFilter_Consumer extends ITTracingFilter {
+  ReferenceConfig<GraterService> wrongClient;
 
   @Before public void setup() {
     init();
     server.start();
 
+    String url = "dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean";
     client = new ReferenceConfig<>();
     client.setApplication(new ApplicationConfig("bean-consumer"));
     client.setFilter("tracing");
     client.setInterface(GreeterService.class);
-    client.setUrl("dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean");
+    client.setUrl(url);
+
+    wrongClient = new ReferenceConfig<>();
+    wrongClient.setApplication(new ApplicationConfig("bad-consumer"));
+    wrongClient.setFilter("tracing");
+    wrongClient.setInterface(GraterService.class);
+    wrongClient.setUrl(url);
   }
 
   @Test public void propagatesNewTrace() {
@@ -178,17 +188,31 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
   }
 
   @Test public void addsErrorTag_onUnimplemented() {
-    server.stop();
-    server = new TestServer(propagationFactory);
-    server.service.setRef((method, parameterTypes, args) -> args);
-    server.start();
-
-    assertThatThrownBy(() -> client.get().sayHello("jorge"))
+    assertThatThrownBy(() -> wrongClient.get().sayHello("jorge"))
       .isInstanceOf(RpcException.class);
 
     Span span =
       reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, ".*Not found exported service.*");
-    assertThat(span.tags().get("dubbo.error_code")).isEqualTo("NETWORK_EXCEPTION");
+    assertThat(span.tags())
+      .containsEntry("dubbo.error_code", "1");
+  }
+
+  /** Shows if you aren't using RpcTracing, the old "dubbo.error_code" works */
+  @Test public void addsErrorTag_onUnimplemented_legacy() {
+    ((TracingFilter) ExtensionLoader.getExtensionLoader(Filter.class)
+      .getExtension("tracing")).isInit = false;
+
+    ((TracingFilter) ExtensionLoader.getExtensionLoader(Filter.class)
+      .getExtension("tracing"))
+      .setTracing(tracing);
+
+    assertThatThrownBy(() -> wrongClient.get().sayHello("jorge"))
+      .isInstanceOf(RpcException.class);
+
+    Span span =
+      reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, ".*Not found exported service.*");
+    assertThat(span.tags())
+      .containsEntry("dubbo.error_code", "1");
   }
 
   /** Ensures the span completes on asynchronous invocation. */

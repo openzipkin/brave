@@ -13,7 +13,6 @@
  */
 package brave.dubbo.rpc;
 
-import brave.rpc.RpcTracing;
 import brave.test.ITRemote;
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
 import com.alibaba.dubbo.config.ReferenceConfig;
@@ -21,7 +20,6 @@ import com.alibaba.dubbo.rpc.Filter;
 import org.junit.After;
 
 public abstract class ITTracingFilter extends ITRemote {
-  RpcTracing rpcTracing = RpcTracing.create(tracing);
   TestServer server = new TestServer(propagationFactory);
   ReferenceConfig<GreeterService> client;
 
@@ -30,10 +28,11 @@ public abstract class ITTracingFilter extends ITRemote {
     server.stop();
   }
 
-  /** Call this after updating {@link #tracing} or {@link #rpcTracing} */
-  void init() {
-    ((TracingFilter) ExtensionLoader.getExtensionLoader(Filter.class)
-      .getExtension("tracing"))
-      .setRpcTracing(rpcTracing);
+  /** Call this after updating {@link #tracing} */
+  TracingFilter init() {
+    TracingFilter filter = (TracingFilter) ExtensionLoader.getExtensionLoader(Filter.class)
+      .getExtension("tracing");
+    filter.setTracing(tracing);
+    return filter;
   }
 }
