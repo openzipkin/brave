@@ -62,7 +62,8 @@ public class HttpResponseParserAdaptersTest {
     HttpClientAdapter adapter = mock(HttpClientAdapter.class);
     Object res = new Object();
 
-    parserAdapter.parse(new HttpClientAdapters.FromResponseAdapter(adapter, res), context, span);
+    parserAdapter.parse(new HttpClientAdapters.FromResponseAdapter(adapter, res, null), context,
+      span);
 
     verify(parser).response(adapter, res, null, span);
   }
@@ -116,7 +117,8 @@ public class HttpResponseParserAdaptersTest {
     HttpServerAdapter adapter = mock(HttpServerAdapter.class);
     Object res = new Object();
 
-    parserAdapter.parse(new HttpServerAdapters.FromResponseAdapter(adapter, res), context, span);
+    parserAdapter.parse(new HttpServerAdapters.FromResponseAdapter(adapter, res, null), context,
+      span);
 
     verify(parser).response(adapter, res, null, span);
   }

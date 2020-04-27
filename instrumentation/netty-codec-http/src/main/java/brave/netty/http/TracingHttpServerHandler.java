@@ -14,29 +14,30 @@
 package brave.netty.http;
 
 import brave.Span;
-import brave.Tracer;
-import brave.Tracer.SpanInScope;
 import brave.http.HttpServerHandler;
 import brave.http.HttpServerRequest;
 import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
 import brave.internal.Nullable;
 import brave.internal.Platform;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.util.Attribute;
 import java.net.InetSocketAddress;
 import java.net.URI;
 
 final class TracingHttpServerHandler extends ChannelDuplexHandler {
+  final CurrentTraceContext currentTraceContext;
   final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
-  final Tracer tracer;
 
   TracingHttpServerHandler(HttpTracing httpTracing) {
-    tracer = httpTracing.tracing().tracer();
+    currentTraceContext = httpTracing.tracing().currentTraceContext();
     handler = HttpServerHandler.create(httpTracing);
   }
 
@@ -52,8 +53,7 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
     ctx.channel().attr(NettyHttpTracing.REQUEST_ATTRIBUTE).set(request);
     Span span = handler.handleReceive(request);
     ctx.channel().attr(NettyHttpTracing.SPAN_ATTRIBUTE).set(span);
-    SpanInScope spanInScope = tracer.withSpanInScope(span);
-    ctx.channel().attr(NettyHttpTracing.SPAN_IN_SCOPE_ATTRIBUTE).set(spanInScope);
+    Scope scope = currentTraceContext.newScope(span.context());
 
     // Place the span in scope so that downstream code can read trace IDs
     Throwable error = null;
@@ -64,12 +64,14 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
       throw e;
     } finally {
       if (error != null) span.error(error).finish();
-      spanInScope.close();
+      scope.close();
     }
   }
 
   @Override public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise prm) {
-    Span span = ctx.channel().attr(NettyHttpTracing.SPAN_ATTRIBUTE).get();
+    Attribute<Span> spanAttr = ctx.channel().attr(NettyHttpTracing.SPAN_ATTRIBUTE);
+    Span span = spanAttr.get();
+    spanAttr.compareAndSet(span, null);
     if (span == null || !(msg instanceof HttpResponse)) {
       ctx.write(msg, prm);
       return;
@@ -77,9 +79,7 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
 
     HttpResponse response = (HttpResponse) msg;
 
-    // Guard re-scoping the same span
-    SpanInScope spanInScope = ctx.channel().attr(NettyHttpTracing.SPAN_IN_SCOPE_ATTRIBUTE).get();
-    if (spanInScope == null) spanInScope = tracer.withSpanInScope(span);
+    Scope scope = currentTraceContext.maybeScope(span.context());
     Throwable error = null;
     try {
       ctx.write(msg, prm);
@@ -88,8 +88,8 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
       throw t;
     } finally {
       HttpServerRequest request = ctx.channel().attr(NettyHttpTracing.REQUEST_ATTRIBUTE).get();
-      handler.handleSend(new HttpResponseWrapper(request, response, error), error, span);
-      spanInScope.close();
+      handler.handleSend(new HttpResponseWrapper(request, response, error), span);
+      scope.close();
     }
   }
 

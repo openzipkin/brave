@@ -172,20 +172,19 @@ You generally need to...
 5. Complete the span
 
 ```java
-HttpClientRequestWrapper wrapper = new HttpClientRequestWrapper(request);
-Span span = handler.handleSend(wrapper); // 1.
-Result result = null;
+HttpClientRequestWrapper requestWrapper = new HttpClientRequestWrapper(request);
+Span span = handler.handleSend(requestWrapper); // 1.
+HttpClientResponse response = null;
 Throwable error = null;
 try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
-  return result = invoke(request); // 3.
+  return response = invoke(request); // 3.
 } catch (Throwable e) {
   error = e; // 4.
   throw e;
 } finally {
-  HttpClientResponseWrapper response = result != null
-    ? new HttpClientResponseWrapper(wrapper, result, error)
-    : null;
-  handler.handleReceive(response, error, span); // 5.
+  HttpClientResponseWrapper responseWrapper =
+    new HttpClientResponseWrapper(requestWrapper, response, error);
+  handler.handleReceive(responseWrapper, span); // 5.
 }
 ```
 
@@ -243,20 +242,19 @@ You generally need to...
 5. Complete the span
 
 ```java
-HttpServerRequestWrapper wrapper = new HttpServerRequestWrapper(request);
-Span span = handler.handleReceive(wrapper); // 1.
-Result result = null;
+HttpServerRequestWrapper requestWrapper = new HttpServerRequestWrapper(request);
+Span span = handler.handleReceive(requestWrapper); // 1.
+HttpServerResponse response = null;
 Throwable error = null;
 try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
-  return result = process(request); // 3.
-} catch (RuntimeException | Error e) {
+  return response = process(request); // 3.
+} catch (Throwable e) {
   error = e; // 4.
   throw e;
 } finally {
-  HttpServerResponseWrapper response = result != null
-    ? new HttpServerResponseWrapper(wrapper, result, error)
-    : null;
-  handler.handleSend(response, error, span); // 5.
+  HttpServerResponseWrapper responseWrapper =
+    ? new HttpServerResponseWrapper(requestWrapper, response, error);
+  handler.handleSend(responseWrapper, span); // 5.
 }
 ```
 

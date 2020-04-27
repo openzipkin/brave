@@ -50,4 +50,9 @@ public class HttpResponseWrapperTest {
   @Test public void statusCode_zeroWhenNoStatusLine() {
     assertThat(new HttpResponseWrapper(response, context, null).statusCode()).isZero();
   }
+
+  @Test public void statusCode_zeroWhenNoResponse() {
+    assertThat(new HttpResponseWrapper(null, context, new IllegalArgumentException()).statusCode())
+      .isZero();
+  }
 }

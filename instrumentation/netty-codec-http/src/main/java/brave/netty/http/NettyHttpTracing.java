@@ -14,10 +14,10 @@
 package brave.netty.http;
 
 import brave.Span;
-import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.http.HttpServerRequest;
 import brave.http.HttpTracing;
+import brave.propagation.CurrentTraceContext.Scope;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.util.AttributeKey;
 
@@ -25,8 +25,6 @@ public final class NettyHttpTracing {
   static final AttributeKey<HttpServerRequest> REQUEST_ATTRIBUTE =
     AttributeKey.valueOf(HttpServerRequest.class.getName());
   static final AttributeKey<Span> SPAN_ATTRIBUTE = AttributeKey.valueOf(Span.class.getName());
-  static final AttributeKey<SpanInScope> SPAN_IN_SCOPE_ATTRIBUTE =
-    AttributeKey.valueOf(SpanInScope.class.getName());
 
   public static NettyHttpTracing create(Tracing tracing) {
     return new NettyHttpTracing(HttpTracing.create(tracing));

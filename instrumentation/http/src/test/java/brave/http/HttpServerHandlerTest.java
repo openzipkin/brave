@@ -111,12 +111,62 @@ public class HttpServerHandlerTest {
     when(response.finishTimestamp()).thenReturn(124000L);
 
     Span span = handler.handleReceive(request);
-    handler.handleSend(response, null, span);
+    handler.handleSend(response, span);
 
     assertThat(spans.get(0).durationAsLong()).isEqualTo(1000L);
   }
 
   @Test public void handleSend_finishesSpanEvenIfUnwrappedNull() {
+    brave.Span span = mock(brave.Span.class);
+    when(span.context()).thenReturn(context);
+    when(span.customizer()).thenReturn(span);
+
+    handler.handleSend(response, span);
+
+    verify(span).isNoop();
+    verify(span).context();
+    verify(span).customizer();
+    verify(span).finish();
+    verifyNoMoreInteractions(span);
+  }
+
+  @Test public void handleSend_finishesSpanEvenIfUnwrappedNull_withError() {
+    brave.Span span = mock(brave.Span.class);
+    when(span.context()).thenReturn(context);
+    when(span.customizer()).thenReturn(span);
+
+    Exception error = new RuntimeException("peanuts");
+    when(response.error()).thenReturn(error);
+
+    handler.handleSend(response, span);
+
+    verify(span).isNoop();
+    verify(span).context();
+    verify(span).customizer();
+    verify(span).error(error);
+    verify(span).finish();
+    verifyNoMoreInteractions(span);
+  }
+
+  @Test public void handleSend_oneOfResponseError() {
+    brave.Span span = mock(brave.Span.class);
+
+    assertThatThrownBy(() -> handler.handleSend(null, span))
+      .isInstanceOf(NullPointerException.class)
+      .hasMessage("response == null");
+  }
+
+  @Test public void deprecatedHandleSend_externalTimestamps() {
+    when(request.startTimestamp()).thenReturn(123000L);
+    when(response.finishTimestamp()).thenReturn(124000L);
+
+    Span span = handler.handleReceive(request);
+    handler.handleSend(response, null, span);
+
+    assertThat(spans.get(0).durationAsLong()).isEqualTo(1000L);
+  }
+
+  @Test public void deprecatedHandleSend_finishesSpanEvenIfUnwrappedNull() {
     brave.Span span = mock(brave.Span.class);
     when(span.context()).thenReturn(context);
     when(span.customizer()).thenReturn(span);
@@ -130,7 +180,7 @@ public class HttpServerHandlerTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void handleSend_finishesSpanEvenIfUnwrappedNull_withError() {
+  @Test public void deprecatedHandleSend_finishesSpanEvenIfUnwrappedNull_withError() {
     brave.Span span = mock(brave.Span.class);
     when(span.context()).thenReturn(context);
     when(span.customizer()).thenReturn(span);
@@ -147,7 +197,7 @@ public class HttpServerHandlerTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void handleSend_oneOfResponseError() {
+  @Test public void deprecatedHandleSend_oneOfResponseError() {
     brave.Span span = mock(brave.Span.class);
 
     assertThatThrownBy(() -> handler.handleSend(null, null, span))

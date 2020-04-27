@@ -71,7 +71,7 @@ public final class TracingClientFilter implements ClientRequestFilter, ClientRes
     Span span = tracer.currentSpan();
     if (span == null) return;
     ((SpanInScope) request.getProperty(SpanInScope.class.getName())).close();
-    handler.handleReceive(new ClientResponseContextWrapper(request, response), null, span);
+    handler.handleReceive(new ClientResponseContextWrapper(request, response), span);
   }
 
   static final class ClientRequestContextWrapper extends HttpClientRequest {

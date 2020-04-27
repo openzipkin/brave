@@ -17,7 +17,6 @@ import brave.SpanCustomizer;
 import brave.internal.Nullable;
 import java.util.List;
 import javax.inject.Inject;
-import javax.ws.rs.ClientErrorException;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.ext.Provider;
 import org.glassfish.jersey.server.ContainerRequest;
@@ -88,14 +87,8 @@ public class SpanCustomizingApplicationEventListener
     if (error instanceof MappableException && error.getCause() != null) {
       error = error.getCause();
     }
-    // MappableException can wrap a WebApplicationException!
-    if (error instanceof WebApplicationException && error.getCause() != null) {
-      error = error.getCause();
-    }
     // Don't create error messages for normal HTTP status codes.
-    if (error instanceof ClientErrorException && error.getCause() == null){
-      return null;
-    }
+    if (error instanceof WebApplicationException) return error.getCause();
     return error;
   }
 
@@ -115,12 +108,12 @@ public class SpanCustomizingApplicationEventListener
     StringBuilder builder = null; // don't allocate unless you need it!
     String basePath = uriInfo.getBaseUri().getPath();
     String result = null;
-    if (!"/".equals(basePath)) { // skip empty base paths
+    if (!"/" .equals(basePath)) { // skip empty base paths
       result = basePath;
     }
     for (int i = templateCount - 1; i >= 0; i--) {
       String template = templates.get(i).getTemplate();
-      if ("/".equals(template)) continue; // skip allocation
+      if ("/" .equals(template)) continue; // skip allocation
       if (builder != null) {
         builder.append(template);
       } else if (result != null) {

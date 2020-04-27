@@ -47,7 +47,7 @@ final class TracingDispatcher extends Dispatcher {
       error = e;
       throw e;
     } finally {
-      handler.handleSend(new MockResponseWrapper(request, response, error), error, span);
+      handler.handleSend(new MockResponseWrapper(request, response, error), span);
     }
   }
 
@@ -81,10 +81,10 @@ final class TracingDispatcher extends Dispatcher {
 
   static final class MockResponseWrapper extends HttpServerResponse {
     final RecordedRequestWrapper request;
-    final MockResponse response;
+    final @Nullable MockResponse response;
     final @Nullable Throwable error;
 
-    MockResponseWrapper(RecordedRequestWrapper request, MockResponse response,
+    MockResponseWrapper(RecordedRequestWrapper request, @Nullable MockResponse response,
       @Nullable Throwable error) {
       this.request = request;
       this.response = response;
@@ -104,6 +104,7 @@ final class TracingDispatcher extends Dispatcher {
     }
 
     @Override public int statusCode() {
+      if (response == null) return 0;
       return Integer.parseInt(response.getStatus().split(" ")[1]);
     }
   }

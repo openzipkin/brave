@@ -60,17 +60,15 @@ final class TracingProtocolExec implements ClientExecChain {
     Span span = tracer.nextSpan(httpSampler, request);
     context.setAttribute(Span.class.getName(), span);
 
-    CloseableHttpResponse result = null;
+    CloseableHttpResponse response = null;
     Throwable error = null;
     try (SpanInScope ws = tracer.withSpanInScope(span)) {
-      return result = protocolExec.execute(route, req, context, execAware);
+      return response = protocolExec.execute(route, req, context, execAware);
     } catch (Throwable e) {
       error = e;
       throw e;
     } finally {
-      HttpResponseWrapper response = result != null
-        ? new HttpResponseWrapper(result, context, error) : null;
-      handler.handleReceive(response, error, span);
+      handler.handleReceive(new HttpResponseWrapper(response, context, error), span);
     }
   }
 
@@ -120,11 +118,11 @@ final class TracingProtocolExec implements ClientExecChain {
   }
 
   static final class HttpResponseWrapper extends HttpClientResponse {
-    final HttpRequestWrapper request;
-    final HttpResponse response;
+    @Nullable final HttpRequestWrapper request;
+    @Nullable final HttpResponse response;
     @Nullable final Throwable error;
 
-    HttpResponseWrapper(HttpResponse response, HttpClientContext context,
+    HttpResponseWrapper(@Nullable HttpResponse response, HttpClientContext context,
       @Nullable Throwable error) {
       HttpRequest request = context.getRequest();
       HttpHost target = context.getTargetHost();
@@ -146,6 +144,7 @@ final class TracingProtocolExec implements ClientExecChain {
     }
 
     @Override public int statusCode() {
+      if (response == null) return 0;
       StatusLine statusLine = response.getStatusLine();
       return statusLine != null ? statusLine.getStatusCode() : 0;
     }

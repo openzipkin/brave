@@ -14,6 +14,7 @@
 package brave.http;
 
 import brave.Span;
+import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.http.HttpClientAdapters.FromRequestAdapter;
 import brave.internal.Nullable;
@@ -40,20 +41,19 @@ import static brave.http.HttpClientAdapters.FromResponseAdapter;
  * </ol>
  *
  * <pre>{@code
- * HttpClientRequestWrapper wrapper = new HttpClientRequestWrapper(request);
- * Span span = handler.handleSend(wrapper); // 1.
- * Result result = null;
+ * HttpClientRequestWrapper requestWrapper = new HttpClientRequestWrapper(request);
+ * Span span = handler.handleSend(requestWrapper); // 1.
+ * HttpClientResponse response = null;
  * Throwable error = null;
  * try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
- *   return result = invoke(request); // 3.
+ *   return response = invoke(request); // 3.
  * } catch (Throwable e) {
  *   error = e; // 4.
  *   throw e;
  * } finally {
- *   HttpClientResponseWrapper response = result != null
- *     ? new HttpClientResponseWrapper(wrapper, result, error)
- *     : null;
- *   handler.handleReceive(response, error, span); // 5.
+ *   HttpClientResponseWrapper responseWrapper =
+ *     new HttpClientResponseWrapper(requestWrapper, response, error);
+ *   handler.handleReceive(responseWrapper, span); // 5.
  * }
  * }</pre>
  *
@@ -149,7 +149,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
 
   @Override void parseRequest(HttpRequest request, Span span) {
     if (serverName != null) span.remoteServiceName(serverName);
-    requestParser.parse(request, span.context(), span.customizer());
+    super.parseRequest(request, span);
   }
 
   /**
@@ -213,23 +213,48 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
   }
 
   /**
+   * @since 4.3
+   * @deprecated since 5.12 use {@link #handleReceive(HttpClientResponse, Span)}
+   */
+  @Deprecated
+  public void handleReceive(@Nullable Resp response, @Nullable Throwable error, Span span) {
+    if (span == null) throw new NullPointerException("span == null");
+    if (response == null && error == null) {
+      throw new IllegalArgumentException(
+        "Either the response or error parameters may be null, but not both");
+    }
+
+    if (response == null) {
+      span.error(error).finish();
+      return;
+    }
+
+    HttpClientResponse clientResponse;
+    if (response instanceof HttpClientResponse) {
+      clientResponse = (HttpClientResponse) response;
+      if (clientResponse.error() == null && error != null) {
+        span.error(error);
+      }
+    } else {
+      clientResponse = new FromResponseAdapter<>(adapter, response, error);
+    }
+    handleFinish(clientResponse, span);
+  }
+
+  /**
    * Finishes the client span after assigning it tags according to the response or error.
    *
    * <p>This is typically called once the response headers are received, and after the span is
-   * {@link brave.Tracer.SpanInScope#close() no longer in scope}.
+   * {@link Tracer.SpanInScope#close() no longer in scope}.
    *
-   * <p>Note: Either the response or error parameters may be null, but not both.
+   * <p><em>Note</em>: It is valid to have a {@link HttpClientResponse} that only includes an
+   * {@linkplain HttpClientResponse#error() error}. However, it is better to also include the
+   * {@linkplain HttpClientResponse#request() request}.
    *
-   * @see HttpTracing#clientResponseParser()
-   * @since 4.3
+   * @see HttpResponseParser#parse(HttpResponse, TraceContext, SpanCustomizer)
+   * @since 5.12
    */
-  public void handleReceive(@Nullable Resp response, @Nullable Throwable error, Span span) {
-    HttpClientResponse clientResponse;
-    if (response == null || response instanceof HttpClientResponse) {
-      clientResponse = (HttpClientResponse) response;
-    } else {
-      clientResponse = new FromResponseAdapter(adapter, response);
-    }
-    handleFinish(clientResponse, error, span);
+  public void handleReceive(HttpClientResponse response, Span span) {
+    handleFinish(response, span);
   }
 }

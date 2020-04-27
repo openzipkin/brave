@@ -57,7 +57,8 @@ import brave.propagation.CurrentTraceContext;
     SpanCustomizer customizer) {
     HttpResponse response;
     if (res instanceof HttpClientResponse) {
-      response = new HttpClientAdapters.FromResponseAdapter<>((HttpClientAdapter) adapter, res);
+      response =
+        new HttpClientAdapters.FromResponseAdapter<>((HttpClientAdapter) adapter, res, error);
     } else if (adapter instanceof HttpClientAdapters.ToResponseAdapter) {
       response = ((HttpClientAdapters.ToResponseAdapter) adapter).delegate;
     } else {

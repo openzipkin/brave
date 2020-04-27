@@ -21,7 +21,9 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.http.HttpRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.web.client.HttpClientErrorException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -47,6 +49,12 @@ public class ClientHttpResponseWrapperTest {
     when(response.getRawStatusCode()).thenThrow(new IOException());
 
     assertThat(new ClientHttpResponseWrapper(request, response, null).statusCode()).isZero();
+  }
+
+  @Test public void statusCode_fromHttpStatusCodeException() {
+    HttpClientErrorException ex = new HttpClientErrorException(HttpStatus.BAD_REQUEST);
+
+    assertThat(new ClientHttpResponseWrapper(request, null, ex).statusCode()).isEqualTo(400);
   }
 
   @Test public void statusCode_zeroOnIAE() throws IOException {

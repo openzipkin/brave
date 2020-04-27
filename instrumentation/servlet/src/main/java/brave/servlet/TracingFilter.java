@@ -91,7 +91,7 @@ public final class TracingFilter implements Filter {
         servlet.handleAsync(handler, req, res, span);
       } else { // we have a synchronous response: finish the span
         HttpServerResponse responseWrapper = HttpServletResponseWrapper.create(req, res, error);
-        handler.handleSend(responseWrapper, responseWrapper.error(), span);
+        handler.handleSend(responseWrapper, span);
       }
       scope.close();
     }

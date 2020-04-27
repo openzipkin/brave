@@ -76,7 +76,7 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
 
     @Override public void handle(Void aVoid) {
       if (!finished.compareAndSet(false, true)) return;
-      handler.handleSend(new HttpServerResponseWrapper(context), context.failure(), span);
+      handler.handleSend(new HttpServerResponseWrapper(context), span);
     }
   }
 

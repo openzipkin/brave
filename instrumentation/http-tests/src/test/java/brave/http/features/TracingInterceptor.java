@@ -39,16 +39,15 @@ final class TracingInterceptor implements Interceptor {
   @Override public Response intercept(Interceptor.Chain chain) throws IOException {
     RequestWrapper request = new RequestWrapper(chain.request());
     Span span = handler.handleSend(request);
-    Response result = null;
+    Response response = null;
     Throwable error = null;
     try (SpanInScope ws = tracer.withSpanInScope(span)) {
-      return result = chain.proceed(request.build());
+      return response = chain.proceed(request.build());
     } catch (Throwable e) {
       error = e;
       throw e;
     } finally {
-      ResponseWrapper response = result != null ? new ResponseWrapper(result, error) : null;
-      handler.handleReceive(response, error, span);
+      handler.handleReceive(new ResponseWrapper(response, error), span);
     }
   }
 
@@ -92,10 +91,10 @@ final class TracingInterceptor implements Interceptor {
 
   static final class ResponseWrapper extends HttpClientResponse {
     final RequestWrapper request;
-    final Response response;
+    @Nullable final Response response;
     @Nullable final Throwable error;
 
-    ResponseWrapper(Response response, @Nullable Throwable error) {
+    ResponseWrapper(@Nullable Response response, @Nullable Throwable error) {
       // intentionally not the same instance as chain.proceed, as properties may have changed
       this.request = new RequestWrapper(response.request());
       this.response = response;

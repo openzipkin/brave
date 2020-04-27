@@ -14,17 +14,22 @@
 package brave.jersey.server;
 
 import brave.Span;
-import brave.Tracer;
 import brave.http.HttpServerHandler;
 import brave.http.HttpServerRequest;
 import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
+import brave.internal.Nullable;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.inject.Inject;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.ext.Provider;
 import org.glassfish.jersey.server.ContainerRequest;
 import org.glassfish.jersey.server.ContainerResponse;
 import org.glassfish.jersey.server.ManagedAsync;
+import org.glassfish.jersey.server.internal.process.MappableException;
 import org.glassfish.jersey.server.monitoring.ApplicationEvent;
 import org.glassfish.jersey.server.monitoring.ApplicationEventListener;
 import org.glassfish.jersey.server.monitoring.RequestEvent;
@@ -36,12 +41,12 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
     return new TracingApplicationEventListener(httpTracing, new EventParser());
   }
 
-  final Tracer tracer;
+  final CurrentTraceContext currentTraceContext;
   final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
   final EventParser parser;
 
   @Inject TracingApplicationEventListener(HttpTracing httpTracing, EventParser parser) {
-    tracer = httpTracing.tracing().tracer();
+    currentTraceContext = httpTracing.tracing().currentTraceContext();
     handler = HttpServerHandler.create(httpTracing);
     this.parser = parser;
   }
@@ -53,18 +58,17 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
   @Override public RequestEventListener onRequest(RequestEvent event) {
     if (event.getType() != RequestEvent.Type.START) return null;
     Span span = handler.handleReceive(new ContainerRequestWrapper(event.getContainerRequest()));
-    return new TracingRequestEventListener(span, tracer.withSpanInScope(span));
+    return new TracingRequestEventListener(span, currentTraceContext.newScope(span.context()));
   }
 
-  class TracingRequestEventListener implements RequestEventListener {
+  // Scope reference invalidated when an asynchronous method is in use
+  class TracingRequestEventListener extends AtomicReference<Scope> implements RequestEventListener {
     final Span span;
-    // Invalidated when an asynchronous method is in use
-    volatile Tracer.SpanInScope spanInScope;
     volatile boolean async;
 
-    TracingRequestEventListener(Span span, Tracer.SpanInScope spanInScope) {
+    TracingRequestEventListener(Span span, Scope scope) {
+      super(scope);
       this.span = span;
-      this.spanInScope = spanInScope;
     }
 
     /**
@@ -75,7 +79,7 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
      */
     @Override
     public void onEvent(RequestEvent event) {
-      Tracer.SpanInScope maybeSpanInScope;
+      Scope maybeScope;
       switch (event.getType()) {
         // Note: until REQUEST_MATCHED, we don't know metadata such as if the request is async or not
         case REQUEST_MATCHED:
@@ -89,23 +93,21 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
           // Normal async methods sometimes stay on a thread until RESOURCE_METHOD_FINISHED, but
           // this is not reliable. So, we eagerly close the scope from request filters, and re-apply
           // it later when the resource method starts.
-          if (!async || (maybeSpanInScope = spanInScope) == null) break;
-          maybeSpanInScope.close();
-          spanInScope = null;
+          if (!async || (maybeScope = getAndSet(null)) == null) break;
+          maybeScope.close();
           break;
         case RESOURCE_METHOD_START:
           // If we are async, we have to re-scope the span as the resource method invocation is
           // is likely on a different thread than the request filtering.
-          if (!async || spanInScope != null) break;
-          spanInScope = tracer.withSpanInScope(span);
+          if (!async || get() != null) break;
+          set(currentTraceContext.newScope(span.context()));
           break;
         case FINISHED:
-          RequestEventWrapper response = new RequestEventWrapper(event);
-          handler.handleSend(response, response.error(), span);
+          handler.handleSend(new RequestEventWrapper(event), span);
           // In async FINISHED can happen before RESOURCE_METHOD_FINISHED, and on different threads!
           // Don't close the scope unless it is a synchronous method.
-          if (!async && (maybeSpanInScope = spanInScope) != null) {
-            maybeSpanInScope.close();
+          if (!async && (maybeScope = getAndSet(null)) != null) {
+            maybeScope.close();
           }
           break;
         default:
@@ -157,10 +159,12 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
 
   static final class RequestEventWrapper extends HttpServerResponse {
     final RequestEvent event;
+    @Nullable final Throwable error;
     ContainerRequestWrapper request;
 
     RequestEventWrapper(RequestEvent event) {
       this.event = event;
+      this.error = SpanCustomizingApplicationEventListener.unwrapError(event);
     }
 
     @Override public Object unwrap() {
@@ -173,13 +177,22 @@ public final class TracingApplicationEventListener implements ApplicationEventLi
     }
 
     @Override public Throwable error() {
-      return SpanCustomizingApplicationEventListener.unwrapError(event);
+      return error;
     }
 
     @Override public int statusCode() {
       ContainerResponse response = event.getContainerResponse();
-      if (response == null) return 0;
-      return response.getStatus();
+      if (response != null) return response.getStatus();
+
+      Throwable error = event.getException();
+      // For example, if thrown in an async controller
+      if (error instanceof MappableException && error.getCause() != null) {
+        error = error.getCause();
+      }
+      if (error instanceof WebApplicationException) {
+        return ((WebApplicationException) error).getResponse().getStatus();
+      }
+      return 0;
     }
   }
 }

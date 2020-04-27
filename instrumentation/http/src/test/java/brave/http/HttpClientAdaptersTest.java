@@ -32,6 +32,7 @@ import static org.mockito.Mockito.mock;
     toRequestAdapter = new HttpClientAdapters.ToRequestAdapter(request, request);
     fromRequestAdapter = new HttpClientAdapters.FromRequestAdapter<>(requestAdapter, request);
     toResponseAdapter = new HttpClientAdapters.ToResponseAdapter(response, response);
-    fromResponseAdapter = new HttpClientAdapters.FromResponseAdapter<>(responseAdapter, response);
+    fromResponseAdapter =
+      new HttpClientAdapters.FromResponseAdapter<>(responseAdapter, response, null);
   }
 }

@@ -17,7 +17,7 @@ import brave.Span;
 import brave.internal.Nullable;
 
 /**
- * Marks an interface for use in {@link HttpClientHandler#handleReceive(Object, Throwable, Span)}.
+ * Marks an interface for use in {@link HttpClientHandler#handleReceive(HttpClientResponse, Span)}.
  * This gives a standard type to consider when parsing an incoming context.
  *
  * @see HttpClientRequest

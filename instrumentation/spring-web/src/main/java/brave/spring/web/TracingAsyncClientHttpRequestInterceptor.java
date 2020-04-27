@@ -69,7 +69,7 @@ public final class TracingAsyncClientHttpRequestInterceptor
         ? new TraceContextListenableFuture<>(result, currentTraceContext, invocationContext)
         : result;
     } catch (Throwable e) {
-      handler.handleReceive(null, e, span);
+      handler.handleReceive(new ClientHttpResponseWrapper(request, null, e), span);
       throw e;
     }
   }
@@ -89,11 +89,11 @@ public final class TracingAsyncClientHttpRequestInterceptor
     }
 
     @Override public void onFailure(Throwable ex) {
-      handler.handleReceive(null, ex, span);
+      handler.handleReceive(new ClientHttpResponseWrapper(request, null, ex), span);
     }
 
-    @Override public void onSuccess(ClientHttpResponse result) {
-      handler.handleReceive(new ClientHttpResponseWrapper(request, result, null), null, span);
+    @Override public void onSuccess(ClientHttpResponse response) {
+      handler.handleReceive(new ClientHttpResponseWrapper(request, response, null), span);
     }
   }
 }

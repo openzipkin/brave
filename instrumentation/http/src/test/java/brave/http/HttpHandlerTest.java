@@ -23,27 +23,24 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class HttpHandlerTest {
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).build();
-  @Mock brave.Span span;
+  @Mock Span span;
   @Mock SpanCustomizer spanCustomizer;
   @Mock HttpRequest request;
   @Mock HttpResponse response;
+  @Mock HttpRequestParser requestParser;
+  @Mock HttpResponseParser responseParser;
   HttpHandler handler;
 
   @Before public void init() {
-    handler = new HttpHandler(HttpRequestParser.DEFAULT, HttpResponseParser.DEFAULT) {
-      @Override void parseRequest(HttpRequest request, Span span) {
-        requestParser.parse(request, span.context(), span.customizer());
-      }
+    handler = new HttpHandler(requestParser, responseParser) {
     };
     when(span.context()).thenReturn(context);
     when(span.customizer()).thenReturn(spanCustomizer);
@@ -58,19 +55,12 @@ public class HttpHandlerTest {
   }
 
   @Test public void handleStart_parsesTagsWithCustomizer() {
-    brave.Span span = mock(brave.Span.class);
-    when(span.context()).thenReturn(context);
-    brave.SpanCustomizer spanCustomizer = mock(brave.SpanCustomizer.class);
+    when(span.isNoop()).thenReturn(false);
     when(request.spanKind()).thenReturn(Span.Kind.SERVER);
-    when(request.method()).thenReturn("GET");
-    when(span.customizer()).thenReturn(spanCustomizer);
 
     handler.handleStart(request, span);
 
-    verify(span).kind(Span.Kind.SERVER);
-    verify(spanCustomizer).name("GET");
-    verify(spanCustomizer).tag("http.method", "GET");
-    verifyNoMoreInteractions(spanCustomizer);
+    verify(requestParser).parse(request, context, spanCustomizer);
   }
 
   @Test public void handleStart_addsRemoteEndpointWhenParsed() {
@@ -85,49 +75,46 @@ public class HttpHandlerTest {
     verify(span).remoteIpAndPort("1.2.3.4", 0);
   }
 
-  @Test public void handleFinish_nothingOnNoop_success() {
-    when(span.isNoop()).thenReturn(true);
+  @Test public void handleStart_startedEvenIfParsingThrows() {
+    when(span.isNoop()).thenReturn(false);
+    doThrow(new RuntimeException()).when(requestParser).parse(request, context, spanCustomizer);
 
-    handler.handleFinish(response, null, span);
+    handler.handleStart(request, span);
 
-    verify(span, never()).finish();
+    verify(span).start();
   }
 
-  @Test public void handleFinish_nothingOnNoop_error() {
+  @Test public void handleFinish_nothingOnNoop() {
     when(span.isNoop()).thenReturn(true);
 
-    handler.handleFinish(null, new RuntimeException("drat"), span);
+    handler.handleFinish(response, span);
 
     verify(span, never()).finish();
   }
 
   @Test public void handleFinish_parsesTagsWithCustomizer() {
-    when(response.statusCode()).thenReturn(404);
     when(span.customizer()).thenReturn(spanCustomizer);
 
-    handler.handleFinish(response, null, span);
+    handler.handleFinish(response, span);
 
-    verify(spanCustomizer).tag("http.status_code", "404");
-    verify(spanCustomizer).tag("error", "404");
-    verifyNoMoreInteractions(spanCustomizer);
+    verify(responseParser).parse(response, context, spanCustomizer);
   }
 
   /** Allows {@link FinishedSpanHandler} to see the error regardless of parsing. */
   @Test public void handleFinish_errorRecordedInSpan() {
     RuntimeException error = new RuntimeException("foo");
-    when(response.statusCode()).thenReturn(404);
-    when(span.customizer()).thenReturn(spanCustomizer);
+    when(response.error()).thenReturn(error);
 
-    handler.handleFinish(response, error, span);
+    handler.handleFinish(response, span);
 
     verify(span).error(error);
   }
 
-  @Test public void handleFinish_finishedEvenIfAdapterThrows() {
-    when(response.statusCode()).thenThrow(new RuntimeException());
+  @Test public void handleFinish_finishedEvenIfParsingThrows() {
+    when(span.isNoop()).thenReturn(false);
+    doThrow(new RuntimeException()).when(responseParser).parse(response, context, spanCustomizer);
 
-    assertThatThrownBy(() -> handler.handleFinish(response, null, span))
-      .isInstanceOf(RuntimeException.class);
+    handler.handleFinish(response, span);
 
     verify(span).finish();
   }

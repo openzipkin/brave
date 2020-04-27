@@ -68,16 +68,17 @@ public final class TracingInterceptor implements Interceptor {
 
     parseRouteAddress(chain, span);
 
-    Response result = null;
+    Response response = null;
     Throwable error = null;
     try (Scope ws = currentTraceContext.newScope(span.context())) {
-      return result = chain.proceed(request.build());
+      return response = chain.proceed(request.build());
     } catch (Throwable t) {
       error = t;
       throw t;
     } finally {
-      ResponseWrapper response = result != null ? new ResponseWrapper(result, error) : null;
-      handler.handleReceive(response, error, span);
+      // Intentionally not the same instance as chain.proceed, as properties may have changed
+      if (response != null) request = new RequestWrapper(response.request());
+      handler.handleReceive(new ResponseWrapper(request, response, error), span);
     }
   }
 
@@ -129,12 +130,12 @@ public final class TracingInterceptor implements Interceptor {
 
   static final class ResponseWrapper extends HttpClientResponse {
     final RequestWrapper request;
-    final Response response;
+    @Nullable final Response response;
     @Nullable final Throwable error;
 
-    ResponseWrapper(Response response, @Nullable Throwable error) {
-      // intentionally not the same instance as chain.proceed, as properties may have changed
-      this.request = new RequestWrapper(response.request());
+    ResponseWrapper(RequestWrapper request, @Nullable Response response,
+      @Nullable Throwable error) {
+      this.request = request;
       this.response = response;
       this.error = error;
     }
@@ -152,7 +153,7 @@ public final class TracingInterceptor implements Interceptor {
     }
 
     @Override public int statusCode() {
-      return response.code();
+      return response != null ? response.code() : 0;
     }
   }
 }

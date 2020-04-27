@@ -56,7 +56,7 @@ public class HttpTracing implements Closeable {
   }
 
   /**
-   * Used by {@link HttpClientHandler#handleReceive(Object, Throwable, Span)} to add tags about the
+   * Used by {@link HttpClientHandler#handleReceive(HttpClientResponse, Span)} to add tags about the
    * response received from the server.
    *
    * @since 5.10
