@@ -65,7 +65,7 @@ final class TracingServerInterceptor implements ServerInterceptor {
       // callbacks are called, so go ahead and close the span here.
       //
       // See instrumentation/grpc/RATIONALE.md for why we don't use the handler here
-      spanRef.getAndSet(null);
+      spanRef.set(null);
       if (span != null) span.error(e).finish();
       throw e;
     }

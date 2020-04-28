@@ -48,6 +48,8 @@ import io.grpc.MethodDescriptor;
  */
 // NOTE: gRPC is Java 1.7+, so we cannot add methods to this later
 public interface GrpcRequest {
+  // method would be a nicer name, but this is used in instanceof with an RpcRequest
+  // and RpcRequest.method() has a String result
   MethodDescriptor<?, ?> methodDescriptor();
 
   Metadata headers();
