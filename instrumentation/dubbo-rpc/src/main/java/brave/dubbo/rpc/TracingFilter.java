@@ -74,9 +74,9 @@ public final class TracingFilter implements Filter {
   @Deprecated public void setTracing(Tracing tracing) {
     if (tracing == null) throw new NullPointerException("rpcTracing == null");
     setRpcTracing(RpcTracing.newBuilder(tracing)
-      .clientResponseParser(LEGACY_RESPONSE_PARSER)
-      .serverResponseParser(LEGACY_RESPONSE_PARSER)
-      .build());
+        .clientResponseParser(LEGACY_RESPONSE_PARSER)
+        .serverResponseParser(LEGACY_RESPONSE_PARSER)
+        .build());
   }
 
   /**
@@ -121,7 +121,7 @@ public final class TracingFilter implements Filter {
       span = serverHandler.handleReceive(serverRequest);
     }
 
-    boolean deferFinish = false;
+    boolean isSynchronous = true;
     Scope scope = currentTraceContext.newScope(span.context());
     Result result = null;
     Throwable error = null;
@@ -129,13 +129,17 @@ public final class TracingFilter implements Filter {
       result = invoker.invoke(invocation);
       error = result.getException();
       Future<Object> future = rpcContext.getFuture(); // the case on async client invocation
-      if (future instanceof FutureAdapter) {
-        deferFinish = true;
+      if (future != null) {
+        if (!(future instanceof FutureAdapter)) {
+          assert false : "we can't defer the span finish unless we can access the ResponseFuture";
+          return result;
+        }
+        isSynchronous = false;
         ResponseFuture original = ((FutureAdapter<Object>) future).getFuture();
         // See instrumentation/RATIONALE.md for why the below response callbacks are invocation context
         TraceContext callbackContext = kind == Kind.CLIENT ? invocationContext : span.context();
         ResponseFuture wrapped =
-          new FinishSpanResponseFuture(original, this, request, result, span, callbackContext);
+            new FinishSpanResponseFuture(original, this, request, result, span, callbackContext);
         RpcContext.getContext().setFuture(new FutureAdapter<>(wrapped));
       }
       return result;
@@ -144,7 +148,7 @@ public final class TracingFilter implements Filter {
       error = e;
       throw e;
     } finally {
-      if (!deferFinish) FinishSpan.finish(this, request, result, error, span);
+      if (isSynchronous) FinishSpan.finish(this, request, result, error, span);
       scope.close();
     }
   }

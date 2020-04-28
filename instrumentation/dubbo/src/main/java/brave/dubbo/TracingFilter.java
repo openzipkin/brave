@@ -28,7 +28,6 @@ import brave.rpc.RpcServerHandler;
 import brave.rpc.RpcTracing;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.common.extension.ExtensionLoader;
@@ -73,9 +72,9 @@ public final class TracingFilter implements Filter {
   @Deprecated public void setTracing(Tracing tracing) {
     if (tracing == null) throw new NullPointerException("rpcTracing == null");
     setRpcTracing(RpcTracing.newBuilder(tracing)
-      .clientResponseParser(LEGACY_RESPONSE_PARSER)
-      .serverResponseParser(LEGACY_RESPONSE_PARSER)
-      .build());
+        .clientResponseParser(LEGACY_RESPONSE_PARSER)
+        .serverResponseParser(LEGACY_RESPONSE_PARSER)
+        .build());
   }
 
   /**
@@ -121,21 +120,20 @@ public final class TracingFilter implements Filter {
       span = serverHandler.handleReceive(serverRequest);
     }
 
-    boolean deferFinish = false;
+    boolean isSynchronous = true;
     Scope scope = currentTraceContext.newScope(span.context());
     Result result = null;
     Throwable error = null;
     try {
       result = invoker.invoke(invocation);
       error = result.getException();
-      Future<Object> future = rpcContext.getFuture(); // the case on async client invocation
-      if (future instanceof CompletableFuture) {
-        deferFinish = true;
+      CompletableFuture<Object> future = rpcContext.getCompletableFuture();
+      if (future != null) {
+        isSynchronous = false;
         // NOTE: We don't currently instrument CompletableFuture, so callbacks will not see the
         // invocation context unless they use an executor instrumented by CurrentTraceContext
         // If we later instrument this, take care to use the correct context depending on RPC kind!
-        ((CompletableFuture<?>) future)
-          .whenComplete(FinishSpan.create(this, request, result, span));
+        future.whenComplete(FinishSpan.create(this, request, result, span));
       }
       return result;
     } catch (Throwable e) {
@@ -143,7 +141,7 @@ public final class TracingFilter implements Filter {
       error = e;
       throw e;
     } finally {
-      if (!deferFinish) FinishSpan.finish(this, request, result, error, span);
+      if (isSynchronous) FinishSpan.finish(this, request, result, error, span);
       scope.close();
     }
   }
