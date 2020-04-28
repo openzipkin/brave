@@ -66,13 +66,16 @@ public class GrpcPropagationBenchmarks {
       .build();
 
   static final Propagation<String> b3 = B3Propagation.FACTORY.get();
-  static final Injector<GrpcClientRequest> b3Injector = b3.injector(GrpcClientRequest.SETTER);
-  static final Extractor<GrpcServerRequest> b3Extractor = b3.extractor(GrpcServerRequest.GETTER);
+  static final Injector<GrpcClientRequest> b3Injector =
+    b3.injector(GrpcClientRequest::propagationField);
+  static final Extractor<GrpcServerRequest> b3Extractor =
+    b3.extractor(GrpcServerRequest::propagationField);
 
   static final Propagation<String> both = GrpcPropagation.create(B3Propagation.get());
-  static final Injector<GrpcClientRequest> bothInjector = both.injector(GrpcClientRequest.SETTER);
+  static final Injector<GrpcClientRequest> bothInjector =
+    both.injector(GrpcClientRequest::propagationField);
   static final Extractor<GrpcServerRequest> bothExtractor =
-    both.extractor(GrpcServerRequest.GETTER);
+    both.extractor(GrpcServerRequest::propagationField);
 
   static final TraceContext context = TraceContext.newBuilder()
     .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef01"))

@@ -16,14 +16,11 @@ package brave.grpc;
 import brave.NoopSpanCustomizer;
 import brave.Span;
 import brave.SpanCustomizer;
-import brave.Tracer;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
-import brave.propagation.TraceContext.Injector;
-import brave.rpc.RpcRequest;
-import brave.sampler.SamplerFunction;
+import brave.rpc.RpcClientHandler;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
 import io.grpc.ClientCall;
@@ -38,25 +35,20 @@ import io.grpc.Status;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static brave.grpc.GrpcClientRequest.SETTER;
+import static brave.internal.Throwables.propagateIfFatal;
 
 // not exposed directly as implementation notably changes between versions 1.2 and 1.3
 final class TracingClientInterceptor implements ClientInterceptor {
   final Map<String, Key<String>> nameToKey;
   final CurrentTraceContext currentTraceContext;
-  final Tracer tracer;
-  final SamplerFunction<RpcRequest> sampler;
-  final Injector<GrpcClientRequest> injector;
-  final GrpcClientParser parser;
+  final RpcClientHandler handler;
+
   final MessageProcessor messageProcessor;
 
   TracingClientInterceptor(GrpcTracing grpcTracing) {
     nameToKey = grpcTracing.nameToKey;
     currentTraceContext = grpcTracing.rpcTracing.tracing().currentTraceContext();
-    tracer = grpcTracing.rpcTracing.tracing().tracer();
-    sampler = grpcTracing.rpcTracing.clientSampler();
-    injector = grpcTracing.propagation.injector(SETTER);
-    parser = grpcTracing.clientParser;
+    handler = RpcClientHandler.create(grpcTracing.rpcTracing);
     messageProcessor = grpcTracing.clientMessageProcessor;
   }
 
@@ -65,20 +57,6 @@ final class TracingClientInterceptor implements ClientInterceptor {
     CallOptions callOptions, Channel next) {
     return new TracingClientCall<>(
       method, callOptions, currentTraceContext.get(), next.newCall(method, callOptions));
-  }
-
-  void finish(GrpcClientResponse response, @Nullable Span span) {
-    if (span == null || span.isNoop()) return;
-    Throwable error = response.error();
-    if (error != null) span.error(error);
-    parser.onClose(response.status, response.trailers, span.customizer());
-    span.finish();
-  }
-
-  void finishWithError(@Nullable Span span, Throwable error) {
-    if (span == null || span.isNoop()) return;
-    if (error != null) span.error(error);
-    span.finish();
   }
 
   final class TracingClientCall<ReqT, RespT> extends SimpleForwardingClientCall<ReqT, RespT> {
@@ -99,12 +77,7 @@ final class TracingClientInterceptor implements ClientInterceptor {
       GrpcClientRequest request =
         new GrpcClientRequest(nameToKey, method, callOptions, delegate(), headers);
 
-      Span span = tracer.nextSpanWithParent(sampler, request, invocationContext);
-      injector.inject(span.context(), request);
-      if (!span.isNoop()) {
-        span.kind(Span.Kind.CLIENT).start();
-        parser.onStart(method, callOptions, headers, span.customizer());
-      }
+      Span span = handler.handleSendWithParent(request, invocationContext);
       spanRef.set(span);
 
       responseListener = new TracingClientCallListener<>(
@@ -117,9 +90,14 @@ final class TracingClientInterceptor implements ClientInterceptor {
       try (Scope scope = currentTraceContext.maybeScope(span.context())) {
         super.start(responseListener, headers);
       } catch (Throwable e) {
+        propagateIfFatal(e);
+
         // Another interceptor may throw an exception during start, in which case no other
         // callbacks are called, so go ahead and close the span here.
-        finishWithError(spanRef.getAndSet(null), e);
+        //
+        // See instrumentation/grpc/RATIONALE.md for why we don't use the handler here
+        spanRef.set(null);
+        if (span != null) span.error(e).finish();
         throw e;
       }
     }
@@ -134,9 +112,14 @@ final class TracingClientInterceptor implements ClientInterceptor {
       try (Scope scope = maybeScopeClientOrInvocationContext(spanRef, invocationContext)) {
         delegate().halfClose();
       } catch (Throwable e) {
+        propagateIfFatal(e);
+
         // If there was an exception executing onHalfClose, we don't expect other lifecycle
         // commands to succeed. Accordingly, we close the span
-        finishWithError(spanRef.getAndSet(null), e);
+        //
+        // See instrumentation/grpc/RATIONALE.md for why we don't use the handler here
+        Span span = spanRef.getAndSet(null);
+        if (span != null) span.error(e).finish();
         throw e;
       }
     }
@@ -171,6 +154,7 @@ final class TracingClientInterceptor implements ClientInterceptor {
     @Nullable final TraceContext invocationContext;
     final AtomicReference<Span> spanRef;
     final GrpcClientRequest request;
+    final Metadata headers = new Metadata();
 
     TracingClientCallListener(
       Listener<RespT> delegate,
@@ -192,6 +176,8 @@ final class TracingClientInterceptor implements ClientInterceptor {
 
     // See instrumentation/RATIONALE.md for why the below response callbacks are invocation context
     @Override public void onHeaders(Metadata headers) {
+      // onHeaders() JavaDoc mentions headers are not thread-safe, so we make a safe copy here.
+      this.headers.merge(headers);
       try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
         delegate().onHeaders(headers);
       }
@@ -208,8 +194,9 @@ final class TracingClientInterceptor implements ClientInterceptor {
 
     @Override public void onClose(Status status, Metadata trailers) {
       // See /instrumentation/grpc/RATIONALE.md for why we don't catch exceptions from the delegate
-      GrpcClientResponse response = new GrpcClientResponse(request, status, trailers, null);
-      finish(response, spanRef.getAndSet(null));
+      GrpcClientResponse response = new GrpcClientResponse(request, headers, status, trailers);
+      Span span = spanRef.getAndSet(null);
+      if (span != null) handler.handleReceive(response, span);
 
       try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
         delegate().onClose(status, trailers);

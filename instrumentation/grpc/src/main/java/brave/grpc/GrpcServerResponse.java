@@ -13,72 +13,84 @@
  */
 package brave.grpc;
 
-import brave.Response;
-import brave.Span;
 import brave.internal.Nullable;
+import brave.rpc.RpcServerResponse;
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
 import io.grpc.Status;
 
-// intentionally not yet public until we add tag parsing functionality
-final class GrpcServerResponse extends Response {
+/**
+ * Allows access gRPC specific aspects of a server response for parsing.
+ *
+ * @see GrpcServerRequest
+ * @see GrpcResponse for a parsing example
+ * @since 5.12
+ */
+public final class GrpcServerResponse extends RpcServerResponse implements GrpcResponse {
   final GrpcServerRequest request;
-  @Nullable final Status status;
-  @Nullable final Metadata trailers;
-  @Nullable final Throwable error;
+  final Metadata headers;
+  final Status status;
+  final Metadata trailers;
 
-  GrpcServerResponse(GrpcServerRequest request,
-    @Nullable Status status, @Nullable Metadata trailers, @Nullable Throwable error) {
+  GrpcServerResponse(GrpcServerRequest request, Metadata headers, Status status,
+      Metadata trailers) {
     if (request == null) throw new NullPointerException("request == null");
+    if (headers == null) throw new NullPointerException("headers == null");
+    if (status == null) throw new NullPointerException("status == null");
+    if (trailers == null) throw new NullPointerException("trailers == null");
+    this.headers = headers;
     this.request = request;
     this.status = status;
     this.trailers = trailers;
-    this.error = error != null ? error : status != null ? status.getCause() : null;
   }
 
   /** Returns the {@link #status()} */
-  @Override @Nullable public Status unwrap() {
+  @Override public Status unwrap() {
     return status;
-  }
-
-  @Override public Span.Kind spanKind() {
-    return Span.Kind.SERVER;
   }
 
   @Override public GrpcServerRequest request() {
     return request;
   }
 
+  /** Returns {@link Status#getCause()} */
   @Override @Nullable public Throwable error() {
-    return error;
+    return status.getCause();
   }
 
   /**
    * Returns the string form of the {@link Status#getCode()} or {@code null} when not {@link
    * Status#isOk()} or {@link #error()}.
    */
-  @Nullable public String errorCode() {
-    if (status == null || status.isOk()) return null;
+  @Override @Nullable public String errorCode() {
+    if (status.isOk()) return null;
     return status.getCode().name();
   }
 
   /**
-   * Returns the status passed to{@link ServerCall#close(Status, Metadata)} or {@code null} on
-   * {@link #error()}.
+   * Returns a copy of headers passed to {@link ServerCall#sendHeaders(Metadata)}.
    *
    * @since 5.12
    */
-  @Nullable public Status status() {
+  @Override public Metadata headers() {
+    return headers;
+  }
+
+  /**
+   * Returns the status passed to {@link ServerCall#close(Status, Metadata)}.
+   *
+   * @since 5.12
+   */
+  @Override public Status status() {
     return status;
   }
 
   /**
-   * Returns the trailers passed to {@link ServerCall#close(Status, Metadata)} or {@code null} on
-   * {@link #error()}.
+   * Returns the trailers passed to {@link ServerCall#close(Status, Metadata)}.
    *
    * @since 5.12
    */
-  @Nullable public Metadata trailers() {
+  @Override public Metadata trailers() {
     return trailers;
   }
 }

@@ -168,7 +168,7 @@ You generally need to...
 1. Start the span and add trace headers to the request
 2. Put the span in scope so things like log integration works
 3. Invoke the request
-4. Catch any errors
+4. If there was a Throwable, add it to the span
 5. Complete the span
 
 ```java
@@ -238,7 +238,7 @@ You generally need to...
 1. Extract any trace IDs from headers and start the span
 2. Put the span in scope so things like log integration works
 3. Process the request
-4. Catch any errors
+4. If there was a Throwable, add it to the span
 5. Complete the span
 
 ```java

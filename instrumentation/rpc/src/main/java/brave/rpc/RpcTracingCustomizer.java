@@ -25,7 +25,7 @@ import brave.sampler.SamplerFunction;
  * component}.
  *
  * <p>This also allows one object to customize both {@link Tracing}, via {@link TracingCustomizer},
- * and the rpc layer {@link RpcTracing}, by implementing both customizer interfaces.
+ * and the RPC layer {@link RpcTracing}, by implementing both customizer interfaces.
  *
  * <h3>Integration examples</h3>
  *

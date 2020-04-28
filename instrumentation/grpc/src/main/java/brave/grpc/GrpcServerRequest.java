@@ -13,26 +13,22 @@
  */
 package brave.grpc;
 
-import brave.propagation.Propagation.Getter;
 import brave.rpc.RpcServerRequest;
 import io.grpc.Metadata;
 import io.grpc.Metadata.Key;
+import io.grpc.MethodDescriptor;
 import io.grpc.ServerCall;
 import io.grpc.ServerInterceptor;
 import java.util.Map;
 
-// intentionally not yet public until we add tag parsing functionality
-final class GrpcServerRequest extends RpcServerRequest {
-  static final Getter<GrpcServerRequest, String> GETTER = new Getter<GrpcServerRequest, String>() {
-    @Override public String get(GrpcServerRequest request, String key) {
-      return request.propagationField(key);
-    }
-
-    @Override public String toString() {
-      return "GrpcServerRequest::propagationField";
-    }
-  };
-
+/**
+ * Allows access gRPC specific aspects of a server request during sampling and parsing.
+ *
+ * @see GrpcServerResponse
+ * @see GrpcRequest for a parsing example
+ * @since 5.12
+ */
+public class GrpcServerRequest extends RpcServerRequest implements GrpcRequest {
   final Map<String, Key<String>> nameToKey;
   final ServerCall<?, ?> call;
   final Metadata headers;
@@ -71,15 +67,24 @@ final class GrpcServerRequest extends RpcServerRequest {
   }
 
   /**
+   * Returns {@linkplain ServerCall#getMethodDescriptor()}} from the {@link #call()}.
+   *
+   * @since 5.12
+   */
+  @Override public MethodDescriptor<?, ?> methodDescriptor() {
+    return call.getMethodDescriptor();
+  }
+
+  /**
    * Returns the {@linkplain Metadata headers} passed to {@link ServerInterceptor#interceptCall}.
    *
    * @since 5.12
    */
-  public Metadata headers() {
+  @Override public Metadata headers() {
     return headers;
   }
 
-  String propagationField(String keyName) {
+  @Override protected String propagationField(String keyName) {
     if (keyName == null) throw new NullPointerException("keyName == null");
     Key<String> key = nameToKey.get(keyName);
     if (key == null) {

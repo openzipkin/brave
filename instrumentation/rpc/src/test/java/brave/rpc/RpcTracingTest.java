@@ -28,20 +28,20 @@ public class RpcTracingTest {
     RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).build();
 
     assertThat(rpcTracing.clientSampler())
-      .isSameAs(deferDecision());
+        .isSameAs(deferDecision());
     assertThat(rpcTracing.serverSampler())
-      .isSameAs(deferDecision());
+        .isSameAs(deferDecision());
   }
 
   @Test public void toBuilder() {
     RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).build();
 
     assertThat(rpcTracing.toBuilder().build())
-      .usingRecursiveComparison()
-      .isEqualTo(rpcTracing);
+        .usingRecursiveComparison()
+        .isEqualTo(rpcTracing);
 
     assertThat(rpcTracing.toBuilder().clientSampler(neverSample()).build())
-      .usingRecursiveComparison()
-      .isEqualTo(RpcTracing.newBuilder(tracing).clientSampler(neverSample()).build());
+        .usingRecursiveComparison()
+        .isEqualTo(RpcTracing.newBuilder(tracing).clientSampler(neverSample()).build());
   }
 }

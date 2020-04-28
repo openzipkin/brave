@@ -35,7 +35,7 @@ public class DubboParserTest {
     when(invocation.getMethodName()).thenReturn("sayHello");
 
     assertThat(DubboParser.method(invocation))
-      .isEqualTo("sayHello");
+        .isEqualTo("sayHello");
   }
 
   @Test public void method_malformed() {
@@ -49,7 +49,7 @@ public class DubboParserTest {
     when(invocation.getArguments()).thenReturn(new Object[] {"sayHello"});
 
     assertThat(DubboParser.method(invocation))
-      .isEqualTo("sayHello");
+        .isEqualTo("sayHello");
   }
 
   @Test public void method_invoke_nullArgs() {
@@ -73,58 +73,49 @@ public class DubboParserTest {
   }
 
   @Test public void service() {
-    when(invocation.getInvoker()).thenReturn(invoker);
-    URL url = URL.valueOf("http://localhost:9000?interface=brave.dubbo.GreeterService");
+    URL url = URL.valueOf("dubbo://localhost:9090?interface=brave.dubbo.GreeterService");
     when(invoker.getUrl()).thenReturn(url);
 
-    assertThat(DubboParser.service(invocation))
-      .isEqualTo("brave.dubbo.GreeterService");
-  }
-
-  @Test public void service_nullInvoker() {
-    assertThat(DubboParser.service(invocation)).isNull();
+    assertThat(DubboParser.service(invoker))
+        .isEqualTo("brave.dubbo.GreeterService");
   }
 
   @Test public void service_nullUrl() {
-    when(invocation.getInvoker()).thenReturn(invoker);
-
-    assertThat(DubboParser.service(invocation)).isNull();
+    assertThat(DubboParser.service(invoker)).isNull();
   }
 
   @Test public void service_nullServiceInterface() {
-    when(invocation.getInvoker()).thenReturn(invoker);
-    URL url = URL.valueOf("http://localhost:9000");
+    URL url = URL.valueOf("dubbo://localhost:9090");
     when(invoker.getUrl()).thenReturn(url);
 
-    assertThat(DubboParser.service(invocation)).isNull();
+    assertThat(DubboParser.service(invoker)).isNull();
   }
 
   @Test public void service_malformed() {
-    when(invocation.getInvoker()).thenReturn(invoker);
-    URL url = URL.valueOf("http://localhost:9000?interface=");
+    URL url = URL.valueOf("dubbo://localhost:9090?interface=");
     when(invoker.getUrl()).thenReturn(url);
 
-    assertThat(DubboParser.service(invocation)).isNull();
+    assertThat(DubboParser.service(invoker)).isNull();
   }
 
   @Test public void errorCodes() {
     assertThat(DubboParser.errorCode(null))
-      .isEqualTo(DubboParser.errorCode(new IOException("timeout")))
-      .isNull();
+        .isEqualTo(DubboParser.errorCode(new IOException("timeout")))
+        .isNull();
 
     assertThat(DubboParser.errorCode(new RpcException(0)))
-      .isEqualTo("UNKNOWN_EXCEPTION");
+        .isEqualTo("UNKNOWN_EXCEPTION");
     assertThat(DubboParser.errorCode(new RpcException(1)))
-      .isEqualTo("NETWORK_EXCEPTION");
+        .isEqualTo("NETWORK_EXCEPTION");
     assertThat(DubboParser.errorCode(new RpcException(2)))
-      .isEqualTo("TIMEOUT_EXCEPTION");
+        .isEqualTo("TIMEOUT_EXCEPTION");
     assertThat(DubboParser.errorCode(new RpcException(3)))
-      .isEqualTo("BIZ_EXCEPTION");
+        .isEqualTo("BIZ_EXCEPTION");
     assertThat(DubboParser.errorCode(new RpcException(4)))
-      .isEqualTo("FORBIDDEN_EXCEPTION");
+        .isEqualTo("FORBIDDEN_EXCEPTION");
     assertThat(DubboParser.errorCode(new RpcException(5)))
-      .isEqualTo("SERIALIZATION_EXCEPTION");
+        .isEqualTo("SERIALIZATION_EXCEPTION");
     assertThat(DubboParser.errorCode(new RpcException(6)))
-      .isEqualTo("6"); // this will catch drift if Dubbo adds another code
+        .isEqualTo("6"); // this will catch drift if Dubbo adds another code
   }
 }

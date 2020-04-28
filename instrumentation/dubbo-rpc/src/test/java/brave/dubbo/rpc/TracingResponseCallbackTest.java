@@ -13,7 +13,6 @@
  */
 package brave.dubbo.rpc;
 
-import brave.Span;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
@@ -25,41 +24,40 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 public class TracingResponseCallbackTest {
-  Span span = mock(Span.class);
+  FinishSpan finishSpan = mock(FinishSpan.class);
   TraceContext invocationContext = TraceContext.newBuilder().traceId(1).spanId(2).build();
   CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.create();
 
   @Test public void done_should_finish_span() {
     ResponseCallback callback =
-      TracingResponseCallback.create(null, span, currentTraceContext, invocationContext);
+      TracingResponseCallback.create(null, finishSpan, currentTraceContext, invocationContext);
 
     callback.done(null);
 
-    verify(span).finish();
+    verify(finishSpan).accept(null, null);
   }
 
   @Test public void done_should_finish_span_caught() {
     ResponseCallback callback =
-      TracingResponseCallback.create(null, span, currentTraceContext, invocationContext);
+      TracingResponseCallback.create(null, finishSpan, currentTraceContext, invocationContext);
 
     Throwable error = new Exception("Test exception");
     callback.caught(error);
 
-    verify(span).error(error);
-    verify(span).finish();
+    verify(finishSpan).accept(null, error);
   }
 
   @Test public void done_should_forward_then_finish_span() {
     ResponseCallback delegate = mock(ResponseCallback.class);
 
     ResponseCallback callback =
-      TracingResponseCallback.create(delegate, span, currentTraceContext, invocationContext);
+      TracingResponseCallback.create(delegate, finishSpan, currentTraceContext, invocationContext);
 
     Object result = new Object();
     callback.done(result);
 
     verify(delegate).done(result);
-    verify(span).finish();
+    verify(finishSpan).accept(result, null);
   }
 
   @Test public void done_should_have_span_in_scope() {
@@ -74,12 +72,12 @@ public class TracingResponseCallbackTest {
     };
 
     ResponseCallback callback =
-      TracingResponseCallback.create(delegate, span, currentTraceContext, invocationContext);
+      TracingResponseCallback.create(delegate, finishSpan, currentTraceContext, invocationContext);
 
     Object result = new Object();
     callback.done(result);
 
-    verify(span).finish();
+    verify(finishSpan).accept(result, null);
   }
 
   @Test public void done_should_have_span_in_scope_caught() {
@@ -94,12 +92,11 @@ public class TracingResponseCallbackTest {
     };
 
     ResponseCallback callback =
-      TracingResponseCallback.create(delegate, span, currentTraceContext, invocationContext);
+      TracingResponseCallback.create(delegate, finishSpan, currentTraceContext, invocationContext);
 
     Throwable error = new Exception("Test exception");
     callback.caught(error);
 
-    verify(span).error(error);
-    verify(span).finish();
+    verify(finishSpan).accept(null, error);
   }
 }

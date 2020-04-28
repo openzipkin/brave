@@ -14,10 +14,30 @@
 package brave.grpc;
 
 import brave.SpanCustomizer;
+import brave.propagation.TraceContext;
+import brave.rpc.RpcRequest;
+import brave.rpc.RpcRequestParser;
+import brave.rpc.RpcTracing;
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
 
-public class GrpcServerParser extends GrpcParser {
+/**
+ * @see GrpcServerRequest
+ * @see GrpcServerResponse
+ * @deprecated Since 5.12 use {@link RpcTracing#serverRequestParser()} or {@link
+ * RpcTracing#serverResponseParser()}.
+ */
+@Deprecated
+public class GrpcServerParser extends GrpcParser implements RpcRequestParser {
+  @Override public void parse(RpcRequest request, TraceContext context, SpanCustomizer span) {
+    if (request instanceof GrpcServerRequest) {
+      GrpcServerRequest grpcRequest = (GrpcServerRequest) request;
+      onStart(grpcRequest.call, grpcRequest.headers, span);
+    } else {
+      assert false : "expected a GrpcServerRequest: " + request;
+    }
+  }
+
   /** Override the customize the span based on the start of a request. */
   protected <ReqT, RespT> void onStart(ServerCall<ReqT, RespT> call, Metadata headers,
     SpanCustomizer span) {

@@ -13,13 +13,12 @@
  */
 package brave.dubbo;
 
-import brave.Response;
-import brave.Span;
 import brave.internal.Nullable;
+import brave.rpc.RpcClientResponse;
 import org.apache.dubbo.rpc.Result;
 import org.apache.dubbo.rpc.RpcException;
 
-final class DubboClientResponse extends Response implements DubboResponse {
+final class DubboClientResponse extends RpcClientResponse implements DubboResponse {
   final DubboClientRequest request;
   @Nullable final Result result;
   @Nullable final Throwable error;
@@ -30,10 +29,6 @@ final class DubboClientResponse extends Response implements DubboResponse {
     this.request = request;
     this.result = result;
     this.error = error;
-  }
-
-  @Override public Span.Kind spanKind() {
-    return Span.Kind.CLIENT;
   }
 
   @Override public Result result() {
@@ -53,7 +48,7 @@ final class DubboClientResponse extends Response implements DubboResponse {
   }
 
   /** Returns the string form of the {@link RpcException#getCode()} */
-  String errorCode() {
+  @Override public String errorCode() {
     return DubboParser.errorCode(error);
   }
 }

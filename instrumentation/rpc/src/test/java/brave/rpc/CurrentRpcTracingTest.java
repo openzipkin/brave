@@ -48,7 +48,7 @@ public class CurrentRpcTracingTest {
     RpcTracing current = RpcTracing.create(tracing);
 
     assertThat(RpcTracing.current())
-      .isSameAs(current);
+        .isSameAs(current);
   }
 
   @Test public void setsNotCurrentOnClose() {
@@ -91,6 +91,6 @@ public class CurrentRpcTracingTest {
     rpcTracings.remove(null);
     // depending on race, we should have either one instance or none
     assertThat(rpcTracings.isEmpty() || rpcTracings.size() == 1)
-      .isTrue();
+        .isTrue();
   }
 }

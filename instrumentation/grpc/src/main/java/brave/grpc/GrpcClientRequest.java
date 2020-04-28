@@ -13,7 +13,6 @@
  */
 package brave.grpc;
 
-import brave.propagation.Propagation.Setter;
 import brave.rpc.RpcClientRequest;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
@@ -24,18 +23,14 @@ import io.grpc.Metadata.Key;
 import io.grpc.MethodDescriptor;
 import java.util.Map;
 
-// intentionally not yet public until we add tag parsing functionality
-final class GrpcClientRequest extends RpcClientRequest {
-  static final Setter<GrpcClientRequest, String> SETTER = new Setter<GrpcClientRequest, String>() {
-    @Override public void put(GrpcClientRequest request, String key, String value) {
-      request.propagationField(key, value);
-    }
-
-    @Override public String toString() {
-      return "GrpcClientRequest::propagationField";
-    }
-  };
-
+/**
+ * Allows access gRPC specific aspects of a client request during sampling and parsing.
+ *
+ * @see GrpcClientResponse
+ * @see GrpcRequest for a parsing example
+ * @since 5.12
+ */
+public final class GrpcClientRequest extends RpcClientRequest implements GrpcRequest {
   final Map<String, Key<String>> nameToKey;
   final MethodDescriptor<?, ?> methodDescriptor;
   final CallOptions callOptions;
@@ -43,7 +38,7 @@ final class GrpcClientRequest extends RpcClientRequest {
   final Metadata headers;
 
   GrpcClientRequest(Map<String, Key<String>> nameToKey, MethodDescriptor<?, ?> methodDescriptor,
-    CallOptions callOptions, ClientCall<?, ?> call, Metadata headers) {
+      CallOptions callOptions, ClientCall<?, ?> call, Metadata headers) {
     if (nameToKey == null) throw new NullPointerException("nameToKey == null");
     if (methodDescriptor == null) throw new NullPointerException("methodDescriptor == null");
     if (callOptions == null) throw new NullPointerException("callOptions == null");
@@ -76,7 +71,7 @@ final class GrpcClientRequest extends RpcClientRequest {
    *
    * @since 5.12
    */
-  public MethodDescriptor<?, ?> methodDescriptor() {
+  @Override public MethodDescriptor<?, ?> methodDescriptor() {
     return methodDescriptor;
   }
 
@@ -101,16 +96,17 @@ final class GrpcClientRequest extends RpcClientRequest {
   }
 
   /**
-   * Returns the {@linkplain Metadata headers}  passed to {@link ClientCall#start(ClientCall.Listener,
+   * Returns the {@linkplain Metadata headers} passed to {@link ClientCall#start(ClientCall.Listener,
    * Metadata)}.
    *
    * @since 5.12
    */
-  public Metadata headers() {
+  @Override public Metadata headers() {
     return headers;
   }
 
-  void propagationField(String keyName, String value) {
+  @Override protected void propagationField(String keyName, String value) {
+
     if (keyName == null) throw new NullPointerException("keyName == null");
     if (value == null) throw new NullPointerException("value == null");
     Key<String> key = nameToKey.get(keyName);

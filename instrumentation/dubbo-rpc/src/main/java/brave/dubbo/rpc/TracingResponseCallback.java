@@ -13,14 +13,11 @@
  */
 package brave.dubbo.rpc;
 
-import brave.Span;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import com.alibaba.dubbo.remoting.exchange.ResponseCallback;
-
-import static brave.dubbo.rpc.TracingFilter.onError;
 
 /**
  * Ensures deferred async calls complete a span upon success or failure callback.
@@ -28,25 +25,25 @@ import static brave.dubbo.rpc.TracingFilter.onError;
  * <p>This was originally a copy of {@code brave.kafka.clients.TracingCallback}.
  */
 class TracingResponseCallback implements ResponseCallback {
-  static ResponseCallback create(@Nullable ResponseCallback delegate, Span span,
+  static ResponseCallback create(
+    @Nullable ResponseCallback delegate, FinishSpan finishSpan,
     CurrentTraceContext currentTraceContext, @Nullable TraceContext context) {
-    if (delegate == null) return new TracingResponseCallback(span);
-    return new DelegateAndFinishSpan(span, delegate, currentTraceContext, context);
+    if (delegate == null) return new TracingResponseCallback(finishSpan);
+    return new DelegateAndFinishSpan(finishSpan, delegate, currentTraceContext, context);
   }
 
-  final Span span;
+  final FinishSpan finishSpan;
 
-  TracingResponseCallback(Span span) {
-    this.span = span;
+  TracingResponseCallback(FinishSpan finishSpan) {
+    this.finishSpan = finishSpan;
   }
 
   @Override public void done(Object response) {
-    span.finish();
+    finishSpan.accept(response, null);
   }
 
   @Override public void caught(Throwable exception) {
-    onError(exception, span);
-    span.finish();
+    finishSpan.accept(null, exception);
   }
 
   static final class DelegateAndFinishSpan extends TracingResponseCallback {
@@ -54,9 +51,9 @@ class TracingResponseCallback implements ResponseCallback {
     final CurrentTraceContext current;
     @Nullable final TraceContext context;
 
-    DelegateAndFinishSpan(Span span, ResponseCallback delegate,
+    DelegateAndFinishSpan(FinishSpan finishSpan, ResponseCallback delegate,
       CurrentTraceContext currentTraceContext, @Nullable TraceContext context) {
-      super(span);
+      super(finishSpan);
       this.delegate = delegate;
       this.current = currentTraceContext;
       this.context = context;

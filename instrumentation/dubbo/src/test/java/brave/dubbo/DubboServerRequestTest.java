@@ -25,16 +25,15 @@ import static org.mockito.Mockito.when;
 public class DubboServerRequestTest {
   Invoker invoker = mock(Invoker.class);
   Invocation invocation = mock(Invocation.class);
-  URL url = mock(URL.class);
+  URL url = URL.valueOf("dubbo://localhost:6666?scope=remote&interface=brave.dubbo.GreeterService");
   DubboServerRequest request = new DubboServerRequest(invoker, invocation);
 
   @Test public void service() {
     when(invocation.getInvoker()).thenReturn(invoker);
     when(invoker.getUrl()).thenReturn(url);
-    when(url.getServiceInterface()).thenReturn("brave.dubbo.GreeterService");
 
     assertThat(request.service())
-      .isEqualTo("brave.dubbo.GreeterService");
+        .isEqualTo("brave.dubbo.GreeterService");
   }
 
   @Test public void method() {

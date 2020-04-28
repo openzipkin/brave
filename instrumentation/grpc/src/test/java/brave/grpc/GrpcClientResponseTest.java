@@ -30,16 +30,19 @@ public class GrpcClientResponseTest {
   MethodDescriptor<?, ?> methodDescriptor = TestObjects.METHOD_DESCRIPTOR;
   CallOptions callOptions = CallOptions.DEFAULT;
   ClientCall<?, ?> call = mock(ClientCall.class);
-  Metadata headers = new Metadata();
+  Metadata headers = new Metadata(), trailers = new Metadata();
   GrpcClientRequest request =
-    new GrpcClientRequest(singletonMap("b3", b3Key), methodDescriptor, callOptions, call, headers);
+      new GrpcClientRequest(singletonMap("b3", b3Key), methodDescriptor, callOptions, call,
+          headers);
   Status status = Status.CANCELLED;
-  Metadata trailers = new Metadata();
-  Throwable error;
-  GrpcClientResponse response = new GrpcClientResponse(request, status, trailers, error);
+  GrpcClientResponse response = new GrpcClientResponse(request, headers, status, trailers);
 
   @Test public void request() {
     assertThat(response.request()).isSameAs(request);
+  }
+
+  @Test public void headers() {
+    assertThat(response.headers()).isSameAs(headers);
   }
 
   @Test public void status() {
@@ -58,17 +61,10 @@ public class GrpcClientResponseTest {
     assertThat(response.error()).isNull();
   }
 
-  @Test public void error() {
-    RuntimeException error = new RuntimeException("noodles");
-    GrpcClientResponse response = new GrpcClientResponse(request, status, trailers, error);
-
-    assertThat(response.error()).isSameAs(error);
-  }
-
   @Test public void error_fromStatus() {
     RuntimeException error = new RuntimeException("noodles");
     status = Status.fromThrowable(error);
-    GrpcClientResponse response = new GrpcClientResponse(request, status, trailers, null);
+    GrpcClientResponse response = new GrpcClientResponse(request, headers, status, trailers);
 
     assertThat(response.error()).isSameAs(error);
     assertThat(response.errorCode()).isEqualTo("UNKNOWN");
@@ -76,7 +72,7 @@ public class GrpcClientResponseTest {
 
   @Test public void errorCode_nullWhenOk() {
     status = Status.OK;
-    GrpcClientResponse response = new GrpcClientResponse(request, status, trailers, null);
+    GrpcClientResponse response = new GrpcClientResponse(request, headers, status, trailers);
 
     assertThat(response.errorCode()).isNull();
   }
