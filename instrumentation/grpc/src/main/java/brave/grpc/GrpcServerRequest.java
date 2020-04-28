@@ -14,7 +14,6 @@
 package brave.grpc;
 
 import brave.rpc.RpcServerRequest;
-import brave.rpc.RpcTracing;
 import io.grpc.Metadata;
 import io.grpc.Metadata.Key;
 import io.grpc.MethodDescriptor;
@@ -25,27 +24,11 @@ import java.util.Map;
 /**
  * Allows access gRPC specific aspects of a server request during sampling and parsing.
  *
- * <p>Here's an example that adds default tags, and if gRPC, the {@linkplain
- * MethodDescriptor#getType() method type}:
- * <pre>{@code
- * Tag<GrpcServerRequest> methodType = new Tag<GrpcServerRequest>("grpc.method_type") {
- *   protected String parseValue(GrpcServerRequest input, TraceContext context) {
- *     return input.call().getMethodDescriptor().getType().name();
- *   }
- * };
- * rpcTracing = rpcTracingBuilder.serverResponseParser((res, context, span) -> {
- *   RpcResponseParser.DEFAULT.parse(res, context, span);
- *     if (res instanceof GrpcServerRequest) {
- *       methodType.tag((GrpcServerRequest) res, span);
- *     }
- *   }).build();
- * }</pre>
- *
  * @see GrpcServerResponse
- * @see RpcTracing#serverRequestParser()
+ * @see GrpcRequest for a parsing example
  * @since 5.12
  */
-public class GrpcServerRequest extends RpcServerRequest {
+public class GrpcServerRequest extends RpcServerRequest implements GrpcRequest {
   final Map<String, Key<String>> nameToKey;
   final ServerCall<?, ?> call;
   final Metadata headers;
@@ -84,11 +67,20 @@ public class GrpcServerRequest extends RpcServerRequest {
   }
 
   /**
+   * Returns {@linkplain ServerCall#getMethodDescriptor()}} from the {@link #call()}.
+   *
+   * @since 5.12
+   */
+  @Override public MethodDescriptor<?, ?> methodDescriptor() {
+    return call.getMethodDescriptor();
+  }
+
+  /**
    * Returns the {@linkplain Metadata headers} passed to {@link ServerInterceptor#interceptCall}.
    *
    * @since 5.12
    */
-  public Metadata headers() {
+  @Override public Metadata headers() {
     return headers;
   }
 

@@ -1,15 +1,15 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+Copyright 2013-2020 The OpenZipkin Authors
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License. You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+in compliance with the License. You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied. See the License for the specific language governing permissions and limitations under
- * the License.
+Unless required by applicable law or agreed to in writing, software distributed under the License
+is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+or implied. See the License for the specific language governing permissions and limitations under
+the License.
  */
 package brave.grpc;
 
@@ -21,8 +21,8 @@ import brave.Tag;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
-import brave.rpc.RpcRequest;
 import brave.rpc.RpcRequestParser;
+import brave.rpc.RpcResponseParser;
 import brave.rpc.RpcRuleSampler;
 import brave.rpc.RpcTracing;
 import brave.test.ITRemote;
@@ -43,6 +43,7 @@ import io.grpc.examples.helloworld.GraterGrpc;
 import io.grpc.examples.helloworld.GreeterGrpc;
 import io.grpc.examples.helloworld.HelloReply;
 import io.grpc.examples.helloworld.HelloRequest;
+import io.grpc.internal.GrpcUtil;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.Iterator;
@@ -85,7 +86,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
 
   ManagedChannel newClient(ClientInterceptor... clientInterceptors) {
     return usePlainText(ManagedChannelBuilder.forAddress("localhost", server.port())
-      .intercept(clientInterceptors)).build();
+        .intercept(clientInterceptors)).build();
   }
 
   /** Extracted as {@link ManagedChannelBuilder#usePlaintext()} is a version-specific signature */
@@ -201,14 +202,14 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
     assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).name())
-      .isEqualTo("helloworld.greeter/sayhello");
+        .isEqualTo("helloworld.greeter/sayhello");
   }
 
   @Test public void onTransportException_addsErrorTag() {
     server.stop();
 
     assertThatThrownBy(() -> GraterGrpc.newBlockingStub(client).seyHallo(HELLO_REQUEST))
-      .isInstanceOf(StatusRuntimeException.class);
+        .isInstanceOf(StatusRuntimeException.class);
 
     // The error format of the exception message can differ from the span's "error" tag in CI
     Span span = reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, ".*Connection refused.*");
@@ -217,7 +218,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
 
   @Test public void addsErrorTag_onUnimplemented() {
     assertThatThrownBy(() -> GraterGrpc.newBlockingStub(client).seyHallo(HELLO_REQUEST))
-      .isInstanceOf(StatusRuntimeException.class);
+        .isInstanceOf(StatusRuntimeException.class);
 
     Span span = reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, "UNIMPLEMENTED");
     assertThat(span.tags().get("grpc.status_code")).isEqualTo("UNIMPLEMENTED");
@@ -242,31 +243,31 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     closeClient(client);
 
     client = newClient(
-      new ClientInterceptor() {
-        @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
-          MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
-          return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
-            @Override
-            public void start(Listener<RespT> responseListener, Metadata headers) {
-              tracing.tracer().currentSpanCustomizer().annotate("start");
-              super.start(responseListener, headers);
-            }
+        new ClientInterceptor() {
+          @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
+              MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
+            return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
+              @Override
+              public void start(Listener<RespT> responseListener, Metadata headers) {
+                tracing.tracer().currentSpanCustomizer().annotate("start");
+                super.start(responseListener, headers);
+              }
 
-            @Override public void sendMessage(ReqT message) {
-              tracing.tracer().currentSpanCustomizer().annotate("sendMessage");
-              super.sendMessage(message);
-            }
-          };
-        }
-      },
-      grpcTracing.newClientInterceptor()
+              @Override public void sendMessage(ReqT message) {
+                tracing.tracer().currentSpanCustomizer().annotate("sendMessage");
+                super.sendMessage(message);
+              }
+            };
+          }
+        },
+        grpcTracing.newClientInterceptor()
     );
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
     assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).annotations())
-      .extracting(Annotation::value)
-      .containsOnly("start", "sendMessage");
+        .extracting(Annotation::value)
+        .containsOnly("start", "sendMessage");
   }
 
   @Test public void clientParserTest() {
@@ -303,8 +304,8 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     Span span = reporter.takeRemoteSpan(Span.Kind.CLIENT);
     assertThat(span.name()).isEqualTo("unary");
     assertThat(span.tags()).containsKeys(
-      "grpc.message_received", "grpc.message_sent",
-      "grpc.message_received.visible", "grpc.message_sent.visible"
+        "grpc.message_received", "grpc.message_sent",
+        "grpc.message_received.visible", "grpc.message_sent.visible"
     );
     reporter.takeLocalSpan();
   }
@@ -321,7 +322,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     client = newClient();
 
     Iterator<HelloReply> replies = GreeterGrpc.newBlockingStub(client)
-      .sayHelloWithManyReplies(HelloRequest.newBuilder().setName("this is dog").build());
+        .sayHelloWithManyReplies(HelloRequest.newBuilder().setName("this is dog").build());
     assertThat(replies).toIterable().hasSize(10);
 
     // all response messages are tagged to the same span
@@ -334,7 +335,8 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     closeClient(client);
     client = newClient(new ClientInterceptor() {
       @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
-        MethodDescriptor<ReqT, RespT> methodDescriptor, CallOptions callOptions, Channel channel) {
+          MethodDescriptor<ReqT, RespT> methodDescriptor, CallOptions callOptions,
+          Channel channel) {
         ClientCall<ReqT, RespT> call = channel.newCall(methodDescriptor, callOptions);
         return new SimpleForwardingClientCall<ReqT, RespT>(call) {
           @Override public void start(Listener<RespT> responseListener, Metadata headers) {
@@ -345,7 +347,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     }, grpcTracing.newClientInterceptor());
 
     assertThatThrownBy(() -> GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST))
-      .isInstanceOf(IllegalStateException.class);
+        .isInstanceOf(IllegalStateException.class);
     reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, "I'm a bad interceptor.");
   }
 
@@ -353,7 +355,8 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     closeClient(client);
     client = newClient(new ClientInterceptor() {
       @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
-        MethodDescriptor<ReqT, RespT> methodDescriptor, CallOptions callOptions, Channel channel) {
+          MethodDescriptor<ReqT, RespT> methodDescriptor, CallOptions callOptions,
+          Channel channel) {
         ClientCall<ReqT, RespT> call = channel.newCall(methodDescriptor, callOptions);
         return new SimpleForwardingClientCall<ReqT, RespT>(call) {
           @Override public void halfClose() {
@@ -364,7 +367,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     }, grpcTracing.newClientInterceptor());
 
     assertThatThrownBy(() -> GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST))
-      .isInstanceOf(IllegalStateException.class);
+        .isInstanceOf(IllegalStateException.class);
     reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, "I'm a bad interceptor.");
   }
 
@@ -383,11 +386,11 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     }
 
     assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).tags())
-      .containsKey("grpc.message_send.1");
+        .containsKey("grpc.message_send.1");
 
     // Response processing happens on the invocation (parent) trace context
     assertThat(reporter.takeLocalSpan().tags())
-      .containsKey("grpc.message_recv.1");
+        .containsKey("grpc.message_recv.1");
   }
 
   @Test public void messageTagging_streaming() {
@@ -396,28 +399,28 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     ScopedSpan span = tracing.tracer().startScopedSpan("parent");
     try {
       Iterator<HelloReply> replies = GreeterGrpc.newBlockingStub(client)
-        .sayHelloWithManyReplies(HELLO_REQUEST);
+          .sayHelloWithManyReplies(HELLO_REQUEST);
       assertThat(replies).toIterable().hasSize(10);
     } finally {
       span.finish();
     }
 
     assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).tags())
-      .containsKey("grpc.message_send.1");
+        .containsKey("grpc.message_send.1");
 
     // Response processing happens on the invocation (parent) trace context
     // Intentionally verbose here to show 10 replies
     assertThat(reporter.takeLocalSpan().tags()).containsKeys(
-      "grpc.message_recv.1",
-      "grpc.message_recv.2",
-      "grpc.message_recv.3",
-      "grpc.message_recv.4",
-      "grpc.message_recv.5",
-      "grpc.message_recv.6",
-      "grpc.message_recv.7",
-      "grpc.message_recv.8",
-      "grpc.message_recv.9",
-      "grpc.message_recv.10"
+        "grpc.message_recv.1",
+        "grpc.message_recv.2",
+        "grpc.message_recv.3",
+        "grpc.message_recv.4",
+        "grpc.message_recv.5",
+        "grpc.message_recv.6",
+        "grpc.message_recv.7",
+        "grpc.message_recv.8",
+        "grpc.message_recv.9",
+        "grpc.message_recv.10"
     );
   }
 
@@ -428,27 +431,27 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
 
     closeClient(client);
     client = newClient(
-      new ClientInterceptor() {
-        @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
-          MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
-          return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
-            @Override public void start(Listener<RespT> responseListener, Metadata headers) {
-              super.start(new SimpleForwardingClientCallListener<RespT>(responseListener) {
-                @Override public void onMessage(RespT message) {
-                  customizer.tag("grpc.message_recv." + recvs.getAndIncrement(),
-                    message.toString());
-                  delegate().onMessage(message);
-                }
-              }, headers);
-            }
+        new ClientInterceptor() {
+          @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
+              MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
+            return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
+              @Override public void start(Listener<RespT> responseListener, Metadata headers) {
+                super.start(new SimpleForwardingClientCallListener<RespT>(responseListener) {
+                  @Override public void onMessage(RespT message) {
+                    customizer.tag("grpc.message_recv." + recvs.getAndIncrement(),
+                        message.toString());
+                    delegate().onMessage(message);
+                  }
+                }, headers);
+              }
 
-            @Override public void sendMessage(ReqT message) {
-              customizer.tag("grpc.message_send." + sends.getAndIncrement(), message.toString());
-              delegate().sendMessage(message);
-            }
-          };
-        }
-      }, grpcTracing.newClientInterceptor());
+              @Override public void sendMessage(ReqT message) {
+                customizer.tag("grpc.message_send." + sends.getAndIncrement(), message.toString());
+                delegate().sendMessage(message);
+              }
+            };
+          }
+        }, grpcTracing.newClientInterceptor());
   }
 
   /**
@@ -495,9 +498,9 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     closeClient(client);
 
     RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).clientSampler(RpcRuleSampler.newBuilder()
-      .putRule(methodEquals("SayHelloWithManyReplies"), NEVER_SAMPLE)
-      .putRule(serviceEquals("helloworld.greeter"), ALWAYS_SAMPLE)
-      .build()).build();
+        .putRule(methodEquals("SayHelloWithManyReplies"), NEVER_SAMPLE)
+        .putRule(serviceEquals("helloworld.greeter"), ALWAYS_SAMPLE)
+        .build()).build();
 
     grpcTracing = GrpcTracing.create(rpcTracing);
     client = newClient();
@@ -510,36 +513,42 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
     assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).name())
-      .isEqualTo("helloworld.greeter/sayhello");
+        .isEqualTo("helloworld.greeter/sayhello");
     // @After will also check that sayHelloWithManyReplies was not sampled
   }
 
   @Test public void customParser() {
     closeClient(client);
 
-    Tag<GrpcClientRequest> methodType = new Tag<GrpcClientRequest>("grpc.method_type") {
-      @Override protected String parseValue(GrpcClientRequest input, TraceContext context) {
+    Tag<GrpcRequest> methodType = new Tag<GrpcRequest>("grpc.method_type") {
+      @Override protected String parseValue(GrpcRequest input, TraceContext context) {
         return input.methodDescriptor().getType().name();
       }
     };
-    RpcRequestParser customRequestParser = new RpcRequestParser() {
-      @Override public void parse(RpcRequest res, TraceContext context, SpanCustomizer span) {
-        RpcRequestParser.DEFAULT.parse(res, context, span);
-        if (res instanceof GrpcClientRequest) {
-          methodType.tag((GrpcClientRequest) res, span);
-        }
+
+    Tag<GrpcResponse> responseEncoding = new Tag<GrpcResponse>("grpc.response_encoding") {
+      @Override protected String parseValue(GrpcResponse input, TraceContext context) {
+        return input.headers().get(GrpcUtil.MESSAGE_ENCODING_KEY);
       }
     };
 
     grpcTracing = GrpcTracing.create(RpcTracing.newBuilder(tracing)
-      .clientRequestParser(customRequestParser)
-      .build());
+        .clientRequestParser((req, context, span) -> {
+          RpcRequestParser.DEFAULT.parse(req, context, span);
+          if (req instanceof GrpcRequest) methodType.tag((GrpcRequest) req, span);
+        })
+        .clientResponseParser((res, context, span) -> {
+          RpcResponseParser.DEFAULT.parse(res, context, span);
+          if (res instanceof GrpcResponse) responseEncoding.tag((GrpcResponse) res, span);
+        }).build());
+
     client = newClient();
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
     assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).tags())
-      .containsEntry("grpc.method_type", "UNARY");
+        .containsEntry("grpc.method_type", "UNARY")
+        .containsEntry("grpc.response_encoding", "identity");
   }
 
   static final class StreamObserverAdapter implements StreamObserver<HelloReply> {

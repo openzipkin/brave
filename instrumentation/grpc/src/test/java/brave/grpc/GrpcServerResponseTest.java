@@ -26,15 +26,18 @@ import static org.mockito.Mockito.mock;
 public class GrpcServerResponseTest {
   Key<String> b3Key = Key.of("b3", Metadata.ASCII_STRING_MARSHALLER);
   ServerCall call = mock(ServerCall.class);
-  Metadata headers = new Metadata();
+  Metadata headers = new Metadata(), trailers = new Metadata();
   GrpcServerRequest request =
-    new GrpcServerRequest(singletonMap("b3", b3Key), call, headers);
+      new GrpcServerRequest(singletonMap("b3", b3Key), call, headers);
   Status status = Status.CANCELLED;
-  Metadata trailers = new Metadata();
-  GrpcServerResponse response = new GrpcServerResponse(request, status, trailers);
+  GrpcServerResponse response = new GrpcServerResponse(request, headers, status, trailers);
 
   @Test public void request() {
     assertThat(response.request()).isSameAs(request);
+  }
+
+  @Test public void headers() {
+    assertThat(response.headers()).isSameAs(headers);
   }
 
   @Test public void status() {
@@ -56,7 +59,7 @@ public class GrpcServerResponseTest {
   @Test public void error_fromStatus() {
     RuntimeException error = new RuntimeException("noodles");
     status = Status.fromThrowable(error);
-    GrpcServerResponse response = new GrpcServerResponse(request, status, trailers);
+    GrpcServerResponse response = new GrpcServerResponse(request, headers, status, trailers);
 
     assertThat(response.error()).isSameAs(error);
     assertThat(response.errorCode()).isEqualTo("UNKNOWN");
@@ -64,7 +67,7 @@ public class GrpcServerResponseTest {
 
   @Test public void errorCode_nullWhenOk() {
     status = Status.OK;
-    GrpcServerResponse response = new GrpcServerResponse(request, status, trailers);
+    GrpcServerResponse response = new GrpcServerResponse(request, headers, status, trailers);
 
     assertThat(response.errorCode()).isNull();
   }

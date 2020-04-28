@@ -24,13 +24,22 @@ import brave.propagation.TraceContext;
  * Use this to control the response data recorded for an {@link TraceContext#sampledLocal() sampled
  * RPC client or server span}.
  *
- * <p>Here's an example that adds the "rpc.error_code" even though "error" contains it.
+ * <p>Here's an example that adds default tags, and if gRPC, the response encoding:
  * <pre>{@code
- * rpcTracing = rpcTracingBuilder
- *   .clientResponseParser((response, context, span) -> {
- *     RpcResponseParser.DEFAULT.parse(response, context, span);
- *     RpcTags.ERROR_CODE.tag(response, context, span);
- *   }).build();
+ * Tag<GrpcResponse> responseEncoding = new Tag<GrpcResponse>("grpc.response_encoding") {
+ *   @Override protected String parseValue(GrpcResponse input, TraceContext context) {
+ *     return input.headers().get(GrpcUtil.MESSAGE_ENCODING_KEY);
+ *   }
+ * };
+ *
+ * RpcResponseParser addResponseEncoding = (res, context, span) -> {
+ *   RpcResponseParser.DEFAULT.parse(res, context, span);
+ *   if (res instanceof GrpcResponse) responseEncoding.tag((GrpcResponse) res, span);
+ * };
+ *
+ * grpcTracing = GrpcTracing.create(RpcTracing.newBuilder(tracing)
+ *     .clientResponseParser(addResponseEncoding);
+ *     .serverResponseParser(addResponseEncoding).build());
  * }</pre>
  *
  * @see RpcRequestParser

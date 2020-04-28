@@ -154,6 +154,7 @@ final class TracingClientInterceptor implements ClientInterceptor {
     @Nullable final TraceContext invocationContext;
     final AtomicReference<Span> spanRef;
     final GrpcClientRequest request;
+    final Metadata headers = new Metadata();
 
     TracingClientCallListener(
       Listener<RespT> delegate,
@@ -175,6 +176,8 @@ final class TracingClientInterceptor implements ClientInterceptor {
 
     // See instrumentation/RATIONALE.md for why the below response callbacks are invocation context
     @Override public void onHeaders(Metadata headers) {
+      // onHeaders() JavaDoc mentions headers are not thread-safe, so we make a safe copy here.
+      this.headers.merge(headers);
       try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
         delegate().onHeaders(headers);
       }
@@ -191,7 +194,7 @@ final class TracingClientInterceptor implements ClientInterceptor {
 
     @Override public void onClose(Status status, Metadata trailers) {
       // See /instrumentation/grpc/RATIONALE.md for why we don't catch exceptions from the delegate
-      GrpcClientResponse response = new GrpcClientResponse(request, status, trailers);
+      GrpcClientResponse response = new GrpcClientResponse(request, headers, status, trailers);
       Span span = spanRef.getAndSet(null);
       if (span != null) handler.handleReceive(response, span);
 

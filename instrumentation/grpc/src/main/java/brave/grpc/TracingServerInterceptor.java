@@ -77,6 +77,7 @@ final class TracingServerInterceptor implements ServerInterceptor {
     final TraceContext context;
     final AtomicReference<Span> spanRef;
     final GrpcServerRequest request;
+    final Metadata headers = new Metadata();
 
     TracingServerCall(ServerCall<ReqT, RespT> delegate, Span span, AtomicReference<Span> spanRef,
       GrpcServerRequest request) {
@@ -96,6 +97,8 @@ final class TracingServerInterceptor implements ServerInterceptor {
       try (Scope scope = currentTraceContext.maybeScope(context)) {
         delegate().sendHeaders(headers);
       }
+      // sendHeaders() JavaDoc mentions headers are not thread-safe, so we make a safe copy here.
+      this.headers.merge(headers);
     }
 
     @Override public void sendMessage(RespT message) {
@@ -109,7 +112,7 @@ final class TracingServerInterceptor implements ServerInterceptor {
 
     @Override public void close(Status status, Metadata trailers) {
       // See /instrumentation/grpc/RATIONALE.md for why we don't catch exceptions from the delegate
-      GrpcServerResponse response = new GrpcServerResponse(request, status, trailers);
+      GrpcServerResponse response = new GrpcServerResponse(request, headers, status, trailers);
       Span span = spanRef.getAndSet(null);
       if (span != null) handler.handleSend(response, span);
 

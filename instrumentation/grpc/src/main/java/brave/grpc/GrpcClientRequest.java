@@ -14,7 +14,6 @@
 package brave.grpc;
 
 import brave.rpc.RpcClientRequest;
-import brave.rpc.RpcTracing;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
 import io.grpc.ClientCall;
@@ -27,27 +26,11 @@ import java.util.Map;
 /**
  * Allows access gRPC specific aspects of a client request during sampling and parsing.
  *
- * <p>Here's an example that adds default tags, and if gRPC, the {@linkplain
- * MethodDescriptor#getType() method type}:
- * <pre>{@code
- * Tag<GrpcClientRequest> methodType = new Tag<GrpcClientRequest>("grpc.method_type") {
- *   protected String parseValue(GrpcClientRequest input, TraceContext context) {
- *     return input.methodDescriptor().getType().name();
- *   }
- * };
- * rpcTracing = rpcTracingBuilder.clientResponseParser((res, context, span) -> {
- *   RpcResponseParser.DEFAULT.parse(res, context, span);
- *     if (res instanceof GrpcClientRequest) {
- *       methodType.tag((GrpcClientRequest) res, span);
- *     }
- *   }).build();
- * }</pre>
- *
  * @see GrpcClientResponse
- * @see RpcTracing#clientRequestParser()
+ * @see GrpcRequest for a parsing example
  * @since 5.12
  */
-public final class GrpcClientRequest extends RpcClientRequest {
+public final class GrpcClientRequest extends RpcClientRequest implements GrpcRequest {
   final Map<String, Key<String>> nameToKey;
   final MethodDescriptor<?, ?> methodDescriptor;
   final CallOptions callOptions;
@@ -55,7 +38,7 @@ public final class GrpcClientRequest extends RpcClientRequest {
   final Metadata headers;
 
   GrpcClientRequest(Map<String, Key<String>> nameToKey, MethodDescriptor<?, ?> methodDescriptor,
-    CallOptions callOptions, ClientCall<?, ?> call, Metadata headers) {
+      CallOptions callOptions, ClientCall<?, ?> call, Metadata headers) {
     if (nameToKey == null) throw new NullPointerException("nameToKey == null");
     if (methodDescriptor == null) throw new NullPointerException("methodDescriptor == null");
     if (callOptions == null) throw new NullPointerException("callOptions == null");
@@ -88,7 +71,7 @@ public final class GrpcClientRequest extends RpcClientRequest {
    *
    * @since 5.12
    */
-  public MethodDescriptor<?, ?> methodDescriptor() {
+  @Override public MethodDescriptor<?, ?> methodDescriptor() {
     return methodDescriptor;
   }
 
@@ -118,7 +101,7 @@ public final class GrpcClientRequest extends RpcClientRequest {
    *
    * @since 5.12
    */
-  public Metadata headers() {
+  @Override public Metadata headers() {
     return headers;
   }
 
