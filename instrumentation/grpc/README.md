@@ -27,23 +27,46 @@ ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", serverPor
     .build();
 ```
 
-## Span data policy
-By default, the following are added to both gRPC client and server spans:
-* Span.name as the full method name: ex "helloworld.greeter/sayhello"
-* Tags/binary annotations:
-  * "grpc.status_code" when the status is not OK.
-  * "error", when there is an exception or status is not OK.
+## Sampling and data policy
 
-If you just want to control span naming policy, override `spanName` in
-your client or server parser.
+Please read the [RPC documentation](../rpc/README.md) before proceeding, as it
+covers important topics such as which tags are added to spans, and how traces
+are sampled.
 
-Ex:
+### RPC model mapping
+
+As mentioned above, the RPC model types `RpcRequest` and `RpcResponse` allow
+portable sampling decisions and tag parsing.
+
+gRPC maps to this model as follows:
+* `RpcRequest.service()` - text preceding the first slash ('/') in `MethodDescriptor.fullMethodName`
+  * Ex. "helloworld.Greeter" for a full method name "helloworld.Greeter/SayHello"
+* `RpcRequest.method()` - text following the first slash ('/') in `MethodDescriptor.fullMethodName`
+  * Ex. "SayHello" for a full method name "helloworld.Greeter/SayHello"
+* `RpcResponse.errorCode()` - `Status.Code.name()` when not `Status.isOk()`
+  * Ex. `null` for `Status.Code.OK` and `UNKNOWN` for `Status.Code.UNKNOWN`
+
+### gRPC-specific model
+
+The `GrpcRequest` and `GrpcResponse` are available for custom sampling and tag
+parsing.
+
+Here is an example that adds default tags, and if gRPC, the method type (ex "UNARY"):
 ```java
-overrideSpanName = new GrpcClientParser() {
-  @Override protected <ReqT, RespT> String spanName(MethodDescriptor<ReqT, RespT> methodDescriptor) {
-    return methodDescriptor.getType().name();
+Tag<GrpcRequest> methodType = new Tag<GrpcRequest>("grpc.method_type") {
+  @Override protected String parseValue(GrpcRequest input, TraceContext context) {
+    return input.methodDescriptor().getType().name();
   }
 };
+
+RpcRequestParser addMethodType = (req, context, span) -> {
+  RpcRequestParser.DEFAULT.parse(req, context, span);
+  if (req instanceof GrpcRequest) methodType.tag((GrpcRequest) req, span);
+};
+
+grpcTracing = GrpcTracing.create(RpcTracing.newBuilder(tracing)
+    .clientRequestParser(addMethodType)
+    .serverRequestParser(addMethodType).build());
 ```
 
 ## Message processing
@@ -79,30 +102,6 @@ managedChannelBuilder.intercept(new ClientInterceptor() {
     };
   }
 }, grpcTracing.newClientInterceptor());
-```
-
-## Sampling Policy
-The default sampling policy is to use the default (trace ID) sampler for
-server and client requests.
-
-You can use an [RpcRuleSampler](../rpc/README.md) to override this based on
-gRPC service or method names.
-
-Ex. Here's a sampler that traces 100 "GetUserToken" requests per second. This
-doesn't start new traces for requests to the health check service. Other
-requests will use a global rate provided by the tracing component.
-
-```java
-import static brave.rpc.RpcRequestMatchers.methodEquals;
-import static brave.rpc.RpcRequestMatchers.serviceEquals;
-import static brave.sampler.Matchers.and;
-
-rpcTracing = rpcTracingBuilder.serverSampler(RpcRuleSampler.newBuilder()
-  .putRule(serviceEquals("grpc.health.v1.Health"), Sampler.NEVER_SAMPLE)
-  .putRule(and(serviceEquals("users.UserService"), methodEquals("GetUserToken")), RateLimitingSampler.create(100))
-  .build()).build();
-
-grpcTracing = GrpcTracing.create(rpcTracing);
 ```
 
 ## gRPC Propagation Format (Census interop)

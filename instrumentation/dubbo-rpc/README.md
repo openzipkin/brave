@@ -86,10 +86,29 @@ Make sure the following line is in `META-INF/dubbo/com.alibaba.dubbo.common.exte
 tracing=com.yourcompany.dubbo.TracingExtensionFactory
 ```
 
-### Custom parsing
+## Sampling and data policy
 
-The `DubboRequest` and `DubboResponse` types can be used to add Dubbo-specific
-data even with the portable parser code.
+Please read the [RPC documentation](../rpc/README.md) before proceeding, as it
+covers important topics such as which tags are added to spans, and how traces
+are sampled.
+
+### RPC model mapping
+
+As mentioned above, the RPC model types `RpcRequest` and `RpcResponse` allow
+portable sampling decisions and tag parsing.
+
+Dubbo maps to this model as follows:
+* `RpcRequest.service()` - `Invoker.url.serviceInterface`
+  * Ex. "GreeterService" for a URL "dubbo://localhost:9090?interface=brave.dubbo.GreeterService"
+* `RpcRequest.method()` - `Invocation.methodName`
+  * When absent, this falls back to the string arg[0] to the "$invoke" method.
+* `RpcResponse.errorCode()` - The constant name for `RpcException.code`.
+  * Ex. "FORBIDDEN_EXCEPTION" when `RpcException.code == 4`
+
+### Dubbo-specific model
+
+The `DubboRequest` and `DubboResponse` are available for custom sampling and
+tag parsing.
 
 Here is an example that adds default tags, and if Dubbo, Java arguments:
 ```java
