@@ -14,7 +14,7 @@
 package brave.jaxrs2;
 
 import brave.test.http.ITHttpAsyncClient;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import javax.ws.rs.client.Client;
@@ -23,16 +23,27 @@ import javax.ws.rs.client.InvocationCallback;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
+import org.junit.After;
 import org.junit.Ignore;
 
+import static java.util.concurrent.Executors.newCachedThreadPool;
+
 public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
+  ExecutorService executorService = currentTraceContext.executorService(newCachedThreadPool());
+
   @Override protected Client newClient(int port) {
     return new ResteasyClientBuilder()
-      .register(TracingClientFilter.create(httpTracing))
-      .connectTimeout(1, TimeUnit.SECONDS)
-      .readTimeout(1, TimeUnit.SECONDS)
-      .executorService(currentTraceContext.executorService(Executors.newCachedThreadPool()))
-      .build();
+        .register(TracingClientFilter.create(httpTracing))
+        .connectTimeout(1, TimeUnit.SECONDS)
+        .readTimeout(1, TimeUnit.SECONDS)
+        .executorService(executorService)
+        .build();
+  }
+
+  @After @Override public void close() throws Exception {
+    executorService.shutdown();
+    executorService.awaitTermination(1, TimeUnit.SECONDS);
+    super.close();
   }
 
   @Override protected void closeClient(Client client) {
@@ -41,31 +52,31 @@ public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
 
   @Override protected void get(Client client, String pathIncludingQuery) {
     client.target(url(pathIncludingQuery))
-      .request(MediaType.TEXT_PLAIN_TYPE)
-      .get(String.class);
+        .request(MediaType.TEXT_PLAIN_TYPE)
+        .get(String.class);
   }
 
   @Override
   protected void get(Client client, String path, BiConsumer<Integer, Throwable> callback) {
     client.target(url(path))
-      .request(MediaType.TEXT_PLAIN_TYPE)
-      .async()
-      .get(new InvocationCallback<Response>() {
-        @Override public void completed(Response response) {
-          callback.accept(response.getStatus(), null);
-        }
+        .request(MediaType.TEXT_PLAIN_TYPE)
+        .async()
+        .get(new InvocationCallback<Response>() {
+          @Override public void completed(Response response) {
+            callback.accept(response.getStatus(), null);
+          }
 
-        @Override public void failed(Throwable throwable) {
-          callback.accept(null, throwable);
-        }
-      });
+          @Override public void failed(Throwable throwable) {
+            callback.accept(null, throwable);
+          }
+        });
   }
 
   @Override
   protected void post(Client client, String pathIncludingQuery, String body) {
     client.target(url(pathIncludingQuery))
-      .request(MediaType.TEXT_PLAIN_TYPE)
-      .post(Entity.text(body), String.class);
+        .request(MediaType.TEXT_PLAIN_TYPE)
+        .post(Entity.text(body), String.class);
   }
 
   @Override @Ignore("automatic error propagation is impossible")
