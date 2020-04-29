@@ -14,9 +14,7 @@
 package brave.internal.baggage;
 
 import brave.baggage.BaggageField;
-import brave.baggage.BaggagePropagationConfig;
 import brave.internal.Nullable;
-import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.ArrayList;
@@ -36,8 +34,10 @@ import java.util.List;
  * child context from affecting its parent.
  */
 public final class ExtraBaggageFields {
-  public static Factory newFactory(BaggageHandler... handlers) {
-    return new ExtraBaggageFieldsFactory(handlers);
+  public static Factory newFactory(List<BaggageHandler<?>> handlers) {
+    if (handlers == null) throw new NullPointerException("handlers == null");
+    if (handlers.isEmpty()) throw new NullPointerException("handlers are empty");
+    return new ExtraBaggageFieldsFactory(handlers.toArray(new BaggageHandler[0]));
   }
 
   public interface Factory {
@@ -62,7 +62,7 @@ public final class ExtraBaggageFields {
   }
 
   /**
-   * Returns the value of the field with the specified name or null if not available.
+   * Returns the value of the field with the specified name or {@code null} if not available.
    *
    * @see BaggageField#getValue(TraceContext)
    */
@@ -80,7 +80,7 @@ public final class ExtraBaggageFields {
    *
    * @see BaggageField#updateValue(TraceContext, String)
    */
-  public boolean updateValue(BaggageField field, String value) {
+  public boolean updateValue(BaggageField field, @Nullable String value) {
     int index = indexOf(field);
     if (index == -1) return false;
 
@@ -90,17 +90,9 @@ public final class ExtraBaggageFields {
       if (stateArray == null) {
         if (value == null) return false;
         stateArray = new Object[handlers.length];
-        stateArray[index] = handler.newState(field, value);
-        this.stateArray = stateArray;
-        return true;
       }
 
-      Object state;
-      if (stateArray[index] == null) {
-        state = handler.newState(field, value);
-      } else {
-        state = handler.updateState(stateArray[index], field, value);
-      }
+      Object state = handler.updateState(stateArray[index], field, value);
 
       if (equal(state, stateArray[index])) return false;
 
@@ -113,45 +105,68 @@ public final class ExtraBaggageFields {
   }
 
   /**
-   * Returns true if state derived from the request value was assigned to handler.
+   * Sets the {@linkplain #<S> state of the handler}, possibly to {@code null}.
    *
-   * @see Propagation.Getter
-   * @see BaggagePropagationConfig.SingleBaggageField#remote(BaggageField)
+   * <p><em>Note:</em> The result must be treated read-only even if it a mutable object.
+   *
+   * <p>The result returned reflects the current association to the given handler. Due to
+   * copy-on-write, a future call may return a different value.
+   *
+   * @param handler same reference as passed to {@link #newFactory(BaggageHandler[])}
+   * @param state {@code null} clears the state for the handler.
+   * @see #getState(BaggageHandler)
    */
-  public boolean putRemoteValue(RemoteBaggageHandler handler, Object request, String value) {
+  @Nullable public <S> void putState(BaggageHandler<S> handler, @Nullable S state) {
     if (handler == null) throw new NullPointerException("handler == null");
-    if (request == null) throw new NullPointerException("request == null");
-    if (value == null) throw new NullPointerException("value == null");
 
     int index = indexOf(handler);
-    if (index == -1) return false;
+    if (index == -1) return;
 
-    Object state = handler.fromRemoteValue(request, value);
-    if (state == null) return false;
-    // Unsynchronized as only called during extraction when the object is new.
-    putState(index, state);
-    return true;
+    synchronized (this) {
+      Object[] stateArray = this.stateArray;
+      if (stateArray == null) {
+        if (state == null) return;
+        stateArray = new Object[handlers.length];
+      }
+
+      if (equal(state, stateArray[index])) return;
+
+      // this is the copy-on-write part
+      stateArray = Arrays.copyOf(stateArray, stateArray.length);
+      stateArray[index] = state;
+      this.stateArray = stateArray;
+    }
   }
 
   /**
-   * Returns a request value to use for the state in this handler.
+   * Gets the possibly {@code null} {@linkplain #<S> state of the handler}.
    *
-   * @see Propagation.Setter
-   * @see BaggagePropagationConfig.SingleBaggageField#remote(BaggageField)
+   * <p><em>Note:</em> The result must be treated read-only even if it a mutable object.
+   *
+   * <p>The result returned reflects the current association to the given handler. Due to
+   * copy-on-write, a future call may return a different value.
+   *
+   * <p>Unlike {@link #getValue(BaggageField)}, the result of this may not be a {@link String} and
+   * may be mutable. It may be shared across multiple fields and possibly multiple trace contexts.
+   * Do not mutate the result as you can corrupt data.
+   *
+   * @param handler same reference as passed to {@link #newFactory(List)}
+   * @return the current state assigned to the handler or {@code null} if unavailable.
+   * @see #putState(int, Object)
    */
-  @Nullable public String getRemoteValue(RemoteBaggageHandler handler) {
+  @Nullable public <S> S getState(BaggageHandler<S> handler) {
     if (handler == null) throw new NullPointerException("handler == null");
 
     int index = indexOf(handler);
     if (index == -1) return null;
 
-    Object maybeValue = getState(index);
-    if (maybeValue == null) return null;
-    return handler.toRemoteValue(maybeValue);
+    Object[] stateArray = this.stateArray;
+    return stateArray != null ? (S) stateArray[index] : null;
   }
 
   final BaggageHandler[] handlers;
   final List<BaggageField> fixedFieldList;
+
   final boolean hasDynamicFields;
 
   volatile Object[] stateArray; // guarded by this, copy on write

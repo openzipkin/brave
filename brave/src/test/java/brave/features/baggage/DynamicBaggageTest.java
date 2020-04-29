@@ -15,20 +15,28 @@ package brave.features.baggage;
 
 import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+import brave.internal.InternalBaggage;
+import brave.internal.baggage.BaggageHandler;
 import brave.internal.baggage.BaggageHandlers;
 import brave.internal.baggage.ExtraBaggageFields;
 import brave.internal.baggage.ExtraBaggageFieldsTest;
-import brave.internal.baggage.RemoteBaggageHandler;
+import brave.propagation.B3Propagation;
+import brave.propagation.Propagation;
+import brave.propagation.TraceContext;
+import brave.propagation.TraceContext.Injector;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.Test;
 
+import static brave.baggage.BaggagePropagation.newFactoryBuilder;
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 /** This is an internal feature until we settle on an encoding format. */
 public class DynamicBaggageTest extends ExtraBaggageFieldsTest {
-  RemoteBaggageHandler<String> singleValueHandler =
-      BaggageHandlers.remoteString(SingleBaggageField.remote(field1));
-  RemoteBaggageHandler<Map<BaggageField, String>> dynamicHandler = DynamicBaggageHandler.get();
+  BaggageHandler<String> stringHandler = BaggageHandlers.string(field1);
+  DynamicBaggageHandler dynamicBaggageHandler = DynamicBaggageHandler.get();
 
   @Override protected boolean isEmpty(Object state) {
     return state == null || (state instanceof Map && ((Map) state).isEmpty());
@@ -36,41 +44,65 @@ public class DynamicBaggageTest extends ExtraBaggageFieldsTest {
 
   // Here, we add one constant field and one handler for everything else
   @Override protected ExtraBaggageFields.Factory newFactory() {
-    return ExtraBaggageFields.newFactory(singleValueHandler, dynamicHandler);
+    return ExtraBaggageFields.newFactory(asList(stringHandler, dynamicBaggageHandler));
   }
 
   @Test public void fieldsAreNotConstant() {
-    ExtraBaggageFields extraBaggageFields = factory.create();
+    assertThat(BaggageField.getAll(context)).containsOnly(field1);
 
-    assertThat(extraBaggageFields.getAllFields()).containsOnly(field1);
+    assertThat(BaggageField.getAll(context)).containsOnly(field1);
 
-    assertThat(extraBaggageFields.getAllFields()).containsOnly(field1);
+    field2.updateValue(context, "2");
+    field3.updateValue(context, "3");
+    assertThat(BaggageField.getAll(context)).containsOnly(field1, field2, field3);
 
-    extraBaggageFields.updateValue(field2, "2");
-    extraBaggageFields.updateValue(field3, "3");
-    assertThat(extraBaggageFields.getAllFields()).containsOnly(field1, field2, field3);
-
-    extraBaggageFields.updateValue(field1, null);
+    field1.updateValue(context, null);
     // Field one is not dynamic so it stays in the list
-    assertThat(extraBaggageFields.getAllFields()).containsOnly(field1, field2, field3);
+    assertThat(BaggageField.getAll(context)).containsOnly(field1, field2, field3);
 
-    extraBaggageFields.updateValue(field2, null);
+    field2.updateValue(context, null);
     // dynamic fields are also not pruned from the list
-    assertThat(extraBaggageFields.getAllFields()).containsOnly(field1, field2, field3);
+    assertThat(BaggageField.getAll(context)).containsOnly(field1, field2, field3);
   }
 
+  @Test public void getState() {
+    field1.updateValue(context, "1");
+    field2.updateValue(context, "2");
+    field3.updateValue(context, "3");
+
+    assertThat(extra.getState(stringHandler))
+        .isEqualTo("1");
+
+    assertThat(extra.getState(dynamicBaggageHandler))
+        .containsEntry(field2, "2")
+        .containsEntry(field3, "3");
+  }
+
+  /** This shows that we can encode arbitrary fieds into a single header. */
   @Test public void encodes_arbitrary_fields() {
-    ExtraBaggageFields extraBaggageFields = factory.create();
+    Propagation.Factory factory = newFactoryBuilder(B3Propagation.newFactoryBuilder()
+        .injectFormat(B3Propagation.Format.SINGLE).build())
+        .add(SingleBaggageField.remote(field1))
+        .add(InternalBaggage.instance.newBaggagePropagationConfig(
+            "baggage",
+            dynamicBaggageHandler,
+            dynamicBaggageHandler,
+            dynamicBaggageHandler
+        )).build();
 
-    extraBaggageFields.updateValue(field1, "1");
-    extraBaggageFields.updateValue(field2, "2");
-    extraBaggageFields.updateValue(field3, "3");
+    TraceContext context = factory.decorate(TraceContext.newBuilder().traceId(1).spanId(2).build());
+    field1.updateValue(context, "1");
+    field2.updateValue(context, "2");
+    field3.updateValue(context, "3");
 
-    assertThat(extraBaggageFields.getRemoteValue(singleValueHandler))
-      .isEqualTo("1");
-    assertThat(extraBaggageFields.getRemoteValue(dynamicHandler))
-      .contains(""
-        + "two=2\n"
-        + "three=3");
+    Injector<Map<String, String>> injector = factory.get().injector(Map::put);
+    Map<String, String> headers = new LinkedHashMap<>();
+    injector.inject(context, headers);
+
+    assertThat(headers).containsOnly(
+        entry("b3", "0000000000000001-0000000000000002"),
+        entry("one", "1"),
+        entry("baggage", "two=2,three=3")
+    );
   }
 }

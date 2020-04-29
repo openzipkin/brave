@@ -14,18 +14,17 @@
 package brave.internal.baggage;
 
 import brave.baggage.BaggageField;
-import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import java.util.Collections;
 import java.util.List;
 
 public final class BaggageHandlers {
   /** Only handles a single non-remote field. */
-  public static BaggageHandler<String> string(BaggageField onlyField) {
-    if (onlyField == null) throw new NullPointerException("onlyField == null");
-    return new StringBaggageHandler(onlyField);
+  public static BaggageHandler<String> string(BaggageField field) {
+    if (field == null) throw new NullPointerException("field == null");
+    return new StringBaggageHandler(field);
   }
 
-  static class StringBaggageHandler implements BaggageHandler<String> {
+  static final class StringBaggageHandler implements BaggageHandler<String> {
     final BaggageField field;
     final List<BaggageField> fieldList;
 
@@ -50,35 +49,24 @@ public final class BaggageHandlers {
       return state;
     }
 
-    @Override public String newState(BaggageField field, String value) {
-      return value;
-    }
-
     @Override public String updateState(String state, BaggageField field, String value) {
       return value; // overwrite
     }
-  }
 
-  /** Only handles a single remote field value. */
-  public static RemoteBaggageHandler<String> remoteString(SingleBaggageField fieldConfig) {
-    if (fieldConfig == null) throw new NullPointerException("fieldConfig == null");
-    if (fieldConfig.keyNames().isEmpty()) throw new NullPointerException("remote has keyNames");
-    return new RemoteStringBaggageHandler(fieldConfig.field());
-  }
-
-  static final class RemoteStringBaggageHandler extends StringBaggageHandler
-      implements RemoteBaggageHandler<String> {
-
-    RemoteStringBaggageHandler(BaggageField field) {
-      super(field);
+    /** Returns true for any config with the same baggage field. */
+    @Override public boolean equals(Object o) {
+      if (o == this) return true;
+      if (!(o instanceof StringBaggageHandler)) return false;
+      return field.equals(((StringBaggageHandler) o).field);
     }
 
-    @Override public String fromRemoteValue(Object request, String value) {
-      return value;
+    /** Returns the same value for any config with the same baggage field. */
+    @Override public int hashCode() {
+      return field.hashCode();
     }
 
-    @Override public String toRemoteValue(String state) {
-      return state;
+    @Override public String toString() {
+      return field.toString();
     }
   }
 }

@@ -15,26 +15,28 @@ package brave.features.baggage;
 
 import brave.baggage.BaggageField;
 import brave.internal.Nullable;
-import brave.internal.baggage.RemoteBaggageHandler;
-import java.io.IOException;
-import java.io.StringReader;
-import java.io.StringWriter;
+import brave.internal.baggage.BaggageHandler;
+import brave.internal.baggage.BaggageHandler.StateDecoder;
+import brave.internal.baggage.BaggageHandler.StateEncoder;
+import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.Properties;
 
 /**
  * This accepts any fields, but only uses one remote value. This is an example, but not of good
  * performance.
  */
-final class DynamicBaggageHandler implements RemoteBaggageHandler<Map<BaggageField, String>> {
+final class DynamicBaggageHandler implements BaggageHandler<Map<BaggageField, String>>,
+    StateDecoder<Map<BaggageField, String>>, StateEncoder<Map<BaggageField, String>> {
   static final DynamicBaggageHandler INSTANCE = new DynamicBaggageHandler();
 
-  static RemoteBaggageHandler<Map<BaggageField, String>> get() {
+  static DynamicBaggageHandler get() {
     return INSTANCE;
   }
 
@@ -58,15 +60,10 @@ final class DynamicBaggageHandler implements RemoteBaggageHandler<Map<BaggageFie
     return state.get(field);
   }
 
-  @Override public Map<BaggageField, String> newState(BaggageField field, String value) {
-    LinkedHashMap<BaggageField, String> newState = new LinkedHashMap<>();
-    newState.put(field, value);
-    return newState;
-  }
-
   @Override
-  public Map<BaggageField, String> updateState(Map<BaggageField, String> state,
+  public Map<BaggageField, String> updateState(@Nullable Map<BaggageField, String> state,
       BaggageField field, @Nullable String value) {
+    if (state == null) state = Collections.emptyMap();
     if (Objects.equals(value, state.get(field))) return state;
     if (value == null) {
       if (!state.containsKey(field)) return state;
@@ -80,30 +77,23 @@ final class DynamicBaggageHandler implements RemoteBaggageHandler<Map<BaggageFie
     return mergedState;
   }
 
-  @Override
-  public Map<BaggageField, String> fromRemoteValue(Object request, String encoded) {
-    Properties decoded = new Properties();
-    try {
-      decoded.load(new StringReader(encoded));
-    } catch (IOException e) {
-      throw new AssertionError(e);
-    }
-
+  @Override public <R> Map<BaggageField, String> decode(R request, String value) {
     Map<BaggageField, String> result = new LinkedHashMap<>();
-    for (Map.Entry<Object, Object> entry : decoded.entrySet()) {
-      result.put(BaggageField.create(entry.getKey().toString()), entry.getValue().toString());
+    for (String entry : value.split(",")) {
+      String[] keyValue = entry.split("=", 2);
+      result.put(BaggageField.create(keyValue[0]), keyValue[1]);
     }
     return result;
   }
 
-  @Override public String toRemoteValue(Map<BaggageField, String> state) {
-    Properties encoded = new Properties();
-    state.forEach((f, v) -> encoded.put(f.name(), v));
-    StringWriter result = new StringWriter();
-    try {
-      encoded.store(result, "");
-    } catch (IOException e) {
-      throw new AssertionError(e);
+  @Override
+  public <R> String encode(Map<BaggageField, String> state, TraceContext context, R request) {
+    StringBuilder result = new StringBuilder();
+    Iterator<Entry<BaggageField, String>> iterator = state.entrySet().iterator();
+    while (iterator.hasNext()) {
+      Entry<BaggageField, String> entry = iterator.next();
+      result.append(entry.getKey().name()).append('=').append(entry.getValue());
+      if (iterator.hasNext()) result.append(',');
     }
     return result.toString();
   }

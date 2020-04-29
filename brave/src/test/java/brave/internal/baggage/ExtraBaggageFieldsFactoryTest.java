@@ -113,7 +113,7 @@ public class ExtraBaggageFieldsFactoryTest {
 
       // check that the change is present, but the other contexts are the same
       Object beforeUpdate = getState(context1, field1);
-      extraBaggageFields1.updateValue(field1, "2");
+      field1.updateValue(context1, "2");
       assertThat(getState(extraBaggageFields1, field1)).isNotEqualTo(beforeUpdate); // copy-on-write
       assertThat(getState(extraBaggageFields3, field1)).isEqualTo(beforeUpdate);
     }
@@ -125,7 +125,7 @@ public class ExtraBaggageFieldsFactoryTest {
    * baggageState from an incoming message. Another example is where there is a span in scope due to
    * a leak such as from using {@link CurrentTraceContext.Default#inheritable()}.
    *
-   * <BaggageState>When we are only extracting propagation baggageState, the baggageState should
+   * <p>When we are only extracting propagation baggageState, the baggageState should
    * merge as opposed to creating duplicate copies of {@link ExtraBaggageFields}.
    */
   @Test public void nextSpanMergesExtraWithImplicitParent_hasstate() {

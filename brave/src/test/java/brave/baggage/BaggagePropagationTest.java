@@ -13,7 +13,7 @@
  */
 package brave.baggage;
 
-import brave.baggage.BaggagePropagation.AllKeyNames;
+import brave.baggage.BaggagePropagation.ExtractKeyNames;
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.internal.baggage.ExtraBaggageFields;
 import brave.propagation.B3Propagation;
@@ -144,14 +144,14 @@ public class BaggagePropagationTest {
     TraceContextOrSamplingFlags extracted = extractor.extract(request);
     assertThat(extracted.extra())
         .hasSize(1)
-        .noneMatch(AllKeyNames.class::isInstance);
+        .noneMatch(ExtractKeyNames.class::isInstance);
   }
 
   @Test public void extract_baggage_addsAllKeyNames_evenWhenEmpty() {
     TraceContextOrSamplingFlags extracted = extractor.extract(request);
     assertThat(extracted.extra()).hasSize(2);
     assertThat(extracted.extra().get(1))
-        .asInstanceOf(InstanceOfAssertFactories.type(AllKeyNames.class))
+        .asInstanceOf(InstanceOfAssertFactories.type(ExtractKeyNames.class))
         .extracting(a -> a.list)
         .asInstanceOf(InstanceOfAssertFactories.list(String.class))
         .containsExactly("x-vcap-request-id", "x-amzn-trace-id");

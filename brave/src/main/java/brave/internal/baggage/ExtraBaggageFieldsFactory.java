@@ -22,9 +22,9 @@ import java.util.List;
 import static brave.internal.Lists.ensureMutable;
 
 final class ExtraBaggageFieldsFactory implements ExtraBaggageFields.Factory {
-  BaggageHandler[] handlers;
+  BaggageHandler<?>[] handlers;
 
-  ExtraBaggageFieldsFactory(BaggageHandler... handlers) {
+  ExtraBaggageFieldsFactory(BaggageHandler<?>... handlers) {
     this.handlers = handlers;
   }
 

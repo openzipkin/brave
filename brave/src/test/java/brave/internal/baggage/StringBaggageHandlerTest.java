@@ -20,29 +20,39 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class StringBaggageHandlerTest extends ExtraBaggageFieldsTest {
+  BaggageHandler<String> handler1 = BaggageHandlers.string(field1);
+  BaggageHandler<String> handler2 = BaggageHandlers.string(field2);
+
   @Override protected ExtraBaggageFields.Factory newFactory() {
-    return new ExtraBaggageFieldsFactory(
-      BaggageHandlers.string(field1),
-      BaggageHandlers.string(field2)
-    );
+    return new ExtraBaggageFieldsFactory(handler1, handler2);
   }
 
   @Test public void fieldsAreConstant() {
-    ExtraBaggageFields extraBaggageFields = factory.create();
+    List<BaggageField> withNoValues = extra.getAllFields();
+    field1.updateValue(context, "1");
+    field2.updateValue(context, "3");
 
-    List<BaggageField> withNoValues = extraBaggageFields.getAllFields();
-    extraBaggageFields.updateValue(field1, "1");
-    extraBaggageFields.updateValue(field2, "3");
-
-    assertThat(extraBaggageFields.getAllFields())
+    assertThat(extra.getAllFields())
       .isSameAs(withNoValues);
   }
 
   @Test public void putValue_ignores_if_not_defined() {
-    ExtraBaggageFields extraBaggageFields = factory.create();
+    field3.updateValue(context, "1");
 
-    extraBaggageFields.updateValue(field3, "1");
+    assertThat(isEmpty(extra)).isTrue();
+  }
 
-    assertThat(isEmpty(extraBaggageFields)).isTrue();
+  @Test public void getState() {
+    field1.updateValue(context, "1");
+
+    assertThat(extra.getState(handler1)).isEqualTo("1");
+  }
+
+  @Test public void getState_null_if_not_set() {
+    assertThat(extra.getState(handler1)).isNull();
+  }
+
+  @Test public void getState_ignored_if_unconfigured() {
+    assertThat(extra.getState(BaggageHandlers.string(field3))).isNull();
   }
 }
