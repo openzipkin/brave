@@ -14,30 +14,32 @@
 package brave.internal;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 public final class Lists {
 
-  public static List<Object> ensureMutable(List<Object> list) {
+  public static <E> List<E> ensureMutable(List<E> list) {
     if (list instanceof ArrayList) return list;
     int size = list.size();
-    ArrayList<Object> mutable = new ArrayList<>(size);
+    ArrayList<E> mutable = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       mutable.add(list.get(i));
     }
     return mutable;
   }
 
-  public static List<Object> ensureImmutable(List<Object> list) {
+  public static <E> List<E> ensureImmutable(List<E> list) {
     if (list.isEmpty()) return Collections.emptyList();
     // Faster to make a copy than check the type to see if it is already a singleton list
     if (list.size() == 1) return Collections.singletonList(list.get(0));
     if (isImmutable(list)) return list;
-    return Collections.unmodifiableList(new ArrayList<>(list));
+
+    return concat(list, Collections.emptyList());
   }
 
-  static boolean isImmutable(List<Object> extra) {
+  static boolean isImmutable(List<?> extra) {
     assert extra.size() > 1;  // Handled by caller.
     // avoid copying datastructure by trusting certain names.
     String simpleName = extra.getClass().getSimpleName();
@@ -47,21 +49,22 @@ public final class Lists {
       || simpleName.contains("Immutable");
   }
 
-  public static List<Object> concatImmutableLists(List<Object> left, List<Object> right) {
+  public static <E> List<E> concat(List<E> left, List<E> right) {
     int leftSize = left.size();
     if (leftSize == 0) return right;
     int rightSize = right.size();
     if (rightSize == 0) return left;
 
-    // now we know we have to concat
-    ArrayList<Object> mutable = new ArrayList<>();
-    for (int i = 0; i < leftSize; i++) {
-      mutable.add(left.get(i));
+    // We have to concat. Use Arrays.asList instead of ArrayList as it is simpler due to fixed size
+    E[] array = (E[]) new Object[leftSize + rightSize];
+    int i = 0;
+    for (int l = 0; l < leftSize; l++) {
+      array[i++] = left.get(l);
     }
-    for (int i = 0; i < rightSize; i++) {
-      mutable.add(right.get(i));
+    for (int r = 0; r < rightSize; r++) {
+      array[i++] = right.get(r);
     }
-    return Collections.unmodifiableList(mutable);
+    return Collections.unmodifiableList(Arrays.asList(array));
   }
 
   Lists() {

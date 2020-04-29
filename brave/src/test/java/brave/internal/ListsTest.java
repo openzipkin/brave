@@ -80,19 +80,19 @@ public class ListsTest {
       .isSameAs(list);
   }
 
-  @Test public void concatImmutableLists_choosesNonEmpty() {
+  @Test public void concat_choosesNonEmpty() {
     List<Object> list = ImmutableList.of("foo");
-    assertThat(Lists.concatImmutableLists(list, Collections.emptyList()))
+    assertThat(Lists.concat(list, Collections.emptyList()))
       .isSameAs(list);
-    assertThat(Lists.concatImmutableLists(Collections.emptyList(), list))
+    assertThat(Lists.concat(Collections.emptyList(), list))
       .isSameAs(list);
   }
 
-  @Test public void concatImmutableLists_concatenates() {
+  @Test public void concat_concatenates() {
     List<Object> list1 = ImmutableList.of("foo");
     List<Object> list2 = ImmutableList.of("bar", "baz");
 
-    assertThat(Lists.concatImmutableLists(list1, list2))
+    assertThat(Lists.concat(list1, list2))
       .hasSameClassAs(Collections.unmodifiableList(list1))
       .containsExactly("foo", "bar", "baz");
   }

@@ -18,7 +18,6 @@ import brave.baggage.BaggagePropagationConfig;
 import brave.internal.Nullable;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.Propagation.Setter;
-import java.util.List;
 
 /**
  * Handles context storage of one or more baggage fields using one {@link ExtraBaggageFields}
@@ -27,10 +26,6 @@ import java.util.List;
  * @param <S> the state that represents one or more baggage fields
  */
 public interface RemoteBaggageHandler<S> extends BaggageHandler<S> {
-
-  /** Returns all remote key names used for this field. */
-  List<String> keyNames();
-
   /**
    * Extracts any state from a request value received by {@link Getter#get(Object, Object)}.
    *

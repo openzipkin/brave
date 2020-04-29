@@ -18,34 +18,27 @@ import brave.internal.Nullable;
 import brave.internal.baggage.RemoteBaggageHandler;
 import java.io.IOException;
 import java.io.StringReader;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
-import org.apache.logging.log4j.core.util.StringBuilderWriter;
-
-import static com.google.common.base.Objects.equal;
 
 /**
  * This accepts any fields, but only uses one remote value. This is an example, but not of good
  * performance.
  */
 final class DynamicBaggageHandler implements RemoteBaggageHandler<Map<BaggageField, String>> {
-  static RemoteBaggageHandler<Map<BaggageField, String>> create(String keyName) {
-    if (keyName == null) throw new NullPointerException("keyName == null");
-    return new DynamicBaggageHandler(keyName);
+  static final DynamicBaggageHandler INSTANCE = new DynamicBaggageHandler();
+
+  static RemoteBaggageHandler<Map<BaggageField, String>> get() {
+    return INSTANCE;
   }
 
-  final List<String> keyNames;
-
-  DynamicBaggageHandler(String keyName) {
-    this.keyNames = Collections.singletonList(keyName);
-  }
-
-  @Override public List<String> keyNames() {
-    return keyNames;
+  DynamicBaggageHandler() {
   }
 
   @Override public boolean isDynamic() {
@@ -72,9 +65,9 @@ final class DynamicBaggageHandler implements RemoteBaggageHandler<Map<BaggageFie
   }
 
   @Override
-  public Map<BaggageField, String> updateState(Map<BaggageField, String> state, BaggageField field,
-    @Nullable String value) {
-    if (equal(value, state.get(field))) return state;
+  public Map<BaggageField, String> updateState(Map<BaggageField, String> state,
+      BaggageField field, @Nullable String value) {
+    if (Objects.equals(value, state.get(field))) return state;
     if (value == null) {
       if (!state.containsKey(field)) return state;
       if (state.size() == 1) return Collections.emptyMap();
@@ -106,9 +99,9 @@ final class DynamicBaggageHandler implements RemoteBaggageHandler<Map<BaggageFie
   @Override public String toRemoteValue(Map<BaggageField, String> state) {
     Properties encoded = new Properties();
     state.forEach((f, v) -> encoded.put(f.name(), v));
-    StringBuilder result = new StringBuilder();
+    StringWriter result = new StringWriter();
     try {
-      encoded.store(new StringBuilderWriter(result), "");
+      encoded.store(result, "");
     } catch (IOException e) {
       throw new AssertionError(e);
     }

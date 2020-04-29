@@ -40,7 +40,7 @@ import static brave.internal.InternalPropagation.FLAG_SAMPLED;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_LOCAL;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 import static brave.internal.InternalPropagation.FLAG_SHARED;
-import static brave.internal.Lists.concatImmutableLists;
+import static brave.internal.Lists.concat;
 import static brave.propagation.SamplingFlags.EMPTY;
 import static brave.propagation.SamplingFlags.NOT_SAMPLED;
 import static brave.propagation.SamplingFlags.SAMPLED;
@@ -359,7 +359,7 @@ public class Tracer {
       traceId = parent.traceId();
       localRootId = parent.localRootId();
       spanId = parent.spanId();
-      extra = concatImmutableLists(extra, parent.extra());
+      extra = concat(extra, parent.extra());
     } else {
       flags = InternalPropagation.instance.flags(samplingFlags);
     }

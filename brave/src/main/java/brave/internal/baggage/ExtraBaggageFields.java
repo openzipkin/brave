@@ -61,16 +61,6 @@ public final class ExtraBaggageFields {
     return Collections.unmodifiableList(result);
   }
 
-  public List<String> getAllKeyNames() {
-    List<String> result = new ArrayList<>();
-    for (BaggageHandler handler : handlers) {
-      if (handler instanceof RemoteBaggageHandler) {
-        result.addAll(((RemoteBaggageHandler) handler).keyNames());
-      }
-    }
-    return Collections.unmodifiableList(result);
-  }
-
   /**
    * Returns the value of the field with the specified name or null if not available.
    *
