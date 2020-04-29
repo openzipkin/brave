@@ -15,16 +15,12 @@ package brave.baggage;
 
 import brave.Tracing;
 import brave.internal.InternalBaggage;
-import brave.internal.Lists;
 import brave.internal.Nullable;
 import brave.internal.baggage.BaggageContext;
-import brave.internal.baggage.BaggageHandler;
-import brave.internal.baggage.BaggageHandler.StateDecoder;
-import brave.internal.baggage.BaggageHandler.StateEncoder;
+import brave.internal.baggage.BaggageCodec;
 import brave.internal.baggage.ExtraBaggageContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -309,22 +305,9 @@ public final class BaggageField {
 
   static {
     InternalBaggage.instance = new InternalBaggage() {
-      @Override public <S> BaggagePropagationConfig<S> newBaggagePropagationConfig(
-          String keyName,
-          BaggageHandler<S> baggageHandler,
-          StateDecoder<S> stateDecoder,
-          StateEncoder<S> stateEncoder
-      ) {
-        List<String> keyNameList = Lists.ensureImmutable(Arrays.asList(keyName));
-        return new BaggagePropagationConfig<S>(baggageHandler, stateDecoder, stateEncoder) {
-          @Override public List<String> extractKeyNames() {
-            return keyNameList;
-          }
-
-          @Override public List<String> injectKeyNames() {
-            return keyNameList;
-          }
-        };
+      @Override
+      public BaggagePropagationConfig newBaggagePropagationConfig(BaggageCodec baggageCodec) {
+        return new BaggagePropagationConfig(baggageCodec);
       }
     };
   }
