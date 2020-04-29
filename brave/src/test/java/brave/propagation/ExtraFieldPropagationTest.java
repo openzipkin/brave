@@ -238,7 +238,7 @@ public class ExtraFieldPropagationTest {
     assertThat(extracted.context().toBuilder().extra(Collections.emptyList()).build())
       .isEqualTo(context);
     assertThat(extracted.context().extra())
-      .hasSize(1);
+      .hasSize(2);
 
     assertThat(BaggageField.getByName(extracted, "x-amzn-trace-id").getValue(extracted))
       .isEqualTo(awsTraceId);
@@ -253,7 +253,7 @@ public class ExtraFieldPropagationTest {
     assertThat(extracted.context().toBuilder().extra(Collections.emptyList()).build())
       .isEqualTo(context);
     assertThat(extracted.context().extra())
-      .hasSize(1);
+      .hasSize(2);
 
     assertThat(BaggageField.getByName(extracted, "x-amzn-trace-id").getValue(extracted))
       .isEqualTo(awsTraceId);
@@ -276,7 +276,7 @@ public class ExtraFieldPropagationTest {
     assertThat(extracted.context().toBuilder().extra(Collections.emptyList()).build())
       .isEqualTo(context);
     assertThat(extracted.context().extra())
-      .hasSize(1);
+      .hasSize(2);
 
     assertThat(BaggageField.getByName(extracted, "country-code").getValue(extracted))
       .isEqualTo("FO");

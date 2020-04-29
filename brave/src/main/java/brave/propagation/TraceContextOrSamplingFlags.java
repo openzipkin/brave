@@ -22,7 +22,7 @@ import java.util.List;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_LOCAL;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
-import static brave.internal.Lists.concatImmutableLists;
+import static brave.internal.Lists.concat;
 import static brave.internal.Lists.ensureImmutable;
 import static java.util.Collections.emptyList;
 
@@ -222,8 +222,7 @@ public final class TraceContextOrSamplingFlags {
         if (context.extra().isEmpty()) {
           context = InternalPropagation.instance.withExtra(context, ensureImmutable(extra));
         } else {
-          context = InternalPropagation.instance.withExtra(context,
-            concatImmutableLists(context.extra(), extra));
+          context = InternalPropagation.instance.withExtra(context, concat(context.extra(), extra));
         }
         result = new TraceContextOrSamplingFlags(type, context, emptyList());
       } else {

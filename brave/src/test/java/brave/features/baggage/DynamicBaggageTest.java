@@ -26,10 +26,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /** This is an internal feature until we settle on an encoding format. */
 public class DynamicBaggageTest extends ExtraBaggageFieldsTest {
-  RemoteBaggageHandler<String> singleValueHandler = BaggageHandlers.string(
-    SingleBaggageField.remote(field1));
-  RemoteBaggageHandler<Map<BaggageField, String>> dynamicHandler =
-    DynamicBaggageHandler.create("baggage");
+  RemoteBaggageHandler<String> singleValueHandler =
+      BaggageHandlers.remoteString(SingleBaggageField.remote(field1));
+  RemoteBaggageHandler<Map<BaggageField, String>> dynamicHandler = DynamicBaggageHandler.get();
 
   @Override protected boolean isEmpty(Object state) {
     return state == null || (state instanceof Map && ((Map) state).isEmpty());

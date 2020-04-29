@@ -14,9 +14,10 @@
 package brave.baggage;
 
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+import brave.internal.Lists;
+import brave.internal.Nullable;
 import brave.internal.baggage.BaggageHandler;
 import brave.internal.baggage.BaggageHandlers;
-import brave.internal.baggage.ExtraBaggageContext;
 import brave.internal.baggage.ExtraBaggageFields;
 import brave.internal.baggage.RemoteBaggageHandler;
 import brave.propagation.ExtraFieldPropagation;
@@ -31,7 +32,10 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+
+import static brave.internal.baggage.ExtraBaggageContext.findExtra;
 
 /**
  * This implements in-process and remote {@linkplain BaggageField baggage} propagation.
@@ -98,8 +102,8 @@ public class BaggagePropagation<K> implements Propagation<K> {
 
   public static class FactoryBuilder { // not final to backport ExtraFieldPropagation
     final Propagation.Factory delegate;
-    final Set<String> allKeyNames = new LinkedHashSet<>();
-    final Map<BaggageField, BaggageHandler<String>> fieldToHandler = new LinkedHashMap<>();
+    final List<String> allKeyNames = new ArrayList<>();
+    final Map<SingleBaggageField, BaggageHandler<?>> configToHandler = new LinkedHashMap<>();
     final Set<SingleBaggageField> configs = new LinkedHashSet<>();
 
     FactoryBuilder(Propagation.Factory delegate) {
@@ -127,7 +131,7 @@ public class BaggagePropagation<K> implements Propagation<K> {
      */
     public FactoryBuilder clear() {
       allKeyNames.clear();
-      fieldToHandler.clear();
+      configToHandler.clear();
       configs.clear();
       return this;
     }
@@ -138,58 +142,86 @@ public class BaggagePropagation<K> implements Propagation<K> {
       if (!(config instanceof SingleBaggageField)) {
         throw new UnsupportedOperationException("dynamic fields not yet supported");
       }
-      SingleBaggageField field = (SingleBaggageField) config;
-      if (fieldToHandler.containsKey(field.field)) {
-        throw new IllegalArgumentException(field.field.name + " already added");
-      }
-      configs.add(field);
-      if (field.keyNames().isEmpty()) {
-        fieldToHandler.put(field.field, BaggageHandlers.string(field.field));
-        return this;
-      }
+      SingleBaggageField fieldConfig = (SingleBaggageField) config;
+      BaggageHandler<String> handler = fieldConfig.keyNames().isEmpty()
+          ? BaggageHandlers.string(fieldConfig.field())
+          : BaggageHandlers.remoteString(fieldConfig);
+      return add(fieldConfig, handler);
+    }
 
-      for (String keyName : field.keyNames) {
+    FactoryBuilder add(SingleBaggageField config, BaggageHandler<?> handler) { // internal
+      if (configToHandler.containsKey(config)) {
+        throw new IllegalArgumentException(config.field.name + " already added");
+      }
+      for (String keyName : config.keyNames) {
         if (allKeyNames.contains(keyName)) {
           throw new IllegalArgumentException("Propagation key already in use: " + keyName);
         }
         allKeyNames.add(keyName);
       }
 
-      fieldToHandler.put(field.field, BaggageHandlers.string(field));
+      configs.add(config);
+      configToHandler.put(config, handler);
       return this;
     }
 
     /** Returns the delegate if there are no fields to propagate. */
     public Propagation.Factory build() {
-      if (fieldToHandler.isEmpty()) return delegate;
-      return new Factory(delegate, fieldToHandler.values().toArray(new BaggageHandler[0]));
+      if (configToHandler.isEmpty()) return delegate;
+      return new Factory(this);
     }
   }
 
   /** For {@link Propagation.Factory#create(KeyFactory)} */
   static final class RemoteHandlerWithKeys<K> {
-    final RemoteBaggageHandler<String> handler;
+    final RemoteBaggageHandler<?> handler;
     final K[] keys;
 
-    RemoteHandlerWithKeys(RemoteBaggageHandler<String> handler, KeyFactory<K> keyFactory) {
+    RemoteHandlerWithKeys(
+        RemoteBaggageHandler<?> handler, String[] keyNames, KeyFactory<K> keyFactory) {
       this.handler = handler;
       ArrayList<K> keysList = new ArrayList<>();
-      for (String keyName : handler.keyNames()) {
+      for (String keyName : keyNames) {
         keysList.add(keyFactory.create(keyName));
       }
       this.keys = (K[]) keysList.toArray();
     }
   }
 
+  /** Stored in {@link TraceContextOrSamplingFlags#extra()} or {@link TraceContext#extra()} */
+  static final class AllKeyNames {
+    final List<String> list;
+
+    AllKeyNames(List<String> list) {
+      this.list = list;
+    }
+  }
+
   static final class Factory extends Propagation.Factory {
     final Propagation.Factory delegate;
-    final BaggageHandler<String>[] handlers;
-    final ExtraBaggageFields.Factory stateFactory;
+    @Nullable final AllKeyNames allKeyNames;
+    final String[][] keyNames;
+    final BaggageHandler<?>[] handlers;
 
-    Factory(Propagation.Factory delegate, BaggageHandler<String>[] handlers) {
-      this.delegate = delegate;
-      this.handlers = handlers;
-      this.stateFactory = ExtraBaggageFields.newFactory(handlers);
+    final ExtraBaggageFields.Factory extraFactory;
+
+    Factory(FactoryBuilder factoryBuilder) {
+      this.delegate = factoryBuilder.delegate;
+
+      // Don't add another "extra" if there are only local fields
+      List<String> allKeyNames = Lists.ensureImmutable(factoryBuilder.allKeyNames);
+      this.allKeyNames = !allKeyNames.isEmpty() ? new AllKeyNames(allKeyNames) : null;
+
+      // Associate baggage handlers with any remote propagation keys
+      int i = 0, length = factoryBuilder.configToHandler.size();
+      this.keyNames = new String[length][];
+      this.handlers = new BaggageHandler<?>[length];
+      for (Entry<SingleBaggageField, BaggageHandler<?>> entry : factoryBuilder.configToHandler.entrySet()) {
+        this.keyNames[i] = entry.getKey().keyNames().toArray(new String[0]);
+        this.handlers[i] = entry.getValue();
+        i++;
+      }
+      this.extraFactory = ExtraBaggageFields.newFactory(handlers);
     }
 
     @Override public BaggagePropagation<String> get() {
@@ -198,18 +230,17 @@ public class BaggagePropagation<K> implements Propagation<K> {
 
     @Override public <K> BaggagePropagation<K> create(KeyFactory<K> keyFactory) {
       List<RemoteHandlerWithKeys<K>> remoteHandlersWithKeys = new ArrayList<>();
-      for (BaggageHandler<String> next : handlers) {
-        if (next instanceof RemoteBaggageHandler) {
-          RemoteBaggageHandler<String> remoteHandler = (RemoteBaggageHandler<String>) next;
-          remoteHandlersWithKeys.add(new RemoteHandlerWithKeys<>(remoteHandler, keyFactory));
-        }
+      for (int i = 0; i < handlers.length; i++) {
+        if (!(handlers[i] instanceof RemoteBaggageHandler)) continue;
+        RemoteBaggageHandler<?> handler = (RemoteBaggageHandler<?>) handlers[i];
+        remoteHandlersWithKeys.add(new RemoteHandlerWithKeys<>(handler, keyNames[i], keyFactory));
       }
       return new BaggagePropagation<>(this, keyFactory, remoteHandlersWithKeys);
     }
 
     @Override public TraceContext decorate(TraceContext context) {
       TraceContext result = delegate.decorate(context);
-      return stateFactory.decorate(result);
+      return extraFactory.decorate(result);
     }
 
     @Override public boolean supportsJoin() {
@@ -226,7 +257,7 @@ public class BaggagePropagation<K> implements Propagation<K> {
   final RemoteHandlerWithKeys<K>[] remoteHandlersWithKeys;
 
   BaggagePropagation(Factory factory, KeyFactory<K> keyFactory,
-    List<RemoteHandlerWithKeys<K>> remoteHandlersWithKeys) {
+      List<RemoteHandlerWithKeys<K>> remoteHandlersWithKeys) {
     this.delegate = factory.delegate.create(keyFactory);
     this.factory = factory;
     this.remoteHandlersWithKeys = remoteHandlersWithKeys.toArray(new RemoteHandlerWithKeys[0]);
@@ -270,14 +301,22 @@ public class BaggagePropagation<K> implements Propagation<K> {
     if (propagation == null) throw new NullPointerException("propagation == null");
     // When baggage or similar is in use, the result != TraceContextOrSamplingFlags.EMPTY
     TraceContextOrSamplingFlags emptyExtraction =
-      propagation.extractor((c, k) -> null).extract(Boolean.TRUE);
-    List<String> baggageKeyNames = ExtraBaggageContext.getAllKeyNames(emptyExtraction);
+        propagation.extractor((c, k) -> null).extract(Boolean.TRUE);
+    List<String> baggageKeyNames = getAllKeyNames(emptyExtraction);
     if (baggageKeyNames.isEmpty()) return propagation.keys();
 
     List<String> result = new ArrayList<>(propagation.keys().size() + baggageKeyNames.size());
     result.addAll(propagation.keys());
     result.addAll(baggageKeyNames);
     return Collections.unmodifiableList(result);
+  }
+
+  static List<String> getAllKeyNames(TraceContextOrSamplingFlags extracted) {
+    List<Object> extra =
+        extracted.context() != null ? extracted.context().extra() : extracted.extra();
+    AllKeyNames allKeyNames = findExtra(AllKeyNames.class, extra);
+    if (allKeyNames == null) return Collections.emptyList();
+    return allKeyNames.list;
   }
 
   @Override public <R> Injector<R> injector(Setter<R, K> setter) {
@@ -329,20 +368,24 @@ public class BaggagePropagation<K> implements Propagation<K> {
     @Override public TraceContextOrSamplingFlags extract(R request) {
       TraceContextOrSamplingFlags result = delegate.extract(request);
 
-      // always allocate in case values are added late
-      ExtraBaggageFields extraBaggageFields = propagation.factory.stateFactory.create();
+      // Always allocate as fields could be local-only or have values added late
+      ExtraBaggageFields extra = propagation.factory.extraFactory.create();
+      TraceContextOrSamplingFlags.Builder builder = result.toBuilder().addExtra(extra);
+
+      if (propagation.factory.allKeyNames == null) return builder.build();
+
       for (RemoteHandlerWithKeys<K> handlerWithKeys : propagation.remoteHandlersWithKeys) {
         for (K key : handlerWithKeys.keys) { // possibly multiple keys when prefixes are in use
           String value = getter.get(request, key);
           if (value != null) { // accept the first match
-            if (extraBaggageFields.putRemoteValue(handlerWithKeys.handler, request, value)) {
+            if (extra.putRemoteValue(handlerWithKeys.handler, request, value)) {
               break;
             }
           }
         }
       }
 
-      return result.toBuilder().addExtra(extraBaggageFields).build();
+      return builder.addExtra(propagation.factory.allKeyNames).build();
     }
   }
 }
