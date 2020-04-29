@@ -43,7 +43,7 @@ import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 public abstract class CurrentTraceContextTest {
   protected static final SingleCorrelationField CORRELATION_FIELD =
-    SingleCorrelationField.create(BaggageField.create("user-id"));
+    SingleCorrelationField.create(BaggageField.create("userId"));
 
   Propagation.Factory baggageFactory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
     .add(SingleBaggageField.remote(CORRELATION_FIELD.baggageField())).build();

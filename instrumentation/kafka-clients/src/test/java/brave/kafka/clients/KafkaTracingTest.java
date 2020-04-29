@@ -50,7 +50,7 @@ public class KafkaTracingTest extends ITKafka {
 
   @Test public void nextSpan_should_create_span_with_baggage() {
     addB3MultiHeaders(fakeRecord);
-    fakeRecord.headers().add(BAGGAGE_FIELD.name(), "user1".getBytes());
+    fakeRecord.headers().add(BAGGAGE_FIELD_KEY, "user1".getBytes());
 
     Span span = kafkaTracing.nextSpan(fakeRecord);
     assertThat(BAGGAGE_FIELD.getValue(span.context())).contains("user1");

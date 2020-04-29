@@ -115,7 +115,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
-      ((HttpServletResponse) response).setHeader(BAGGAGE_FIELD.name(), BAGGAGE_FIELD.getValue());
+      ((HttpServletResponse) response).setHeader(BAGGAGE_FIELD_KEY, BAGGAGE_FIELD.getValue());
       chain.doFilter(request, response);
     }
 
@@ -129,10 +129,10 @@ public abstract class ITServlet25Container extends ITServletContainer {
     String path = "/foo";
 
     Request request = new Request.Builder().url(url(path))
-      .header(BAGGAGE_FIELD.name(), "abcdefg").build();
+      .header(BAGGAGE_FIELD_KEY, "abcdefg").build();
     try (Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isTrue();
-      assertThat(response.header(BAGGAGE_FIELD.name()))
+      assertThat(response.header(BAGGAGE_FIELD_KEY))
         .isEqualTo("abcdefg");
     }
 
@@ -149,7 +149,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
       throws IOException, ServletException {
       TraceContext context = (TraceContext) request.getAttribute("brave.propagation.TraceContext");
       String value = BAGGAGE_FIELD.getValue(context);
-      ((HttpServletResponse) response).setHeader(BAGGAGE_FIELD.name(), value);
+      ((HttpServletResponse) response).setHeader(BAGGAGE_FIELD_KEY, value);
       chain.doFilter(request, response);
     }
 
@@ -163,11 +163,11 @@ public abstract class ITServlet25Container extends ITServletContainer {
     String path = "/foo";
 
     Request request = new Request.Builder().url(url(path))
-      .header(BAGGAGE_FIELD.name(), "abcdefg").build();
+      .header(BAGGAGE_FIELD_KEY, "abcdefg").build();
     try (Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isTrue();
-      assertThat(response.header(BAGGAGE_FIELD.name()))
-        .isEqualTo("abcdefg");
+      assertThat(response.header(BAGGAGE_FIELD_KEY))
+          .isEqualTo("abcdefg");
     }
 
     reporter.takeRemoteSpan(Span.Kind.SERVER);

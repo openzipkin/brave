@@ -55,7 +55,21 @@ public abstract class ITRemote {
     SamplingFlags.NOT_SAMPLED.toString(); // ensure InternalPropagation is wired for tests
   }
 
-  public static final BaggageField BAGGAGE_FIELD = BaggageField.create("user-id");
+  public static final BaggageField BAGGAGE_FIELD = BaggageField.create("userId");
+  /**
+   * Sets a {@linkplain Propagation#keys() propagation key} for {@link #BAGGAGE_FIELD}, which can
+   * work with JMS (that prohibits the '-' character).
+   *
+   * <p><em>Note</em>: If we didn't do this, it would be propagated all lowercase, ex "userid",
+   * which is harmless. We reset this for two reasons:
+   *
+   * <p><ul>
+   * <li>Ensures {@link SingleBaggageField#keyNames()} are used on the wire, instead of {@link
+   * BaggageField#name()}</li>
+   * <li>Warn maintainers about JMS related naming choices.</li>
+   * </ul>
+   */
+  public static final String BAGGAGE_FIELD_KEY = "user_id";
 
   /**
    * We use a global rule instead of surefire config as this could be executed in gradle, sbt, etc.
@@ -110,7 +124,9 @@ public abstract class ITRemote {
       checkForLeakedScopes = strictScopeDecorator;
     }
     propagationFactory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-      .add(SingleBaggageField.remote(BAGGAGE_FIELD)).build();
+      .add(SingleBaggageField.newBuilder(BAGGAGE_FIELD)
+        .addKeyName(BAGGAGE_FIELD_KEY)
+        .build()).build();
     tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
   }
 
