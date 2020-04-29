@@ -322,7 +322,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     KafkaStreams streams = buildKafkaStreams(topology);
 
     ProducerRecord<String, String> record = new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE);
-    record.headers().add(BAGGAGE_FIELD.name(), "user1".getBytes());
+    record.headers().add(BAGGAGE_FIELD_KEY, "user1".getBytes());
     send(record);
 
     waitForStreamToRun(streams);

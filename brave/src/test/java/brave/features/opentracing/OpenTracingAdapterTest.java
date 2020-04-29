@@ -37,12 +37,13 @@ import static org.assertj.core.data.MapEntry.entry;
  * the core concepts.
  */
 public class OpenTracingAdapterTest {
-  static final BaggageField BAGGAGE_FIELD = BaggageField.create("user-id");
+  static final BaggageField BAGGAGE_FIELD = BaggageField.create("userId");
 
   List<zipkin2.Span> spans = new ArrayList<>();
   Tracing brave = Tracing.newBuilder()
     .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
-      .add(SingleBaggageField.remote(BAGGAGE_FIELD)).build())
+        .add(SingleBaggageField.newBuilder(BAGGAGE_FIELD)
+            .addKeyName("user-id").build()).build())
     .spanReporter(spans::add).build();
 
   BraveTracer opentracing = BraveTracer.wrap(brave);

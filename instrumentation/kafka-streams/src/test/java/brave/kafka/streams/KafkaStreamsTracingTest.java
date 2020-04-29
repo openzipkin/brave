@@ -82,7 +82,7 @@ public class KafkaStreamsTracingTest extends ITKafkaStreams {
               assertThat(BAGGAGE_FIELD.getValue()).isEqualTo("user1");
             }
           });
-    Headers headers = new RecordHeaders().add(BAGGAGE_FIELD.name(), "user1".getBytes());
+    Headers headers = new RecordHeaders().add(BAGGAGE_FIELD_KEY, "user1".getBytes());
     Processor<String, String> processor = processorSupplier.get();
     processor.init(processorContextSupplier.apply(headers));
     processor.process(TEST_KEY, TEST_VALUE);

@@ -42,7 +42,7 @@ public class CorrelationScopeDecoratorTest {
   static final SingleCorrelationField
     TRACE_ID =
     SingleCorrelationField.newBuilder(BaggageFields.TRACE_ID).name("X-B3-TraceId").build(),
-    FIELD = SingleCorrelationField.create(BaggageField.create("user-id")),
+    FIELD = SingleCorrelationField.create(BaggageField.create("userId")),
     FIELD_2 = SingleCorrelationField.create(BaggageField.create("country-code")),
     DIRTY_FIELD = FIELD.toBuilder().name("dirty").dirty().build(),
     LOCAL_FIELD = SingleCorrelationField.create(BaggageField.create("serviceId")),

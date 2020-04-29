@@ -14,6 +14,7 @@
 package brave.test.http;
 
 import brave.SpanCustomizer;
+import brave.baggage.BaggageField;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.http.HttpAdapter;
@@ -25,7 +26,6 @@ import brave.http.HttpServerParser;
 import brave.http.HttpTags;
 import brave.http.HttpTracing;
 import brave.propagation.B3SingleFormat;
-import brave.baggage.BaggageField;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
@@ -125,13 +125,13 @@ public abstract class ITHttpServer extends ITRemote {
   }
 
   /**
-   * The /baggage endpoint should copy the value of {@link #BAGGAGE_FIELD} to the response body using
-   * {@link BaggageField#getValue()}.
+   * The /baggage endpoint should copy the value of {@link #BAGGAGE_FIELD} to the response body
+   * using {@link BaggageField#getValue()}.
    */
   void readsBaggage(Request.Builder builder) throws IOException {
     Request request = builder.url(url("/baggage"))
       // this is the pre-configured key we can pass through
-      .header(BAGGAGE_FIELD.name(), "joey").build();
+      .header(BAGGAGE_FIELD_KEY, "joey").build();
 
     Response response = get(request);
     assertThat(response.isSuccessful()).isTrue();

@@ -13,6 +13,7 @@
  */
 package brave.jms;
 
+import brave.Tags;
 import brave.messaging.MessagingRuleSampler;
 import brave.messaging.MessagingTracing;
 import brave.propagation.SamplingFlags;
@@ -31,9 +32,14 @@ import zipkin2.Span;
 
 import static brave.jms.MessagePropagation.GETTER;
 import static brave.messaging.MessagingRequestMatchers.operationEquals;
+import static javax.jms.JMSContext.AUTO_ACKNOWLEDGE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static zipkin2.Span.Kind.CONSUMER;
 
-/** When adding tests here, also add to {@link brave.jms.ITJms_2_0_TracingMessageConsumer} */
+/**
+ * When adding tests here, add tests not already in {@link ITJms_1_1_TracingMessageConsumer} to
+ * {@link brave.jms.ITJms_2_0_TracingMessageConsumer}
+ */
 public class ITTracingJMSConsumer extends ITJms {
   @Rule public TestName testName = new TestName();
   @Rule public ArtemisJmsTestRule jms = new ArtemisJmsTestRule(testName);
@@ -53,8 +59,7 @@ public class ITTracingJMSConsumer extends ITJms {
   void setupTracedConsumer(JmsTracing jmsTracing) {
     if (consumer != null) consumer.close();
     if (tracedContext != null) tracedContext.close();
-    tracedContext = jmsTracing.connectionFactory(jms.factory)
-      .createContext(JMSContext.AUTO_ACKNOWLEDGE);
+    tracedContext = jmsTracing.connectionFactory(jms.factory).createContext(AUTO_ACKNOWLEDGE);
     consumer = tracedContext.createConsumer(jms.queue);
   }
 
@@ -67,8 +72,7 @@ public class ITTracingJMSConsumer extends ITJms {
     });
     producer.send(jms.queue, "foo");
 
-    Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan =
-      reporter.takeLocalSpan();
+    Span consumerSpan = reporter.takeRemoteSpan(CONSUMER), listenerSpan = reporter.takeLocalSpan();
     assertChildOf(listenerSpan, consumerSpan);
     assertSequential(consumerSpan, listenerSpan);
   }
@@ -92,8 +96,7 @@ public class ITTracingJMSConsumer extends ITJms {
 
     send.run();
 
-    Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan =
-      reporter.takeLocalSpan();
+    Span consumerSpan = reporter.takeRemoteSpan(CONSUMER), listenerSpan = reporter.takeLocalSpan();
 
     assertThat(consumerSpan.name()).isEqualTo("receive");
     assertThat(consumerSpan.tags())
@@ -126,14 +129,37 @@ public class ITTracingJMSConsumer extends ITJms {
     producer.setProperty("b3", parent.traceIdString() + "-" + parent.spanIdString() + "-1");
     send.run();
 
-    Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan =
-      reporter.takeLocalSpan();
+    Span consumerSpan = reporter.takeRemoteSpan(CONSUMER), listenerSpan = reporter.takeLocalSpan();
     assertChildOf(consumerSpan, parent);
     assertChildOf(listenerSpan, consumerSpan);
 
     assertThat(listenerSpan.tags())
       .hasSize(1) // no redundant copy of consumer tags
       .containsEntry("b3", "false"); // b3 header not leaked to listener
+  }
+
+  @Test public void messageListener_readsBaggage() {
+    messageListener_readsBaggage(() -> producer.send(jms.queue, "foo"));
+  }
+
+  @Test public void messageListener_readsBaggage_bytes() {
+    messageListener_readsBaggage(() -> producer.send(jms.queue, new byte[] {1, 2, 3, 4}));
+  }
+
+  void messageListener_readsBaggage(Runnable send) {
+    consumer.setMessageListener(m ->
+        Tags.BAGGAGE_FIELD.tag(BAGGAGE_FIELD, tracing.tracer().currentSpan())
+    );
+
+    String baggage = "joey";
+    producer.setProperty(BAGGAGE_FIELD_KEY, baggage);
+    send.run();
+
+    Span consumerSpan = reporter.takeRemoteSpan(CONSUMER), listenerSpan = reporter.takeLocalSpan();
+    assertThat(consumerSpan.parentId()).isNull();
+    assertChildOf(listenerSpan, consumerSpan);
+    assertThat(listenerSpan.tags())
+        .containsEntry(BAGGAGE_FIELD.name(), baggage);
   }
 
   @Test public void receive_startsNewTrace() {
@@ -147,7 +173,7 @@ public class ITTracingJMSConsumer extends ITJms {
   void receive_startsNewTrace(Runnable send) {
     send.run();
     consumer.receive();
-    Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    Span consumerSpan = reporter.takeRemoteSpan(CONSUMER);
     assertThat(consumerSpan.name()).isEqualTo("receive");
     assertThat(consumerSpan.tags()).containsEntry("jms.queue", jms.queueName);
   }
@@ -167,7 +193,7 @@ public class ITTracingJMSConsumer extends ITJms {
 
     Message received = consumer.receive();
 
-    Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    Span consumerSpan = reporter.takeRemoteSpan(CONSUMER);
     assertChildOf(consumerSpan, parent);
 
     assertThat(GETTER.get(received, "b3"))
