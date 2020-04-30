@@ -14,9 +14,7 @@
 package brave.internal;
 
 import brave.baggage.BaggagePropagationConfig;
-import brave.internal.baggage.BaggageHandler;
-import brave.internal.baggage.BaggageHandler.StateDecoder;
-import brave.internal.baggage.BaggageHandler.StateEncoder;
+import brave.internal.baggage.BaggageCodec;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,26 +22,13 @@ import static org.mockito.Mockito.mock;
 
 public class InternalBaggageTest {
   @Test public void newBaggagePropagationConfig() {
-    BaggageHandler<String> baggageHandler = mock(BaggageHandler.class);
-    StateDecoder<String> stateDecoder = mock(StateDecoder.class);
-    StateEncoder<String> stateEncoder = mock(StateEncoder.class);
+    BaggageCodec baggageCodec = mock(BaggageCodec.class);
 
-    BaggagePropagationConfig<String> config = InternalBaggage.instance.newBaggagePropagationConfig(
-        "baggage",
-        baggageHandler,
-        stateDecoder,
-        stateEncoder
+    BaggagePropagationConfig config = InternalBaggage.instance.newBaggagePropagationConfig(
+        baggageCodec
     );
 
-    assertThat(config.extractKeyNames())
-        .containsExactly("baggage");
-    assertThat(config.injectKeyNames())
-        .containsExactly("baggage");
-    assertThat(config).extracting("baggageHandler")
-        .isSameAs(baggageHandler);
-    assertThat(config).extracting("stateDecoder")
-        .isSameAs(stateDecoder);
-    assertThat(config).extracting("stateEncoder")
-        .isSameAs(stateEncoder);
+    assertThat(config).extracting("baggageCodec")
+        .isSameAs(baggageCodec);
   }
 }

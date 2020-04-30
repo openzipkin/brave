@@ -15,7 +15,7 @@ package brave.internal;
 
 import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagationConfig;
-import brave.internal.baggage.BaggageHandler;
+import brave.internal.baggage.BaggageCodec;
 
 /**
  * Escalate internal APIs in {@code brave.baggage} so they can be used from outside packages. The
@@ -27,15 +27,11 @@ public abstract class InternalBaggage {
   public static InternalBaggage instance;
 
   /**
-   * {@link BaggageHandler} is not yet a public api, but it is being tested with secondary
+   * {@link BaggageCodec} is not yet a public api, but it is being tested with secondary
    * sampling.
    *
    * <p>See https://github.com/openzipkin-contrib/zipkin-secondary-sampling
    */
-  public abstract <S> BaggagePropagationConfig<S> newBaggagePropagationConfig(
-      String keyName,
-      BaggageHandler<S> baggageHandler,
-      BaggageHandler.StateDecoder<S> stateDecoder,
-      BaggageHandler.StateEncoder<S> stateEncoder
-  );
+  public abstract BaggagePropagationConfig newBaggagePropagationConfig(
+      BaggageCodec baggageCodec);
 }

@@ -20,21 +20,13 @@ import java.util.Collections;
 import java.util.List;
 
 import static brave.internal.Lists.ensureMutable;
+import static java.lang.String.format;
 
-final class ExtraBaggageFieldsFactory implements ExtraBaggageFields.Factory {
-  BaggageHandler<?>[] handlers;
+public abstract class ExtraBaggageFieldsFactory {
 
-  ExtraBaggageFieldsFactory(BaggageHandler<?>... handlers) {
-    this.handlers = handlers;
-  }
+  public abstract ExtraBaggageFields create();
 
-  @Override public ExtraBaggageFields create() {
-    return new ExtraBaggageFields(handlers);
-  }
-
-  @Override public ExtraBaggageFields create(ExtraBaggageFields parent) {
-    return new ExtraBaggageFields(parent, handlers);
-  }
+  public abstract ExtraBaggageFields create(ExtraBaggageFields parent);
 
   ExtraBaggageFields createExtraAndClaim(long traceId, long spanId) {
     ExtraBaggageFields result = create();
@@ -52,11 +44,11 @@ final class ExtraBaggageFieldsFactory implements ExtraBaggageFields.Factory {
     return existing.tryToClaim(traceId, spanId);
   }
 
-  void consolidate(ExtraBaggageFields existing, ExtraBaggageFields consolidated) {
-    consolidated.putAllIfAbsent(existing);
+  void mergeInto(ExtraBaggageFields existing, ExtraBaggageFields consolidated) {
+    consolidated.internal.mergeStateKeepingOursOnConflict(existing);
   }
 
-  @Override public TraceContext decorate(TraceContext context) {
+  public TraceContext decorate(TraceContext context) {
     long traceId = context.traceId(), spanId = context.spanId();
     List<Object> extra = context.extra();
     int extraSize = extra.size();
@@ -70,7 +62,7 @@ final class ExtraBaggageFieldsFactory implements ExtraBaggageFields.Factory {
 
     // if the first item is a baggage state object, try to claim or copy its fields
     if (first instanceof ExtraBaggageFields) {
-      ExtraBaggageFields existing = (ExtraBaggageFields) first;
+      ExtraBaggageFields existing = checkSameConfiguration((ExtraBaggageFields) first);
       if (tryToClaim(existing, traceId, spanId)) {
         consolidated = existing;
       } else { // otherwise we need to consolidate the fields
@@ -104,7 +96,7 @@ final class ExtraBaggageFieldsFactory implements ExtraBaggageFields.Factory {
     for (int i = 1; i < extraSize; i++) {
       Object next = extra.get(i);
       if (!(next instanceof ExtraBaggageFields)) continue;
-      ExtraBaggageFields existing = (ExtraBaggageFields) next;
+      ExtraBaggageFields existing = checkSameConfiguration((ExtraBaggageFields) next);
       if (consolidated == null) {
         if (tryToClaim(existing, traceId, spanId)) {
           consolidated = existing;
@@ -114,7 +106,7 @@ final class ExtraBaggageFieldsFactory implements ExtraBaggageFields.Factory {
         extra = ensureMutable(extra);
         extra.set(i, consolidated);
       } else {
-        consolidate(existing, consolidated);
+        mergeInto(existing, consolidated);
         extra = ensureMutable(extra);
         extra.remove(i); // drop the previous fields item as we consolidated it
         extraSize--;
@@ -129,6 +121,16 @@ final class ExtraBaggageFieldsFactory implements ExtraBaggageFields.Factory {
     }
     if (extra == context.extra()) return context;
     return contextWithExtra(context, Collections.unmodifiableList(extra));
+  }
+
+  ExtraBaggageFields checkSameConfiguration(ExtraBaggageFields next) {
+    ExtraBaggageFieldsFactory found = next.internal.factory;
+    if (found != this) {
+      throw new IllegalArgumentException(
+          format("Mixed configuration unsupported: found %s, expected %s", found, this)
+      );
+    }
+    return next;
   }
 
   // TODO: this is internal. If we ever expose it otherwise, we should use Lists.ensureImmutable

@@ -17,9 +17,6 @@ import brave.baggage.BaggageField;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -33,230 +30,87 @@ import java.util.List;
  * <p>The implementation of this type uses copy-on-write semantics to prevent changes in a
  * child context from affecting its parent.
  */
+// We handle dynamic vs fixed state internally as it..
+//  * hides generic type complexity
+//  * gives us a lock not exposed to users
+//  * allows findExtra(ExtraBaggageFields.class)
 public final class ExtraBaggageFields {
-  public static Factory newFactory(List<BaggageHandler<?>> handlers) {
-    if (handlers == null) throw new NullPointerException("handlers == null");
-    if (handlers.isEmpty()) throw new NullPointerException("handlers are empty");
-    return new ExtraBaggageFieldsFactory(handlers.toArray(new BaggageHandler[0]));
+  final State<?> internal; // compared by reference to ensure same configuration
+  long traceId;
+  long spanId; // guarded by stateHandler
+
+  ExtraBaggageFields(State<?> internal) {
+    this.internal = internal;
   }
 
-  public interface Factory {
-    ExtraBaggageFields create();
-
-    ExtraBaggageFields create(ExtraBaggageFields parent);
-
-    TraceContext decorate(TraceContext context);
+  /** When true, calls to {@link #getAllFields()} cannot be cached. */
+  public boolean isDynamic() {
+    return internal.isDynamic();
   }
 
   /** The list of fields present, regardless of value. */
   public List<BaggageField> getAllFields() {
-    if (!hasDynamicFields) return fixedFieldList;
-    List<BaggageField> result = new ArrayList<>(fixedFieldList);
-    Object[] stateArray = this.stateArray;
-    for (int i = 0, length = handlers.length; i < length; i++) {
-      BaggageHandler handler = handlers[i];
-      if (!handler.isDynamic()) continue;
-      result.addAll(handler.currentFields(stateArray != null ? stateArray[i] : null));
-    }
-    return Collections.unmodifiableList(result);
+    return internal.getAllFields();
   }
 
   /**
    * Returns the value of the field with the specified name or {@code null} if not available.
    *
    * @see BaggageField#getValue(TraceContext)
+   * @see BaggageField#getValue(TraceContextOrSamplingFlags)
    */
   @Nullable public String getValue(BaggageField field) {
-    int index = indexOf(field);
-    if (index == -1) return null;
-    Object[] stateArray = this.stateArray;
-    if (stateArray == null) return null;
-    Object state = stateArray[index];
-    return state != null ? handlers[index].getValue(field, state) : null;
+    return internal.getValue(field);
   }
 
   /**
-   * Replaces the value of the field with the specified key, ignoring if not configured.
+   * Updates a state object to include a value change.
    *
+   * @param field the field that was updated
+   * @param value {@code null} means remove the mapping to this field.
+   * @return true implies a a change in the underlying state
    * @see BaggageField#updateValue(TraceContext, String)
+   * @see BaggageField#updateValue(TraceContextOrSamplingFlags, String)
    */
   public boolean updateValue(BaggageField field, @Nullable String value) {
-    int index = indexOf(field);
-    if (index == -1) return false;
+    return internal.updateValue(field, value);
+  }
 
-    BaggageHandler handler = handlers[index];
-    synchronized (this) {
-      Object[] stateArray = this.stateArray;
-      if (stateArray == null) {
-        if (value == null) return false;
-        stateArray = new Object[handlers.length];
-      }
+  static abstract class State<S> {
+    final ExtraBaggageFieldsFactory factory;
+    volatile S state; // guarded by this, copy on write, never null
 
-      Object state = handler.updateState(stateArray[index], field, value);
-
-      if (equal(state, stateArray[index])) return false;
-
-      // this is the copy-on-write part
-      stateArray = Arrays.copyOf(stateArray, stateArray.length);
-      stateArray[index] = state;
-      this.stateArray = stateArray;
-      return true;
+    State(ExtraBaggageFieldsFactory factory, S parentState) {
+      if (factory == null) throw new NullPointerException("factory == null");
+      if (parentState == null) throw new NullPointerException("parentState == null");
+      this.factory = factory;
+      this.state = parentState;
     }
-  }
 
-  /**
-   * Sets the {@linkplain #<S> state of the handler}, possibly to {@code null}.
-   *
-   * <p><em>Note:</em> The result must be treated read-only even if it a mutable object.
-   *
-   * <p>The result returned reflects the current association to the given handler. Due to
-   * copy-on-write, a future call may return a different value.
-   *
-   * @param handler same reference as passed to {@link #newFactory(BaggageHandler[])}
-   * @param state {@code null} clears the state for the handler.
-   * @see #getState(BaggageHandler)
-   */
-  @Nullable public <S> void putState(BaggageHandler<S> handler, @Nullable S state) {
-    if (handler == null) throw new NullPointerException("handler == null");
+    /** @see ExtraBaggageFields#isDynamic() */
+    abstract boolean isDynamic();
 
-    int index = indexOf(handler);
-    if (index == -1) return;
+    /** @see ExtraBaggageFields#getAllFields() */
+    abstract List<BaggageField> getAllFields();
 
-    synchronized (this) {
-      Object[] stateArray = this.stateArray;
-      if (stateArray == null) {
-        if (state == null) return;
-        stateArray = new Object[handlers.length];
-      }
+    /** @see ExtraBaggageFields#getValue(BaggageField) */
+    abstract @Nullable String getValue(BaggageField field);
 
-      if (equal(state, stateArray[index])) return;
+    /** @see ExtraBaggageFields#updateValue(BaggageField, String) */
+    abstract boolean updateValue(BaggageField field, @Nullable String value);
 
-      // this is the copy-on-write part
-      stateArray = Arrays.copyOf(stateArray, stateArray.length);
-      stateArray[index] = state;
-      this.stateArray = stateArray;
-    }
-  }
-
-  /**
-   * Gets the possibly {@code null} {@linkplain #<S> state of the handler}.
-   *
-   * <p><em>Note:</em> The result must be treated read-only even if it a mutable object.
-   *
-   * <p>The result returned reflects the current association to the given handler. Due to
-   * copy-on-write, a future call may return a different value.
-   *
-   * <p>Unlike {@link #getValue(BaggageField)}, the result of this may not be a {@link String} and
-   * may be mutable. It may be shared across multiple fields and possibly multiple trace contexts.
-   * Do not mutate the result as you can corrupt data.
-   *
-   * @param handler same reference as passed to {@link #newFactory(List)}
-   * @return the current state assigned to the handler or {@code null} if unavailable.
-   * @see #putState(int, Object)
-   */
-  @Nullable public <S> S getState(BaggageHandler<S> handler) {
-    if (handler == null) throw new NullPointerException("handler == null");
-
-    int index = indexOf(handler);
-    if (index == -1) return null;
-
-    Object[] stateArray = this.stateArray;
-    return stateArray != null ? (S) stateArray[index] : null;
-  }
-
-  final BaggageHandler[] handlers;
-  final List<BaggageField> fixedFieldList;
-
-  final boolean hasDynamicFields;
-
-  volatile Object[] stateArray; // guarded by this, copy on write
-  long traceId, spanId; // guarded by this
-
-  ExtraBaggageFields(BaggageHandler[] handlers) {
-    this.handlers = handlers;
-    List<BaggageField> constantFields = new ArrayList<>();
-    boolean hasDynamicFields = false;
-    for (BaggageHandler handler : handlers) {
-      if (!handler.isDynamic()) {
-        constantFields.addAll(handler.currentFields(null));
-      } else {
-        hasDynamicFields = true;
-      }
-    }
-    this.hasDynamicFields = hasDynamicFields;
-    this.fixedFieldList = Collections.unmodifiableList(constantFields);
-  }
-
-  ExtraBaggageFields(ExtraBaggageFields parent, BaggageHandler[] handlers) {
-    this(handlers);
-    checkSameHandlers(parent);
-    this.stateArray = parent.stateArray;
-  }
-
-  boolean putState(int index, @Nullable Object state) {
-    Object[] stateArray = this.stateArray;
-    if (stateArray == null) {
-      stateArray = new Object[handlers.length];
-      stateArray[index] = state;
-    } else if (equal(state, stateArray[index])) {
-      return false;
-    } else { // this is the copy-on-write part
-      stateArray = Arrays.copyOf(stateArray, stateArray.length);
-      stateArray[index] = state;
-    }
-    this.stateArray = stateArray;
-    return true;
-  }
-
-  void checkSameHandlers(ExtraBaggageFields predefinedParent) {
-    if (!Arrays.equals(handlers, predefinedParent.handlers)) {
-      throw new IllegalStateException(
-        String.format("Mixed name configuration unsupported: found %s, expected %s",
-          Arrays.toString(handlers), Arrays.toString(predefinedParent.handlers))
-      );
-    }
-  }
-
-  int indexOf(BaggageHandler handler) {
-    for (int i = 0, length = handlers.length; i < length; i++) {
-      if (handlers[i].equals(handler)) return i;
-    }
-    return -1;
-  }
-
-  int indexOf(BaggageField field) {
-    for (int i = 0, length = handlers.length; i < length; i++) {
-      if (handlers[i].handlesField(field)) return i;
-    }
-    return -1;
-  }
-
-  @Nullable Object getState(int index) {
-    Object[] stateArray = this.stateArray;
-    if (stateArray == null || index >= stateArray.length) return null;
-    return stateArray[index];
-  }
-
-  /**
-   * For each field in the input replace the state if the key doesn't already exist.
-   *
-   * <p>Note: this does not synchronize internally as it is acting on newly constructed fields
-   * not yet returned to a caller.
-   */
-  void putAllIfAbsent(ExtraBaggageFields parent) {
-    checkSameHandlers(parent);
-    Object[] parentStateArray = parent.stateArray;
-    if (parentStateArray == null) return;
-    for (int i = 0; i < parentStateArray.length; i++) {
-      if (parentStateArray[i] != null && getState(i) == null) { // extracted wins vs parent
-        putState(i, parentStateArray[i]);
-      }
-    }
+    /**
+     * For each field in the input replace the state if the key doesn't already exist.
+     *
+     * <p>Note: this does not synchronize internally as it is acting on newly constructed fields
+     * not yet returned to a caller.
+     */
+    abstract void mergeStateKeepingOursOnConflict(ExtraBaggageFields parent);
   }
 
   /** Fields are extracted before a context is created. We need to lazy set the context */
   boolean tryToClaim(long traceId, long spanId) {
-    synchronized (this) {
+    synchronized (internal) {
       if (this.traceId == 0L) {
         this.traceId = traceId;
         this.spanId = spanId;
@@ -270,16 +124,11 @@ public final class ExtraBaggageFields {
   @Override public boolean equals(Object o) {
     if (o == this) return true;
     if (!(o instanceof ExtraBaggageFields)) return false;
-    ExtraBaggageFields that = (ExtraBaggageFields) o;
-    return Arrays.equals(handlers, that.handlers) && Arrays.equals(stateArray, that.stateArray);
+    return internal.equals(((ExtraBaggageFields) o).internal);
   }
 
   @Override public int hashCode() {
-    int h = 1000003;
-    h ^= Arrays.hashCode(handlers);
-    h *= 1000003;
-    h ^= Arrays.hashCode(stateArray);
-    return h;
+    return internal.hashCode();
   }
 
   static boolean equal(@Nullable Object a, @Nullable Object b) {

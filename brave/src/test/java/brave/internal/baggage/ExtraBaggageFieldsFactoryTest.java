@@ -31,19 +31,15 @@ import java.util.Map.Entry;
 import org.junit.Test;
 import zipkin2.reporter.Reporter;
 
-import static brave.internal.baggage.ExtraBaggageContext.findExtra;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ExtraBaggageFieldsFactoryTest {
   BaggageField field1 = BaggageField.create("one");
   BaggageField field2 = BaggageField.create("two");
-  String state1 = "1", state2 = "2", state3 = "3";
+  String value1 = "1", value2 = "2", value3 = "3";
 
-  ExtraBaggageFieldsFactory factory = new ExtraBaggageFieldsFactory(
-    BaggageHandlers.string(field1),
-    BaggageHandlers.string(field2)
-  );
+  ExtraBaggageFieldsFactory factory = FixedBaggageFieldsFactory.create(asList(field1, field2));
 
   Propagation.Factory propagationFactory = new Propagation.Factory() {
     @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
@@ -63,7 +59,7 @@ public class ExtraBaggageFieldsFactoryTest {
   @Test public void contextsAreIndependent() {
     try (Tracing tracing = withNoopSpanReporter()) {
       TraceContext context1 = tracing.tracer().nextSpan().context();
-      putState(context1.extra(), field1, state1);
+      field1.updateValue(context1, value1);
 
       TraceContext context2 = tracing.tracer().newChild(context1).context();
 
@@ -74,61 +70,61 @@ public class ExtraBaggageFieldsFactoryTest {
       // But have the same values
       assertThat(context1.findExtra(ExtraBaggageFields.class))
         .isEqualTo(context2.findExtra(ExtraBaggageFields.class));
-      assertThat(getState(context1, field1))
-        .isEqualTo(getState(context2, field1))
-        .isEqualTo(state1);
+      assertThat(field1.getValue(context1))
+        .isEqualTo(field1.getValue(context2))
+        .isEqualTo(value1);
 
-      putState(context1.extra(), field1, state2);
-      putState(context2.extra(), field1, state3);
+      field1.updateValue(context1, value2);
+      field1.updateValue(context2, value3);
 
       // Yet downstream changes don't affect eachother
-      assertThat(getState(context1, field1)).isEqualTo(state2);
-      assertThat(getState(context2, field1)).isEqualTo(state3);
+      assertThat(field1.getValue(context1)).isEqualTo(value2);
+      assertThat(field1.getValue(context2)).isEqualTo(value3);
     }
   }
 
-  @Test public void contextsHaveIndependentState() {
+  @Test public void contextsHaveIndependentValue() {
     try (Tracing tracing = withNoopSpanReporter()) {
 
       TraceContext context1 = tracing.tracer().nextSpan().context();
-      putState(context1.extra(), field1, state1);
+      field1.updateValue(context1, value1);
 
       TraceContext context2 =
         tracing.tracer().toSpan(context1.toBuilder().sampled(false).build()).context();
-      ExtraBaggageFields extraBaggageFields1 = (ExtraBaggageFields) context1.extra().get(0);
-      ExtraBaggageFields extraBaggageFields1_toSpan = (ExtraBaggageFields) context2.extra().get(0);
+      ExtraBaggageFields extra1 = (ExtraBaggageFields) context1.extra().get(0);
+      ExtraBaggageFields extra1_toSpan = (ExtraBaggageFields) context2.extra().get(0);
 
-      // we have the same span ID, so we should couple our propagation baggageState
-      assertThat(extraBaggageFields1).isSameAs(extraBaggageFields1_toSpan);
+      // we have the same span ID, so we should couple our baggage state
+      assertThat(extra1).isSameAs(extra1_toSpan);
 
-      // we no longer have the same span ID, so we should decouple our propagation baggageState
+      // we no longer have the same span ID, so we should decouple our baggage state
       TraceContext context3 = tracing.tracer().newChild(context1).context();
-      ExtraBaggageFields extraBaggageFields3 = (ExtraBaggageFields) context3.extra().get(0);
+      ExtraBaggageFields extra3 = (ExtraBaggageFields) context3.extra().get(0);
 
       // we have different instances of extra
-      assertThat(extraBaggageFields1).isNotSameAs(extraBaggageFields3);
+      assertThat(extra1).isNotSameAs(extra3);
 
       // however, the values inside are the same until a write occurs
-      assertThat(extraBaggageFields1).isEqualTo(extraBaggageFields3);
+      assertThat(extra1).isEqualTo(extra3);
 
       // check that the change is present, but the other contexts are the same
-      Object beforeUpdate = getState(context1, field1);
+      String beforeUpdate = field1.getValue(context1);
       field1.updateValue(context1, "2");
-      assertThat(getState(extraBaggageFields1, field1)).isNotEqualTo(beforeUpdate); // copy-on-write
-      assertThat(getState(extraBaggageFields3, field1)).isEqualTo(beforeUpdate);
+      assertThat(extra1.getValue(field1)).isNotEqualTo(beforeUpdate); // copy-on-write
+      assertThat(extra3.getValue(field1)).isEqualTo(beforeUpdate);
     }
   }
 
   /**
    * This scenario is possible, albeit rare. {@code tracer.nextSpan(extracted} } is called when
-   * there is an implicit parent. For example, you have a trace in progress when extracting trace
-   * baggageState from an incoming message. Another example is where there is a span in scope due to
-   * a leak such as from using {@link CurrentTraceContext.Default#inheritable()}.
+   * there is an implicit parent. For example, you have a trace in progress when extracting baggage
+   * from an incoming message. Another example is where there is a span in scope due to a leak such
+   * as from using {@link CurrentTraceContext.Default#inheritable()}.
    *
-   * <p>When we are only extracting propagation baggageState, the baggageState should
-   * merge as opposed to creating duplicate copies of {@link ExtraBaggageFields}.
+   * <p>Extracted baggage should merge into the current baggage state instead creating multiple
+   * entries in {@link TraceContext#extra()}.
    */
-  @Test public void nextSpanMergesExtraWithImplicitParent_hasstate() {
+  @Test public void nextSpanMergesExtraWithImplicitParent_hasvalue() {
     try (Tracing tracing = withNoopSpanReporter()) {
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
       try {
@@ -137,16 +133,16 @@ public class ExtraBaggageFieldsFactoryTest {
           .addExtra(factory.create())
           .build();
 
-        putState(parent.context().extra(), field1, state1);
-        putState(extracted.extra(), field1, state2);
-        putState(extracted.extra(), field2, state3);
+        field1.updateValue(parent.context(), value1);
+        field1.updateValue(extracted, value2);
+        field2.updateValue(extracted, value3);
 
         TraceContext context1 = tracing.tracer().nextSpan(extracted).context();
 
         assertThat(context1.extra()).hasSize(1); // merged
 
-        assertThat(getState(context1, field1)).isEqualTo(state2); // extracted should win!
-        assertThat(getState(context1, field2)).isEqualTo(state3);
+        assertThat(field1.getValue(context1)).isEqualTo(value2); // extracted should win!
+        assertThat(field2.getValue(context1)).isEqualTo(value3);
 
         assertBaggageStateClaimed(context1.extra(), context1);
       } finally {
@@ -155,7 +151,7 @@ public class ExtraBaggageFieldsFactoryTest {
     }
   }
 
-  @Test public void nextSpanExtraWithImplicitParent_butNoImplicitBaggagestate() {
+  @Test public void nextSpanExtraWithImplicitParent_butNoImplicitBaggagevalue() {
     try (Tracing tracing = withNoopSpanReporter()) {
 
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
@@ -165,13 +161,13 @@ public class ExtraBaggageFieldsFactoryTest {
           .addExtra(factory.create())
           .build();
 
-        putState(extracted.extra(), field2, state3);
+        field2.updateValue(extracted, value3);
 
         TraceContext context1 = tracing.tracer().nextSpan(extracted).context();
 
         assertThat(context1.extra()).hasSize(1); // merged
 
-        assertThat(getState(context1, field2)).isEqualTo(state3);
+        assertThat(field2.getValue(context1)).isEqualTo(value3);
 
         assertBaggageStateClaimed(context1.extra(), context1);
       } finally {
@@ -180,12 +176,12 @@ public class ExtraBaggageFieldsFactoryTest {
     }
   }
 
-  @Test public void nextSpanExtraWithImplicitParent_butNoExtractedBaggagestate() {
+  @Test public void nextSpanExtraWithImplicitParent_butNoExtractedBaggagevalue() {
     try (Tracing tracing = withNoopSpanReporter()) {
 
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
       try {
-        putState(parent.context().extra(), field1, state1);
+        field1.updateValue(parent.context(), value1);
 
         TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder()
           .samplingFlags(SamplingFlags.EMPTY)
@@ -196,20 +192,13 @@ public class ExtraBaggageFieldsFactoryTest {
 
         assertThat(context1.extra()).hasSize(1); // didn't duplicate
 
-        assertThat(getState(context1, field1)).isEqualTo(state1);
+        assertThat(field1.getValue(context1)).isEqualTo(value1);
 
         assertBaggageStateClaimed(context1.extra(), context1);
       } finally {
         parent.finish();
       }
     }
-  }
-
-  @Test public void get_ignore_if_not_defined_index() {
-    ExtraBaggageFields extraBaggageFields = factory.create();
-
-    assertThat(extraBaggageFields.getState(4))
-      .isNull();
   }
 
   @Test public void idempotent() {
@@ -310,7 +299,7 @@ public class ExtraBaggageFieldsFactoryTest {
     }
   }
 
-  static void assertBaggageStateClaimed(List<Object> actual, TraceContext context) {
+  void assertBaggageStateClaimed(List<Object> actual, TraceContext context) {
     assertThat(actual)
       .filteredOn(ExtraBaggageFields.class::isInstance)
       .hasSize(1)
@@ -324,28 +313,5 @@ public class ExtraBaggageFieldsFactoryTest {
 
   static TraceContext contextWithExtra(TraceContext context, List<Object> extra) {
     return InternalPropagation.instance.withExtra(context, extra);
-  }
-
-  void putState(List<Object> extra, BaggageField field, String state) {
-    ExtraBaggageFields extraBaggageFields = findExtra(ExtraBaggageFields.class, extra);
-    if (extraBaggageFields == null) return;
-    putState(extraBaggageFields, field, state);
-  }
-
-  void putState(ExtraBaggageFields extraBaggageFields, BaggageField field, String state) {
-    int index = extraBaggageFields.indexOf(field);
-    if (index == -1) return;
-    extraBaggageFields.putState(index, state);
-  }
-
-  String getState(TraceContext context, BaggageField field) {
-    ExtraBaggageFields extraBaggageFields = context.findExtra(ExtraBaggageFields.class);
-    if (extraBaggageFields == null) return null;
-    return getState(extraBaggageFields, field);
-  }
-
-  String getState(ExtraBaggageFields extraBaggageFields, BaggageField field) {
-    int index = extraBaggageFields.indexOf(field);
-    return index != -1 ? (String) extraBaggageFields.getState(index) : null;
   }
 }

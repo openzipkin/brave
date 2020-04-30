@@ -17,42 +17,35 @@ import brave.baggage.BaggageField;
 import java.util.List;
 import org.junit.Test;
 
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class StringBaggageHandlerTest extends ExtraBaggageFieldsTest {
-  BaggageHandler<String> handler1 = BaggageHandlers.string(field1);
-  BaggageHandler<String> handler2 = BaggageHandlers.string(field2);
-
-  @Override protected ExtraBaggageFields.Factory newFactory() {
-    return new ExtraBaggageFieldsFactory(handler1, handler2);
+public class FixedBaggageFieldsTest extends ExtraBaggageFieldsTest {
+  @Override ExtraBaggageFieldsFactory newFactory() {
+    return FixedBaggageFieldsFactory.create(asList(field1, field2));
   }
 
-  @Test public void fieldsAreConstant() {
+  @Test public void getAllFields_areConstant() {
     List<BaggageField> withNoValues = extra.getAllFields();
-    field1.updateValue(context, "1");
-    field2.updateValue(context, "3");
+    extra.updateValue(field1, "1");
+    extra.updateValue(field2, "3");
 
     assertThat(extra.getAllFields())
       .isSameAs(withNoValues);
   }
 
   @Test public void putValue_ignores_if_not_defined() {
-    field3.updateValue(context, "1");
+    extra.updateValue(field3, "1");
 
-    assertThat(isEmpty(extra)).isTrue();
+    assertThat(isStateEmpty(extra.internal.state)).isTrue();
   }
 
-  @Test public void getState() {
-    field1.updateValue(context, "1");
-
-    assertThat(extra.getState(handler1)).isEqualTo("1");
-  }
-
-  @Test public void getState_null_if_not_set() {
-    assertThat(extra.getState(handler1)).isNull();
-  }
-
-  @Test public void getState_ignored_if_unconfigured() {
-    assertThat(extra.getState(BaggageHandlers.string(field3))).isNull();
+  @Override boolean isStateEmpty(Object state) {
+    String[] valueArray = (String[]) state;
+    assertThat(valueArray).isNotNull();
+    for (String value : valueArray) {
+      if (value != null) return false;
+    }
+    return true;
   }
 }

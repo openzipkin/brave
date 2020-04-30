@@ -13,16 +13,9 @@
  */
 package brave.baggage;
 
-import brave.internal.Lists;
-import brave.internal.baggage.BaggageHandler;
-import brave.internal.baggage.BaggageHandler.StateDecoder;
-import brave.internal.baggage.BaggageHandler.StateEncoder;
-import brave.internal.baggage.BaggageHandlers;
+import brave.internal.baggage.BaggageCodec;
+import brave.internal.baggage.SingleFieldBaggageCodec;
 import brave.propagation.Propagation;
-import brave.propagation.Propagation.Getter;
-import brave.propagation.TraceContext;
-import brave.propagation.TraceContext.Extractor;
-import brave.propagation.TraceContext.Injector;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -31,8 +24,6 @@ import java.util.Locale;
 import java.util.Set;
 
 import static brave.baggage.BaggageField.validateName;
-import static brave.internal.baggage.BaggageHandler.STRING_DECODER;
-import static brave.internal.baggage.BaggageHandler.STRING_ENCODER;
 
 /**
  * Holds {@link BaggagePropagation} configuration.
@@ -53,15 +44,13 @@ import static brave.internal.baggage.BaggageHandler.STRING_ENCODER;
  * <p><em>Note</em>At the moment, dynamic fields are not supported. Use {@link
  * SingleBaggageField} for each field you need to propagate.
  *
- * @param <S> the in-process state representing all configure fields, usually {@link String}
  * @see BaggagePropagation
  * @see BaggageField
  * @see BaggagePropagationConfig
  * @see BaggagePropagationCustomizer
  * @since 5.11
  */
-public abstract class BaggagePropagationConfig<S> {
-
+public class BaggagePropagationConfig {
   /**
    * Holds {@link BaggagePropagation} configuration for a {@linkplain BaggageField baggage field}.
    *
@@ -69,7 +58,7 @@ public abstract class BaggagePropagationConfig<S> {
    * @see BaggageField
    * @since 5.11
    */
-  public static class SingleBaggageField extends BaggagePropagationConfig<String> {
+  public static class SingleBaggageField extends BaggagePropagationConfig {
     /**
      * Configures this field for only local propagation. This will not be read from or written to
      * remote headers.
@@ -107,14 +96,6 @@ public abstract class BaggagePropagationConfig<S> {
       return new Builder(this);
     }
 
-    @Override public List<String> extractKeyNames() {
-      return keyNamesList;
-    }
-
-    @Override public List<String> injectKeyNames() {
-      return keyNamesList;
-    }
-
     /** @since 5.11 */
     public static final class Builder {
       final BaggageField field;
@@ -149,15 +130,15 @@ public abstract class BaggagePropagationConfig<S> {
     }
 
     final BaggageField field;
-    final List<String> keyNamesList;
     final Set<String> keyNames;
 
     SingleBaggageField(Builder builder) { // sealed to this package
-      super(BaggageHandlers.string(builder.field), STRING_DECODER, STRING_ENCODER);
+      super(builder.keyNames.isEmpty()
+          ? BaggageCodec.NOOP
+          : SingleFieldBaggageCodec.single(builder.field, builder.keyNames));
       field = builder.field;
-      keyNamesList = Lists.ensureImmutable(builder.keyNames);
-      keyNames = keyNamesList.isEmpty() ? Collections.emptySet()
-          : Collections.unmodifiableSet(new LinkedHashSet<>(keyNamesList));
+      keyNames = builder.keyNames.isEmpty() ? Collections.emptySet()
+          : Collections.unmodifiableSet(new LinkedHashSet<>(builder.keyNames));
     }
 
     public BaggageField field() {
@@ -175,53 +156,11 @@ public abstract class BaggagePropagationConfig<S> {
     }
   }
 
-  final BaggageHandler<S> baggageHandler;
-  final StateDecoder<S> stateDecoder;
-  final StateEncoder<S> stateEncoder;
+  /** Returns {@link BaggageCodec#NOOP} if {@link SingleBaggageField#local(BaggageField)}. */
+  final BaggageCodec baggageCodec;
 
-  BaggagePropagationConfig(
-      BaggageHandler<S> baggageHandler,
-      StateDecoder<S> stateDecoder,
-      StateEncoder<S> stateEncoder
-  ) {
-    if (baggageHandler == null) throw new NullPointerException("baggageHandler == null");
-    if (stateDecoder == null) throw new NullPointerException("stateDecoder == null");
-    if (stateEncoder == null) throw new NullPointerException("stateEncoder == null");
-    this.baggageHandler = baggageHandler;
-    this.stateDecoder = stateDecoder;
-    this.stateEncoder = stateEncoder;
-  }
-
-  /**
-   * Ordered list of key names used during {@link Extractor#extract(Object)}.
-   *
-   * <p>{@link Getter#get(Object, Object)} will be called against these in order until a non-{@code
-   * null} value result or there are no more keys.
-   *
-   * @since 5.12
-   */
-  public abstract List<String> extractKeyNames();
-
-  /**
-   * Ordered list of key names used during {@link Injector#inject(TraceContext, Object)}.
-   *
-   * @since 5.12
-   */
-  public abstract List<String> injectKeyNames();
-
-  /** Returns true for any config with the same baggage handler. */
-  @Override public boolean equals(Object o) {
-    if (o == this) return true;
-    if (!(o instanceof BaggagePropagationConfig)) return false;
-    return baggageHandler.equals(((BaggagePropagationConfig<?>) o).baggageHandler);
-  }
-
-  /** Returns the same value for any config with the same baggage field. */
-  @Override public int hashCode() {
-    return baggageHandler.hashCode();
-  }
-
-  @Override public String toString() {
-    return getClass().getSimpleName() + "{" + baggageHandler + "}";
+  BaggagePropagationConfig(BaggageCodec baggageCodec) {
+    if (baggageCodec == null) throw new NullPointerException("baggageCodec == null");
+    this.baggageCodec = baggageCodec;
   }
 }
