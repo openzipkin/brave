@@ -32,7 +32,7 @@ Here are some example beans using the factories in this module:
   <!-- Allows log patterns to use %{traceId} and %{spanId} -->
   <bean id="correlationScopeDecorator" class="brave.spring.beans.CorrelationScopeDecoratorFactoryBean">
     <property name="builder">
-       <bean class="brave.context.slf4j.MDCScopeDecorator" factory-method="newBuilder"/>
+       <bean class="brave.context.slf4j.MDCScopeDecorator" factory-method="get"/>
     </property>
   </bean>
 
