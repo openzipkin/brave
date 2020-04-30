@@ -32,7 +32,7 @@ Here are some example beans using the factories in this module:
   <!-- Allows log patterns to use %{traceId} and %{spanId} -->
   <bean id="correlationScopeDecorator" class="brave.spring.beans.CorrelationScopeDecoratorFactoryBean">
     <property name="builder">
-       <bean class="brave.context.slf4j.MDCScopeDecorator" factory-method="create"/>
+       <bean class="brave.context.slf4j.MDCScopeDecorator" factory-method="get"/>
     </property>
   </bean>
 
@@ -59,7 +59,7 @@ Here are some example beans using the factories in this module:
 
   <!-- Controls RPC sampling -->
   <bean id="rpcTracing" class="brave.spring.beans.RpcTracingFactoryBean">
-    <property name="rpcTracing" ref="tracing"/>
+    <property name="tracing" ref="tracing"/>
   </bean>
 
   <!-- Controls Messaging sampling -->
@@ -73,7 +73,7 @@ with trace headers, while also making it available in log formats as `%{userName
 
 ```xml
   <!-- Defines a propagated field "userName" that uses the remote header "user-name" -->
-  <bean id="userNameBaggageField" class="brave.baggage.BaggageField" factory-method="create">
+  <bean id="userNameBaggageField" class="brave.baggage.BaggageField" factory-method="newBuilder">
     <constructor-arg value="userName" />
   </bean>
   <bean id="propagationFactory" class="brave.spring.beans.BaggagePropagationFactoryBean">
