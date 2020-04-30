@@ -76,7 +76,7 @@ final class SingleHeaderCodec implements BaggageCodec {
     return keyNames;
   }
 
-  @Override public <R> boolean decode(ExtraBaggageFields extra, R request, String value) {
+  @Override public boolean decode(ExtraBaggageFields extra, Object request, String value) {
     assert extra.isDynamic() : "This is unlikely to work with fixed fields!";
     boolean decoded = false;
     for (String entry : value.split(",")) {
@@ -86,7 +86,7 @@ final class SingleHeaderCodec implements BaggageCodec {
     return decoded;
   }
 
-  @Override public <R> String encode(ExtraBaggageFields extra, TraceContext context, R request) {
+  @Override public String encode(ExtraBaggageFields extra, TraceContext context, Object request) {
     StringBuilder result = new StringBuilder();
     for (BaggageField field : extra.getAllFields()) {
       if (blacklist.contains(field)) continue;

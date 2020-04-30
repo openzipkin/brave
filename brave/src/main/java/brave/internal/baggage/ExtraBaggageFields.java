@@ -105,7 +105,7 @@ public final class ExtraBaggageFields {
      * <p>Note: this does not synchronize internally as it is acting on newly constructed fields
      * not yet returned to a caller.
      */
-    abstract void putAllIfAbsent(ExtraBaggageFields parent);
+    abstract void mergeStateKeepingOursOnConflict(ExtraBaggageFields parent);
   }
 
   /** Fields are extracted before a context is created. We need to lazy set the context */

@@ -42,11 +42,11 @@ public class DynamicBaggageFieldsTest extends ExtraBaggageFieldsTest {
     assertThat(extra.getAllFields()).containsOnly(field1, field2, field3);
   }
 
-  @Override boolean isEmpty(ExtraBaggageFields extra) {
-    Map<BaggageField, String> state = (Map<BaggageField, String>) extra.internal.state;
-    if (state == null) return true;
+  @Override boolean isStateEmpty(Object state) {
+    Map<BaggageField, String> map = (Map<BaggageField, String>) state;
+    assertThat(map).isNotNull();
     // we retain the key names for clearing headers.. hence we have to check values
-    for (Object value : state.values()) {
+    for (String value : map.values()) {
       if (value != null) return false;
     }
     return true;

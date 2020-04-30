@@ -37,12 +37,12 @@ public class FixedBaggageFieldsTest extends ExtraBaggageFieldsTest {
   @Test public void putValue_ignores_if_not_defined() {
     extra.updateValue(field3, "1");
 
-    assertThat(isEmpty(extra)).isTrue();
+    assertThat(isStateEmpty(extra.internal.state)).isTrue();
   }
 
-  @Override boolean isEmpty(ExtraBaggageFields extra) {
-    String[] valueArray = (String[]) extra.internal.state;
-    if (valueArray == null) return true;
+  @Override boolean isStateEmpty(Object state) {
+    String[] valueArray = (String[]) state;
+    assertThat(valueArray).isNotNull();
     for (String value : valueArray) {
       if (value != null) return false;
     }

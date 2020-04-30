@@ -36,11 +36,11 @@ public interface BaggageCodec {
       return Collections.emptyList();
     }
 
-    @Override public <R> boolean decode(ExtraBaggageFields extra, R request, String value) {
+    @Override public boolean decode(ExtraBaggageFields extra, Object request, String value) {
       return false;
     }
 
-    @Override public <R> String encode(ExtraBaggageFields extra, TraceContext context, R request) {
+    @Override public String encode(ExtraBaggageFields extra, TraceContext context, Object request) {
       return null;
     }
 
@@ -76,13 +76,12 @@ public interface BaggageCodec {
    * {@linkplain ExtraBaggageFields#isDynamic() dynamic values} will need to perform some decoding,
    * such as splitting on comma and equals.
    *
-   * @param <R> the type parameter of {@link Extractor#<R>}
    * @param extra holds {@link BaggageField} state.
    * @param request the parameter of {@link Extractor#extract(Object)}
    * @param value a non-{@code null} result of {@link Getter#get(Object, Object)}
    * @see #extractKeyNames()
    */
-  <R> boolean decode(ExtraBaggageFields extra, R request, String value);
+  boolean decode(ExtraBaggageFields extra, Object request, String value);
 
   /**
    * Encodes any state to a request value used by {@link Setter#put(Object, Object, String)}. When
@@ -92,10 +91,9 @@ public interface BaggageCodec {
    * {@linkplain ExtraBaggageFields#isDynamic() Dynamic values} will need to perform some encoding,
    * such as joining on equals and comma.
    *
-   * @param <R> the type parameter of {@link Injector#<R>}
    * @param extra holds {@link BaggageField} state.
    * @return an input to {@link Setter#put(Object, Object, String)}
    * @see #injectKeyNames()
    */
-  @Nullable <R> String encode(ExtraBaggageFields extra, TraceContext context, R request);
+  @Nullable String encode(ExtraBaggageFields extra, TraceContext context, Object request);
 }

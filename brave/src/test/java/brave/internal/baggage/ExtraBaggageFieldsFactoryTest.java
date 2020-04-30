@@ -117,12 +117,12 @@ public class ExtraBaggageFieldsFactoryTest {
 
   /**
    * This scenario is possible, albeit rare. {@code tracer.nextSpan(extracted} } is called when
-   * there is an implicit parent. For example, you have a trace in progress when extracting trace
-   * baggageValue from an incoming message. Another example is where there is a span in scope due to
-   * a leak such as from using {@link CurrentTraceContext.Default#inheritable()}.
+   * there is an implicit parent. For example, you have a trace in progress when extracting baggage
+   * from an incoming message. Another example is where there is a span in scope due to a leak such
+   * as from using {@link CurrentTraceContext.Default#inheritable()}.
    *
-   * <p>When we are only extracting baggage state, the baggageValue should
-   * merge as opposed to creating duplicate copies of {@link ExtraBaggageFields}.
+   * <p>Extracted baggage should merge into the current baggage state instead creating multiple
+   * entries in {@link TraceContext#extra()}.
    */
   @Test public void nextSpanMergesExtraWithImplicitParent_hasvalue() {
     try (Tracing tracing = withNoopSpanReporter()) {
@@ -204,7 +204,7 @@ public class ExtraBaggageFieldsFactoryTest {
   @Test public void idempotent() {
     List<Object> originalExtra = context.extra();
     assertThat(propagationFactory.decorate(context).extra())
-        .isSameAs(originalExtra);
+      .isSameAs(originalExtra);
   }
 
   /** Ensures we don't accidentally use console logging, which is default */

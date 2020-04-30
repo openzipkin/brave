@@ -53,20 +53,29 @@ final class FixedBaggageState extends ExtraBaggageFields.State<String[]> {
       String[] state = this.state;
       if (equal(value, state[index])) return false;
 
-      // this is the copy-on-write part
-      state = Arrays.copyOf(state, state.length);
+      state = Arrays.copyOf(state, state.length); // copy-on-write
       state[index] = value;
       this.state = state;
       return true;
     }
   }
 
-  @Override void putAllIfAbsent(ExtraBaggageFields parent) {
-    String[] parentState = ((FixedBaggageState) parent.internal).state;
+  @Override void mergeStateKeepingOursOnConflict(ExtraBaggageFields toMerge) {
+    String[] theirState = ((FixedBaggageState) toMerge.internal).state;
 
+    if (state == ((FixedBaggageFieldsFactory) factory).initialState) {
+      state = theirState;
+      return;
+    }
+
+    boolean dirty = false;
     for (int i = 0; i < state.length; i++) {
-      if (state[i] != null) continue; // extracted wins vs parent
-      state[i] = parentState[i];
+      if (state[i] != null) continue; // our state wins
+      if (!dirty) {
+        state = Arrays.copyOf(state, state.length); // copy-on-write
+        dirty = true;
+      }
+      state[i] = theirState[i];
     }
   }
 

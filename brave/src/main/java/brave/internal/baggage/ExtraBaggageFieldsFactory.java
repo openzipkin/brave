@@ -44,8 +44,8 @@ public abstract class ExtraBaggageFieldsFactory {
     return existing.tryToClaim(traceId, spanId);
   }
 
-  void consolidate(ExtraBaggageFields existing, ExtraBaggageFields consolidated) {
-    consolidated.internal.putAllIfAbsent(existing);
+  void mergeInto(ExtraBaggageFields existing, ExtraBaggageFields consolidated) {
+    consolidated.internal.mergeStateKeepingOursOnConflict(existing);
   }
 
   public TraceContext decorate(TraceContext context) {
@@ -106,7 +106,7 @@ public abstract class ExtraBaggageFieldsFactory {
         extra = ensureMutable(extra);
         extra.set(i, consolidated);
       } else {
-        consolidate(existing, consolidated);
+        mergeInto(existing, consolidated);
         extra = ensureMutable(extra);
         extra.remove(i); // drop the previous fields item as we consolidated it
         extraSize--;

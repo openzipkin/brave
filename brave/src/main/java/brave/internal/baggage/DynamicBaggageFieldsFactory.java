@@ -30,7 +30,7 @@ public final class DynamicBaggageFieldsFactory extends ExtraBaggageFieldsFactory
       initialState = new LinkedHashMap<>();
       for (BaggageField field : fields) initialState.put(field, null);
     }
-    return new DynamicBaggageFieldsFactory(initialState);
+    return new DynamicBaggageFieldsFactory(Collections.unmodifiableMap(initialState));
   }
 
   final Map<BaggageField, String> initialState;

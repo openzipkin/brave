@@ -55,13 +55,23 @@ final class DynamicBaggageState extends ExtraBaggageFields.State<Map<BaggageFiel
     return true;
   }
 
-  @Override void putAllIfAbsent(ExtraBaggageFields parent) {
-    Map<BaggageField, String> parentState = ((DynamicBaggageState) parent.internal).state;
+  @Override void mergeStateKeepingOursOnConflict(ExtraBaggageFields toMerge) {
+    Map<BaggageField, String> theirState = ((DynamicBaggageState) toMerge.internal).state;
 
-    for (BaggageField field : parentState.keySet()) {
+    if (state == ((DynamicBaggageFieldsFactory) factory).initialState) {
+      state = theirState;
+      return;
+    }
+
+    boolean dirty = false;
+    for (BaggageField field : theirState.keySet()) {
       String thisValue = state.get(field);
-      if (thisValue != null) continue; // extracted wins vs parent
-      state.put(field, parentState.get(field));
+      if (thisValue != null) continue; // our state wins
+      if (!dirty) {
+        state = new LinkedHashMap<>(state); // copy-on-write
+        dirty = true;
+      }
+      state.put(field, theirState.get(field));
     }
   }
 
