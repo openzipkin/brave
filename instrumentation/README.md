@@ -97,7 +97,7 @@ flexible configuration of tags and sampling policy.
 
 Brave includes two fundamental types to support tracing interprocess
 communication `brave.Request` and `brave.Response`. These types represent the
-following communication patterns, defined by the [Zipkin Api][https://zipkin.io/zipkin-api/#/default/post_spans]
+following communication patterns, defined by the [Zipkin Api](https://zipkin.io/zipkin-api/#/default/post_spans)
 and returned by `spanKind()`:
 
  * CLIENT
