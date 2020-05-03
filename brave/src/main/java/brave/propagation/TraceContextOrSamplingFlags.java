@@ -293,6 +293,8 @@ public final class TraceContextOrSamplingFlags {
       if (!flagsString.isEmpty()) result.append(", samplingFlags=").append(flagsString);
     }
     if (!extra.isEmpty()) result.append(", extra=").append(extra);
+    // NOTE: it would be nice to rename this type, but it would cause a major Api break:
+    // This is the result of Extractor::extract which is used in a lot of 3rd party code.
     return result.insert(0, "Extracted{").append('}').toString();
   }
 
