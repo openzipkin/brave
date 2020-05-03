@@ -280,8 +280,16 @@ public final class B3Propagation<K> implements Propagation<K> {
       boolean debug = "1".equals(getter.get(request, propagation.debugKey));
 
       String traceIdString = getter.get(request, propagation.traceIdKey);
+
       // It is ok to go without a trace ID, if sampling or debug is set
-      if (traceIdString == null) return TraceContextOrSamplingFlags.create(sampledV, debug);
+      if (traceIdString == null) {
+        if (debug) return TraceContextOrSamplingFlags.DEBUG;
+        if (sampledV != null) {
+          return sampledV
+              ? TraceContextOrSamplingFlags.SAMPLED
+              : TraceContextOrSamplingFlags.NOT_SAMPLED;
+        }
+      }
 
       // Try to parse the trace IDs into the context
       TraceContext.Builder result = TraceContext.newBuilder();

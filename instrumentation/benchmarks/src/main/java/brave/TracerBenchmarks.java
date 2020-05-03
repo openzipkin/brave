@@ -67,8 +67,7 @@ public class TracerBenchmarks {
   TraceContextOrSamplingFlags extractedBaggage = TraceContextOrSamplingFlags.create(contextBaggage);
   TraceContextOrSamplingFlags unsampledExtracted = TraceContextOrSamplingFlags.create(NOT_SAMPLED);
   TraceContextOrSamplingFlags unsampledExtractedBaggage =
-    TraceContextOrSamplingFlags.newBuilder()
-      .samplingFlags(NOT_SAMPLED)
+    TraceContextOrSamplingFlags.newBuilder(NOT_SAMPLED)
       .addExtra(contextBaggage.extra())
       .build();
 

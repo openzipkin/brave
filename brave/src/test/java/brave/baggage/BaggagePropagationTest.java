@@ -25,7 +25,6 @@ import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -162,10 +161,8 @@ public class BaggagePropagationTest {
     request.put(amznTraceId.name(), awsTraceId);
 
     TraceContextOrSamplingFlags extracted = extractor.extract(request);
-    assertThat(extracted.context().toBuilder().extra(Collections.emptyList()).build())
-      .isEqualTo(context);
-    assertThat(extracted.context().extra())
-      .hasSize(2);
+    assertThat(extracted.context()).isEqualTo(context);
+    assertThat(extracted.context().extra()).hasSize(2);
 
     assertThat(amznTraceId.getValue(extracted))
       .isEqualTo(awsTraceId);
@@ -177,10 +174,8 @@ public class BaggagePropagationTest {
     request.put(vcapRequestId.name(), uuid);
 
     TraceContextOrSamplingFlags extracted = extractor.extract(request);
-    assertThat(extracted.context().toBuilder().extra(Collections.emptyList()).build())
-      .isEqualTo(context);
-    assertThat(extracted.context().extra())
-      .hasSize(2);
+    assertThat(extracted.context()).isEqualTo(context);
+    assertThat(extracted.context().extra()).hasSize(2);
 
     assertThat(amznTraceId.getValue(extracted))
       .isEqualTo(awsTraceId);

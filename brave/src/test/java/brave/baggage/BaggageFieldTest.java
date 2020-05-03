@@ -51,7 +51,7 @@ public class BaggageFieldTest {
   TraceContext emptyContext = factory.decorate(context);
   TraceContextOrSamplingFlags extraction = TraceContextOrSamplingFlags.create(emptyContext);
   TraceContext requestIdContext =
-    context.toBuilder().extra(requestIdExtraction.extra()).build();
+    context.toBuilder().addExtra(requestIdExtraction.extra().get(0)).build();
 
   @Test public void internalStorage() {
     assertThat(BaggageField.create("foo").context)
