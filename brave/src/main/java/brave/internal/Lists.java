@@ -36,7 +36,7 @@ public final class Lists {
     if (list.size() == 1) return Collections.singletonList(list.get(0));
     if (isImmutable(list)) return list;
 
-    return concat(list, Collections.emptyList());
+    return Collections.unmodifiableList(new ArrayList<>(list));
   }
 
   static boolean isImmutable(List<?> extra) {

@@ -189,6 +189,12 @@ public class TraceContextOrSamplingFlagsTest {
     extracted = extracted.toBuilder().addExtra(2L).build();
     assertThat(extracted.context().extra()).containsExactly(1L, 2L);
     assertThat(extracted.extra()).isEmpty();
+
+
+    assertThatThrownBy(() -> extracted.context().extra().add(3L))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> extracted.extra().add(3L))
+        .isInstanceOf(UnsupportedOperationException.class);
   }
 
   @Test public void builder_addExtra_toExisting_samplingFlags() {
@@ -196,6 +202,9 @@ public class TraceContextOrSamplingFlagsTest {
 
     extracted = extracted.toBuilder().addExtra(2L).build();
     assertThat(extracted.extra()).containsExactly(1L, 2L);
+
+    assertThatThrownBy(() -> extracted.extra().add(3L))
+        .isInstanceOf(UnsupportedOperationException.class);
   }
 
   @Test public void builder_addExtra_toExisting_traceIdContext() {
@@ -203,6 +212,9 @@ public class TraceContextOrSamplingFlagsTest {
 
     extracted = extracted.toBuilder().addExtra(2L).build();
     assertThat(extracted.extra()).containsExactly(1L, 2L);
+
+    assertThatThrownBy(() -> extracted.extra().add(3L))
+        .isInstanceOf(UnsupportedOperationException.class);
   }
 
   @Test public void builder_addExtra_redundantIgnored_context() {
@@ -455,6 +467,11 @@ public class TraceContextOrSamplingFlagsTest {
     extracted = extracted.toBuilder().extra(asList(1L, 2L)).build();
     assertThat(extracted.context().extra()).containsExactly(1L, 2L);
     assertThat(extracted.extra()).isEmpty();
+
+    assertThatThrownBy(() -> extracted.context().extra().add(3L))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> extracted.extra().add(3L))
+        .isInstanceOf(UnsupportedOperationException.class);
   }
 
   @Deprecated @Test public void deprecated_builder_extraList_samplingFlags() {
@@ -462,6 +479,9 @@ public class TraceContextOrSamplingFlagsTest {
 
     extracted = extracted.toBuilder().extra(asList(1L, 2L)).build();
     assertThat(extracted.extra()).containsExactly(1L, 2L);
+
+    assertThatThrownBy(() -> extracted.extra().add(3L))
+        .isInstanceOf(UnsupportedOperationException.class);
   }
 
   @Deprecated @Test public void deprecated_builder_extraList_traceIdContext() {
@@ -469,6 +489,9 @@ public class TraceContextOrSamplingFlagsTest {
 
     extracted = extracted.toBuilder().extra(asList(1L, 2L)).build();
     assertThat(extracted.extra()).containsExactly(1L, 2L);
+
+    assertThatThrownBy(() -> extracted.extra().add(3L))
+        .isInstanceOf(UnsupportedOperationException.class);
   }
 
   @Deprecated @Test public void deprecated_builder_context() {
