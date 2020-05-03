@@ -43,6 +43,7 @@ import zipkin2.Annotation;
 import zipkin2.Endpoint;
 import zipkin2.reporter.Reporter;
 
+import static brave.propagation.SamplingFlags.EMPTY;
 import static brave.sampler.SamplerFunctions.deferDecision;
 import static brave.sampler.SamplerFunctions.neverSample;
 import static java.util.Arrays.asList;
@@ -466,14 +467,14 @@ public class TracerTest {
     Span parent = tracer.newTrace();
 
     try (SpanInScope ws = tracer.withSpanInScope(parent)) {
-      Span nextSpan = tracer.nextSpan(TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY));
+      Span nextSpan = tracer.nextSpan(TraceContextOrSamplingFlags.create(EMPTY));
       assertThat(nextSpan.context().parentId())
         .isEqualTo(parent.context().spanId());
     }
   }
 
   @Test public void nextSpan_extractedNothing_defaultsToMakeNewTrace() {
-    Span nextSpan = tracer.nextSpan(TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY));
+    Span nextSpan = tracer.nextSpan(TraceContextOrSamplingFlags.create(EMPTY));
 
     assertThat(nextSpan.context().parentId())
       .isNull();
@@ -490,7 +491,7 @@ public class TracerTest {
 
   @Test public void nextSpan_extractedExtra_newTrace() {
     TraceContextOrSamplingFlags extracted =
-      TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY).toBuilder().addExtra(1L).build();
+      TraceContextOrSamplingFlags.newBuilder(EMPTY).addExtra(1L).build();
 
     assertThat(tracer.nextSpan(extracted).context().extra())
       .containsExactly(1L);
@@ -500,7 +501,7 @@ public class TracerTest {
     Span parent = tracer.newTrace();
 
     TraceContextOrSamplingFlags extracted =
-      TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY).toBuilder().addExtra(1L).build();
+      TraceContextOrSamplingFlags.newBuilder(EMPTY).addExtra(1L).build();
 
     try (SpanInScope ws = tracer.withSpanInScope(parent)) {
       assertThat(tracer.nextSpan(extracted).context().extra())
@@ -510,13 +511,11 @@ public class TracerTest {
 
   @Test public void nextSpan_extractedExtra_appendsToChildOfCurrent() {
     // current parent already has extra stuff
-    Span parent = tracer.nextSpan(TraceContextOrSamplingFlags.newBuilder()
-      .samplingFlags(SamplingFlags.EMPTY)
+    Span parent = tracer.nextSpan(TraceContextOrSamplingFlags.newBuilder(EMPTY)
       .addExtra(1L)
       .build());
 
-    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder()
-      .samplingFlags(SamplingFlags.EMPTY)
+    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder(EMPTY)
       .addExtra(1F)
       .build();
 
@@ -536,8 +535,8 @@ public class TracerTest {
 
   @Test public void nextSpan_extractedTraceId_extra() {
     TraceIdContext traceIdContext = TraceIdContext.newBuilder().traceId(1L).build();
-    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(traceIdContext)
-      .toBuilder().addExtra(1L).build();
+    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder(traceIdContext)
+      .addExtra(1L).build();
 
     assertThat(tracer.nextSpan(extracted).context().extra())
       .containsExactly(1L);
@@ -552,8 +551,8 @@ public class TracerTest {
   }
 
   @Test public void nextSpan_extractedTraceContext_extra() {
-    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(context)
-      .toBuilder().addExtra(1L).build();
+    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder(context)
+      .addExtra(1L).build();
 
     assertThat(tracer.nextSpan(extracted).context().extra())
       .contains(1L);

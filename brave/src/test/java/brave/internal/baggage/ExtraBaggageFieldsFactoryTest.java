@@ -20,7 +20,6 @@ import brave.internal.InternalPropagation;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
-import brave.propagation.SamplingFlags;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -31,6 +30,7 @@ import java.util.Map.Entry;
 import org.junit.Test;
 import zipkin2.reporter.Reporter;
 
+import static brave.propagation.SamplingFlags.EMPTY;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -128,8 +128,7 @@ public class ExtraBaggageFieldsFactoryTest {
     try (Tracing tracing = withNoopSpanReporter()) {
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
       try {
-        TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder()
-          .samplingFlags(SamplingFlags.EMPTY)
+        TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder(EMPTY)
           .addExtra(factory.create())
           .build();
 
@@ -156,8 +155,7 @@ public class ExtraBaggageFieldsFactoryTest {
 
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
       try {
-        TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder()
-          .samplingFlags(SamplingFlags.EMPTY)
+        TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder(EMPTY)
           .addExtra(factory.create())
           .build();
 
@@ -183,9 +181,7 @@ public class ExtraBaggageFieldsFactoryTest {
       try {
         field1.updateValue(parent.context(), value1);
 
-        TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder()
-          .samplingFlags(SamplingFlags.EMPTY)
-          .build();
+        TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(EMPTY);
 
         // TODO didn't pass the reference from parent
         TraceContext context1 = tracing.tracer().nextSpan(extracted).context();

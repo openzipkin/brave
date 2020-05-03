@@ -34,9 +34,8 @@ public class BaggageFieldsTest {
     .sampled(true)
     .build();
   TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(context);
-  TraceContextOrSamplingFlags extractedTraceId = TraceContextOrSamplingFlags.newBuilder()
-    .traceIdContext(TraceIdContext.newBuilder().traceIdHigh(1L).traceId(2L).sampled(true).build())
-    .build();
+  TraceContextOrSamplingFlags extractedTraceId = TraceContextOrSamplingFlags.create(
+    TraceIdContext.newBuilder().traceIdHigh(1L).traceId(2L).sampled(true).build());
 
   @Test public void traceId() {
     assertThat(BaggageFields.TRACE_ID.getValue(context))

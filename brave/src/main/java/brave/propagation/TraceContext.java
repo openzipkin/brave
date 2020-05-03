@@ -18,6 +18,7 @@ import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.Platform;
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -30,6 +31,7 @@ import static brave.internal.InternalPropagation.FLAG_SAMPLED_LOCAL;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 import static brave.internal.InternalPropagation.FLAG_SHARED;
 import static brave.internal.Lists.ensureImmutable;
+import static brave.internal.Lists.ensureMutable;
 import static brave.propagation.TraceIdContext.toTraceIdString;
 
 /**
@@ -176,7 +178,7 @@ public final class TraceContext extends SamplingFlags {
    * when {@link Propagation.Factory#decorate(TraceContext)} is called.
    */
   public List<Object> extra() {
-    return extra;
+    return extraList;
   }
 
   /**
@@ -187,7 +189,7 @@ public final class TraceContext extends SamplingFlags {
    * this can break logic.
    */
   public @Nullable <T> T findExtra(Class<T> type) {
-    return findExtra(type, extra);
+    return findExtra(type, extraList);
   }
 
   public Builder toBuilder() {
@@ -259,7 +261,7 @@ public final class TraceContext extends SamplingFlags {
     long traceIdHigh, traceId, parentId, spanId;
     long localRootId; // intentionally only mutable by the copy constructor to control usage.
     int flags;
-    List<Object> extra = Collections.emptyList();
+    List<Object> extraList = Collections.emptyList();
 
     Builder(TraceContext context) { // no external implementations
       traceIdHigh = context.traceIdHigh;
@@ -268,7 +270,7 @@ public final class TraceContext extends SamplingFlags {
       parentId = context.parentId;
       spanId = context.spanId;
       flags = context.flags;
-      extra = context.extra;
+      extraList = context.extraList;
     }
 
     /** @see TraceContext#traceIdHigh() */
@@ -343,13 +345,18 @@ public final class TraceContext extends SamplingFlags {
       return this;
     }
 
-    /**
-     * Shares the input with the builder, replacing any current data in the builder.
-     *
-     * @see TraceContext#extra()
-     */
-    public final Builder extra(List<Object> extra) {
-      this.extra = extra;
+    /** @deprecated Since 5.12, use {@link #addExtra(Object)} */
+    @Deprecated public final Builder extra(List<Object> extraList) {
+      if (extraList == null) throw new NullPointerException("extraList == null");
+      for (Object extra : extraList) {
+        addExtra(extra);
+      }
+      return this;
+    }
+
+    /** @see #extra() */
+    public final Builder addExtra(Object extra) {
+      extraList = ensureExtraAdded(extraList, extra);
       return this;
     }
 
@@ -481,7 +488,7 @@ public final class TraceContext extends SamplingFlags {
       if (spanId == 0L) missing += " spanId";
       if (!"".equals(missing)) throw new IllegalArgumentException("Missing:" + missing);
       return new TraceContext(
-        flags, traceIdHigh, traceId, localRootId, parentId, spanId, ensureImmutable(extra)
+        flags, traceIdHigh, traceId, localRootId, parentId, spanId, ensureImmutable(extraList)
       );
     }
 
@@ -490,7 +497,7 @@ public final class TraceContext extends SamplingFlags {
   }
 
   TraceContext shallowCopy() {
-    return new TraceContext(flags, traceIdHigh, traceId, localRootId, parentId, spanId, extra);
+    return new TraceContext(flags, traceIdHigh, traceId, localRootId, parentId, spanId, extraList);
   }
 
   TraceContext withExtra(List<Object> extra) {
@@ -498,11 +505,11 @@ public final class TraceContext extends SamplingFlags {
   }
 
   TraceContext withFlags(int flags) {
-    return new TraceContext(flags, traceIdHigh, traceId, localRootId, parentId, spanId, extra);
+    return new TraceContext(flags, traceIdHigh, traceId, localRootId, parentId, spanId, extraList);
   }
 
   final long traceIdHigh, traceId, localRootId, parentId, spanId;
-  final List<Object> extra;
+  final List<Object> extraList;
 
   TraceContext(
     int flags,
@@ -511,7 +518,7 @@ public final class TraceContext extends SamplingFlags {
     long localRootId,
     long parentId,
     long spanId,
-    List<Object> extra
+    List<Object> extraList
   ) {
     super(flags);
     this.traceIdHigh = traceIdHigh;
@@ -519,7 +526,7 @@ public final class TraceContext extends SamplingFlags {
     this.localRootId = localRootId;
     this.parentId = parentId;
     this.spanId = spanId;
-    this.extra = extra;
+    this.extraList = extraList;
   }
 
   /**
@@ -564,6 +571,17 @@ public final class TraceContext extends SamplingFlags {
       hashCode = h;
     }
     return h;
+  }
+
+  static List<Object> ensureExtraAdded(List<Object> extraList, Object extra) {
+    if (extra == null) throw new NullPointerException("extra == null");
+    // ignore adding the same instance twice
+    for (int i = 0, length = extraList.size(); i < length; i++) {
+      if (extra == extraList.get(i)) return extraList;
+    }
+    extraList = ensureMutable(extraList);
+    extraList.add(extra);
+    return extraList;
   }
 
   static <T> T findExtra(Class<T> type, List<Object> extra) {

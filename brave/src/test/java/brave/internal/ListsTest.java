@@ -51,6 +51,15 @@ public class ListsTest {
       .isEqualTo("SingletonList");
   }
 
+  @Test public void ensureImmutable_convertsToUnmodifiableList() {
+    List<Long> list = new ArrayList<>();
+    list.add(1L);
+    list.add(2L);
+
+    assertThat(Lists.ensureImmutable(list).getClass().getSimpleName())
+      .startsWith("Unmodifiable");
+  }
+
   @Test public void ensureImmutable_returnsEmptyList() {
     List<Object> list = Collections.emptyList();
     assertThat(Lists.ensureImmutable(list))

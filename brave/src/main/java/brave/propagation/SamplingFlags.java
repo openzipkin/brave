@@ -110,13 +110,25 @@ public class SamplingFlags {
   }
 
   @Override public String toString() {
-    return "SamplingFlags(sampled="
-      + sampled()
-      + ", sampledLocal="
-      + sampledLocal()
-      + ", debug="
-      + debug()
-      + ")";
+    return toString(flags);
+  }
+
+  static String toString(int flags) {
+    StringBuilder result = new StringBuilder();
+    if ((flags & FLAG_DEBUG) == FLAG_DEBUG) {
+      result.append("DEBUG");
+    } else  if ((flags & FLAG_SAMPLED_SET) == FLAG_SAMPLED_SET) {
+      if ((flags & FLAG_SAMPLED) == FLAG_SAMPLED) {
+        result.append("SAMPLED_REMOTE");
+      } else {
+        result.append("NOT_SAMPLED_REMOTE");
+      }
+    }
+    if ((flags & FLAG_SAMPLED_LOCAL) == FLAG_SAMPLED_LOCAL) {
+      if (result.length() > 0) result.append('|');
+      result.append("SAMPLED_LOCAL");
+    }
+    return result.toString();
   }
 
   /** @deprecated prefer using constants. This will be removed in Brave v6 */
