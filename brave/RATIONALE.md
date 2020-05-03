@@ -228,6 +228,14 @@ implementations proposed in these papers are different to the implementation
 here, but conceptually the goal is the same: to propagate "arbitrary stuff"
 with a request.
 
+### `BaggageField.ValueUpdater`
+`BaggageField.ValueUpdater` is a functional interface that allows field
+updates, possibly to `null`. It returns a `boolean` to avoid synchronizing
+contexts when an update resulted in no change.
+
+Concretely, when an update returns `false`, we don't attempt to flush changes
+to a correlation context such as `MDC`.
+
 ### Context storage
 `FixedBaggageState` is copy-on-write context storage of `BaggageField` values.
 It is added only once to a request extraction or trace context regardless of
@@ -275,10 +283,6 @@ iteration performance of an array!
 propagation. There are some subtle points easy to miss about the design.
 
 * Decode is called before a trace context exists, so there's no `context` parameter.
-  * First successful decode returns `true`.
-    * This allows us to prioritize and leniently read, multiple header names.
-  * The `ValueUpdater` parameter allows us to hide or mute context storage
-    * We considered `Propagation.Setter`, but it doesn't return boolean
   * The `request` parameter allows secondary sampling to use `SamplerFunction` on inbound requests.
   * The `value` parameter could be a delimited string, or a plain value to set.
 
@@ -291,15 +295,6 @@ propagation. There are some subtle points easy to miss about the design.
       `spanId`
   * The `request` parameter allows secondary sampling to use `SamplerFunction`
     on outbound requests.
-
-#### Why does decode not accept a Map?
-When looking at the encode vs decode side, it might seem curious why they don't
-both implement `Map`. `Map` is definitely needed on the encode side, as it
-supports encoding all baggage in a single header. While decoding one header can
-result in multiple baggage fields, the code to accomplish that is as easy with
-a map as a functional interface. It is also easier for the baggage code to
-implement a function over `BaggageField.updateValue` vs try to implement the
-entire write side of `Map`.
 
 ### `Map` views over `BaggageField` values
 As `Map` is a standard type, it is a safer type to expose to consumers of all
