@@ -18,7 +18,6 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import org.assertj.core.api.AbstractMapAssert;
 import org.junit.Test;
 
 import static java.util.Arrays.asList;
@@ -277,43 +276,6 @@ public class UnsafeArrayMapTest {
     assertThat(map.keySet().iterator().hasNext()).isEqualTo(true);
     assertThat(map.values().iterator().hasNext()).isEqualTo(true);
     assertThat(map.entrySet().iterator().hasNext()).isEqualTo(true);
-  }
-
-  /**
-   * This is here just so we can use {@link AbstractMapAssert#containsEntry(Object, Object)} etc.
-   */
-  @Test public void entryTests() {
-    // same entry are equivalent
-    Entry<String, String> entry = new UnsafeArrayMap.Entry<>("1", "one");
-    assertThat(entry).isEqualTo(entry);
-    assertThat(entry).hasSameHashCodeAs(entry);
-
-    // different entry is equivalent
-    Entry<String, String> sameState = new UnsafeArrayMap.Entry<>("1", "one");
-    assertThat(entry).isEqualTo(sameState);
-    assertThat(entry).hasSameHashCodeAs(sameState);
-    assertThat(entry).hasToString("Entry{1=one}");
-
-    // different impl is equivalent
-    Entry<String, String> differentImpl = entry(entry.getKey(), entry.getValue());
-    assertThat(entry).isEqualTo(differentImpl);
-    assertThat(entry).isEqualTo(entry);
-
-    // different keys are not equivalent
-    Entry<String, String> differentKey = new UnsafeArrayMap.Entry<>("2", "one");
-    assertThat(entry).isNotEqualTo(differentKey);
-    assertThat(differentKey).isNotEqualTo(entry);
-    assertThat(entry.hashCode()).isNotEqualTo(differentKey);
-
-    // different values are not equivalent
-    Entry<String, String> differentValue = new UnsafeArrayMap.Entry<>("1", "2");
-    assertThat(entry).isNotEqualTo(differentValue);
-    assertThat(differentValue).isNotEqualTo(entry);
-    assertThat(entry.hashCode()).isNotEqualTo(differentValue);
-
-    assertThatThrownBy(()-> new UnsafeArrayMap.Entry<>("1", null))
-        .isInstanceOf(NullPointerException.class)
-        .hasMessage("value == null");
   }
 
   void assertBaseCase(Map<String, String> map) {
