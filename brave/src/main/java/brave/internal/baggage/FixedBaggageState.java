@@ -15,20 +15,29 @@ package brave.internal.baggage;
 
 import brave.baggage.BaggageField;
 import brave.internal.Nullable;
+import brave.internal.baggage.UnsafeArrayMap.Mapper;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import static brave.internal.baggage.ExtraBaggageFields.equal;
 
 /** Handles {@link BaggageField} value storage with a string array. */
-final class FixedBaggageState extends ExtraBaggageFields.State<String[]> {
-  final BaggageField[] fields;
-  final List<BaggageField> fixedFieldList;
+final class FixedBaggageState extends ExtraBaggageFields.State<Object[]> {
+  static final Mapper<Object, String> FIELD_TO_NAME = new Mapper<Object, String>() {
+    @Override public String map(Object input) {
+      return ((BaggageField) input).name();
+    }
+  };
+  static final UnsafeArrayMap.Builder<String, String> MAP_STRING_STRING_BUILDER =
+      UnsafeArrayMap.<String, String>newBuilder().mapKeys(FIELD_TO_NAME);
 
-  FixedBaggageState(FixedBaggageFieldsFactory factory, String[] parentState) {
+  FixedBaggageState(FixedBaggageFieldsFactory factory, Object[] parentState) {
     super(factory, parentState);
-    this.fields = factory.fields;
-    this.fixedFieldList = factory.fixedFieldList;
+  }
+
+  FixedBaggageFieldsFactory factory() {
+    return (FixedBaggageFieldsFactory) factory;
   }
 
   @Override public boolean isDynamic() {
@@ -36,40 +45,57 @@ final class FixedBaggageState extends ExtraBaggageFields.State<String[]> {
   }
 
   @Override public List<BaggageField> getAllFields() {
-    return fixedFieldList;
+    return factory().initialFieldList;
+  }
+
+  @Override Map<String, String> getAllValues() {
+    return MAP_STRING_STRING_BUILDER.build(state);
   }
 
   @Override @Nullable public String getValue(BaggageField field) {
-    int index = indexOf(field);
-    if (index == -1) return null;
-    return this.state[index];
+    if (field == null) return null;
+    Object[] state = this.state;
+    int i = indexOfField(state, field);
+    return i != -1 ? (String) state[i + 1] : null;
+  }
+
+  int indexOfField(Object[] state, BaggageField field) {
+    Integer index = factory().initialFieldIndices.get(field);
+    if (index != null) return index;
+    for (int i = factory().initialArrayLength; i < state.length; i += 2) {
+      if (state[i] == null) break; // end of keys
+      if (field.equals(state[i])) return i;
+    }
+    return -1;
   }
 
   @Override public boolean updateValue(BaggageField field, @Nullable String value) {
-    int index = indexOf(field);
-    if (index == -1) return false;
+    if (field == null) return false;
+
+    int i = indexOfField(state, field);
+    if (i == -1) return false; // not a fixed field
 
     synchronized (this) {
-      String[] state = this.state;
-      if (equal(value, state[index])) return false;
+      Object[] state = this.state;
+      if (equal(value, state[i + 1])) return false;
 
       state = Arrays.copyOf(state, state.length); // copy-on-write
-      state[index] = value;
+      state[i + 1] = value;
       this.state = state;
       return true;
     }
   }
 
   @Override void mergeStateKeepingOursOnConflict(ExtraBaggageFields toMerge) {
-    String[] theirState = ((FixedBaggageState) toMerge.internal).state;
+    Object[] theirState = ((FixedBaggageState) toMerge.internal).state;
 
-    if (state == ((FixedBaggageFieldsFactory) factory).initialState) {
+    if (state == (factory()).initialState) {
       state = theirState;
       return;
     }
 
     boolean dirty = false;
-    for (int i = 0; i < state.length; i++) {
+    for (int i = 1; i < state.length; i += 2) {
       if (state[i] != null) continue; // our state wins
       if (!dirty) {
         state = Arrays.copyOf(state, state.length); // copy-on-write
@@ -77,13 +103,6 @@ final class FixedBaggageState extends ExtraBaggageFields.State<String[]> {
       }
       state[i] = theirState[i];
     }
-  }
-
-  int indexOf(BaggageField field) {
-    for (int i = 0, length = fields.length; i < length; i++) {
-      if (fields[i].equals(field)) return i;
-    }
-    return -1;
   }
 
   // Implemented for equals when no baggage was extracted

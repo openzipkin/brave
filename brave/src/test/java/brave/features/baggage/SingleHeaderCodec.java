@@ -22,6 +22,7 @@ import brave.propagation.TraceContext;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -36,7 +37,7 @@ final class SingleHeaderCodec implements BaggageCodec {
 
   public static class Builder { // not final to backport ExtraFieldPropagation
     String keyName = "baggage";
-    final Set<BaggageField> blacklist = new LinkedHashSet<>();
+    final Set<String> blacklist = new LinkedHashSet<>();
 
     /** Overrides the {@link Propagation#keys() key name}. Defaults to "baggage". */
     public Builder keyName(String keyName) {
@@ -50,7 +51,7 @@ final class SingleHeaderCodec implements BaggageCodec {
      * those made with {@link BaggagePropagationConfig.SingleBaggageField#remote(BaggageField)}.
      */
     Builder blacklistField(BaggageField field) {
-      blacklist.add(field);
+      blacklist.add(field.name());
       return this;
     }
 
@@ -61,7 +62,7 @@ final class SingleHeaderCodec implements BaggageCodec {
   }
 
   final List<String> keyNames;
-  final Set<BaggageField> blacklist;
+  final Set<String> blacklist;
 
   SingleHeaderCodec(Builder builder) {
     keyNames = Collections.singletonList(builder.keyName);
@@ -86,15 +87,13 @@ final class SingleHeaderCodec implements BaggageCodec {
     return decoded;
   }
 
-  @Override public String encode(ExtraBaggageFields extra, TraceContext context, Object request) {
+  @Override public String encode(Map<String, String> values, TraceContext context, Object request) {
     StringBuilder result = new StringBuilder();
-    for (BaggageField field : extra.getAllFields()) {
-      if (blacklist.contains(field)) continue;
-      String value = extra.getValue(field);
-      if (value != null) {
-        if (result.length() > 0) result.append(',');
-        result.append(field.name()).append('=').append(value);
-      }
+    for (Map.Entry<String, String> entry : values.entrySet()) {
+      if (blacklist.contains(entry.getKey())) continue;
+
+      if (result.length() > 0) result.append(',');
+      result.append(entry.getKey()).append('=').append(entry.getValue());
     }
     return result.length() == 0 ? null : result.toString();
   }

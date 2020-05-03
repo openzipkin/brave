@@ -300,3 +300,66 @@ instrumentation vs 3rd party code).
 The other reason is that this is only used internally where we control the
 call sites. These call sites are already try/finally in nature, which addresses
 the concern we can control.
+
+## ExtraBaggageFields
+`FixedBaggageState` is copy-on-write context storage of `BaggageField` values.
+It is added only once to a request extraction or trace context regardless of
+the count of fields.
+
+Copy-on-write means a call to `BaggageField.updateValue` will replace its
+internal state with a copy of the prior (usually the parent). Until an update
+occurs (possibly never!), a constant `initialState` is shared by all trace
+contexts. In other words, if baggage is configured, but never used, the only
+overhead is one state wrapper (`FixedBaggageState`) per `TraceContext`. If
+only one context has a change in that local root, then only one copy of the
+state is made.
+
+Put short the copy-on-write aspect limits overhead under the assumption that
+changes to `BaggageField` values are infrequent. We believe this assumption
+holds due to practice. For example, common baggage are immutable after parsing
+a request, such as request ID, country code, device ID, etc.
+
+### Internal state is an `Object[]`
+`BaggageField` values are `String`, so to hold state means an association of
+some kind between `BaggageField` and a single `String` value. Updates to
+baggage are generally infrequent, sometimes never, and many times only when
+extracting headers from a request. As such, we choose pair-wise layout in an
+object array (`Object[]`).
+
+To remind, pair-wise means an association `{k1=v1, k2=v2}` is laid out in an
+array as `[k1, v1, k2, v2]`. The size of the association is `array.length/2`.
+Retrieving a value means finding the key's index and returning `array[i+1]`
+
+In our specific case, we add `null` values for all known fields. For example,
+if `BaggageConfiguration` is initialized with fields countryCode and deviceId,
+the initial state array is `[countryCode, null, deviceId, null]`
+
+Retaining fields even when `null` allows among many things, the following:
+* Queries for all potential field names (remote propagation)
+* Constant time index lookup of predefined fields.
+
+In practice, we use a constant `HashMap` to find the index of a predefined
+fields. This is how we achieve constant time index lookup, while also keeping
+iteration performance of an array!
+
+### `Map` views over `BaggageField` values
+As `Map` is a standard type, it is a safer type to expose to consumers of all
+baggage fields. We decided to use an unmodifiable `Map` instead of an internal
+type for use cases such as coalescing all baggage into a single header. This
+map must also hide local fields from propagation.
+
+#### Why not a standard `Map` type
+We considered copying the internal state array to an existing `Map` type, such
+as `LinkedHashMap`. However, doing so would add overhead regardless of it that
+`Map` was ever used, or if that map had a value for the field the consumer was
+interested in! Concretely, we'd pay to create the map, to copy the values in
+the array into it, and also pay implicit cost of iterator allocation for
+operations such as `entrySet()` even if the entry desired was not present. This
+holds present even extending `AbstractMap`, as most operations, even `get()`
+allocate iterators.
+
+#### `UnsafeArrayMap`
+We created `UnsafeArrayMap` as a view over our pair-wise internal state array.
+The implementation is very simple except that we have a redaction use case to
+address, which implies filtering keys. To address that, we keep a bitmap of all
+filtered keys and consider that when performing any scan operations.

@@ -37,6 +37,15 @@ final class DynamicBaggageState extends ExtraBaggageFields.State<Map<BaggageFiel
     return Collections.unmodifiableList(new ArrayList<>(state.keySet()));
   }
 
+  @Override Map<String, String> getAllValues() {
+    Map<String, String> result = new LinkedHashMap<>();
+    for (Map.Entry<BaggageField, String> entry: state.entrySet()) {
+      if (entry.getValue() == null) continue;
+      result.put(entry.getKey().name(), entry.getValue());
+    }
+    return result;
+  }
+
   @Override public String getValue(BaggageField field) {
     return state.get(field);
   }

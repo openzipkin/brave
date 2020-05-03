@@ -14,25 +14,38 @@
 package brave.internal.baggage;
 
 import brave.baggage.BaggageField;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public final class FixedBaggageFieldsFactory extends ExtraBaggageFieldsFactory {
-  public static ExtraBaggageFieldsFactory create(List<BaggageField> fields) {
+  public static ExtraBaggageFieldsFactory newFactory(List<BaggageField> fields) {
     if (fields == null) throw new NullPointerException("fields == null");
-    if (fields.isEmpty()) throw new NullPointerException("fields are empty");
-    return new FixedBaggageFieldsFactory(fields.toArray(new BaggageField[0]));
+    Map<BaggageField, Integer> initialFieldIndices = new LinkedHashMap<>();
+    Object[] array = new Object[fields.size() * 2];
+    int i = 0;
+    for (BaggageField field : fields) {
+      initialFieldIndices.put(field, i);
+      array[i] = field;
+      i += 2;
+    }
+    return new FixedBaggageFieldsFactory(array, initialFieldIndices);
   }
 
-  final BaggageField[] fields;
-  final String[] initialState;
-  final List<BaggageField> fixedFieldList;
+  final Object[] initialState;
+  final Map<BaggageField, Integer> initialFieldIndices;
+  final List<BaggageField> initialFieldList;
+  final int initialArrayLength;
 
-  public FixedBaggageFieldsFactory(BaggageField[] fields) {
-    this.fields = fields;
-    this.initialState = new String[fields.length];
-    this.fixedFieldList = Collections.unmodifiableList(Arrays.asList(fields));
+  FixedBaggageFieldsFactory(Object[] initialState, Map<BaggageField, Integer> initialFieldIndices) {
+    this.initialState =initialState;
+    this.initialFieldIndices = Collections.unmodifiableMap(initialFieldIndices);
+    this.initialFieldList =
+        Collections.unmodifiableList(new ArrayList<>(initialFieldIndices.keySet()));
+    this.initialArrayLength = initialState.length;
   }
 
   @Override public ExtraBaggageFields create() {
@@ -40,7 +53,7 @@ public final class FixedBaggageFieldsFactory extends ExtraBaggageFieldsFactory {
   }
 
   @Override public ExtraBaggageFields create(ExtraBaggageFields parent) {
-    String[] parentState =
+    Object[] parentState =
         parent != null ? ((FixedBaggageState) parent.internal).state : initialState;
     return new ExtraBaggageFields(new FixedBaggageState(this, parentState));
   }

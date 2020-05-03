@@ -16,14 +16,15 @@ package brave.baggage;
 import brave.Tracing;
 import brave.internal.InternalBaggage;
 import brave.internal.Nullable;
-import brave.internal.baggage.BaggageContext;
 import brave.internal.baggage.BaggageCodec;
+import brave.internal.baggage.BaggageContext;
 import brave.internal.baggage.ExtraBaggageContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Defines a trace context scoped field, usually but not always analogous to an HTTP header. Fields
@@ -108,36 +109,58 @@ public final class BaggageField {
     return new BaggageField(name, ExtraBaggageContext.get());
   }
 
-  /**
-   * Gets any fields in the in given trace context.
-   *
-   * @since 5.11
-   */
-  public static List<BaggageField> getAll(@Nullable TraceContext context) {
+  /** @deprecated Since 5.12 use {@link #getAllValues(TraceContext)} */
+  @Deprecated public static List<BaggageField> getAll(@Nullable TraceContext context) {
     if (context == null) return Collections.emptyList();
     return ExtraBaggageContext.getAllFields(context);
   }
 
-  /**
-   * Gets any fields in the in the {@linkplain TraceContext.Extractor#extract(Object) extracted
-   * result}.
-   *
-   * @since 5.11
-   */
-  public static List<BaggageField> getAll(TraceContextOrSamplingFlags extracted) {
+  /** @deprecated Since 5.12 use {@link #getAllValues(TraceContext)} */
+  @Deprecated public static List<BaggageField> getAll(TraceContextOrSamplingFlags extracted) {
     if (extracted == null) throw new NullPointerException("extracted == null");
     return ExtraBaggageContext.getAllFields(extracted);
   }
 
-  /**
-   * Like {@link #getAll(TraceContext)} except against the current trace context.
-   *
-   * <p>Prefer {@link #getAll(TraceContext)} if you have a reference to the trace context.
-   *
-   * @since 5.11
-   */
-  @Nullable public static List<BaggageField> getAll() {
+  /** @deprecated Since 5.12 use {@link #getAllValues(TraceContext)} */
+  @Deprecated @Nullable public static List<BaggageField> getAll() {
     return getAll(currentTraceContext());
+  }
+
+  /**
+   * Returns a map of all {@linkplain BaggageField#name() name} to {@linkplain
+   * BaggageField#getValue(TraceContext) non-{@code null} value} pairs in the {@linkplain
+   * TraceContext.Extractor#extract(Object) extracted result}.
+   *
+   * @see #getAllValues(TraceContextOrSamplingFlags)
+   * @since 5.12
+   */
+  public static Map<String, String> getAllValues(@Nullable TraceContext context) {
+    if (context == null) return Collections.emptyMap();
+    return ExtraBaggageContext.getAllValues(context);
+  }
+
+  /**
+   * Returns a map of all {@linkplain BaggageField#name() name} to {@linkplain
+   * BaggageField#getValue(TraceContextOrSamplingFlags) non-{@code null} value} pairs in the
+   * {@linkplain TraceContext.Extractor#extract(Object) extracted result}.
+   *
+   * @see #getAllValues(TraceContext)
+   * @since 5.12
+   */
+  public static Map<String, String> getAllValues(TraceContextOrSamplingFlags extracted) {
+    if (extracted == null) throw new NullPointerException("extracted == null");
+    return ExtraBaggageContext.getAllValues(extracted);
+  }
+
+  /**
+   * Like {@link #getAllValues(TraceContext)} except against the current trace context.
+   *
+   * <p>Prefer {@link #getAllValues(TraceContext)} if you have a reference to the trace context.
+   *
+   * @since 5.12
+   */
+  @Nullable public static Map<String, String> getAllValues() {
+    return getAllValues(currentTraceContext());
   }
 
   /**

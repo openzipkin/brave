@@ -18,6 +18,7 @@ import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Holds one or more baggage fields in {@link TraceContext#extra()} or {@link
@@ -51,6 +52,11 @@ public final class ExtraBaggageFields {
   /** The list of fields present, regardless of value. */
   public List<BaggageField> getAllFields() {
     return internal.getAllFields();
+  }
+
+  /** Returns a possibly empty map of all name to non-{@code null} values. */
+  public Map<String, String> getAllValues() {
+    return internal.getAllValues();
   }
 
   /**
@@ -93,8 +99,11 @@ public final class ExtraBaggageFields {
     /** @see ExtraBaggageFields#getAllFields() */
     abstract List<BaggageField> getAllFields();
 
+    /** @see ExtraBaggageFields#getAllValues() */
+    abstract Map<String, String> getAllValues();
+
     /** @see ExtraBaggageFields#getValue(BaggageField) */
-    abstract @Nullable String getValue(BaggageField field);
+    @Nullable  abstract String getValue(BaggageField field);
 
     /** @see ExtraBaggageFields#updateValue(BaggageField, String) */
     abstract boolean updateValue(BaggageField field, @Nullable String value);

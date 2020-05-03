@@ -22,6 +22,7 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public interface BaggageCodec {
   /**
@@ -40,7 +41,8 @@ public interface BaggageCodec {
       return false;
     }
 
-    @Override public String encode(ExtraBaggageFields extra, TraceContext context, Object request) {
+    @Override
+    public String encode(Map<String, String> values, TraceContext context, Object request) {
       return null;
     }
 
@@ -87,13 +89,12 @@ public interface BaggageCodec {
    * Encodes any state to a request value used by {@link Setter#put(Object, Object, String)}. When
    * not {@code null}, the value will be used for all {@link #injectKeyNames()}.
    *
-   * <p>Ex. When the {@code state} is a simple string, this will just be returned with no change.
-   * {@linkplain ExtraBaggageFields#isDynamic() Dynamic values} will need to perform some encoding,
-   * such as joining on equals and comma.
+   * <p>The {@code values} parameter is not thread safe. Only use this reference inside the encode
+   * method and do not store it as a field.
    *
-   * @param extra holds {@link BaggageField} state.
+   * @param values a mapping of all remote {@link BaggageField#name()} to non-{@code null} values
    * @return an input to {@link Setter#put(Object, Object, String)}
    * @see #injectKeyNames()
    */
-  @Nullable String encode(ExtraBaggageFields extra, TraceContext context, Object request);
+  @Nullable String encode(Map<String, String> values, TraceContext context, Object request);
 }

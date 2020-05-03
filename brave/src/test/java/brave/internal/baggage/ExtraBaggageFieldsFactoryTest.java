@@ -39,7 +39,7 @@ public class ExtraBaggageFieldsFactoryTest {
   BaggageField field2 = BaggageField.create("two");
   String value1 = "1", value2 = "2", value3 = "3";
 
-  ExtraBaggageFieldsFactory factory = FixedBaggageFieldsFactory.create(asList(field1, field2));
+  ExtraBaggageFieldsFactory factory = FixedBaggageFieldsFactory.newFactory(asList(field1, field2));
 
   Propagation.Factory propagationFactory = new Propagation.Factory() {
     @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {

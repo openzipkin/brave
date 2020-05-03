@@ -18,8 +18,6 @@ import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import io.opentracing.SpanContext;
 import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 class BraveSpanContext implements SpanContext {
@@ -45,14 +43,7 @@ class BraveSpanContext implements SpanContext {
 
   @Override public Iterable<Map.Entry<String, String>> baggageItems() {
     if (context == null) return Collections.emptyList();
-    List<BaggageField> fields = BaggageField.getAll(context);
-    if (fields.isEmpty()) return Collections.emptyList();
-    Map<String, String> baggage = new LinkedHashMap<>();
-    for (BaggageField field : fields) {
-      String value = field.getValue(context);
-      if (value != null) baggage.put(field.name(), value);
-    }
-    return baggage.entrySet();
+    return BaggageField.getAllValues(context).entrySet();
   }
 
   static final class Incomplete extends BraveSpanContext {
