@@ -372,7 +372,7 @@ public final class TraceContext extends SamplingFlags {
      * // Attempt to parse the trace ID or break out if unsuccessful for any reason
      * String traceIdString = getter.get(request, key);
      * if (!builder.parseTraceId(traceIdString, propagation.traceIdKey)) {
-     *   return EMPTY;
+     *   return TraceContextOrSamplingFlags.EMPTY;
      * }
      * }</pre>
      *

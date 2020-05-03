@@ -54,10 +54,10 @@ import static java.util.Collections.emptyList;
 //@Immutable
 public final class TraceContextOrSamplingFlags {
   public static final TraceContextOrSamplingFlags
-      EMPTY = new TraceContextOrSamplingFlags(3, SamplingFlags.EMPTY, emptyList()),
-      NOT_SAMPLED = new TraceContextOrSamplingFlags(3, SamplingFlags.NOT_SAMPLED, emptyList()),
-      SAMPLED = new TraceContextOrSamplingFlags(3, SamplingFlags.SAMPLED, emptyList()),
-      DEBUG = new TraceContextOrSamplingFlags(3, SamplingFlags.DEBUG, emptyList());
+    EMPTY = new TraceContextOrSamplingFlags(3, SamplingFlags.EMPTY, emptyList()),
+    NOT_SAMPLED = new TraceContextOrSamplingFlags(3, SamplingFlags.NOT_SAMPLED, emptyList()),
+    SAMPLED = new TraceContextOrSamplingFlags(3, SamplingFlags.SAMPLED, emptyList()),
+    DEBUG = new TraceContextOrSamplingFlags(3, SamplingFlags.DEBUG, emptyList());
 
   /**
    * Used to implement {@link Extractor#extract(Object)} for a format that can extract a complete
