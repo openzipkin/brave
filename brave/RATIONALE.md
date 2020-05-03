@@ -283,6 +283,9 @@ iteration performance of an array!
 propagation. There are some subtle points easy to miss about the design.
 
 * Decode is called before a trace context exists, so there's no `context` parameter.
+  * First successful decode returns `true`.
+    * This allows us to prioritize and leniently read, multiple header names.
+  * TODO: updater parameter type.. should we do a write-through map?
   * The `request` parameter allows secondary sampling to use `SamplerFunction` on inbound requests.
   * The `value` parameter could be a delimited string, or a plain value to set.
 
