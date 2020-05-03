@@ -102,6 +102,31 @@ import java.util.Map;
  */
 public final class BaggageField {
   /**
+   * Used to decouple baggage value updates from {@link TraceContext} or {@link
+   * TraceContextOrSamplingFlags} storage.
+   *
+   * @since 5.12
+   */
+  public interface ValueUpdater {
+    /** @since 5.12 */
+    ValueUpdater NOOP = new ValueUpdater() {
+      @Override public boolean updateValue(BaggageField field, String value) {
+        return false;
+      }
+    };
+
+    /**
+     * Updates the value of the field, or ignores if read-only or not configured.
+     *
+     * @param value {@code null} is an attempt to remove the value
+     * @return {@code true} if the underlying state changed
+     * @see #updateValue(TraceContext, String)
+     * @see #updateValue(TraceContextOrSamplingFlags, String)
+     * @since 5.12
+     */
+    boolean updateValue(BaggageField field, @Nullable String value);
+  }
+  /**
    * @param name See {@link #name()}
    * @since 5.11
    */
@@ -258,7 +283,7 @@ public final class BaggageField {
   }
 
   /**
-   * Updates the value of the this field, or ignores if read-only or not configured.
+   * Updates the value of this field, or ignores if read-only or not configured.
    *
    * @since 5.11
    */

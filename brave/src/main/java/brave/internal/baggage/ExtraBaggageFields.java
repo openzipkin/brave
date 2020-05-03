@@ -35,7 +35,7 @@ import java.util.Map;
 //  * hides generic type complexity
 //  * gives us a lock not exposed to users
 //  * allows findExtra(ExtraBaggageFields.class)
-public final class ExtraBaggageFields {
+public final class ExtraBaggageFields implements BaggageField.ValueUpdater {
   final State<?> internal; // compared by reference to ensure same configuration
   long traceId;
   long spanId; // guarded by stateHandler
@@ -69,16 +69,7 @@ public final class ExtraBaggageFields {
     return internal.getValue(field);
   }
 
-  /**
-   * Updates a state object to include a value change.
-   *
-   * @param field the field that was updated
-   * @param value {@code null} means remove the mapping to this field.
-   * @return true implies a a change in the underlying state
-   * @see BaggageField#updateValue(TraceContext, String)
-   * @see BaggageField#updateValue(TraceContextOrSamplingFlags, String)
-   */
-  public boolean updateValue(BaggageField field, @Nullable String value) {
+  @Override public boolean updateValue(BaggageField field, @Nullable String value) {
     return internal.updateValue(field, value);
   }
 

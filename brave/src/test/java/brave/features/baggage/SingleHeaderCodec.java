@@ -14,9 +14,9 @@
 package brave.features.baggage;
 
 import brave.baggage.BaggageField;
+import brave.baggage.BaggageField.ValueUpdater;
 import brave.baggage.BaggagePropagationConfig;
 import brave.internal.baggage.BaggageCodec;
-import brave.internal.baggage.ExtraBaggageFields;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import java.util.Collections;
@@ -77,12 +77,12 @@ final class SingleHeaderCodec implements BaggageCodec {
     return keyNames;
   }
 
-  @Override public boolean decode(ExtraBaggageFields extra, Object request, String value) {
-    assert extra.isDynamic() : "This is unlikely to work with fixed fields!";
+  @Override
+  public boolean decode(ValueUpdater valueUpdater, Object request, String value) {
     boolean decoded = false;
-    for (String entry : value.split(",")) {
+    for (String entry : value.split(",", -1)) {
       String[] keyValue = entry.split("=", 2);
-      if (extra.updateValue(BaggageField.create(keyValue[0]), keyValue[1])) decoded = true;
+      if (valueUpdater.updateValue(BaggageField.create(keyValue[0]), keyValue[1])) decoded = true;
     }
     return decoded;
   }
