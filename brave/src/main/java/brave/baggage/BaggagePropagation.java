@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static brave.internal.baggage.ExtraBaggageContext.findExtra;
@@ -170,11 +171,11 @@ public class BaggagePropagation<K> implements Propagation<K> {
   }
 
   /** Stored in {@link TraceContextOrSamplingFlags#extra()} or {@link TraceContext#extra()} */
-  static final class ExtractKeyNames {
-    final List<String> list;
+  static final class Extra {
+    final List<String> extractKeyNames;
 
-    ExtractKeyNames(List<String> list) {
-      this.list = list;
+    Extra(List<String> extractKeyNames) {
+      this.extractKeyNames = extractKeyNames;
     }
   }
 
@@ -182,15 +183,14 @@ public class BaggagePropagation<K> implements Propagation<K> {
     final Propagation.Factory delegate;
     final ExtraBaggageFieldsFactory extraFactory;
     final BaggagePropagationConfig[] configs;
-    @Nullable final ExtractKeyNames extractKeyNames;
+    @Nullable final Extra extra;
 
     Factory(FactoryBuilder factoryBuilder) {
       this.delegate = factoryBuilder.delegate;
 
       // Don't add another "extra" if there are only local fields
       List<String> extractKeyNames = Lists.ensureImmutable(factoryBuilder.extractKeyNames);
-      this.extractKeyNames =
-          !extractKeyNames.isEmpty() ? new ExtractKeyNames(extractKeyNames) : null;
+      this.extra = !extractKeyNames.isEmpty() ? new Extra(extractKeyNames) : null;
 
       // Associate baggage fields with any remote propagation keys
       this.configs = factoryBuilder.configs.toArray(new BaggagePropagationConfig[0]);
@@ -199,7 +199,8 @@ public class BaggagePropagation<K> implements Propagation<K> {
       boolean dynamic = false;
       for (BaggagePropagationConfig config : factoryBuilder.configs) {
         if (config instanceof SingleBaggageField) {
-          fields.add(((SingleBaggageField) config).field);
+          BaggageField field = ((SingleBaggageField) config).field;
+          fields.add(field);
         } else {
           dynamic = true;
         }
@@ -207,7 +208,7 @@ public class BaggagePropagation<K> implements Propagation<K> {
       if (dynamic) {
         this.extraFactory = DynamicBaggageFieldsFactory.create(fields);
       } else {
-        this.extraFactory = FixedBaggageFieldsFactory.create(fields);
+        this.extraFactory = FixedBaggageFieldsFactory.newFactory(fields);
       }
     }
 
@@ -301,11 +302,11 @@ public class BaggagePropagation<K> implements Propagation<K> {
   }
 
   static List<String> getAllKeyNames(TraceContextOrSamplingFlags extracted) {
-    List<Object> extra =
+    List<Object> extraList =
         extracted.context() != null ? extracted.context().extra() : extracted.extra();
-    ExtractKeyNames extractKeyNames = findExtra(ExtractKeyNames.class, extra);
-    if (extractKeyNames == null) return Collections.emptyList();
-    return extractKeyNames.list;
+    Extra extra = findExtra(Extra.class, extraList);
+    if (extra == null) return Collections.emptyList();
+    return extra.extractKeyNames;
   }
 
   @Override public <R> Injector<R> injector(Setter<R, K> setter) {
@@ -331,12 +332,14 @@ public class BaggagePropagation<K> implements Propagation<K> {
       delegate.inject(context, request);
       ExtraBaggageFields extra = context.findExtra(ExtraBaggageFields.class);
       if (extra == null) return;
-      inject(extra, context, request);
+      Map<String, String> values = extra.getAllValues();
+      if (values.isEmpty()) return;
+      inject(values, context, request);
     }
 
-    void inject(ExtraBaggageFields extra, TraceContext context, R request) {
+    void inject(Map<String, String> values, TraceContext context, R request) {
       for (BaggageCodecWithKeys<K> baggageCodecWithKeys : propagation.baggageCodecWithKeys) {
-        String value = baggageCodecWithKeys.baggageCodec.encode(extra, context, request);
+        String value = baggageCodecWithKeys.baggageCodec.encode(values, context, request);
         if (value == null) continue;
         for (K key : baggageCodecWithKeys.extractKeys) setter.put(request, key, value);
       }
@@ -361,7 +364,7 @@ public class BaggagePropagation<K> implements Propagation<K> {
       ExtraBaggageFields extra = propagation.factory.extraFactory.create();
       TraceContextOrSamplingFlags.Builder builder = result.toBuilder().addExtra(extra);
 
-      if (propagation.factory.extractKeyNames == null) return builder.build();
+      if (propagation.factory.extra == null) return builder.build();
 
       for (BaggageCodecWithKeys<K> baggageCodecWithKeys : propagation.baggageCodecWithKeys) {
         for (K key : baggageCodecWithKeys.extractKeys) { // possibly multiple keys when prefixes are in use
@@ -372,7 +375,7 @@ public class BaggagePropagation<K> implements Propagation<K> {
         }
       }
 
-      return builder.addExtra(propagation.factory.extractKeyNames).build();
+      return builder.addExtra(propagation.factory.extra).build();
     }
   }
 

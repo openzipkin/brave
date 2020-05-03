@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public final class SingleFieldBaggageCodec implements BaggageCodec {
   /** Only handles a single remote field. */
@@ -47,7 +48,7 @@ public final class SingleFieldBaggageCodec implements BaggageCodec {
     return extra.updateValue(field, value);
   }
 
-  @Override public String encode(ExtraBaggageFields extra, TraceContext context, Object request) {
-    return extra.getValue(field);
+  @Override public String encode(Map<String, String> values, TraceContext context, Object request) {
+    return field.getValue(context);
   }
 }

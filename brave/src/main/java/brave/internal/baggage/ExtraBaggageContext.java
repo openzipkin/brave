@@ -19,6 +19,7 @@ import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Most commonly, field storage is inside {@link TraceContext#extra()}.
@@ -39,6 +40,15 @@ public final class ExtraBaggageContext extends BaggageContext {
 
   public static List<BaggageField> getAllFields(TraceContext context) {
     return getAllFields(context.extra());
+  }
+
+  public static Map<String, String> getAllValues(TraceContextOrSamplingFlags extracted) {
+    if (extracted.context() != null) return getAllValues(extracted.context());
+    return getAllValues(extracted.extra());
+  }
+
+  public static Map<String, String> getAllValues(TraceContext context) {
+    return getAllValues(context.extra());
   }
 
   @Nullable
@@ -70,10 +80,16 @@ public final class ExtraBaggageContext extends BaggageContext {
     return updateValue(field, context.extra(), value);
   }
 
-  static List<BaggageField> getAllFields(List<Object> extra) {
-    ExtraBaggageFields fields = findExtra(ExtraBaggageFields.class, extra);
-    if (fields == null) return Collections.emptyList();
-    return fields.getAllFields();
+  static List<BaggageField> getAllFields(List<Object> extraList) {
+    ExtraBaggageFields extra = findExtra(ExtraBaggageFields.class, extraList);
+    if (extra == null) return Collections.emptyList();
+    return extra.getAllFields();
+  }
+
+  static Map<String, String> getAllValues(List<Object> extraList) {
+    ExtraBaggageFields extra = findExtra(ExtraBaggageFields.class, extraList);
+    if (extra == null) return Collections.emptyMap();
+    return extra.getAllValues();
   }
 
   @Nullable static BaggageField getFieldByName(List<BaggageField> fields, String name) {
@@ -88,15 +104,15 @@ public final class ExtraBaggageContext extends BaggageContext {
     return null;
   }
 
-  @Nullable static String getValue(BaggageField field, List<Object> extra) {
-    ExtraBaggageFields fields = findExtra(ExtraBaggageFields.class, extra);
-    if (fields == null) return null;
-    return fields.getValue(field);
+  @Nullable static String getValue(BaggageField field, List<Object> extraList) {
+    ExtraBaggageFields extra = findExtra(ExtraBaggageFields.class, extraList);
+    if (extra == null) return null;
+    return extra.getValue(field);
   }
 
-  static boolean updateValue(BaggageField field, List<Object> extra, @Nullable String value) {
-    ExtraBaggageFields fields = findExtra(ExtraBaggageFields.class, extra);
-    return fields != null && fields.updateValue(field, value);
+  static boolean updateValue(BaggageField field, List<Object> extraList, @Nullable String value) {
+    ExtraBaggageFields extra = findExtra(ExtraBaggageFields.class, extraList);
+    return extra != null && extra.updateValue(field, value);
   }
 
   public static <T> T findExtra(Class<T> type, List<Object> extra) {

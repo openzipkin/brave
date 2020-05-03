@@ -153,23 +153,18 @@ import static java.util.Collections.unmodifiableList;
 
   /** @deprecated Since 5.11 use {@link BaggageField#getAll()} */
   @Deprecated public static Map<String, String> getAll() {
-    return getAll(BaggageField.getAll(), null);
+    return BaggageField.getAllValues();
   }
 
   /** @deprecated Since 5.11 use {@link BaggageField#getAll(TraceContextOrSamplingFlags)} */
   @Deprecated public static Map<String, String> getAll(TraceContextOrSamplingFlags extracted) {
     if (extracted.context() != null) return getAll(extracted.context());
-    Map<String, String> result = new LinkedHashMap<>();
-    for (BaggageField field : BaggageField.getAll(extracted)) {
-      String value = field.getValue(extracted);
-      if (value != null) result.put(field.name(), value);
-    }
-    return result;
+    return BaggageField.getAllValues(extracted);
   }
 
   /** @deprecated Since 5.11 use {@link BaggageField#getAll(TraceContext)} */
   @Deprecated public static Map<String, String> getAll(TraceContext context) {
-    return getAll(BaggageField.getAll(context), context);
+    return BaggageField.getAllValues(context);
   }
 
   /**
@@ -263,14 +258,5 @@ import static java.util.Collections.unmodifiableList;
     fieldName = fieldName.toLowerCase(Locale.ROOT).trim();
     if (fieldName.isEmpty()) throw new IllegalArgumentException("fieldName is empty");
     return fieldName;
-  }
-
-  static Map<String, String> getAll(List<BaggageField> fields, @Nullable TraceContext context) {
-    Map<String, String> result = new LinkedHashMap<>();
-    for (BaggageField field : fields) {
-      String value = context != null ? field.getValue(context) : field.getValue();
-      if (value != null) result.put(field.name(), value);
-    }
-    return result;
   }
 }
