@@ -119,9 +119,9 @@ public class SamplingFlags {
       result.append("DEBUG");
     } else  if ((flags & FLAG_SAMPLED_SET) == FLAG_SAMPLED_SET) {
       if ((flags & FLAG_SAMPLED) == FLAG_SAMPLED) {
-        result.append("SAMPLED");
+        result.append("SAMPLED_REMOTE");
       } else {
-        result.append("NOT_SAMPLED");
+        result.append("NOT_SAMPLED_REMOTE");
       }
     }
     if ((flags & FLAG_SAMPLED_LOCAL) == FLAG_SAMPLED_LOCAL) {

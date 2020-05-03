@@ -319,24 +319,24 @@ public class TraceContextOrSamplingFlagsTest {
   @Test public void toString_context() {
     toString(
         () -> TraceContextOrSamplingFlags.create(context),
-        "Extracted{traceContext=000000000000014d/0000000000000001, samplingFlags=SAMPLED}",
-        "Extracted{traceContext=000000000000014d/0000000000000001, samplingFlags=SAMPLED, extra=[1, 2]}"
+        "Extracted{traceContext=000000000000014d/0000000000000001, samplingFlags=SAMPLED_REMOTE}",
+        "Extracted{traceContext=000000000000014d/0000000000000001, samplingFlags=SAMPLED_REMOTE, extra=[1, 2]}"
     );
   }
 
   @Test public void toString_samplingFlags() {
     toString(
         () -> TraceContextOrSamplingFlags.create(SAMPLED),
-        "Extracted{samplingFlags=SAMPLED}",
-        "Extracted{samplingFlags=SAMPLED, extra=[1, 2]}"
+        "Extracted{samplingFlags=SAMPLED_REMOTE}",
+        "Extracted{samplingFlags=SAMPLED_REMOTE, extra=[1, 2]}"
     );
   }
 
   @Test public void toString_traceIdContext() {
     toString(
         () -> TraceContextOrSamplingFlags.create(idContext),
-        "Extracted{traceIdContext=000000000000014d, samplingFlags=SAMPLED}",
-        "Extracted{traceIdContext=000000000000014d, samplingFlags=SAMPLED, extra=[1, 2]}"
+        "Extracted{traceIdContext=000000000000014d, samplingFlags=SAMPLED_REMOTE}",
+        "Extracted{traceIdContext=000000000000014d, samplingFlags=SAMPLED_REMOTE, extra=[1, 2]}"
     );
   }
 

@@ -263,8 +263,8 @@ public final class TraceContextOrSamplingFlags {
   }
 
   /**
-   * Non-empty when {@link #context()} is {@code null}: A list of additional state extracted from
-   * the request.
+   * Returns a list of additional state extracted from the request. Will be non-empty when {@link
+   * #context()} is {@code null}.
    *
    * @see TraceContext#extra()
    * @since 4.9
@@ -285,9 +285,11 @@ public final class TraceContextOrSamplingFlags {
 
   @Override public String toString() {
     List<Object> extra = effectiveExtra();
-    StringBuilder result = new StringBuilder();
-    result.append(value.getClass().getSimpleName()).append('=').append(value);
-    result.setCharAt(0, Character.toLowerCase(result.charAt(0))); // lowercase the first char
+    StringBuilder result = new StringBuilder("Extracted{");
+    String valueClass = value.getClass().getSimpleName();
+    // Lowercase first char of class name
+    result.append(Character.toLowerCase(valueClass.charAt(0)));
+    result.append(valueClass, 1, valueClass.length()).append('=').append(value);
     if (type != 3) {
       String flagsString = SamplingFlags.toString(value.flags);
       if (!flagsString.isEmpty()) result.append(", samplingFlags=").append(flagsString);
@@ -295,7 +297,7 @@ public final class TraceContextOrSamplingFlags {
     if (!extra.isEmpty()) result.append(", extra=").append(extra);
     // NOTE: it would be nice to rename this type, but it would cause a major Api break:
     // This is the result of Extractor::extract which is used in a lot of 3rd party code.
-    return result.insert(0, "Extracted{").append('}').toString();
+    return result.append('}').toString();
   }
 
   /** @deprecated Since 5.12, use constants defined on this type as needed. */
