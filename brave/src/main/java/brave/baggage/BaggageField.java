@@ -105,6 +105,10 @@ public final class BaggageField {
    * Used to decouple baggage value updates from {@link TraceContext} or {@link
    * TraceContextOrSamplingFlags} storage.
    *
+   * <p><em>Note</em>: This type is safe to implement as a lambda, or use as a method reference as it
+   * is effectively a {@code FunctionalInterface}. It isn't annotated as such because the project has
+   * a minimum Java language level 6.
+   *
    * @since 5.12
    */
   // @FunctionalInterface, except Java language level 6. Do not add methods as it will break API!

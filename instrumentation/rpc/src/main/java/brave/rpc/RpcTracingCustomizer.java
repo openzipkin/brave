@@ -40,6 +40,10 @@ import brave.sampler.SamplerFunction;
  *   <li><a href="https://docs.spring.io/spring/docs/current/spring-framework-reference/core.html#beans-autowired-annotation">Spring Autowired Collections</a></li>
  * </ul></pre>
  *
+ * <p><em>Note</em>: This type is safe to implement as a lambda, or use as a method reference as it
+ * is effectively a {@code FunctionalInterface}. It isn't annotated as such because the project has
+ * a minimum Java language level 6.
+ *
  * @see TracingCustomizer
  * @since 5.8
  */
