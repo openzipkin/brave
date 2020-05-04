@@ -277,27 +277,127 @@ In practice, we use a constant `HashMap` to find the index of a predefined
 fields. This is how we achieve constant time index lookup, while also keeping
 iteration performance of an array!
 
+### `BaggageField.ValueUpdater`
+`BaggageField.ValueUpdater` is a functional interface that allows field
+updates, possibly to `null`.
+
+It returns a `boolean` to inform callers an update was ignored, which can
+happen when the value didn't change or the field is disallowed. We use this to
+avoid unnecessary overhead when flushing changes to `MDC`.
+
+Being a functional interface, it is also safer to use when exposing state to
+outside callers. For example, we can provide a write view over a mutable array,
+and decouple that connection when decoding completes.
+
 ### Encoding and decoding baggage from remote fields
 
 `BaggageCodec` handles encoding and decoding of baggage fields for remote
 propagation. There are some subtle points easy to miss about the design.
 
-* Decode is called before a trace context exists, so there's no `context` parameter.
+* Decode is called before a trace context exists, hence no `context` parameter.
   * First successful decode returns `true`.
     * This allows us to prioritize and leniently read, multiple header names.
-  * TODO: updater parameter type.. should we do a write-through map?
-  * The `request` parameter allows secondary sampling to use `SamplerFunction` on inbound requests.
+  * The `ValueUpdater parameter allows us to safely collect values from
+    multiple contributors.
+  * The `request` parameter allows secondary sampling to use `SamplerFunction`
+    on inbound requests.
   * The `value` parameter could be a delimited string, or a plain value to set.
 
 * Encode is called only when a baggage exists and isn't all redacted
   * The `Map<String, String>` parameter allows implementations to encode all
     baggage in one string.
+    * Not `Map<BaggageField, String>` as we checked all implementations only
+      read the field name and non-null values.
   * The `context` parameter allows `BaggageField.getValue` in simple case (more
     efficient than map).
     * The `context` parameter also allows secondary sampling to write down the
       `spanId`
   * The `request` parameter allows secondary sampling to use `SamplerFunction`
     on outbound requests.
+
+#### Why not decode into a Map?
+When looking at the encode vs decode side, it might seem curious why they don't
+both implement `Map`. `Map` is helpful on the encode side. For example,
+implementing  single-header encoding, is easier this way.
+
+```java
+joiner = Joiner.on(',').withKeyValueSeparator('=');
+
+String encoded = joiner.join(baggageValues);
+```
+
+On the read side, the above iteration is stable because the underlying state is
+immutable. There's no chance of a concurrent modification or otherwise
+corrupting the encoded value. This applies even when the implementation ignores
+the documentation and holds a reference to the map after encoding.
+
+The reverse isn't true. Decoding has different concerns entirely.
+* `BaggageField` instances are typically constant, so updates should be a
+  function of `BaggageField`, not String.
+* There may be multiple decoders contributing to the same baggage state. It is
+  more safe underneath to not expose read-ops, such as iterators.
+* If we used a `Map`, implementations who ignore the documentation and hold a
+  reference to it could later corrupt the state, violating copy-on-write.
+  * defending against this is possible, but inefficient and distracting code.
+
+It is true that there are tools that can split common data structures into a
+map. To do the same with another function could seem annoying.
+
+Ex.
+```java
+splitter = Splitter.on(',').withKeyValueSeparator('=');
+
+values = splitter.split(encoded);
+```
+
+However, if you look above, this assumes the key type is `String`. Such an
+implementation would still need to loop over the result, possibly reuse an
+existing `BaggageField`, then .. copy into the correct map!
+
+Ex.
+```java
+splitter = Splitter.on(',').withKeyValueSeparator('=');
+
+...
+for (Entry<String, String> entry: splitter.split(encoded).entrySet()) {
+  BaggageField field = lookupOrCreateField(entry.getKey());
+  baggageValues.put(field, entry.getValue());
+}
+```
+
+When put in this view, it isn't much different than just using `ValueUpdater`.
+Ex.
+```java
+splitter = Splitter.on(',').withKeyValueSeparator('=');
+
+...
+for (Entry<String, String> entry: splitter.split(encoded).entrySet()) {
+  BaggageField field = lookupOrCreateField(entry.getKey());
+  valueUpdater.updateValue(field, entry.getValue());
+}
+```
+
+A closing point is that the above splitter example is contrived, mainly to show
+a design weakness in not choosing map.
+
+In practice, encoding formats typically have rules that splitters libraries
+weren't written for. These include limits, character set constraints, etc.
+Decoding a format is always harder than encoding due to rules about how to
+handle bad data. In general, it is better to assume a format-specific encoder
+will be needed.
+
+Moreover, decoding through a map is inherently inefficient vs index-based
+approaches which do not imply instantiating intermediate objects, nor entry set
+views, nor iterators.
+
+In summary, when written well, there's no notable difference in code that
+decodes a joined format into a `Map` vs into a `ValueUpdater`. Since the latter
+is less complex to handle and less error-prone, we use this type as the input
+to the decode function.
+
+3rd parties who strongly desire use of an intermediate map can still do that.
+Just when complete, they should use `map.forEach(valueUpdater::updateValue)` or
+similar to transfer its contents into the pending baggage state.
 
 ### `Map` views over `BaggageField` values
 As `Map` is a standard type, it is a safer type to expose to consumers of all
