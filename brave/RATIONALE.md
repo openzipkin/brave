@@ -380,7 +380,7 @@ for (Entry<String, String> entry: splitter.split(encoded).entrySet()) {
 A closing point is that the above splitter example is contrived, mainly to show
 a design weakness in not choosing map.
 
-In practice, encoding formats typically have rules that splitters libraries
+In practice, encoding formats typically have rules that splitter libraries
 weren't written for. These include limits, character set constraints, etc.
 Decoding a format is always harder than encoding due to rules about how to
 handle bad data. In general, it is better to assume a format-specific encoder
