@@ -44,8 +44,9 @@ public final class SingleFieldBaggageCodec implements BaggageCodec {
     return keyNamesList;
   }
 
-  @Override public boolean decode(ExtraBaggageFields extra, Object request, String value) {
-    return extra.updateValue(field, value);
+  @Override
+  public boolean decode(BaggageField.ValueUpdater valueUpdater, Object request, String value) {
+    return valueUpdater.updateValue(field, value);
   }
 
   @Override public String encode(Map<String, String> values, TraceContext context, Object request) {

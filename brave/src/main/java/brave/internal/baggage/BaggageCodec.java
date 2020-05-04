@@ -14,6 +14,7 @@
 package brave.internal.baggage;
 
 import brave.baggage.BaggageField;
+import brave.baggage.BaggageField.ValueUpdater;
 import brave.internal.Nullable;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.Propagation.Setter;
@@ -37,7 +38,8 @@ public interface BaggageCodec {
       return Collections.emptyList();
     }
 
-    @Override public boolean decode(ExtraBaggageFields extra, Object request, String value) {
+    @Override
+    public boolean decode(ValueUpdater valueUpdater, Object request, String value) {
       return false;
     }
 
@@ -78,12 +80,12 @@ public interface BaggageCodec {
    * {@linkplain ExtraBaggageFields#isDynamic() dynamic values} will need to perform some decoding,
    * such as splitting on comma and equals.
    *
-   * @param extra holds {@link BaggageField} state.
+   * @param valueUpdater used to assign {@link BaggageField} values.
    * @param request the parameter of {@link Extractor#extract(Object)}
    * @param value a non-{@code null} result of {@link Getter#get(Object, Object)}
    * @see #extractKeyNames()
    */
-  boolean decode(ExtraBaggageFields extra, Object request, String value);
+  boolean decode(ValueUpdater valueUpdater, Object request, String value);
 
   /**
    * Encodes any state to a request value used by {@link Setter#put(Object, Object, String)}. When

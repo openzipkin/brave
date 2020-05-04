@@ -23,10 +23,7 @@ package brave;
  *
  * @see Tag
  */
-// Note: this is exposed to users. We cannot add methods to this until Java 8 is required or we do a
-// major version bump
-// BRAVE6: add isNoop to avoid instanceof checks
-// BRAVE6: add error to support error handling
+// Java language level 6. Do not add methods as it will break API!
 public interface SpanCustomizer {
   /**
    * Sets the string name for the logical operation this span represents.

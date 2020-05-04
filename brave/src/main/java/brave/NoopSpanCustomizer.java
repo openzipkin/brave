@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,7 +17,7 @@ package brave;
  * Performs no operations as the span represented by this is not sampled to report to the tracing
  * system.
  */
-// Preferred to a constant NOOP in SpanCustomizer as the latter ends up in a hierachy including Span
+// Preferred to a constant NOOP in SpanCustomizer as the latter ends up in a hierarchy with Span
 public enum NoopSpanCustomizer implements SpanCustomizer {
   INSTANCE;
 
@@ -31,5 +31,9 @@ public enum NoopSpanCustomizer implements SpanCustomizer {
 
   @Override public SpanCustomizer annotate(String value) {
     return this;
+  }
+
+  @Override public String toString() {
+    return "NoopSpanCustomizer{}";
   }
 }
