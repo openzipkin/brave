@@ -15,15 +15,11 @@ package brave.features.baggage;
 
 import brave.baggage.BaggageField;
 import brave.baggage.BaggageField.ValueUpdater;
-import brave.baggage.BaggagePropagationConfig;
 import brave.internal.baggage.BaggageCodec;
-import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * This is a non-complete codec for the w3c (soon to be renamed to "baggage") header.
@@ -31,43 +27,14 @@ import java.util.Set;
  * <p>See https://github.com/w3c/correlation-context/blob/master/correlation_context/HTTP_HEADER_FORMAT.md
  */
 final class SingleHeaderCodec implements BaggageCodec {
-  public static Builder newBuilder() {
-    return new Builder();
+  static final SingleHeaderCodec INSTANCE = new SingleHeaderCodec();
+
+  static BaggageCodec get() {
+    return INSTANCE;
   }
 
-  public static class Builder { // not final to backport ExtraFieldPropagation
-    String keyName = "baggage";
-    final Set<String> blacklist = new LinkedHashSet<>();
-
-    /** Overrides the {@link Propagation#keys() key name}. Defaults to "baggage". */
-    public Builder keyName(String keyName) {
-      if (keyName == null) throw new NullPointerException("keyName == null");
-      this.keyName = keyName;
-      return this;
-    }
-
-    /**
-     * Exclude a specific field from this format. By default, all fields will be serialized, even
-     * those made with {@link BaggagePropagationConfig.SingleBaggageField#remote(BaggageField)}.
-     */
-    Builder blacklistField(BaggageField field) {
-      blacklist.add(field.name());
-      return this;
-    }
-
-    /** Returns the keyName if there are no fields to propagate. */
-    public BaggageCodec build() {
-      return new SingleHeaderCodec(this);
-    }
-  }
-
-  final List<String> keyNames;
-  final Set<String> blacklist;
-
-  SingleHeaderCodec(Builder builder) {
-    keyNames = Collections.singletonList(builder.keyName);
-    blacklist = new LinkedHashSet<>(builder.blacklist);
-  }
+  final String keyName = "baggage";
+  final List<String> keyNames = Collections.singletonList(keyName);
 
   @Override public List<String> extractKeyNames() {
     return keyNames;
@@ -77,8 +44,7 @@ final class SingleHeaderCodec implements BaggageCodec {
     return keyNames;
   }
 
-  @Override
-  public boolean decode(ValueUpdater valueUpdater, Object request, String value) {
+  @Override public boolean decode(ValueUpdater valueUpdater, Object request, String value) {
     boolean decoded = false;
     for (String entry : value.split(",", -1)) {
       String[] keyValue = entry.split("=", 2);
@@ -90,8 +56,6 @@ final class SingleHeaderCodec implements BaggageCodec {
   @Override public String encode(Map<String, String> values, TraceContext context, Object request) {
     StringBuilder result = new StringBuilder();
     for (Map.Entry<String, String> entry : values.entrySet()) {
-      if (blacklist.contains(entry.getKey())) continue;
-
       if (result.length() > 0) result.append(',');
       result.append(entry.getKey()).append('=').append(entry.getValue());
     }

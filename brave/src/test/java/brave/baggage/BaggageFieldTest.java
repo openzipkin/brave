@@ -17,7 +17,7 @@ import brave.Tracing;
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.internal.baggage.BaggageContext;
 import brave.internal.baggage.ExtraBaggageContext;
-import brave.internal.baggage.ExtraBaggageFields;
+import brave.internal.baggage.BaggageFields;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.Propagation;
@@ -283,7 +283,7 @@ public class BaggageFieldTest {
 
   /**
    * Ensures only lower-case name comparison is used in equals and hashCode. This allows {@link
-   * BaggagePropagation} to deduplicate and {@link ExtraBaggageFields} to use these as keys.
+   * BaggagePropagation} to deduplicate and {@link BaggageFields} to use these as keys.
    */
   @Test public void equalsAndHashCode() {
     // same field are equivalent

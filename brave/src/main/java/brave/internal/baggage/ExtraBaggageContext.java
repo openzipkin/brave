@@ -24,7 +24,7 @@ import java.util.Map;
 /**
  * Most commonly, field storage is inside {@link TraceContext#extra()}.
  *
- * @see ExtraBaggageFields
+ * @see BaggageFields
  */
 public final class ExtraBaggageContext extends BaggageContext {
   static final ExtraBaggageContext INSTANCE = new ExtraBaggageContext();
@@ -81,13 +81,13 @@ public final class ExtraBaggageContext extends BaggageContext {
   }
 
   static List<BaggageField> getAllFields(List<Object> extraList) {
-    ExtraBaggageFields extra = findExtra(ExtraBaggageFields.class, extraList);
+    BaggageFields extra = findExtra(BaggageFields.class, extraList);
     if (extra == null) return Collections.emptyList();
     return extra.getAllFields();
   }
 
   static Map<String, String> getAllValues(List<Object> extraList) {
-    ExtraBaggageFields extra = findExtra(ExtraBaggageFields.class, extraList);
+    BaggageFields extra = findExtra(BaggageFields.class, extraList);
     if (extra == null) return Collections.emptyMap();
     return extra.getAllValues();
   }
@@ -105,13 +105,13 @@ public final class ExtraBaggageContext extends BaggageContext {
   }
 
   @Nullable static String getValue(BaggageField field, List<Object> extraList) {
-    ExtraBaggageFields extra = findExtra(ExtraBaggageFields.class, extraList);
+    BaggageFields extra = findExtra(BaggageFields.class, extraList);
     if (extra == null) return null;
     return extra.getValue(field);
   }
 
   static boolean updateValue(BaggageField field, List<Object> extraList, @Nullable String value) {
-    ExtraBaggageFields extra = findExtra(ExtraBaggageFields.class, extraList);
+    BaggageFields extra = findExtra(BaggageFields.class, extraList);
     return extra != null && extra.updateValue(field, value);
   }
 

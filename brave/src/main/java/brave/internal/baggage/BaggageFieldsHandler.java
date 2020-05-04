@@ -14,15 +14,17 @@
 package brave.internal.baggage;
 
 import brave.baggage.BaggageField;
+import brave.internal.Nullable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class FixedBaggageFieldsFactory extends ExtraBaggageFieldsFactory {
-  public static ExtraBaggageFieldsFactory newFactory(List<BaggageField> fields) {
+public final class BaggageFieldsHandler extends ExtraHandler<BaggageFields, BaggageFieldsHandler> {
+  public static final int MAX_DYNAMIC_FIELDS = Long.SIZE;
+
+  public static BaggageFieldsHandler create(List<BaggageField> fields, boolean dynamic) {
     if (fields == null) throw new NullPointerException("fields == null");
     Map<BaggageField, Integer> initialFieldIndices = new LinkedHashMap<>();
     Object[] array = new Object[fields.size() * 2];
@@ -32,29 +34,25 @@ public final class FixedBaggageFieldsFactory extends ExtraBaggageFieldsFactory {
       array[i] = field;
       i += 2;
     }
-    return new FixedBaggageFieldsFactory(array, initialFieldIndices);
+    return new BaggageFieldsHandler(array, initialFieldIndices, dynamic);
   }
 
-  final Object[] initialState;
   final Map<BaggageField, Integer> initialFieldIndices;
   final List<BaggageField> initialFieldList;
+  final boolean isDynamic;
   final int initialArrayLength;
 
-  FixedBaggageFieldsFactory(Object[] initialState, Map<BaggageField, Integer> initialFieldIndices) {
-    this.initialState =initialState;
+  BaggageFieldsHandler(
+      Object[] initialState, Map<BaggageField, Integer> initialFieldIndices, boolean isDynamic) {
+    super(initialState);
     this.initialFieldIndices = Collections.unmodifiableMap(initialFieldIndices);
     this.initialFieldList =
         Collections.unmodifiableList(new ArrayList<>(initialFieldIndices.keySet()));
+    this.isDynamic = isDynamic;
     this.initialArrayLength = initialState.length;
   }
 
-  @Override public ExtraBaggageFields create() {
-    return new ExtraBaggageFields(new FixedBaggageState(this, initialState));
-  }
-
-  @Override public ExtraBaggageFields create(ExtraBaggageFields parent) {
-    Object[] parentState =
-        parent != null ? ((FixedBaggageState) parent.internal).state : initialState;
-    return new ExtraBaggageFields(new FixedBaggageState(this, parentState));
+  @Override protected BaggageFields newExtra(@Nullable Object request) {
+    return new BaggageFields(this);
   }
 }

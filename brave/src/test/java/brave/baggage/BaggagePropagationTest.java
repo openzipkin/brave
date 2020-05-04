@@ -15,7 +15,7 @@ package brave.baggage;
 
 import brave.baggage.BaggagePropagation.Extra;
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
-import brave.internal.baggage.ExtraBaggageFields;
+import brave.internal.baggage.BaggageFields;
 import brave.propagation.B3Propagation;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.B3SinglePropagation;
@@ -113,7 +113,7 @@ public class BaggagePropagationTest {
   }
 
   @Test public void inject_baggage() {
-    ExtraBaggageFields baggage = context.findExtra(ExtraBaggageFields.class);
+    BaggageFields baggage = context.findExtra(BaggageFields.class);
     baggage.updateValue(vcapRequestId, uuid);
 
     injector.inject(context, request);
@@ -122,7 +122,7 @@ public class BaggagePropagationTest {
   }
 
   @Test public void inject_two() {
-    ExtraBaggageFields baggage = context.findExtra(ExtraBaggageFields.class);
+    BaggageFields baggage = context.findExtra(BaggageFields.class);
     baggage.updateValue(vcapRequestId, uuid);
     baggage.updateValue(amznTraceId, awsTraceId);
 

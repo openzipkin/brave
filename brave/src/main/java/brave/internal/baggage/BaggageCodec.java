@@ -77,7 +77,7 @@ public interface BaggageCodec {
    * Decodes any field state from an extracted value or returns {@code null} if there were none.
    *
    * <p>Ex. When the state is a simple string, this will just use the request value directly.
-   * {@linkplain ExtraBaggageFields#isDynamic() dynamic values} will need to perform some decoding,
+   * {@linkplain BaggageFields#isDynamic() dynamic values} will need to perform some decoding,
    * such as splitting on comma and equals.
    *
    * @param valueUpdater used to assign {@link BaggageField} values.

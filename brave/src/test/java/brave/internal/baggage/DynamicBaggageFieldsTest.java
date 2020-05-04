@@ -13,16 +13,14 @@
  */
 package brave.internal.baggage;
 
-import brave.baggage.BaggageField;
-import java.util.Map;
 import org.junit.Test;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class DynamicBaggageFieldsTest extends ExtraBaggageFieldsTest {
-  @Override ExtraBaggageFieldsFactory newFactory() {
-    return DynamicBaggageFieldsFactory.create(asList(field1));
+public class DynamicBaggageFieldsTest extends BaggageFieldsTest {
+  @Override BaggageFieldsHandler newHandler() {
+    return BaggageFieldsHandler.create(asList(field1), true);
   }
 
   @Test public void getAllFields_areNotConstant() {
@@ -40,15 +38,5 @@ public class DynamicBaggageFieldsTest extends ExtraBaggageFieldsTest {
     extra.updateValue(field2, null);
     // dynamic fields are also not pruned from the list
     assertThat(extra.getAllFields()).containsOnly(field1, field2, field3);
-  }
-
-  @Override boolean isStateEmpty(Object state) {
-    Map<BaggageField, String> map = (Map<BaggageField, String>) state;
-    assertThat(map).isNotNull();
-    // we retain the key names for clearing headers.. hence we have to check values
-    for (String value : map.values()) {
-      if (value != null) return false;
-    }
-    return true;
   }
 }
