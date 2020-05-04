@@ -297,7 +297,7 @@ propagation. There are some subtle points easy to miss about the design.
 * Decode is called before a trace context exists, hence no `context` parameter.
   * First successful decode returns `true`.
     * This allows us to prioritize and leniently read, multiple header names.
-  * The `ValueUpdater parameter allows us to safely collect values from
+  * The `ValueUpdater` parameter allows us to safely collect values from
     multiple contributors.
   * The `request` parameter allows secondary sampling to use `SamplerFunction`
     on inbound requests.
