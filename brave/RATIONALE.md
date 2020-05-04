@@ -383,7 +383,7 @@ a design weakness in not choosing map.
 In practice, encoding formats typically have rules that splitter libraries
 weren't written for. These include limits, character set constraints, etc.
 Decoding a format is always harder than encoding due to rules about how to
-handle bad data. In general, it is better to assume a format-specific encoder
+handle bad data. In general, it is better to assume a format-specific decoder
 will be needed.
 
 Moreover, decoding through a map is inherently inefficient vs index-based
