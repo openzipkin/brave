@@ -17,10 +17,8 @@ import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.internal.Lists;
 import brave.internal.Nullable;
 import brave.internal.baggage.BaggageCodec;
-import brave.internal.baggage.DynamicBaggageFieldsFactory;
-import brave.internal.baggage.ExtraBaggageFields;
-import brave.internal.baggage.ExtraBaggageFieldsFactory;
-import brave.internal.baggage.FixedBaggageFieldsFactory;
+import brave.internal.baggage.BaggageFields;
+import brave.internal.baggage.BaggageFieldsHandler;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
@@ -181,8 +179,9 @@ public class BaggagePropagation<K> implements Propagation<K> {
 
   static final class Factory extends Propagation.Factory {
     final Propagation.Factory delegate;
-    final ExtraBaggageFieldsFactory extraFactory;
+    final BaggageFieldsHandler baggageFieldsHandler;
     final BaggagePropagationConfig[] configs;
+    final String[] localFieldNames;
     @Nullable final Extra extra;
 
     Factory(FactoryBuilder factoryBuilder) {
@@ -196,20 +195,19 @@ public class BaggagePropagation<K> implements Propagation<K> {
       this.configs = factoryBuilder.configs.toArray(new BaggagePropagationConfig[0]);
 
       List<BaggageField> fields = new ArrayList<>();
+      Set<String> localFieldNames = new LinkedHashSet<>();
       boolean dynamic = false;
       for (BaggagePropagationConfig config : factoryBuilder.configs) {
         if (config instanceof SingleBaggageField) {
           BaggageField field = ((SingleBaggageField) config).field;
           fields.add(field);
+          if (config.baggageCodec == BaggageCodec.NOOP) localFieldNames.add(field.name());
         } else {
           dynamic = true;
         }
       }
-      if (dynamic) {
-        this.extraFactory = DynamicBaggageFieldsFactory.create(fields);
-      } else {
-        this.extraFactory = FixedBaggageFieldsFactory.newFactory(fields);
-      }
+      this.baggageFieldsHandler = BaggageFieldsHandler.create(fields, dynamic);
+      this.localFieldNames = localFieldNames.toArray(new String[0]);
     }
 
     @Override public BaggagePropagation<String> get() {
@@ -230,7 +228,7 @@ public class BaggagePropagation<K> implements Propagation<K> {
 
     @Override public TraceContext decorate(TraceContext context) {
       TraceContext result = delegate.decorate(context);
-      return extraFactory.decorate(result);
+      return baggageFieldsHandler.ensureContainsExtra(result);
     }
 
     @Override public boolean supportsJoin() {
@@ -330,14 +328,12 @@ public class BaggagePropagation<K> implements Propagation<K> {
 
     @Override public void inject(TraceContext context, R request) {
       delegate.inject(context, request);
-      ExtraBaggageFields extra = context.findExtra(ExtraBaggageFields.class);
+      BaggageFields extra = context.findExtra(BaggageFields.class);
       if (extra == null) return;
-      Map<String, String> values = extra.getAllValues();
+      Map<String, String> values =
+          extra.toMapFilteringFieldNames(propagation.factory.localFieldNames);
       if (values.isEmpty()) return;
-      inject(values, context, request);
-    }
 
-    void inject(Map<String, String> values, TraceContext context, R request) {
       for (BaggageCodecWithKeys<K> baggageCodecWithKeys : propagation.baggageCodecWithKeys) {
         String value = baggageCodecWithKeys.baggageCodec.encode(values, context, request);
         if (value == null) continue;
@@ -360,9 +356,8 @@ public class BaggagePropagation<K> implements Propagation<K> {
     @Override public TraceContextOrSamplingFlags extract(R request) {
       TraceContextOrSamplingFlags result = delegate.extract(request);
 
-      // Always allocate as fields could be local-only or have values added late
-      ExtraBaggageFields extra = propagation.factory.extraFactory.create();
-      TraceContextOrSamplingFlags.Builder builder = result.toBuilder().addExtra(extra);
+      TraceContextOrSamplingFlags.Builder builder = result.toBuilder();
+      BaggageFields extra = propagation.factory.baggageFieldsHandler.provisionExtra(builder, request);
 
       if (propagation.factory.extra == null) return builder.build();
 

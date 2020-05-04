@@ -16,17 +16,13 @@ package brave.internal.baggage;
 import brave.ScopedSpan;
 import brave.Tracing;
 import brave.baggage.BaggageField;
-import brave.internal.InternalPropagation;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import org.junit.Test;
 import zipkin2.reporter.Reporter;
 
@@ -34,12 +30,14 @@ import static brave.propagation.SamplingFlags.EMPTY;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ExtraBaggageFieldsFactoryTest {
+public class ExtraHandlerTest {
   BaggageField field1 = BaggageField.create("one");
   BaggageField field2 = BaggageField.create("two");
   String value1 = "1", value2 = "2", value3 = "3";
 
-  ExtraBaggageFieldsFactory factory = FixedBaggageFieldsFactory.newFactory(asList(field1, field2));
+  // NOTE: while these tests check ExtraHandler, they are themselves coupled to BaggageFields
+  BaggageFieldsHandler handler = BaggageFieldsHandler.create(asList(field1, field2), false);
+  Class<? extends Extra> extraClass = BaggageFields.class;
 
   Propagation.Factory propagationFactory = new Propagation.Factory() {
     @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
@@ -47,14 +45,12 @@ public class ExtraBaggageFieldsFactoryTest {
     }
 
     @Override public TraceContext decorate(TraceContext context) {
-      return factory.decorate(context);
+      return handler.ensureContainsExtra(context);
     }
   };
-  TraceContext context = propagationFactory.decorate(TraceContext.newBuilder()
-    .traceId(1L)
-    .spanId(2L)
-    .sampled(true)
-    .build());
+
+  TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true).build();
+  TraceContext decorated = propagationFactory.decorate(context);
 
   @Test public void contextsAreIndependent() {
     try (Tracing tracing = withNoopSpanReporter()) {
@@ -64,12 +60,12 @@ public class ExtraBaggageFieldsFactoryTest {
       TraceContext context2 = tracing.tracer().newChild(context1).context();
 
       // Instances are not the same
-      assertThat(context1.findExtra(ExtraBaggageFields.class))
-        .isNotSameAs(context2.findExtra(ExtraBaggageFields.class));
+      assertThat(context1.findExtra(extraClass))
+        .isNotSameAs(context2.findExtra(extraClass));
 
       // But have the same values
-      assertThat(context1.findExtra(ExtraBaggageFields.class))
-        .isEqualTo(context2.findExtra(ExtraBaggageFields.class));
+      assertThat(context1.findExtra(extraClass))
+        .isEqualTo(context2.findExtra(extraClass));
       assertThat(field1.getValue(context1))
         .isEqualTo(field1.getValue(context2))
         .isEqualTo(value1);
@@ -90,16 +86,16 @@ public class ExtraBaggageFieldsFactoryTest {
       field1.updateValue(context1, value1);
 
       TraceContext context2 =
-        tracing.tracer().toSpan(context1.toBuilder().sampled(false).build()).context();
-      ExtraBaggageFields extra1 = (ExtraBaggageFields) context1.extra().get(0);
-      ExtraBaggageFields extra1_toSpan = (ExtraBaggageFields) context2.extra().get(0);
+          tracing.tracer().toSpan(context1.toBuilder().sampled(false).build()).context();
+      Extra extra1 = (Extra) context1.extra().get(0);
+      Extra extra1_toSpan = (Extra) context2.extra().get(0);
 
       // we have the same span ID, so we should couple our baggage state
       assertThat(extra1).isSameAs(extra1_toSpan);
 
       // we no longer have the same span ID, so we should decouple our baggage state
       TraceContext context3 = tracing.tracer().newChild(context1).context();
-      ExtraBaggageFields extra3 = (ExtraBaggageFields) context3.extra().get(0);
+      Extra extra3 = (Extra) context3.extra().get(0);
 
       // we have different instances of extra
       assertThat(extra1).isNotSameAs(extra3);
@@ -110,8 +106,9 @@ public class ExtraBaggageFieldsFactoryTest {
       // check that the change is present, but the other contexts are the same
       String beforeUpdate = field1.getValue(context1);
       field1.updateValue(context1, "2");
-      assertThat(extra1.getValue(field1)).isNotEqualTo(beforeUpdate); // copy-on-write
-      assertThat(extra3.getValue(field1)).isEqualTo(beforeUpdate);
+
+      assertThat(field1.getValue(context1)).isNotEqualTo(beforeUpdate); // copy-on-write
+      assertThat(field1.getValue(context3)).isEqualTo(beforeUpdate);
     }
   }
 
@@ -128,9 +125,9 @@ public class ExtraBaggageFieldsFactoryTest {
     try (Tracing tracing = withNoopSpanReporter()) {
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
       try {
-        TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder(EMPTY)
-          .addExtra(factory.create())
-          .build();
+        TraceContextOrSamplingFlags.Builder builder = TraceContextOrSamplingFlags.EMPTY.toBuilder();
+        handler.provisionExtra(builder, new Object());
+        TraceContextOrSamplingFlags extracted = builder.build();
 
         field1.updateValue(parent.context(), value1);
         field1.updateValue(extracted, value2);
@@ -143,7 +140,7 @@ public class ExtraBaggageFieldsFactoryTest {
         assertThat(field1.getValue(context1)).isEqualTo(value2); // extracted should win!
         assertThat(field2.getValue(context1)).isEqualTo(value3);
 
-        assertBaggageStateClaimed(context1.extra(), context1);
+        assertExtraClaimed(context1);
       } finally {
         parent.finish();
       }
@@ -155,9 +152,9 @@ public class ExtraBaggageFieldsFactoryTest {
 
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
       try {
-        TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder(EMPTY)
-          .addExtra(factory.create())
-          .build();
+        TraceContextOrSamplingFlags.Builder builder = TraceContextOrSamplingFlags.EMPTY.toBuilder();
+        handler.provisionExtra(builder, new Object());
+        TraceContextOrSamplingFlags extracted = builder.build();
 
         field2.updateValue(extracted, value3);
 
@@ -167,7 +164,7 @@ public class ExtraBaggageFieldsFactoryTest {
 
         assertThat(field2.getValue(context1)).isEqualTo(value3);
 
-        assertBaggageStateClaimed(context1.extra(), context1);
+        assertExtraClaimed(context1);
       } finally {
         parent.finish();
       }
@@ -190,7 +187,7 @@ public class ExtraBaggageFieldsFactoryTest {
 
         assertThat(field1.getValue(context1)).isEqualTo(value1);
 
-        assertBaggageStateClaimed(context1.extra(), context1);
+        assertExtraClaimed(context1);
       } finally {
         parent.finish();
       }
@@ -198,9 +195,9 @@ public class ExtraBaggageFieldsFactoryTest {
   }
 
   @Test public void idempotent() {
-    List<Object> originalExtra = context.extra();
-    assertThat(propagationFactory.decorate(context).extra())
-      .isSameAs(originalExtra);
+    List<Object> originalExtra = decorated.extra();
+    assertThat(propagationFactory.decorate(decorated).extra())
+        .isSameAs(originalExtra);
   }
 
   /** Ensures we don't accidentally use console logging, which is default */
@@ -212,71 +209,75 @@ public class ExtraBaggageFieldsFactoryTest {
       .build();
   }
 
-  @Test public void decorate_makesNewExtra() {
-    Map<List<Object>, List<Object>> inputToExpected = new LinkedHashMap<>();
-    inputToExpected.put(asList(1L), asList(1L, factory.create()));
-    inputToExpected.put(asList(1L, 2L), asList(1L, 2L, factory.create()));
+  @Test public void ensureContainsExtra_makesNewExtra() {
+    List<TraceContext> contexts = asList(
+        context.toBuilder().build(),
+        context.toBuilder().addExtra(1L).build(),
+        context.toBuilder().addExtra(1L).addExtra(2L).build()
+    );
 
-    for (Entry<List<Object>, List<Object>> inputExpected : inputToExpected.entrySet()) {
-      List<Object> actual = decorateAndReturnExtra(context, inputExpected.getKey());
+    for (TraceContext context : contexts) {
+      // adds a new extra container and claims it against the current context.
+      TraceContext ensured = handler.ensureContainsExtra(context);
 
-      // doesn't drop the input elements
-      assertThat(actual).containsAll(inputExpected.getKey());
-
-      // adds a new propagation field container and claims it against the current context.
-      assertBaggageStateClaimed(actual, context);
+      assertThat(ensured.extra())
+          .hasSize(context.extra().size() + 1)
+          .containsAll(context.extra());
+      assertExtraClaimed(ensured);
     }
   }
 
-  @Test public void decorate_claimsFields() {
-    Map<List<Object>, List<Object>> inputToExpected = new LinkedHashMap<>();
-    inputToExpected.put(asList(factory.create()), asList(factory.create()));
-    inputToExpected.put(asList(factory.create(), 1L), asList(factory.create(), 1L));
-    inputToExpected.put(asList(1L, factory.create()), asList(1L, factory.create()));
+  @Test public void ensureContainsExtra_claimsFields() {
+    List<TraceContext> contexts = asList(
+        context.toBuilder().addExtra(handler.newExtra(null)).build(),
+        context.toBuilder().addExtra(1L).addExtra(handler.newExtra(null)).build(),
+        context.toBuilder().addExtra(handler.newExtra(null)).addExtra(1L).build(),
+        context.toBuilder().addExtra(1L).addExtra(handler.newExtra(null)).addExtra(2L).build()
+    );
 
-    for (Entry<List<Object>, List<Object>> inputExpected : inputToExpected.entrySet()) {
-      List<Object> actual = decorateAndReturnExtra(context, inputExpected.getKey());
+    for (TraceContext context : contexts) {
+      // re-uses an extra container and claims it against the current context.
+      TraceContext ensured = handler.ensureContainsExtra(context);
 
-      // Has the same elements
-      assertThat(actual).isEqualTo(inputExpected.getKey());
-
-      // The propagation fields are now claimed by this context
-      assertBaggageStateClaimed(actual, context);
+      assertThat(ensured.extra()).isSameAs(context.extra());
+      assertExtraClaimed(ensured);
     }
   }
 
-  @Test public void decorate_redundant() {
-    ExtraBaggageFields alreadyClaimed = factory.create();
-    factory.tryToClaim(alreadyClaimed, context.traceId(), context.spanId());
+  @Test public void ensureContainsExtra_redundant() {
+    List<TraceContext> contexts = asList(
+        context.toBuilder().addExtra(handler.newExtra(null)).build(),
+        context.toBuilder().addExtra(1L).addExtra(handler.newExtra(null)).build(),
+        context.toBuilder().addExtra(handler.newExtra(null)).addExtra(1L).build(),
+        context.toBuilder().addExtra(1L).addExtra(handler.newExtra(null)).addExtra(2L).build()
+    );
 
-    Map<List<Object>, List<Object>> inputToExpected = new LinkedHashMap<>();
-    inputToExpected.put(asList(alreadyClaimed), asList(factory.create()));
-    inputToExpected.put(asList(alreadyClaimed, 1L), asList(factory.create(), 1L));
-    inputToExpected.put(asList(1L, alreadyClaimed), asList(1L, factory.create()));
+    for (TraceContext context : contexts) {
+      context = handler.ensureContainsExtra(context);
 
-    for (Entry<List<Object>, List<Object>> inputExpected : inputToExpected.entrySet()) {
-      List<Object> actual = decorateAndReturnExtra(context, inputExpected.getKey());
-
-      // Verify no unexpected side effects
-      assertThat(actual).isEqualTo(inputExpected.getKey());
-      assertBaggageStateClaimed(actual, context);
+      assertThat(handler.ensureContainsExtra(context)).isSameAs(context);
     }
   }
 
-  @Test public void decorate_forksWhenFieldsAlreadyClaimed() {
+  @Test public void ensureContainsExtra_forksWhenFieldsAlreadyClaimed() {
     TraceContext other = TraceContext.newBuilder().traceId(98L).spanId(99L).build();
-    ExtraBaggageFields claimedByOther = factory.create();
-    factory.tryToClaim(claimedByOther, other.traceId(), other.spanId());
+    Extra claimed = handler.ensureContainsExtra(other).findExtra(extraClass);
 
-    Map<List<Object>, List<Object>> inputToExpected = new LinkedHashMap<>();
-    inputToExpected.put(asList(claimedByOther), asList(factory.create()));
-    inputToExpected.put(asList(claimedByOther, 1L), asList(factory.create(), 1L));
-    inputToExpected.put(asList(1L, claimedByOther), asList(1L, factory.create()));
+    List<TraceContext> contexts = asList(
+        context.toBuilder().addExtra(claimed).build(),
+        context.toBuilder().addExtra(1L).addExtra(claimed).build(),
+        context.toBuilder().addExtra(claimed).addExtra(1L).build(),
+        context.toBuilder().addExtra(1L).addExtra(claimed).addExtra(2L).build()
+    );
 
-    for (Entry<List<Object>, List<Object>> inputExpected : inputToExpected.entrySet()) {
-      List<Object> actual = decorateAndReturnExtra(context, inputExpected.getKey());
-      assertBaggageStateClaimed(actual, context);
-      assertThat(actual).isEqualTo(inputExpected.getValue());
+    for (TraceContext context : contexts) {
+      TraceContext ensured = handler.ensureContainsExtra(context);
+
+      assertThat(ensured).isNotSameAs(context);
+      assertThat(ensured.extra())
+          .isNotSameAs(context.extra())
+          .hasSize(context.extra().size());
+      assertExtraClaimed(ensured);
     }
   }
 
@@ -288,26 +289,18 @@ public class ExtraBaggageFieldsFactoryTest {
       .build()) {
       ScopedSpan parent = t.tracer().startScopedSpan("parent");
       try {
-        assertBaggageStateClaimed(parent.context().extra(), parent.context());
+        assertExtraClaimed(parent.context());
       } finally {
         parent.finish();
       }
     }
   }
 
-  void assertBaggageStateClaimed(List<Object> actual, TraceContext context) {
-    assertThat(actual)
-      .filteredOn(ExtraBaggageFields.class::isInstance)
+  void assertExtraClaimed(TraceContext context) {
+    assertThat(context.extra())
+      .filteredOn(Extra.class::isInstance)
       .hasSize(1)
       .flatExtracting("traceId", "spanId")
       .containsExactly(context.traceId(), context.spanId());
-  }
-
-  List<Object> decorateAndReturnExtra(TraceContext context, List<Object> key) {
-    return factory.decorate(contextWithExtra(context, key)).extra();
-  }
-
-  static TraceContext contextWithExtra(TraceContext context, List<Object> extra) {
-    return InternalPropagation.instance.withExtra(context, extra);
   }
 }

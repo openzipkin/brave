@@ -38,10 +38,7 @@ public class BaggageInSingleHeaderTest {
       .injectFormat(B3Propagation.Format.SINGLE).build())
       .add(SingleBaggageField.remote(field1))
       .add(SingleBaggageField.local(field2))
-      .add(InternalBaggage.instance.newBaggagePropagationConfig(
-          // BaggageCodec can see every baggage field, so it must be told what to not serialize
-          SingleHeaderCodec.newBuilder().blacklistField(field2).build()
-      ))
+      .add(InternalBaggage.instance.newBaggagePropagationConfig(SingleHeaderCodec.get()))
       .build();
 
   /** This shows that we can encode arbitrary fields into a single header. */
