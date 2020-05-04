@@ -44,6 +44,7 @@ import brave.propagation.Propagation;
  * @see BaggageCustomizer
  * @since 5.11
  */
+// @FunctionalInterface, except Java language level 6. Do not add methods as it will break API!
 public interface CorrelationScopeCustomizer {
   /** Use to avoid comparing against null references */
   CorrelationScopeCustomizer NOOP = new CorrelationScopeCustomizer() {

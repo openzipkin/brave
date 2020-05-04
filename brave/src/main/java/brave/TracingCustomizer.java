@@ -42,6 +42,7 @@ import zipkin2.reporter.Reporter;
  * @see CurrentTraceContextCustomizer
  * @since 5.7
  */
+// @FunctionalInterface, except Java language level 6. Do not add methods as it will break API!
 public interface TracingCustomizer {
   /** Use to avoid comparing against null references */
   TracingCustomizer NOOP = new TracingCustomizer() {

@@ -45,7 +45,7 @@ import brave.propagation.TraceContext;
  * @see RpcRequestParser
  * @since 5.12
  */
-// @FunctionalInterface: do not add methods as it will break api
+// @FunctionalInterface, except Java language level 6. Do not add methods as it will break API!
 public interface RpcResponseParser {
   RpcResponseParser DEFAULT = new Default();
 

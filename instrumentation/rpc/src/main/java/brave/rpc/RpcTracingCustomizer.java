@@ -43,6 +43,7 @@ import brave.sampler.SamplerFunction;
  * @see TracingCustomizer
  * @since 5.8
  */
+// @FunctionalInterface, except Java language level 6. Do not add methods as it will break API!
 public interface RpcTracingCustomizer {
   /** Use to avoid comparing against null references */
   RpcTracingCustomizer NOOP = new RpcTracingCustomizer() {

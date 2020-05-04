@@ -107,11 +107,16 @@ public final class BaggageField {
    *
    * @since 5.12
    */
+  // @FunctionalInterface, except Java language level 6. Do not add methods as it will break API!
   public interface ValueUpdater {
     /** @since 5.12 */
     ValueUpdater NOOP = new ValueUpdater() {
       @Override public boolean updateValue(BaggageField field, String value) {
         return false;
+      }
+
+      @Override public String toString() {
+        return "NoopValueUpdater{}";
       }
     };
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -23,7 +23,7 @@ package brave;
  * <p>See <a href="https://zipkin.io/pages/instrumenting.html">Instrumenting a service</a> for
  * more.
  */
-// FunctionalInterface except Java language level 6
+// @FunctionalInterface, except Java language level 6. Do not add methods as it will break API!
 public interface Clock {
 
   long currentTimeMicroseconds();

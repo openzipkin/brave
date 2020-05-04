@@ -38,7 +38,7 @@ import static brave.http.HttpTags.statusCodeString;
  *
  * @see HttpRequestParser
  */
-// @FunctionalInterface: do not add methods as it will break api
+// @FunctionalInterface, except Java language level 6. Do not add methods as it will break API!
 public interface HttpResponseParser {
   HttpResponseParser DEFAULT = new HttpResponseParser.Default();
 

@@ -33,7 +33,7 @@ import brave.propagation.TraceContext;
  *
  * @see HttpResponseParser
  */
-// @FunctionalInterface: do not add methods as it will break api
+// @FunctionalInterface, except Java language level 6. Do not add methods as it will break API!
 public interface HttpRequestParser {
   HttpRequestParser DEFAULT = new HttpRequestParser.Default();
 

@@ -46,6 +46,7 @@ import brave.baggage.BaggagePropagationCustomizer;
  * @see TracingCustomizer
  * @since 5.7
  */
+// @FunctionalInterface, except Java language level 6. Do not add methods as it will break API!
 public interface CurrentTraceContextCustomizer {
   /** Use to avoid comparing against null references */
   CurrentTraceContextCustomizer NOOP = new CurrentTraceContextCustomizer() {
