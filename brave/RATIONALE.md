@@ -237,7 +237,7 @@ Concretely, when an update returns `false`, we don't attempt to flush changes
 to a correlation context such as `MDC`.
 
 ### Context storage
-`FixedBaggageState` is copy-on-write context storage of `BaggageField` values.
+`BaggageFields` is copy-on-write context storage of `BaggageField` values.
 It is added only once to a request extraction or trace context regardless of
 the count of fields.
 
@@ -245,7 +245,7 @@ Copy-on-write means a call to `BaggageField.updateValue` will replace its
 internal state with a copy of the prior (usually the parent). Until an update
 occurs (possibly never!), a constant `initialState` is shared by all trace
 contexts. In other words, if baggage is configured, but never used, the only
-overhead is one state wrapper (`FixedBaggageState`) per `TraceContext`. If
+overhead is one state wrapper (`BaggageFields`) per `TraceContext`. If
 only one context has a change in that local root, then only one copy of the
 state is made.
 
