@@ -335,7 +335,7 @@ The reverse isn't true. Decoding has different concerns entirely.
 * `BaggageField` instances are typically constant, so updates should be a
   function of `BaggageField`, not String.
 * There may be multiple decoders contributing to the same baggage state. It is
-  more safe underneath to not expose read-ops, such as iterators.
+  more safe underneath to prevent read-ops, such as iterators.
 * If we used a `Map`, implementations who ignore the documentation and hold a
   reference to it could later corrupt the state, violating copy-on-write.
   * defending against this is possible, but inefficient and distracting code.
