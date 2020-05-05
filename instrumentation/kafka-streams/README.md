@@ -101,17 +101,18 @@ When starting to design this instrumentation, “trace everything” was the fir
 When a message enters the Kafka Streams topology starts a new `poll` span, and every operation
 (e.g. `map`, `filter`, `join`, etc.) is chained as an additional child span.
 
-Kafka Streams materializes its topology _internally_ based on DSL operations. Therefore, is not possible to hook into
+Kafka Streams materializes its topology _internally_ based on DSL operations. 
+Therefore, is not possible to hook into
 the topology creation process to instrument each operation.
 
 Even though this could be desirable it would require, first, to add new "doors" on the Kafka Streams
-side to manipulate or intercept data around each operation--which will be hard to sale--;
+side to manipulate or intercept data around each operation&mdash;which will be hard to sale&mdash;;
 and even if available, it would potentially expose excessive details as **all**
-operations would be traced, making traces harder to grok--and would probably create the need to support
+operations would be traced, making traces harder to grok&mdash;and would probably create the need to support
 functionality to **do not** trace some operations, requiring anyway changes to your code.
 
 Given the current scenario, `KafkaStreamsTracing` is equipped with a set of common DSL operation wrappers that
-enable tracing when needed--apart from `poll` and `send` spans available out-of-the-box.
+enable tracing when needed&mdash;apart from `poll` and `send` spans available out-of-the-box.
 
 ## Notes
 
