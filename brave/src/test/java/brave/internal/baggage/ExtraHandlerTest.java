@@ -126,7 +126,7 @@ public class ExtraHandlerTest {
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
       try {
         TraceContextOrSamplingFlags.Builder builder = TraceContextOrSamplingFlags.EMPTY.toBuilder();
-        handler.provisionExtra(builder, new Object());
+        handler.provisionExtra(builder, (object, key) -> null, new Object());
         TraceContextOrSamplingFlags extracted = builder.build();
 
         field1.updateValue(parent.context(), value1);
@@ -153,7 +153,7 @@ public class ExtraHandlerTest {
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
       try {
         TraceContextOrSamplingFlags.Builder builder = TraceContextOrSamplingFlags.EMPTY.toBuilder();
-        handler.provisionExtra(builder, new Object());
+        handler.provisionExtra(builder, (object, key) -> null, new Object());
         TraceContextOrSamplingFlags extracted = builder.build();
 
         field2.updateValue(extracted, value3);

@@ -16,6 +16,7 @@ package brave.propagation;
 import brave.Request;
 import brave.baggage.BaggagePropagation;
 import brave.internal.Nullable;
+import brave.internal.propagation.StringPropagationAdapter;
 import java.util.List;
 
 /**
@@ -61,6 +62,14 @@ public interface Propagation<K> {
     }
 
     /**
+     * This is deprecated: end users and instrumentation should never call this, and instead use
+     * {@link #get()}.
+     *
+     * <h3>Implementation advice</h3>
+     * This is deprecated, but abstract. This means those implementing custom propagation formats
+     * will have to implement this until it is removed in Brave 6. If you are able to use a tool
+     * such as "maven-shade-plugin", consider using {@link StringPropagationAdapter}.
+     *
      * @param <K> Deprecated except when a {@link String}.
      * @see KeyFactory#STRING
      * @deprecated Since 5.12, use {@link #get()}
@@ -122,7 +131,6 @@ public interface Propagation<K> {
    * @param <K> Deprecated except when a {@link String}.
    */
   interface Setter<R, K> {
-    // BRAVE6: make this a charsequence as there's no need to allocate a string
     void put(R request, K key, String value);
   }
 

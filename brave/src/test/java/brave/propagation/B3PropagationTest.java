@@ -105,8 +105,8 @@ public class B3PropagationTest {
       .injectFormat(Format.SINGLE)
       .build();
 
-    assertThat(factory.injectFormat)
-      .isEqualTo(Format.SINGLE);
+    assertThat(factory.injectFormats)
+      .containsExactly(Format.SINGLE);
   }
 
   @Test public void injectKindFormat() {

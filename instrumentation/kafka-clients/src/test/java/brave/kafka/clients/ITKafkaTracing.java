@@ -14,6 +14,7 @@
 package brave.kafka.clients;
 
 import brave.internal.HexCodec;
+import brave.internal.propagation.StringPropagationAdapter;
 import brave.messaging.MessagingRuleSampler;
 import brave.messaging.MessagingTracing;
 import brave.propagation.Propagation;
@@ -194,29 +195,33 @@ public class ITKafkaTracing extends ITKafka {
     }
   }
 
-  static class TraceIdOnlyPropagation<K> implements Propagation<K> {
-    final K key;
+  static class TraceIdOnlyPropagation extends Propagation.Factory implements Propagation<String> {
+    static final String TRACE_ID = "x-b3-traceid";
 
-    TraceIdOnlyPropagation(Propagation.KeyFactory<K> keyFactory) {
-      key = keyFactory.create("x-b3-traceid");
+    @Override public List<String> keys() {
+      return Collections.singletonList(TRACE_ID);
     }
 
-    @Override public List<K> keys() {
-      return Collections.singletonList(key);
+    @Override public <R> TraceContext.Injector<R> injector(Setter<R, String> setter) {
+      return (traceContext, request) -> setter.put(request, TRACE_ID, traceContext.traceIdString());
     }
 
-    @Override public <R> TraceContext.Injector<R> injector(Setter<R, K> setter) {
-      return (traceContext, request) -> setter.put(request, key, traceContext.traceIdString());
-    }
-
-    @Override public <R> TraceContext.Extractor<R> extractor(Getter<R, K> getter) {
+    @Override public <R> TraceContext.Extractor<R> extractor(Getter<R, String> getter) {
       return request -> {
-        String result = getter.get(request, key);
+        String result = getter.get(request, TRACE_ID);
         if (result == null) return TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY);
         return TraceContextOrSamplingFlags.create(TraceIdContext.newBuilder()
           .traceId(HexCodec.lowerHexToUnsignedLong(result))
           .build());
       };
+    }
+
+    @Override public Propagation<String> get() {
+      return this;
+    }
+
+    @Override public <K1> Propagation<K1> create(KeyFactory<K1> keyFactory) {
+      return StringPropagationAdapter.create(this, keyFactory);
     }
   }
 
@@ -224,19 +229,11 @@ public class ITKafkaTracing extends ITKafka {
   public void continues_a_trace_when_only_trace_id_propagated() {
     consumerTracing = KafkaTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE)
       .spanReporter(consumerReporter)
-      .propagationFactory(new Propagation.Factory() {
-        @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
-          return new TraceIdOnlyPropagation<>(keyFactory);
-        }
-      })
+      .propagationFactory(new TraceIdOnlyPropagation())
       .build());
     producerTracing = KafkaTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE)
       .spanReporter(producerReporter)
-      .propagationFactory(new Propagation.Factory() {
-        @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
-          return new TraceIdOnlyPropagation<>(keyFactory);
-        }
-      })
+      .propagationFactory(new TraceIdOnlyPropagation())
       .build());
 
     producer = createTracingProducer();

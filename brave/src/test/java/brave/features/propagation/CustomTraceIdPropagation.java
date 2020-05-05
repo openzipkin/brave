@@ -13,9 +13,12 @@
  */
 package brave.features.propagation;
 
+import brave.internal.propagation.StringPropagationAdapter;
 import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContext.Extractor;
+import brave.propagation.TraceContext.Injector;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -27,92 +30,88 @@ import java.util.List;
  *
  * <p>See https://github.com/openzipkin/b3-propagation
  */
-public final class CustomTraceIdPropagation<K> implements Propagation<K> {
+public final class CustomTraceIdPropagation extends Propagation.Factory
+    implements Propagation<String> {
+  static final String B3 = "b3", TRACE_ID = "X-B3-TraceId";
+
+  /**
+   * @param delegate some configuration of {@link B3Propagation#newFactoryBuilder()}
+   * @param customTraceIdName something not "b3"
+   */
   public static Propagation.Factory create(Propagation.Factory delegate, String customTraceIdName) {
     if (delegate == null) throw new NullPointerException("delegate == null");
     if (customTraceIdName == null) throw new NullPointerException("customTraceIdName == null");
     if (!delegate.create(KeyFactory.STRING).keys().contains("b3")) {
       throw new IllegalArgumentException("delegate must implement B3 propagation");
     }
-    return new Factory(delegate, customTraceIdName);
+    return new CustomTraceIdPropagation(delegate, customTraceIdName);
   }
 
-  static final class Factory extends Propagation.Factory {
-    final Propagation.Factory delegate;
+  final Propagation.Factory factory;
+  final Propagation<String> delegate;
+  final String customTraceIdName;
+  final List<String> allKeys;
+
+  CustomTraceIdPropagation(Propagation.Factory factory, String customTraceIdName) {
+    this.factory = factory;
+    this.delegate = factory.get();
+    this.customTraceIdName = customTraceIdName;
+    //this.b3Key = keyFactory.create("b3", "X-B3-TraceId");
+    List<String> allKeys = new ArrayList<>(delegate.keys());
+    allKeys.add(customTraceIdName);
+    this.allKeys = Collections.unmodifiableList(allKeys);
+  }
+
+  @Override public boolean supportsJoin() {
+    return factory.supportsJoin();
+  }
+
+  @Override public boolean requires128BitTraceId() {
+    return factory.requires128BitTraceId();
+  }
+
+  @Override public TraceContext decorate(TraceContext context) {
+    return factory.decorate(context);
+  }
+
+  @Override public Propagation<String> get() {
+    return this;
+  }
+
+  @Override public <K1> Propagation<K1> create(KeyFactory<K1> keyFactory) {
+    return StringPropagationAdapter.create(this, keyFactory);
+  }
+
+  @Override public List<String> keys() {
+    return allKeys;
+  }
+
+  @Override public <R> Extractor<R> extractor(Propagation.Getter<R, String> getter) {
+    return delegate.extractor(new Getter<>(getter, customTraceIdName));
+  }
+
+  @Override public <R> Injector<R> injector(Propagation.Setter<R, String> setter) {
+    return delegate.injector(setter);
+  }
+
+  static final class Getter<R> implements Propagation.Getter<R, String> {
+    final Propagation.Getter<R, String> delegate;
     final String customTraceIdName;
 
-    /**
-     * @param delegate some configuration of {@link B3Propagation#newFactoryBuilder()}
-     * @param customTraceIdName something not "b3"
-     */
-    Factory(Propagation.Factory delegate, String customTraceIdName) {
+    Getter(Propagation.Getter<R, String> delegate, String customTraceIdName) {
       this.delegate = delegate;
       this.customTraceIdName = customTraceIdName;
     }
 
-    @Override public boolean supportsJoin() {
-      return delegate.supportsJoin();
-    }
-
-    @Override public boolean requires128BitTraceId() {
-      return delegate.requires128BitTraceId();
-    }
-
-    @Override public TraceContext decorate(TraceContext context) {
-      return delegate.decorate(context);
-    }
-
-    @Override public <K> Propagation<K> create(KeyFactory<K> keyFactory) {
-      return new CustomTraceIdPropagation<>(this, keyFactory);
-    }
-  }
-
-  final Propagation<K> delegate;
-  final K b3Key, b3TraceIdKey, customTraceIdKey;
-  final List<K> allKeys;
-
-  CustomTraceIdPropagation(Factory factory, KeyFactory<K> keyFactory) {
-    this.delegate = factory.delegate.create(keyFactory);
-    this.b3Key = keyFactory.create("b3");
-    this.b3TraceIdKey = keyFactory.create("X-B3-TraceId");
-    this.customTraceIdKey = keyFactory.create(factory.customTraceIdName);
-    List<K> allKeys = new ArrayList<>(delegate.keys());
-    allKeys.add(customTraceIdKey);
-    this.allKeys = Collections.unmodifiableList(allKeys);
-  }
-
-  @Override public List<K> keys() {
-    return allKeys;
-  }
-
-  @Override public <R> TraceContext.Extractor<R> extractor(Propagation.Getter<R, K> getter) {
-    return delegate.extractor(new Getter<>(getter, b3Key, b3TraceIdKey, customTraceIdKey));
-  }
-
-  @Override public <R> TraceContext.Injector<R> injector(Propagation.Setter<R, K> setter) {
-    return delegate.injector(setter);
-  }
-
-  static final class Getter<R, K> implements Propagation.Getter<R, K> {
-    final Propagation.Getter<R, K> delegate;
-    private final K b3Key, b3TraceIdKey, customTraceIdKey;
-
-    Getter(Propagation.Getter<R, K> delegate, K b3Key, K b3TraceIdKey, K customTraceIdKey) {
-      this.delegate = delegate;
-      this.b3Key = b3Key;
-      this.b3TraceIdKey = b3TraceIdKey;
-      this.customTraceIdKey = customTraceIdKey;
-    }
-
-    @Override public String get(R request, K key) {
-      if (key.equals(b3Key)) {
+    @Override public String get(R request, String key) {
+      if (key.equals(B3)) {
         // Don't override a valid B3 context
         String b3 = delegate.get(request, key);
         if (b3 != null) return b3;
-        if (delegate.get(request, b3TraceIdKey) != null) return null;
+        if (delegate.get(request, TRACE_ID) != null) return null;
 
         // At this point, we know this is not a valid B3 context, check for a valid custom trace ID
-        String customTraceId = delegate.get(request, customTraceIdKey);
+        String customTraceId = delegate.get(request, customTraceIdName);
         if (customTraceId == null) return null;
 
         // We still expect the trace ID to be of valid length.

@@ -16,6 +16,7 @@ package brave.internal.baggage;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.propagation.Propagation;
+import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.ArrayList;
@@ -28,7 +29,7 @@ import java.util.List;
  *
  * <h3>Integration</h3>
  * <p>{@link TraceContext.Extractor#extract(Object)} must invoke {@link
- * #provisionExtra(TraceContextOrSamplingFlags.Builder, Object)} before returning.
+ * #provisionExtra(TraceContextOrSamplingFlags.Builder, Getter, Object)} before returning.
  *
  * <p>{@link #ensureContainsExtra(TraceContext)} must be with a hook that operates on every new
  * trace context, such as {@link Propagation.Factory#decorate(TraceContext)}.
@@ -42,11 +43,11 @@ import java.util.List;
  * state forking that ensures that updates to child spans are invisible to their parents or
  * siblings.
  *
- * @param <E> They type of {@link Extra} managed by this factory. Must be a final class. The type is
+ * @param <E> They type of {@link Extra} managed by this handler. Must be a final class. The type is
  * typically package private to avoid accidental interference.
- * @param <F> An instance of this factory. {@link #<E>} should be associated with only one factory.
+ * @param <H> An instance of this handler. {@link #<E>} should be associated with only one handler.
  */
-public abstract class ExtraHandler<E extends Extra<E, F>, F extends ExtraHandler<E, F>> {
+public abstract class ExtraHandler<E extends Extra<E, H>, H extends ExtraHandler<E, H>> {
   final Object initialState;
 
   /**
@@ -59,12 +60,12 @@ public abstract class ExtraHandler<E extends Extra<E, F>, F extends ExtraHandler
   }
 
   /**
-   * Creates a new instance of {@link #<E>}, with this factory's initial state.
+   * Creates a new instance of {@link #<E>}, with this handler's initial state.
    *
    * <p>This is only called in two scenarios:
    *
-   * <p>During extraction, {@link #provisionExtra(TraceContextOrSamplingFlags.Builder, Object)}
-   * invokes this method with a non-{@code null} {@code request} parameter.
+   * <p>During extraction, {@link #provisionExtra(TraceContextOrSamplingFlags.Builder, Getter,
+   * Object)} invokes this method with a non-{@code null} {@code request} parameter.
    *
    * <p>For a new local root, {@link #ensureContainsExtra(TraceContext)} invokes this method with a
    * {@code null} {@code request} parameter.
@@ -72,7 +73,7 @@ public abstract class ExtraHandler<E extends Extra<E, F>, F extends ExtraHandler
    * @param request possibly {@code null} request
    * @return a new instance which will be assigned this decorator's {@linkplain
    * ExtraHandler#initialState initial state}.
-   * @see #provisionExtra(TraceContextOrSamplingFlags.Builder, Object)
+   * @see #provisionExtra(TraceContextOrSamplingFlags.Builder, Getter, Object)
    * @see #ensureContainsExtra(TraceContext)
    */
   // protected to prevent unwanted callers from creating multiple instances per context
@@ -89,8 +90,13 @@ public abstract class ExtraHandler<E extends Extra<E, F>, F extends ExtraHandler
    * @see TraceContext.Extractor#extract(Object)
    */
   // This operates on the builder directly to allow us to hide newExtra and potential bugs
-  public final E provisionExtra(TraceContextOrSamplingFlags.Builder builder, Object request) {
+  public final <R> E provisionExtra(
+      TraceContextOrSamplingFlags.Builder builder,
+      Getter<R, String> getter,
+      R request
+  ) {
     if (builder == null) throw new NullPointerException("builder == null");
+    if (getter == null) throw new NullPointerException("getter == null");
     if (request == null) throw new NullPointerException("request == null");
     E result = newExtra(request);
     if (result == null) throw new RuntimeException("BUG: provision(request) returned null");
@@ -104,7 +110,7 @@ public abstract class ExtraHandler<E extends Extra<E, F>, F extends ExtraHandler
    * trace context, such as {@link Propagation.Factory#decorate(TraceContext)}.
    *
    * @see #newExtra(Object)
-   * @see #provisionExtra(TraceContextOrSamplingFlags.Builder, Object)
+   * @see #provisionExtra(TraceContextOrSamplingFlags.Builder, Getter, Object)
    * @see Propagation.Factory#decorate(TraceContext)
    */
   public final TraceContext ensureContainsExtra(TraceContext context) {
@@ -117,7 +123,7 @@ public abstract class ExtraHandler<E extends Extra<E, F>, F extends ExtraHandler
       if (next instanceof Extra) {
         Extra nextExtra = (Extra) next;
         // Don't interfere with other instances or subtypes
-        if (nextExtra.factory != this) continue;
+        if (nextExtra.handler != this) continue;
 
         if (claimed == null && nextExtra.tryToClaim(traceId, spanId)) {
           claimed = (E) nextExtra;
