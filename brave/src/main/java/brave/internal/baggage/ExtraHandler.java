@@ -14,9 +14,7 @@
 package brave.internal.baggage;
 
 import brave.internal.InternalPropagation;
-import brave.internal.Nullable;
 import brave.propagation.Propagation;
-import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.ArrayList;
@@ -29,7 +27,7 @@ import java.util.List;
  *
  * <h3>Integration</h3>
  * <p>{@link TraceContext.Extractor#extract(Object)} must invoke {@link
- * #provisionExtra(TraceContextOrSamplingFlags.Builder, Getter, Object)} before returning.
+ * #provisionExtra(TraceContextOrSamplingFlags.Builder)} before returning.
  *
  * <p>{@link #ensureContainsExtra(TraceContext)} must be with a hook that operates on every new
  * trace context, such as {@link Propagation.Factory#decorate(TraceContext)}.
@@ -63,54 +61,44 @@ public abstract class ExtraHandler<E extends Extra<E, H>, H extends ExtraHandler
    * Creates a new instance of {@link #<E>}, with this handler's initial state.
    *
    * <p>This is only called in two scenarios:
+   * <ul>
+   *   <li>During extraction: {@link #provisionExtra(TraceContextOrSamplingFlags.Builder)}</li>
+   *   <li>For a new local root, {@link #ensureContainsExtra(TraceContext)}</li>
+   * </ul>
    *
-   * <p>During extraction, {@link #provisionExtra(TraceContextOrSamplingFlags.Builder, Getter,
-   * Object)} invokes this method with a non-{@code null} {@code request} parameter.
-   *
-   * <p>For a new local root, {@link #ensureContainsExtra(TraceContext)} invokes this method with a
-   * {@code null} {@code request} parameter.
-   *
-   * @param request possibly {@code null} request
    * @return a new instance which will be assigned this decorator's {@linkplain
    * ExtraHandler#initialState initial state}.
-   * @see #provisionExtra(TraceContextOrSamplingFlags.Builder, Getter, Object)
+   * @see #provisionExtra(TraceContextOrSamplingFlags.Builder)
    * @see #ensureContainsExtra(TraceContext)
    */
   // protected to prevent unwanted callers from creating multiple instances per context
-  protected abstract E newExtra(@Nullable Object request);
+  protected abstract E provisionExtra();
 
   /**
    * Provisions a new instance of {@link #<E>} and adds it to the builder. Integrate this via {@link
    * TraceContext.Extractor#extract(Object)}.
    *
-   * @param request the request parameter of {@link TraceContext.Extractor#extract(Object)}
    * @return the instance already added to the builder.
-   * @see #newExtra(Object)
+   * @see #provisionExtra()
    * @see #ensureContainsExtra(TraceContext)
    * @see TraceContext.Extractor#extract(Object)
    */
   // This operates on the builder directly to allow us to hide newExtra and potential bugs
-  public final <R> E provisionExtra(
-      TraceContextOrSamplingFlags.Builder builder,
-      Getter<R, String> getter,
-      R request
-  ) {
+  public final E provisionExtra(TraceContextOrSamplingFlags.Builder builder) {
     if (builder == null) throw new NullPointerException("builder == null");
-    if (getter == null) throw new NullPointerException("getter == null");
-    if (request == null) throw new NullPointerException("request == null");
-    E result = newExtra(request);
-    if (result == null) throw new RuntimeException("BUG: provision(request) returned null");
+    E result = provisionExtra();
+    if (result == null) throw new RuntimeException("BUG: provisionExtra() returned null");
     builder.addExtra(result);
     return result;
   }
 
   /**
-   * Backfills an instance of {@link #<E>} to {@link TraceContext#extra()} if needed, after ensuring
-   * it is associated with the {@code context}. Integrate this via a hook that operates on every new
-   * trace context, such as {@link Propagation.Factory#decorate(TraceContext)}.
+   * Back fills an instance of {@link #<E>} to {@link TraceContext#extra()} if needed, after
+   * ensuring it is associated with the {@code context}. Integrate this via a hook that operates on
+   * every new trace context, such as {@link Propagation.Factory#decorate(TraceContext)}.
    *
-   * @see #newExtra(Object)
-   * @see #provisionExtra(TraceContextOrSamplingFlags.Builder, Getter, Object)
+   * @see #provisionExtra(TraceContextOrSamplingFlags.Builder)
+   * @see #provisionExtra()
    * @see Propagation.Factory#decorate(TraceContext)
    */
   public final TraceContext ensureContainsExtra(TraceContext context) {
@@ -143,7 +131,8 @@ public abstract class ExtraHandler<E extends Extra<E, H>, H extends ExtraHandler
 
     // If context.extra() didn't have an unclaimed extra instance, create one for this context.
     if (claimed == null) {
-      claimed = newExtra(null);
+      claimed = provisionExtra();
+      if (claimed == null) throw new RuntimeException("BUG: provisionExtra() returned null");
       claimed.tryToClaim(traceId, spanId);
       mutableExtraList.add(claimed);
     }

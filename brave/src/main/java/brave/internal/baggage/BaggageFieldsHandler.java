@@ -14,7 +14,6 @@
 package brave.internal.baggage;
 
 import brave.baggage.BaggageField;
-import brave.internal.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -52,7 +51,7 @@ public final class BaggageFieldsHandler extends ExtraHandler<BaggageFields, Bagg
     this.initialArrayLength = initialState.length;
   }
 
-  @Override protected BaggageFields newExtra(@Nullable Object request) {
+  @Override protected BaggageFields provisionExtra() {
     return new BaggageFields(this);
   }
 }

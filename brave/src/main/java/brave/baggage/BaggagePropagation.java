@@ -352,7 +352,7 @@ public final class BaggagePropagation<K> implements Propagation<K> {
       TraceContextOrSamplingFlags result = delegate.extract(request);
 
       TraceContextOrSamplingFlags.Builder builder = result.toBuilder();
-      BaggageFields extra = factory.baggageHandler.provisionExtra(builder, getter, request);
+      BaggageFields extra = factory.baggageHandler.provisionExtra(builder);
 
       if (factory.extra == null) return builder.build();
 

@@ -30,7 +30,7 @@ import java.util.Arrays;
  *
  * @param <E> Use a final type as otherwise tools like {@link TraceContext#findExtra(Class)} will
  * not work. In most cases, the type should be package private.
- * @param <H> The handler that {@link ExtraHandler#newExtra(Object)} creates} this instance.
+ * @param <H> The handler that {@link ExtraHandler#provisionExtra(Object)} creates} this instance.
  */
 // We handle dynamic vs fixed state internally as it..
 //  * hides generic type complexity

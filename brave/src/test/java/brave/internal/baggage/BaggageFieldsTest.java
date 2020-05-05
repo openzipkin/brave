@@ -32,8 +32,8 @@ public abstract class BaggageFieldsTest {
 
   @Before public void setup() {
     handler = newHandler();
-    extra = handler.newExtra(null);
-    extra2 = handler.newExtra(null);
+    extra = handler.provisionExtra();
+    extra2 = handler.provisionExtra();
   }
 
   @Test public void updateValue() {
@@ -152,15 +152,15 @@ public abstract class BaggageFieldsTest {
    */
   @Test public void equalsAndHashCode() {
     // empty extraction is equivalent
-    assertThat(handler.newExtra(null))
-        .isEqualTo(handler.newExtra(null));
-    assertThat(handler.newExtra(null))
-        .hasSameHashCodeAs(handler.newExtra(null));
+    assertThat(handler.provisionExtra())
+        .isEqualTo(handler.provisionExtra());
+    assertThat(handler.provisionExtra())
+        .hasSameHashCodeAs(handler.provisionExtra());
 
     extra.updateValue(field1, "1");
     extra.updateValue(field2, "2");
 
-    BaggageFields extra2 = handler.newExtra(null);
+    BaggageFields extra2 = handler.provisionExtra();
     extra2.updateValue(field1, "1");
     extra2.updateValue(field2, "2");
 

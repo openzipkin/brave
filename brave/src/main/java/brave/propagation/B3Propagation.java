@@ -17,6 +17,8 @@ import brave.Request;
 import brave.Span;
 import brave.internal.Platform;
 import brave.internal.propagation.StringPropagationAdapter;
+import brave.propagation.TraceContext.Extractor;
+import brave.propagation.TraceContext.Injector;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
@@ -139,7 +141,7 @@ public abstract class B3Propagation<K> implements Propagation<K> {
    */
   static final String FLAGS = "X-B3-Flags";
 
-  static final class B3Injector<R> implements TraceContext.Injector<R> {
+  static final class B3Injector<R> implements Injector<R> {
     final Factory factory;
     final Setter<R, String> setter;
 
@@ -183,7 +185,7 @@ public abstract class B3Propagation<K> implements Propagation<K> {
     }
   }
 
-  static final class B3Extractor<R> implements TraceContext.Extractor<R> {
+  static final class B3Extractor<R> implements Extractor<R> {
     final Factory factory;
     final Getter<R, String> getter;
 
@@ -304,12 +306,12 @@ public abstract class B3Propagation<K> implements Propagation<K> {
       return true;
     }
 
-    @Override public <R> TraceContext.Injector<R> injector(Setter<R, String> setter) {
+    @Override public <R> Injector<R> injector(Setter<R, String> setter) {
       if (setter == null) throw new NullPointerException("setter == null");
       return new B3Injector<>(this, setter);
     }
 
-    @Override public <R> TraceContext.Extractor<R> extractor(Getter<R, String> getter) {
+    @Override public <R> Extractor<R> extractor(Getter<R, String> getter) {
       if (getter == null) throw new NullPointerException("getter == null");
       return new B3Extractor<>(this, getter);
     }
