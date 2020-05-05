@@ -59,47 +59,47 @@ public class TraceparentFormatTest {
   /** unsampled isn't the same as not-yet-sampled, but we have no better choice */
   @Test public void writeTraceparentFormat_notYetSampled_128() {
     TraceContext context = TraceContext.newBuilder()
-      .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
-      .traceId(Long.parseUnsignedLong(traceId, 16))
-      .spanId(Long.parseUnsignedLong(spanId, 16)).build();
+        .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
+        .traceId(Long.parseUnsignedLong(traceId, 16))
+        .spanId(Long.parseUnsignedLong(spanId, 16)).build();
 
     assertThat(writeTraceparentFormat(context))
-      .isEqualTo("00-" + traceIdHigh + traceId + "-" + spanId + "-00")
-      .isEqualTo(new String(writeTraceparentFormatAsBytes(context), UTF_8));
+        .isEqualTo("00-" + traceIdHigh + traceId + "-" + spanId + "-00")
+        .isEqualTo(new String(writeTraceparentFormatAsBytes(context), UTF_8));
   }
 
   @Test public void writeTraceparentFormat_unsampled() {
     TraceContext context = TraceContext.newBuilder()
-      .traceId(Long.parseUnsignedLong(traceId, 16))
-      .spanId(Long.parseUnsignedLong(spanId, 16))
-      .sampled(false).build();
+        .traceId(Long.parseUnsignedLong(traceId, 16))
+        .spanId(Long.parseUnsignedLong(spanId, 16))
+        .sampled(false).build();
 
     assertThat(writeTraceparentFormat(context))
-      .isEqualTo("00-0000000000000000" + traceId + "-" + spanId + "-00")
-      .isEqualTo(new String(writeTraceparentFormatAsBytes(context), UTF_8));
+        .isEqualTo("00-0000000000000000" + traceId + "-" + spanId + "-00")
+        .isEqualTo(new String(writeTraceparentFormatAsBytes(context), UTF_8));
   }
 
   @Test public void writeTraceparentFormat_sampled() {
     TraceContext context = TraceContext.newBuilder()
-      .traceId(Long.parseUnsignedLong(traceId, 16))
-      .spanId(Long.parseUnsignedLong(spanId, 16))
-      .sampled(true).build();
+        .traceId(Long.parseUnsignedLong(traceId, 16))
+        .spanId(Long.parseUnsignedLong(spanId, 16))
+        .sampled(true).build();
 
     assertThat(writeTraceparentFormat(context))
-      .isEqualTo("00-0000000000000000" + traceId + "-" + spanId + "-01")
-      .isEqualTo(new String(writeTraceparentFormatAsBytes(context), UTF_8));
+        .isEqualTo("00-0000000000000000" + traceId + "-" + spanId + "-01")
+        .isEqualTo(new String(writeTraceparentFormatAsBytes(context), UTF_8));
   }
 
   /** debug isn't the same as sampled, but we have no better choice */
   @Test public void writeTraceparentFormat_debug() {
     TraceContext context = TraceContext.newBuilder()
-      .traceId(Long.parseUnsignedLong(traceId, 16))
-      .spanId(Long.parseUnsignedLong(spanId, 16))
-      .debug(true).build();
+        .traceId(Long.parseUnsignedLong(traceId, 16))
+        .spanId(Long.parseUnsignedLong(spanId, 16))
+        .debug(true).build();
 
     assertThat(writeTraceparentFormat(context))
-      .isEqualTo("00-0000000000000000" + traceId + "-" + spanId + "-01")
-      .isEqualTo(new String(writeTraceparentFormatAsBytes(context), UTF_8));
+        .isEqualTo("00-0000000000000000" + traceId + "-" + spanId + "-01")
+        .isEqualTo(new String(writeTraceparentFormatAsBytes(context), UTF_8));
   }
 
   /**
@@ -108,116 +108,116 @@ public class TraceparentFormatTest {
    */
   @Test public void writeTraceparentFormat_parent() {
     TraceContext context = TraceContext.newBuilder()
-      .traceId(Long.parseUnsignedLong(traceId, 16))
-      .parentId(Long.parseUnsignedLong(parentId, 16))
-      .spanId(Long.parseUnsignedLong(spanId, 16))
-      .sampled(true).build();
+        .traceId(Long.parseUnsignedLong(traceId, 16))
+        .parentId(Long.parseUnsignedLong(parentId, 16))
+        .spanId(Long.parseUnsignedLong(spanId, 16))
+        .sampled(true).build();
 
     assertThat(writeTraceparentFormat(context))
-      .isEqualTo("00-0000000000000000" + traceId + "-" + spanId + "-01")
-      .isEqualTo(new String(writeTraceparentFormatAsBytes(context), UTF_8));
+        .isEqualTo("00-0000000000000000" + traceId + "-" + spanId + "-01")
+        .isEqualTo(new String(writeTraceparentFormatAsBytes(context), UTF_8));
   }
 
   @Test public void writeTraceparentFormat_largest() {
     TraceContext context = TraceContext.newBuilder()
-      .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
-      .traceId(Long.parseUnsignedLong(traceId, 16))
-      .parentId(Long.parseUnsignedLong(parentId, 16))
-      .spanId(Long.parseUnsignedLong(spanId, 16))
-      .debug(true).build();
+        .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
+        .traceId(Long.parseUnsignedLong(traceId, 16))
+        .parentId(Long.parseUnsignedLong(parentId, 16))
+        .spanId(Long.parseUnsignedLong(spanId, 16))
+        .debug(true).build();
 
     assertThat(writeTraceparentFormat(context))
-      .isEqualTo("00-" + traceIdHigh + traceId + "-" + spanId + "-01")
-      .isEqualTo(new String(writeTraceparentFormatAsBytes(context), UTF_8));
+        .isEqualTo("00-" + traceIdHigh + traceId + "-" + spanId + "-01")
+        .isEqualTo(new String(writeTraceparentFormatAsBytes(context), UTF_8));
   }
 
   @Test public void parseTraceparentFormat_sampled() {
     assertThat(parseTraceparentFormat("00-" + traceIdHigh + traceId + "-" + spanId + "-01"))
-      .isEqualToComparingFieldByField(TraceContext.newBuilder()
-        .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
-        .traceId(Long.parseUnsignedLong(traceId, 16))
-        .spanId(Long.parseUnsignedLong(spanId, 16))
-        .sampled(true).build()
-      );
+        .isEqualToComparingFieldByField(TraceContext.newBuilder()
+            .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
+            .traceId(Long.parseUnsignedLong(traceId, 16))
+            .spanId(Long.parseUnsignedLong(spanId, 16))
+            .sampled(true).build()
+        );
   }
 
   @Test public void parseTraceparentFormat_unsampled() {
     assertThat(parseTraceparentFormat("00-" + traceIdHigh + traceId + "-" + spanId + "-00"))
-      .isEqualToComparingFieldByField(TraceContext.newBuilder()
-        .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
-        .traceId(Long.parseUnsignedLong(traceId, 16))
-        .spanId(Long.parseUnsignedLong(spanId, 16))
-        .sampled(false).build()
-      );
+        .isEqualToComparingFieldByField(TraceContext.newBuilder()
+            .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
+            .traceId(Long.parseUnsignedLong(traceId, 16))
+            .spanId(Long.parseUnsignedLong(spanId, 16))
+            .sampled(false).build()
+        );
   }
 
   @Test public void parseTraceparentFormat_padded() {
     assertThat(parseTraceparentFormat("00-0000000000000000" + traceId + "-" + spanId + "-01"))
-      .isEqualToComparingFieldByField(TraceContext.newBuilder()
-        .traceId(Long.parseUnsignedLong(traceId, 16))
-        .spanId(Long.parseUnsignedLong(spanId, 16))
-        .sampled(true).build()
-      );
+        .isEqualToComparingFieldByField(TraceContext.newBuilder()
+            .traceId(Long.parseUnsignedLong(traceId, 16))
+            .spanId(Long.parseUnsignedLong(spanId, 16))
+            .sampled(true).build()
+        );
   }
 
   @Test public void parseTraceparentFormat_padded_right() {
     assertThat(parseTraceparentFormat("00-" + traceIdHigh + "0000000000000000-" + spanId + "-01"))
-      .isEqualToComparingFieldByField(TraceContext.newBuilder()
-        .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
-        .spanId(Long.parseUnsignedLong(spanId, 16))
-        .sampled(true).build()
-      );
+        .isEqualToComparingFieldByField(TraceContext.newBuilder()
+            .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
+            .spanId(Long.parseUnsignedLong(spanId, 16))
+            .sampled(true).build()
+        );
   }
 
   @Test public void parseTraceparentFormat_newer_version() {
     assertThat(parseTraceparentFormat("10-" + traceIdHigh + traceId + "-" + spanId + "-00"))
-      .isEqualToComparingFieldByField(TraceContext.newBuilder()
-        .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
-        .traceId(Long.parseUnsignedLong(traceId, 16))
-        .spanId(Long.parseUnsignedLong(spanId, 16))
-        .sampled(false).build()
-      );
+        .isEqualToComparingFieldByField(TraceContext.newBuilder()
+            .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
+            .traceId(Long.parseUnsignedLong(traceId, 16))
+            .spanId(Long.parseUnsignedLong(spanId, 16))
+            .sampled(false).build()
+        );
   }
 
   @Test public void parseTraceparentFormat_newer_version_ignores_extra_fields() {
     assertThat(parseTraceparentFormat("10-" + traceIdHigh + traceId + "-" + spanId + "-00-fobaly"))
-      .isEqualToComparingFieldByField(TraceContext.newBuilder()
-        .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
-        .traceId(Long.parseUnsignedLong(traceId, 16))
-        .spanId(Long.parseUnsignedLong(spanId, 16))
-        .sampled(false).build()
-      );
+        .isEqualToComparingFieldByField(TraceContext.newBuilder()
+            .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
+            .traceId(Long.parseUnsignedLong(traceId, 16))
+            .spanId(Long.parseUnsignedLong(spanId, 16))
+            .sampled(false).build()
+        );
   }
 
   @Test public void parseTraceparentFormat_newer_version_ignores_extra_flags() {
     assertThat(parseTraceparentFormat("10-" + traceIdHigh + traceId + "-" + spanId + "-ff"))
-      .isEqualToComparingFieldByField(TraceContext.newBuilder()
-        .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
-        .traceId(Long.parseUnsignedLong(traceId, 16))
-        .spanId(Long.parseUnsignedLong(spanId, 16))
-        .sampled(true).build()
-      );
+        .isEqualToComparingFieldByField(TraceContext.newBuilder()
+            .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
+            .traceId(Long.parseUnsignedLong(traceId, 16))
+            .spanId(Long.parseUnsignedLong(spanId, 16))
+            .sampled(true).build()
+        );
   }
 
   /** for example, parsing inside tracestate */
   @Test public void parseTraceparentFormat_middleOfString() {
     String input = "tc=00-" + traceIdHigh + traceId + "-" + spanId + "-01,";
     assertThat(parseTraceparentFormat(input, 3, input.length() - 1))
-      .isEqualToComparingFieldByField(TraceContext.newBuilder()
-        .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
-        .traceId(Long.parseUnsignedLong(traceId, 16))
-        .spanId(Long.parseUnsignedLong(spanId, 16))
-        .sampled(true).build()
-      );
+        .isEqualToComparingFieldByField(TraceContext.newBuilder()
+            .traceIdHigh(Long.parseUnsignedLong(traceIdHigh, 16))
+            .traceId(Long.parseUnsignedLong(traceId, 16))
+            .spanId(Long.parseUnsignedLong(spanId, 16))
+            .sampled(true).build()
+        );
   }
 
   @Test public void parseTraceparentFormat_middleOfString_incorrectIndex() {
     String input = "tc=00-" + traceIdHigh + traceId + "-" + spanId + "-00,";
     assertThat(parseTraceparentFormat(input, 0, 12))
-      .isNull(); // instead of raising exception
+        .isNull(); // instead of raising exception
 
     verify(platform)
-      .log("Invalid input: only valid characters are lower-hex for {0}", "version", null);
+        .log("Invalid input: only valid characters are lower-hex for {0}", "version", null);
   }
 
   /** This tests that the being index is inclusive and the end index is exclusive */
@@ -225,74 +225,74 @@ public class TraceparentFormatTest {
     String encoded = "00-" + traceIdHigh + traceId + "-" + spanId + "-01";
     String sequence = "??" + encoded + "??";
     assertThat(parseTraceparentFormat(sequence, 2, 2 + encoded.length()))
-      .isEqualToComparingFieldByField(parseTraceparentFormat(encoded));
+        .isEqualToComparingFieldByField(parseTraceparentFormat(encoded));
   }
 
   @Test public void parseTraceparentFormat_malformed() {
     assertThat(parseTraceparentFormat("not-a-tumor"))
-      .isNull(); // instead of raising exception
+        .isNull(); // instead of raising exception
 
     verify(platform)
-      .log("Invalid input: only valid characters are lower-hex for {0}", "version", null);
+        .log("Invalid input: only valid characters are lower-hex for {0}", "version", null);
   }
 
   @Test public void parseTraceparentFormat_malformed_notAscii() {
     assertThat(parseTraceparentFormat(
-      "00-" + traceIdHigh + traceId + "-" + spanId.substring(0, 15) + "💩-1"))
-      .isNull(); // instead of crashing
+        "00-" + traceIdHigh + traceId + "-" + spanId.substring(0, 15) + "💩-1"))
+        .isNull(); // instead of crashing
 
     verify(platform)
-      .log("Invalid input: only valid characters are lower-hex for {0}", "parent ID", null);
+        .log("Invalid input: only valid characters are lower-hex for {0}", "parent ID", null);
   }
 
   @Test public void parseTraceparentFormat_malformed_uuid() {
     assertThat(parseTraceparentFormat("b970dafd-0d95-40aa-95d8-1d8725aebe40"))
-      .isNull(); // instead of raising exception
+        .isNull(); // instead of raising exception
 
     verify(platform).log("Invalid input: {0} is too long", "version", null);
   }
 
   @Test public void parseTraceparentFormat_short_traceId() {
     assertThat(
-      parseTraceparentFormat("00-" + traceId + "-" + spanId + "-01"))
-      .isNull(); // instead of raising exception
+        parseTraceparentFormat("00-" + traceId + "-" + spanId + "-01"))
+        .isNull(); // instead of raising exception
 
     verify(platform).log("Invalid input: {0} is too short", "trace ID", null);
   }
 
   @Test public void parseTraceparentFormat_zero_traceId() {
     assertThat(
-      parseTraceparentFormat("00-00000000000000000000000000000000-" + spanId + "-01"))
-      .isNull(); // instead of raising exception
+        parseTraceparentFormat("00-00000000000000000000000000000000-" + spanId + "-01"))
+        .isNull(); // instead of raising exception
 
     verify(platform).log("Invalid input: read all zeros {0}", "trace ID", null);
   }
 
   @Test public void parseTraceparentFormat_fails_on_extra_flags() {
     assertThat(parseTraceparentFormat("00-" + traceIdHigh + traceId + "-" + spanId + "-ff"))
-      .isNull(); // instead of raising exception
+        .isNull(); // instead of raising exception
 
     verify(platform).log("Invalid input: only choices are 00 or 01 {0}", "trace flags", null);
   }
 
   @Test public void parseTraceparentFormat_fails_on_extra_fields() {
     assertThat(parseTraceparentFormat("00-" + traceIdHigh + traceId + "-" + spanId + "-0-"))
-      .isNull(); // instead of raising exception
+        .isNull(); // instead of raising exception
 
     verify(platform).log("Invalid input: {0} is too short", "trace flags", null);
   }
 
   @Test public void parseTraceparentFormat_fails_on_version_ff() {
     assertThat(parseTraceparentFormat("ff-" + traceIdHigh + traceId + "-" + spanId + "-01"))
-      .isNull(); // instead of raising exception
+        .isNull(); // instead of raising exception
 
     verify(platform).log("Invalid input: ff {0}", "version", null);
   }
 
   @Test public void parseTraceparentFormat_zero_spanId() {
     assertThat(
-      parseTraceparentFormat("00-" + traceIdHigh + traceId + "-0000000000000000-01"))
-      .isNull(); // instead of raising exception
+        parseTraceparentFormat("00-" + traceIdHigh + traceId + "-0000000000000000-01"))
+        .isNull(); // instead of raising exception
 
     verify(platform).log("Invalid input: read all zeros {0}", "parent ID", null);
   }
@@ -305,78 +305,79 @@ public class TraceparentFormatTest {
 
   @Test public void parseTraceparentFormat_empty_version() {
     assertThat(parseTraceparentFormat("-" + traceIdHigh + traceId + "-" + spanId + "-00"))
-      .isNull(); // instead of raising exception
+        .isNull(); // instead of raising exception
 
     verify(platform).log("Invalid input: empty {0}", "version", null);
   }
 
   @Test public void parseTraceparentFormat_empty_traceId() {
     assertThat(parseTraceparentFormat("00--" + spanId + "-00"))
-      .isNull(); // instead of raising exception
+        .isNull(); // instead of raising exception
 
     verify(platform).log("Invalid input: empty {0}", "trace ID", null);
   }
 
   @Test public void parseTraceparentFormat_empty_spanId() {
     assertThat(parseTraceparentFormat("00-" + traceIdHigh + traceId + "--01"))
-      .isNull(); // instead of raising exception
+        .isNull(); // instead of raising exception
 
     verify(platform).log("Invalid input: empty {0}", "parent ID", null);
   }
 
   @Test public void parseTraceparentFormat_empty_flags() {
     assertThat(parseTraceparentFormat("00-" + traceIdHigh + traceId + "-" + spanId + "-"))
-      .isNull(); // instead of raising exception
+        .isNull(); // instead of raising exception
 
     verify(platform).log("Invalid input: empty {0}", "trace flags", null);
   }
 
   @Test public void parseTraceparentFormat_truncated_traceId() {
     assertThat(parseTraceparentFormat("00-1-" + spanId + "-01"))
-      .isNull(); // instead of raising exception
+        .isNull(); // instead of raising exception
 
     verify(platform).log("Invalid input: {0} is too short", "trace ID", null);
   }
 
   @Test public void parseTraceparentFormat_truncated_traceId128() {
     assertThat(parseTraceparentFormat("00-1" + traceId + "-" + spanId + "-01"))
-      .isNull(); // instead of raising exception
+        .isNull(); // instead of raising exception
 
     verify(platform).log("Invalid input: {0} is too short", "trace ID", null);
   }
 
   @Test public void parseTraceparentFormat_truncated_spanId() {
     assertThat(
-      parseTraceparentFormat("00-" + traceIdHigh + traceId + "-" + spanId.substring(0, 15) + "-00"))
-      .isNull(); // instead of raising exception
+        parseTraceparentFormat(
+            "00-" + traceIdHigh + traceId + "-" + spanId.substring(0, 15) + "-00"))
+        .isNull(); // instead of raising exception
 
     verify(platform).log("Invalid input: {0} is too short", "parent ID", null);
   }
 
   @Test public void parseTraceparentFormat_truncated_flags() {
     assertThat(parseTraceparentFormat("00-" + traceIdHigh + traceId + "-" + spanId + "-0"))
-      .isNull(); // instead of raising exception
+        .isNull(); // instead of raising exception
 
     verify(platform).log("Invalid input: {0} is too short", "trace flags", null);
   }
 
   @Test public void parseTraceparentFormat_traceIdTooLong() {
     assertThat(parseTraceparentFormat("00-" + traceIdHigh + traceId + "a" + "-" + spanId + "-0"))
-      .isNull(); // instead of raising exception
+        .isNull(); // instead of raising exception
 
     verify(platform).log("Invalid input: {0} is too long", "trace ID", null);
   }
 
   @Test public void parseTraceparentFormat_spanIdTooLong() {
     assertThat(parseTraceparentFormat("00-" + traceIdHigh + traceId + "-" + spanId + "a-0"))
-      .isNull(); // instead of raising exception
+        .isNull(); // instead of raising exception
 
     verify(platform).log("Invalid input: {0} is too long", "parent ID", null);
   }
 
   @Test public void parseTraceparentFormat_flagsTooLong() {
     assertThat(parseTraceparentFormat("00-" + traceIdHigh + traceId + "-" + spanId + "-001"))
-      .isNull(); // instead of raising exception
+        .isNull(); // instead of raising exception
 
     verify(platform).log("Invalid input: too long", null);
   }

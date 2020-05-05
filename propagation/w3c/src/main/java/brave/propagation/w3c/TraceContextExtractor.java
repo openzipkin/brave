@@ -14,38 +14,37 @@
 package brave.propagation.w3c;
 
 import brave.propagation.Propagation.Getter;
-import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
-import brave.propagation.w3c.TraceContextPropagation.Extra;
-import java.util.Collections;
-import java.util.List;
 
 import static brave.propagation.B3SingleFormat.parseB3SingleFormat;
 
 // TODO: this class has no useful tests wrt traceparent yet
-final class TraceContextExtractor<C, K> implements Extractor<C> {
-  final Getter<C, K> getter;
+final class TraceContextExtractor<R, K> implements Extractor<R> {
+  static final TraceContextOrSamplingFlags EXTRACTED_EMPTY =
+      TraceContextOrSamplingFlags.EMPTY.toBuilder().addExtra(Tracestate.EMPTY).build();
+
+  final Getter<R, K> getter;
   final K traceparentKey, tracestateKey;
   final TracestateFormat tracestateFormat;
   final B3SingleFormatHandler handler = new B3SingleFormatHandler();
 
-  TraceContextExtractor(TraceContextPropagation<K> propagation, Getter<C, K> getter) {
+  TraceContextExtractor(TraceContextPropagation<K> propagation, Getter<R, K> getter) {
     this.getter = getter;
     this.traceparentKey = propagation.traceparent;
     this.tracestateKey = propagation.tracestate;
     this.tracestateFormat = new TracestateFormat(propagation.tracestateKey);
   }
 
-  @Override public TraceContextOrSamplingFlags extract(C carrier) {
-    if (carrier == null) throw new NullPointerException("carrier == null");
-    String traceparent = getter.get(carrier, traceparentKey);
-    if (traceparent == null) return EMPTY;
+  @Override public TraceContextOrSamplingFlags extract(R request) {
+    if (request == null) throw new NullPointerException("request == null");
+    String traceparentString = getter.get(request, traceparentKey);
+    if (traceparentString == null) return EXTRACTED_EMPTY;
 
     // TODO: add link that says tracestate itself is optional
-    String tracestate = getter.get(carrier, tracestateKey);
-    if (tracestate == null) {
+    String tracestateString = getter.get(request, tracestateKey);
+    if (tracestateString == null) {
       // NOTE: we may not want to pay attention to the sampled flag. Since it conflates
       // not-yet-sampled with sampled=false, implementations that always set flags to -00 would
       // never be traced!
@@ -54,33 +53,20 @@ final class TraceContextExtractor<C, K> implements Extractor<C> {
       // span ID. Ex we don't know if upstream are sending to the same system or not, when we can't
       // read the tracestate header. Trusting the span ID (traceparent calls the span ID parent-id)
       // could result in a headless trace.
-      TraceContext maybeUpstream = TraceparentFormat.parseTraceparentFormat(traceparent);
-      return TraceContextOrSamplingFlags.newBuilder()
-        .context(maybeUpstream)
-        .extra(DEFAULT_EXTRA) // marker for outbound propagation
-        .build();
+      TraceContext maybeUpstream = TraceparentFormat.parseTraceparentFormat(traceparentString);
+      return TraceContextOrSamplingFlags.newBuilder(maybeUpstream)
+          .addExtra(Tracestate.EMPTY) // marker for outbound propagation
+          .build();
     }
 
-    CharSequence otherEntries = tracestateFormat.parseAndReturnOtherEntries(tracestate, handler);
-
-    List<Object> extra;
-    if (otherEntries == null) {
-      extra = DEFAULT_EXTRA;
-    } else {
-      Extra e = new Extra();
-      e.otherEntries = otherEntries;
-      extra = Collections.singletonList(e);
-    }
+    Tracestate tracestate = tracestateFormat.parseAndReturnOtherEntries(tracestateString, handler);
 
     TraceContext context = handler.context;
     if (context == null) {
-      if (extra == DEFAULT_EXTRA) return EMPTY;
-      return TraceContextOrSamplingFlags.newBuilder()
-        .extra(extra)
-        .samplingFlags(SamplingFlags.EMPTY)
-        .build();
+      if (tracestate == Tracestate.EMPTY) return EXTRACTED_EMPTY;
+      return EXTRACTED_EMPTY.toBuilder().addExtra(tracestate).build();
     }
-    return TraceContextOrSamplingFlags.newBuilder().context(context).extra(extra).build();
+    return TraceContextOrSamplingFlags.newBuilder(context).addExtra(tracestate).build();
   }
 
   static final class B3SingleFormatHandler implements TracestateFormat.Handler {
@@ -93,11 +79,4 @@ final class TraceContextExtractor<C, K> implements Extractor<C> {
       return context != null;
     }
   }
-
-  /** When present, this context was created with TracestatePropagation */
-  static final Extra MARKER = new Extra();
-
-  static final List<Object> DEFAULT_EXTRA = Collections.singletonList(MARKER);
-  static final TraceContextOrSamplingFlags EMPTY =
-    TraceContextOrSamplingFlags.EMPTY.toBuilder().extra(DEFAULT_EXTRA).build();
 }

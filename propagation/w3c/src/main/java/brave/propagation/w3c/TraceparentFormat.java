@@ -16,7 +16,6 @@ package brave.propagation.w3c;
 import brave.internal.Nullable;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
-import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 
 import static brave.internal.HexCodec.writeHexLong;
@@ -29,10 +28,10 @@ final class TraceparentFormat {
   static final int FORMAT_LENGTH = 3 + 32 + 1 + 16 + 3; // 00-traceid128-spanid-01
 
   static final int // instead of enum for smaller bytecode
-    FIELD_VERSION = 1,
-    FIELD_TRACE_ID = 2,
-    FIELD_PARENT_ID = 3,
-    FIELD_TRACE_FLAGS = 4;
+      FIELD_VERSION = 1,
+      FIELD_TRACE_ID = 2,
+      FIELD_PARENT_ID = 3,
+      FIELD_TRACE_FLAGS = 4;
 
   /** Writes all "traceparent" defined fields in the trace context to a hyphen delimited string. */
   public static String writeTraceparentFormat(TraceContext context) {
@@ -42,7 +41,7 @@ final class TraceparentFormat {
   }
 
   /**
-   * Like {@link #writeTraceparentFormat(TraceContext)}, but for carriers with byte array or byte
+   * Like {@link #writeTraceparentFormat(TraceContext)}, but for requests with byte array or byte
    * buffer values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
    */
   public static byte[] writeTraceparentFormatAsBytes(TraceContext context) {
@@ -89,7 +88,7 @@ final class TraceparentFormat {
    */
   @Nullable
   public static TraceContext parseTraceparentFormat(CharSequence value, int beginIndex,
-    int endIndex) {
+      int endIndex) {
     int length = endIndex - beginIndex;
 
     if (length == 0) {
@@ -214,9 +213,9 @@ final class TraceparentFormat {
   }
 
   static boolean validateFieldLength(int field, int length) {
-    int expectedLength =
-      (field == FIELD_TRACE_FLAGS || field == FIELD_VERSION) ? 2
-        : field == FIELD_TRACE_ID ? 32 : 16;
+    int expectedLength = (field == FIELD_VERSION || field == FIELD_TRACE_FLAGS)
+        ? 2  // There are two fields that are 2 characters long: version and flags
+        : field == FIELD_TRACE_ID ? 32 : 16; // trace ID or span ID
     if (length == 0) {
       log(field, "Invalid input: empty {0}");
       return false;

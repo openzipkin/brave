@@ -13,7 +13,6 @@
  */
 package brave.propagation.w3c;
 
-import brave.internal.Nullable;
 import brave.internal.Platform;
 
 import static brave.propagation.w3c.TraceparentFormat.FORMAT_LENGTH;
@@ -79,7 +78,7 @@ final class TracestateFormat {
   // TODO: characters were added to the valid list, so it is possible this impl no longer works
   // TODO: 32 max entries https://w3c.github.io/trace-context/#tracestate-header-field-values
   // TODO: empty and whitespace-only allowed Ex. 'foo=' or 'foo=  '
-  @Nullable CharSequence parseAndReturnOtherEntries(String tracestate, Handler handler) {
+  Tracestate parseAndReturnOtherEntries(String tracestate, Handler handler) {
     StringBuilder currentString = new StringBuilder(), otherEntries = null;
     Op op;
     OUTER:
@@ -120,7 +119,10 @@ final class TracestateFormat {
           break;
       }
     }
-    return otherEntries;
+    if (otherEntries != null && otherEntries.charAt(0) == ',') {
+      otherEntries.deleteCharAt(0); // TODO: fix the parser so this is eaten before now
+    }
+    return Tracestate.create(otherEntries);
   }
 
   // Simplify other rules by allowing value-based lookup on an ASCII value.
@@ -142,7 +144,7 @@ final class TracestateFormat {
 
   static boolean isValidTracestateKeyChar(char c) {
     return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
-      || c == '@' || c == '_' || c == '-' || c == '*' || c == '/';
+        || c == '@' || c == '_' || c == '-' || c == '*' || c == '/';
   }
 
   /**

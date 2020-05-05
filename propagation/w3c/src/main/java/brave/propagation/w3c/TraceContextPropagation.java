@@ -21,7 +21,6 @@ import java.util.Arrays;
 import java.util.List;
 
 public final class TraceContextPropagation<K> implements Propagation<K> {
-
   public static Factory newFactory() {
     return new FactoryBuilder().build();
   }
@@ -87,27 +86,13 @@ public final class TraceContextPropagation<K> implements Propagation<K> {
     return keys;
   }
 
-  @Override public <C> Injector<C> injector(Setter<C, K> setter) {
+  @Override public <R> Injector<R> injector(Setter<R, K> setter) {
     if (setter == null) throw new NullPointerException("setter == null");
     return new TraceContextInjector<>(this, setter);
   }
 
-  @Override public <C> Extractor<C> extractor(Getter<C, K> getter) {
+  @Override public <R> Extractor<R> extractor(Getter<R, K> getter) {
     if (getter == null) throw new NullPointerException("getter == null");
     return new TraceContextExtractor<>(this, getter);
-  }
-
-  /**
-   * This only contains other entries. The entry for the current trace is only written during
-   * injection.
-   */
-  static final class Extra { // hidden intentionally
-    CharSequence otherEntries;
-
-    @Override public String toString() {
-      return "TracestatePropagation{"
-        + (otherEntries != null ? ("entries=" + otherEntries.toString()) : "")
-        + "}";
-    }
   }
 }

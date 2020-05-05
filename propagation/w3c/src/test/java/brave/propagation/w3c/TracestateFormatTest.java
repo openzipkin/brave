@@ -25,26 +25,26 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 public class TracestateFormatTest {
   static final String FORTY_KEY_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789_-*/";
   static final String TWO_HUNDRED_FORTY_KEY_CHARS =
-    FORTY_KEY_CHARS + FORTY_KEY_CHARS + FORTY_KEY_CHARS
-      + FORTY_KEY_CHARS + FORTY_KEY_CHARS + FORTY_KEY_CHARS;
+      FORTY_KEY_CHARS + FORTY_KEY_CHARS + FORTY_KEY_CHARS
+          + FORTY_KEY_CHARS + FORTY_KEY_CHARS + FORTY_KEY_CHARS;
 
   static final String LONGEST_BASIC_KEY =
-    TWO_HUNDRED_FORTY_KEY_CHARS + FORTY_KEY_CHARS.substring(0, 16);
+      TWO_HUNDRED_FORTY_KEY_CHARS + FORTY_KEY_CHARS.substring(0, 16);
 
   static final String LONGEST_TENANT_KEY =
-    "1" + TWO_HUNDRED_FORTY_KEY_CHARS + "@" + FORTY_KEY_CHARS.substring(0, 13);
+      "1" + TWO_HUNDRED_FORTY_KEY_CHARS + "@" + FORTY_KEY_CHARS.substring(0, 13);
 
   // all these need log assertions
   @Test public void validateKey_empty() {
     assertThatThrownByValidateKey("")
-      .hasMessage("Invalid input: empty");
+        .hasMessage("Invalid input: empty");
   }
 
   @Test public void validateKey_tooLong() {
     char[] tooMany = new char[257];
     Arrays.fill(tooMany, 'a');
     assertThatThrownByValidateKey(new String(tooMany))
-      .hasMessage("Invalid input: too large");
+        .hasMessage("Invalid input: too large");
   }
 
   @Test public void validateKey_shortest_basic() {
@@ -67,34 +67,34 @@ public class TracestateFormatTest {
   @Test public void validateKey_invalid_basic() {
     // zero is allowed only as when there is an '@'
     assertThatThrownByValidateKey("0")
-      .hasMessage("Invalid input: vendor must start with a-z");
+        .hasMessage("Invalid input: vendor must start with a-z");
   }
 
   @Test public void validateKey_invalid_basic_unicode() {
     Stream.of("a💩", "💩a").forEach(key -> assertThatThrownByValidateKey(key)
-      .hasMessage("Invalid input: valid characters are: a-z 0-9 _ - * / @"));
+        .hasMessage("Invalid input: valid characters are: a-z 0-9 _ - * / @"));
   }
 
   @Test public void validateKey_invalid_tenant() {
     assertThatThrownByValidateKey("_@z")
-      .hasMessage("Invalid input: tenant ID must start with a-z");
+        .hasMessage("Invalid input: tenant ID must start with a-z");
   }
 
   @Test public void validateKey_invalid_tenant_unicode() {
     Stream.of(
-      "a@a💩",
-      "a@💩a",
-      "a💩@a",
-      "💩a@a"
+        "a@a💩",
+        "a@💩a",
+        "a💩@a",
+        "💩a@a"
     ).forEach(key -> assertThatThrownByValidateKey(key)
-      .hasMessage("Invalid input: valid characters are: a-z 0-9 _ - * / @"));
+        .hasMessage("Invalid input: valid characters are: a-z 0-9 _ - * / @"));
   }
 
   @Test public void validateKey_invalid_tenant_empty() {
     assertThatThrownByValidateKey("@a")
-      .hasMessage("Invalid input: empty tenant ID");
+        .hasMessage("Invalid input: empty tenant ID");
     assertThatThrownByValidateKey("a@")
-      .hasMessage("Invalid input: empty vendor");
+        .hasMessage("Invalid input: empty vendor");
   }
 
   @Test public void validateKey_invalid_tenant_vendor_longest() {
@@ -103,7 +103,7 @@ public class TracestateFormatTest {
 
   @Test public void validateKey_invalid_tenant_vendor_tooLong() {
     assertThatThrownByValidateKey("a@abcdef1234567890")
-      .hasMessage("Invalid input: vendor too long");
+        .hasMessage("Invalid input: vendor too long");
   }
 
   static AbstractBooleanAssert<?> assertThatValidateKey(String key) {
@@ -112,6 +112,6 @@ public class TracestateFormatTest {
 
   static AbstractThrowableAssert<?, ? extends Throwable> assertThatThrownByValidateKey(String key) {
     return assertThatThrownBy(() -> TracestateFormat.validateKey(key, true))
-      .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(IllegalArgumentException.class);
   }
 }

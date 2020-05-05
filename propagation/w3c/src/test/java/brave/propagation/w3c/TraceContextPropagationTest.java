@@ -18,92 +18,106 @@ import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
-import brave.propagation.w3c.TraceContextPropagation.Extra;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.Test;
 
 import static brave.internal.HexCodec.lowerHexToUnsignedLong;
 import static brave.propagation.Propagation.KeyFactory.STRING;
-import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TraceContextPropagationTest {
-  Map<String, String> carrier = new LinkedHashMap<>();
+  Map<String, String> request = new LinkedHashMap<>();
   Propagation<String> propagation = TraceContextPropagation.newFactory().create(STRING);
   Injector<Map<String, String>> injector = propagation.injector(Map::put);
   Extractor<Map<String, String>> extractor = propagation.extractor(Map::get);
 
   TraceContext sampledContext = TraceContext.newBuilder()
-    .traceIdHigh(lowerHexToUnsignedLong("67891233abcdef01"))
-    .traceId(lowerHexToUnsignedLong("2345678912345678"))
-    .spanId(lowerHexToUnsignedLong("463ac35c9f6413ad"))
-    .sampled(true)
-    .build();
+      .traceIdHigh(lowerHexToUnsignedLong("67891233abcdef01"))
+      .traceId(lowerHexToUnsignedLong("2345678912345678"))
+      .spanId(lowerHexToUnsignedLong("463ac35c9f6413ad"))
+      .sampled(true)
+      .build();
   String validTraceparent = "00-67891233abcdef012345678912345678-463ac35c9f6413ad-01";
   String validB3Single = "67891233abcdef012345678912345678-463ac35c9f6413ad-1";
   String otherState = "congo=lZWRzIHRoNhcm5hbCBwbGVhc3VyZS4=";
 
   @Test public void injects_b3_when_no_other_tracestate() {
-    Extra extra = new Extra();
+    sampledContext = sampledContext.toBuilder().addExtra(Tracestate.EMPTY).build();
 
-    sampledContext = sampledContext.toBuilder().extra(asList(extra)).build();
+    injector.inject(sampledContext, request);
 
-    injector.inject(sampledContext, carrier);
-
-    assertThat(carrier).containsEntry("tracestate", "b3=" + validB3Single);
+    assertThat(request).containsEntry("tracestate", "b3=" + validB3Single);
   }
 
   @Test public void injects_b3_before_other_tracestate() {
-    Extra extra = new Extra();
-    extra.otherEntries = otherState;
+    Tracestate tracestate = Tracestate.create(otherState);
 
-    sampledContext = sampledContext.toBuilder().extra(asList(extra)).build();
+    sampledContext = sampledContext.toBuilder().addExtra(tracestate).build();
 
-    injector.inject(sampledContext, carrier);
+    injector.inject(sampledContext, request);
 
-    assertThat(carrier).containsEntry("tracestate", "b3=" + validB3Single + "," + otherState);
+    assertThat(request).containsEntry("tracestate", "b3=" + validB3Single + "," + otherState);
   }
 
   @Test public void extracts_b3_when_no_other_tracestate() {
-    carrier.put("traceparent", validTraceparent);
-    carrier.put("tracestate", "b3=" + validB3Single);
+    request.put("traceparent", validTraceparent);
+    request.put("tracestate", "b3=" + validB3Single);
 
-    assertThat(extractor.extract(carrier)).isEqualTo(
-      TraceContextOrSamplingFlags.newBuilder()
-        .addExtra(new Extra())
-        .context(sampledContext)
-        .build()
-    );
+    assertThat(extractor.extract(request)).isEqualTo(
+        TraceContextOrSamplingFlags.newBuilder(sampledContext).addExtra(Tracestate.EMPTY).build());
   }
 
   @Test public void extracts_b3_before_other_tracestate() {
-    carrier.put("traceparent", validTraceparent);
-    carrier.put("tracestate", "b3=" + validB3Single + "," + otherState);
+    request.put("traceparent", validTraceparent);
+    request.put("tracestate", "b3=" + validB3Single + "," + otherState);
 
-    Extra extra = new Extra();
-    extra.otherEntries = otherState;
+    Tracestate tracestate = Tracestate.create(otherState);
 
-    assertThat(extractor.extract(carrier)).isEqualTo(
-      TraceContextOrSamplingFlags.newBuilder()
-        .addExtra(extra)
-        .context(sampledContext)
-        .build()
-    );
+    assertThat(extractor.extract(request)).isEqualTo(
+        TraceContextOrSamplingFlags.newBuilder(sampledContext).addExtra(tracestate).build());
+  }
+
+  @Test public void extracted_toString() {
+    request.put("traceparent", validTraceparent);
+    request.put("tracestate", "b3=" + validB3Single + "," + otherState);
+
+    assertThat(extractor.extract(request)).hasToString(
+        "Extracted{"
+            + "traceContext=" + sampledContext + ", "
+            + "samplingFlags=SAMPLED_REMOTE, "
+            + "extra=[tracestate: " + otherState + "]"
+            + "}");
   }
 
   @Test public void extracts_b3_after_other_tracestate() {
-    carrier.put("traceparent", validTraceparent);
-    carrier.put("tracestate", otherState + ",b3=" + validB3Single);
+    request.put("traceparent", validTraceparent);
+    request.put("tracestate", otherState + ",b3=" + validB3Single);
 
-    Extra extra = new Extra();
-    extra.otherEntries = otherState;
+    Tracestate tracestate = Tracestate.create(otherState);
 
-    assertThat(extractor.extract(carrier)).isEqualTo(
-      TraceContextOrSamplingFlags.newBuilder()
-        .addExtra(extra)
-        .context(sampledContext)
-        .build()
-    );
+    assertThat(extractor.extract(request)).isEqualTo(
+        TraceContextOrSamplingFlags.newBuilder(sampledContext).addExtra(tracestate).build());
+  }
+
+  @Test public void tracestate() {
+    Tracestate b3_withContext = Tracestate.create("b3=" + validB3Single);
+    Tracestate sameState = Tracestate.create("b3=" + validB3Single);
+    assertThat(b3_withContext).isEqualTo(sameState);
+    assertThat(sameState).isEqualTo(b3_withContext);
+    assertThat(b3_withContext).hasSameHashCodeAs(sameState);
+    assertThat(b3_withContext)
+        .hasToString("tracestate: b3=67891233abcdef012345678912345678-463ac35c9f6413ad-1");
+
+    assertThat(Tracestate.create(""))
+        .isNotEqualTo(b3_withContext)
+        .isSameAs(Tracestate.create(null))
+        .isSameAs(Tracestate.EMPTY)
+        .hasToString("tracestate: ");
+
+    Tracestate b3_debugOnly = Tracestate.create("b3=d");
+    assertThat(b3_withContext).isNotEqualTo(b3_debugOnly);
+    assertThat(b3_debugOnly).isNotEqualTo(b3_withContext);
+    assertThat(b3_withContext.hashCode()).isNotEqualTo(b3_debugOnly.hashCode());
   }
 }
