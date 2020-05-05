@@ -95,6 +95,22 @@ referencing the parent context stored on Headers, if available.
 Be aware that operations that require `builder.transformer(...)` will cause re-partitioning when
 grouping or joining downstream ([Kafka docs](https://kafka.apache.org/documentation/streams/developer-guide/dsl-api.html#applying-processors-and-transformers-processor-api-integration)).
 
+### Why not to trace _every_ Kafka Streams operation?
+
+When starting to design this instrumentation, “trace everything” was the first idea:
+When a message enters the Kafka Streams topology starts a new `poll` span, and every operation
+(e.g. `map`, `filter`, `join`, etc.) is chained as an additional child span.
+
+Kafka Streams materializes its topology _internally_ based on DSL operation. Therefore, is not possible to hook into
+the topology creation process to instrument each operation. Even though this could be desirable, it would
+require, first, to add new "doors" on the Kafka Streams side to manipulate or intercept data around each operation
+--which will be hard to sale--; and, if available, it would potentially expose excessive details as **all**
+operations would be traced, making traces harder to grok--and would probably create the need to support
+functionality to **not** trace each operation, and changing your code anyhow.
+
+Given the current scenario, `KafkaStreamsTracing` is equipped with a set of common DSL operation wrappers that
+enable tracing. Consider that this will require changes on your code, as the examples above.
+
 ## Notes
 
 * This tracer is only compatible with Kafka Streams versions including headers support ( > 2.0.0).
