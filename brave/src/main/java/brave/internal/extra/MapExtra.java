@@ -58,7 +58,7 @@ public class MapExtra<K, V, A extends MapExtra<K, V, A, F>,
     return UnsafeArrayMap.<K, V>newBuilder().build(state());
   }
 
-  /** Returns the value of the key with the specified name or {@code null} if not available. */
+  /** Returns the value of the {@code key} or {@code null} if not available. */
   @Nullable public V get(K key) {
     if (key == null) return null;
     Object[] state = state();
@@ -67,7 +67,7 @@ public class MapExtra<K, V, A extends MapExtra<K, V, A, F>,
   }
 
   /**
-   * Updates the value of the field, or ignores if read-only or not configured.
+   * Updates the value of the {@code key}, or ignores if read-only or not configured.
    *
    * @param value {@code null} is an attempt to remove the value
    * @return {@code true} if the underlying state changed
@@ -162,7 +162,7 @@ public class MapExtra<K, V, A extends MapExtra<K, V, A, F>,
   }
 
   /**
-   * Fields are never deleted, only their valuse set {@code null}. This means existing indexes are
+   * Keys are never deleted, only their valuse set {@code null}. This means existing indexes are
    * stable for instances of this type.
    */
   int indexOfInitialKey(K key) {
