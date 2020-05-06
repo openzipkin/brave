@@ -107,7 +107,7 @@ public final class ExtraBaggageContext extends BaggageContext {
   @Nullable static String getValue(BaggageField field, List<Object> extraList) {
     BaggageFields extra = findExtra(BaggageFields.class, extraList);
     if (extra == null) return null;
-    return extra.getValue(field);
+    return extra.get(field);
   }
 
   static boolean updateValue(BaggageField field, List<Object> extraList, @Nullable String value) {

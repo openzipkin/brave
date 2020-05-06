@@ -13,6 +13,7 @@
  */
 package brave.internal;
 
+import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagationConfig;
 import brave.internal.baggage.BaggageCodec;
 import org.junit.Test;
@@ -21,14 +22,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 public class InternalBaggageTest {
+  static {
+    BaggageField.create("test"); // ensure InternalBaggage is wired
+  }
+
   @Test public void newBaggagePropagationConfig() {
     BaggageCodec baggageCodec = mock(BaggageCodec.class);
 
     BaggagePropagationConfig config = InternalBaggage.instance.newBaggagePropagationConfig(
-        baggageCodec
+        baggageCodec, 32
     );
 
     assertThat(config).extracting("baggageCodec")
         .isSameAs(baggageCodec);
+    assertThat(config).extracting("maxDynamicFields")
+        .isSameAs(32);
   }
 }

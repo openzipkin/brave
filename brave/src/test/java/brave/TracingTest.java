@@ -261,7 +261,7 @@ public class TracingTest {
     try (Tracing tracing = Tracing.newBuilder()
       .spanReporter(spans::add)
       .propagationFactory(new Propagation.Factory() {
-        @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
+        @Deprecated public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
           return B3SinglePropagation.FACTORY.create(keyFactory);
         }
 

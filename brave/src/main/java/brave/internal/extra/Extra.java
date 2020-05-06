@@ -11,7 +11,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.internal.baggage;
+package brave.internal.extra;
 
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
