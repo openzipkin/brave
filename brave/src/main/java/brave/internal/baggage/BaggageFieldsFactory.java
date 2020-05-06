@@ -20,10 +20,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class BaggageFieldsHandler extends ExtraHandler<BaggageFields, BaggageFieldsHandler> {
+public final class BaggageFieldsFactory extends ExtraFactory<BaggageFields, BaggageFieldsFactory> {
   public static final int MAX_DYNAMIC_FIELDS = Long.SIZE;
 
-  public static BaggageFieldsHandler create(List<BaggageField> fields, boolean dynamic) {
+  public static BaggageFieldsFactory create(List<BaggageField> fields, boolean dynamic) {
     if (fields == null) throw new NullPointerException("fields == null");
     Map<BaggageField, Integer> initialFieldIndices = new LinkedHashMap<>();
     Object[] array = new Object[fields.size() * 2];
@@ -33,7 +33,7 @@ public final class BaggageFieldsHandler extends ExtraHandler<BaggageFields, Bagg
       array[i] = field;
       i += 2;
     }
-    return new BaggageFieldsHandler(array, initialFieldIndices, dynamic);
+    return new BaggageFieldsFactory(array, initialFieldIndices, dynamic);
   }
 
   final Map<BaggageField, Integer> initialFieldIndices;
@@ -41,7 +41,7 @@ public final class BaggageFieldsHandler extends ExtraHandler<BaggageFields, Bagg
   final boolean isDynamic;
   final int initialArrayLength;
 
-  BaggageFieldsHandler(
+  BaggageFieldsFactory(
       Object[] initialState, Map<BaggageField, Integer> initialFieldIndices, boolean isDynamic) {
     super(initialState);
     this.initialFieldIndices = Collections.unmodifiableMap(initialFieldIndices);
@@ -51,7 +51,7 @@ public final class BaggageFieldsHandler extends ExtraHandler<BaggageFields, Bagg
     this.initialArrayLength = initialState.length;
   }
 
-  @Override protected BaggageFields provisionExtra() {
+  @Override public BaggageFields create() {
     return new BaggageFields(this);
   }
 }

@@ -367,7 +367,10 @@ public final class TraceContextOrSamplingFlags {
       return this;
     }
 
-    /** @see TraceContextOrSamplingFlags#extra() */
+    /**
+     * @see TraceContextOrSamplingFlags#extra()
+     * @since 4.9
+     */
     public Builder addExtra(Object extra) {
       extraList = ensureExtraAdded(extraList, extra);
       return this;

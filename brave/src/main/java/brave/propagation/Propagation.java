@@ -100,6 +100,7 @@ public interface Propagation<K> {
      * change.
      *
      * @see TraceContext#extra()
+     * @since 4.9
      */
     public TraceContext decorate(TraceContext context) {
       return context;

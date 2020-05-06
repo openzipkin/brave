@@ -21,8 +21,8 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class FixedBaggageFieldsTest extends BaggageFieldsTest {
-  @Override BaggageFieldsHandler newHandler() {
-    return BaggageFieldsHandler.create(asList(field1, field2), false);
+  @Override BaggageFieldsFactory newFactory() {
+    return BaggageFieldsFactory.create(asList(field1, field2), false);
   }
 
   @Test public void getAllFields() {
