@@ -39,14 +39,6 @@ public abstract class MapExtraFactory<K, V, A extends MapExtra<K, V, A, F>,
       return (B) this;
     }
 
-    public final B addInitialValue(K key, V value) {
-      if (key == null) throw new NullPointerException("key == null");
-      if (value == null) throw new NullPointerException("value == null");
-      initialState.add(key);
-      initialState.add(value);
-      return (B) this;
-    }
-
     public final B maxDynamicEntries(int maxDynamicEntries) {
       if (maxDynamicEntries < 0) throw new IllegalArgumentException("maxDynamicEntries < 0");
       if (maxDynamicEntries > MAX_SIZE) {
@@ -66,7 +58,7 @@ public abstract class MapExtraFactory<K, V, A extends MapExtra<K, V, A, F>,
   final Map<K, Integer> initialFieldIndices;
   final int initialArrayLength, maxDynamicEntries;
 
-  protected MapExtraFactory(Builder<?, ?, ?, ?, ?> builder) {
+  protected MapExtraFactory(Builder<K, V, A, F, ?> builder) {
     super(builder.initialState.toArray());
     Map<K, Integer> initialFieldIndices = new LinkedHashMap<>();
     Object[] initialStateArray = (Object[]) initialState;
