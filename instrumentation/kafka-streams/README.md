@@ -5,6 +5,8 @@ Add decorators for Kafka Streams to enable tracing.
 * `TracingProcessorSupplier` completes a span on `process`
 * `TracingTransformerSupplier` completes a span on `transform`
 
+This does not trace all operations by default. See [RATIONALE.md] for why.
+
 ## Setup
 
 First, setup the generic Kafka Streams component like this:
@@ -74,26 +76,6 @@ To create a Kafka Streams with Tracing Client Supplier enabled, pass your topolo
 ```java
 KafkaStreams kafkaStreams = kafkaStreamsTracing.kafkaStreams(topology, streamsConfig);
 ```
-
-## What's happening?
-Typically, there are at least two spans involved in traces produces by a Kafka Stream application:
-* One created by the Consumers that starts a Stream or Table, by `builder.stream(topic)`.
-* One created by the Producer that sends a records to a Stream, by `builder.to(topic)`
-
-By receiving records in a Kafka Streams application with Tracing enabled, the span created, once
-a record is received, will inject the span context on the headers of the Record, and it will get
-propagated downstream onto the Stream topology. As the span context is stored in the Record Headers,
-the Producers at the middle (e.g. `builder.through(topic)`) or at the end of a Stream topology
-will reference the initial span, and mark the end of a Stream Process.
-
-If intermediate steps on the Stream topology require tracing, then `TracingProcessorSupplier` and
-`TracingTransformerSupplier` will allow you to define a Processor/Transformer where execution is recorded as Span,
-referencing the parent context stored on Headers, if available.
-
-### Partitioning
-
-Be aware that operations that require `builder.transformer(...)` will cause re-partitioning when
-grouping or joining downstream ([Kafka docs](https://kafka.apache.org/documentation/streams/developer-guide/dsl-api.html#applying-processors-and-transformers-processor-api-integration)).
 
 ## Notes
 
