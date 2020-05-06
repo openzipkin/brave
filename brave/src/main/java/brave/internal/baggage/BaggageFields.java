@@ -55,9 +55,9 @@ public final class BaggageFields
     }
   }
 
-  public static final class Factory extends
-      MapExtraFactory<BaggageField, String, BaggageFields, Factory> {
-    Factory(MapExtraFactory.Builder<?, ?, ?, ?, ?> builder) {
+  public static final class Factory
+      extends MapExtraFactory<BaggageField, String, BaggageFields, Factory> {
+    Factory(FactoryBuilder builder) {
       super(builder);
     }
 

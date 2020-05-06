@@ -27,7 +27,7 @@ final class BasicMapExtra extends MapExtra<String, String, BasicMapExtra, BasicM
   }
 
   static final class Factory extends MapExtraFactory<String, String, BasicMapExtra, Factory> {
-    Factory(MapExtraFactory.Builder<?, ?, ?, ?, ?> builder) {
+    Factory(FactoryBuilder builder) {
       super(builder);
     }
 
