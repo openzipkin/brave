@@ -42,6 +42,15 @@ public class MapExtra<K, V, A extends MapExtra<K, V, A, F>,
     return factory.maxDynamicEntries > 0;
   }
 
+  /** Returns {@code true} when all values are {@code null}. */
+  public final boolean isEmpty() {
+    Object[] state = state();
+    for (int i = 0; i < state.length; i += 2) {
+      if (state[i + 1] != null) return false;
+    }
+    return true;
+  }
+
   /** Returns a possibly empty set of all keys even if values are {@code null}. */
   public Set<K> keySet() {
     if (!isDynamic()) return factory.initialFieldIndices.keySet();

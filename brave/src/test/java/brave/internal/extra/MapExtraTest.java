@@ -19,7 +19,7 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class MapExtraTest {
-  BasicMapExtra.Factory factory = BasicMapExtra.newFactoryBuilder()
+  BasicMapExtra.Factory factory = new BasicMapExtra.FactoryBuilder()
       .addInitialKey("1")
       .addInitialKey("2")
       .build();
@@ -28,7 +28,7 @@ public class MapExtraTest {
   @Test public void put() {
     extra.put("1", "one");
     assertThat(extra.get("1")).isEqualTo("one");
-    assertThat(isStateEmpty(extra.state())).isFalse();
+    assertThat(extra.isEmpty()).isFalse();
   }
 
   @Test public void put_multiple() {
@@ -40,23 +40,33 @@ public class MapExtraTest {
     extra.put("1", null);
     assertThat(extra.get("1")).isNull();
     assertThat(extra.get("2")).isEqualTo("two");
-    assertThat(isStateEmpty(extra.state())).isFalse();
+    assertThat(extra.isEmpty()).isFalse();
 
     extra.put("2", null);
     assertThat(extra.get("1")).isNull();
     assertThat(extra.get("2")).isNull();
-    assertThat(isStateEmpty(extra.state())).isTrue();
+    assertThat(extra.isEmpty()).isTrue();
   }
 
   @Test public void put_null_clearsState() {
     extra.put("1", "one");
     extra.put("1", null);
-    assertThat(isStateEmpty(extra.state())).isTrue();
+    assertThat(extra.isEmpty()).isTrue();
+  }
+
+  @Test public void empty() {
+    assertThat(extra.isEmpty()).isTrue();
+    extra.put("1", "one");
+
+    assertThat(extra.isEmpty()).isFalse();
+
+    extra.put("1", null);
+    assertThat(extra.isEmpty()).isTrue();
   }
 
   @Test public void putNoop() {
     extra.put("1", null);
-    assertThat(isStateEmpty(extra.state())).isTrue();
+    assertThat(extra.isEmpty()).isTrue();
 
     extra.put("1", "one");
     Object before = extra.state();
@@ -77,7 +87,7 @@ public class MapExtraTest {
     extra.mergeStateKeepingOursOnConflict(extra2);
     assertThat(before).isSameAs(extra.state());
 
-    assertThat(isStateEmpty(extra.state())).isTrue();
+    assertThat(extra.isEmpty()).isTrue();
   }
 
   @Test public void mergeStateKeepingOursOnConflict_empty_nonEmpty() {
@@ -168,7 +178,7 @@ public class MapExtraTest {
   }
 
   @Test public void keySet_dynamic() {
-    factory = BasicMapExtra.newFactoryBuilder()
+    factory = new BasicMapExtra.FactoryBuilder()
         .addInitialKey("1")
         .maxDynamicEntries(32).build();
     extra = factory.create();
@@ -193,14 +203,6 @@ public class MapExtraTest {
   @Test public void putValue_ignores_if_not_defined() {
     extra.put("3", "three");
 
-    assertThat(isStateEmpty(extra.state())).isTrue();
-  }
-
-  final boolean isStateEmpty(Object state) {
-    Object[] array = (Object[]) state;
-    for (int i = 0; i < array.length; i += 2) {
-      if (array[i + 1] != null) return false;
-    }
-    return true;
+    assertThat(extra.isEmpty()).isTrue();
   }
 }

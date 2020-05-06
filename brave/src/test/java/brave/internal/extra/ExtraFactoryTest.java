@@ -24,7 +24,7 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ExtraFactoryTest {
-  BasicMapExtra.Factory factory = BasicMapExtra.newFactoryBuilder()
+  BasicMapExtra.Factory factory = new BasicMapExtra.FactoryBuilder()
       .addInitialKey("1")
       .addInitialKey("2")
       .build();

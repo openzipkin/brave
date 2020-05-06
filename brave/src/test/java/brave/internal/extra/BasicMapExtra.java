@@ -14,11 +14,6 @@
 package brave.internal.extra;
 
 final class BasicMapExtra extends MapExtra<String, String, BasicMapExtra, BasicMapExtra.Factory> {
-
-  static FactoryBuilder newFactoryBuilder() {
-    return new FactoryBuilder();
-  }
-
   static final class FactoryBuilder
       extends MapExtraFactory.Builder<String, String, BasicMapExtra, Factory, FactoryBuilder> {
     @Override protected Factory build(FactoryBuilder builder) {
