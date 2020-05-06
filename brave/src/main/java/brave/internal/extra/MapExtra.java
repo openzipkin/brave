@@ -42,7 +42,7 @@ public class MapExtra<K, V, A extends MapExtra<K, V, A, F>,
     return factory.maxDynamicEntries > 0;
   }
 
-  /** Returns a possibly set of all keys even if values are {@code null}. */
+  /** Returns a possibly empty set of all keys even if values are {@code null}. */
   public Set<K> keySet() {
     if (!isDynamic()) return factory.initialFieldIndices.keySet();
     Object[] state = state();
