@@ -53,7 +53,7 @@ public class MapExtra<K, V, A extends MapExtra<K, V, A, F>,
     return Collections.unmodifiableSet(result);
   }
 
-  /** Returns a possibly empty map of all name to non-{@code null} values. */
+  /** Returns a possibly empty map of all key to non-{@code null} values. */
   public Map<K, V> asReadOnlyMap() {
     return UnsafeArrayMap.<K, V>newBuilder().build(state());
   }
