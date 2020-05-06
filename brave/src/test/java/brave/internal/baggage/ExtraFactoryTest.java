@@ -334,9 +334,9 @@ public class ExtraFactoryTest {
 
   void assertExtraClaimed(TraceContext context) {
     assertThat(context.extra())
-        .filteredOn(Extra.class::isInstance)
-        .hasSize(1)
-        .flatExtracting("traceId", "spanId")
-        .containsExactly(context.traceId(), context.spanId());
+      .filteredOn(Extra.class::isInstance)
+      .hasSize(1)
+      .flatExtracting("traceId", "spanId")
+      .containsExactly(context.traceId(), context.spanId());
   }
 }
