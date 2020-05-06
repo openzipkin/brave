@@ -3,7 +3,7 @@
 ## What's happening?
 Typically, there are at least two spans involved in traces produces by a Kafka Stream application:
 * One created by the Consumers that starts a Stream or Table, by `builder.stream(topic)`.
-* One created by the Producer that sends a records to a Stream, by `builder.to(topic)`
+* One created by the Producer that sends a record to a Stream, by `builder.to(topic)`
 
 By receiving records in a Kafka Streams application with Tracing enabled, the span created, once
 a record is received, will inject the span context on the headers of the Record, and it will get
@@ -15,9 +15,15 @@ If intermediate steps on the Stream topology require tracing, `TracingProcessorS
 `TracingTransformerSupplier` record execution into a new Span,
 referencing the parent context stored on Headers, if available.
 
-### Partitioning
+### Transformers and Partitioning
 
-Be aware that operations that require `builder.transformer(...)` will cause re-partitioning when
+The behaviour of some operations wrapped into Kafka Streams Processor API types could change the underlying topology.
+
+For example, `filter` operation on the Kafka Streams DSL is stateless and doesn't impact partitioning;
+but `kafkaStreamsTracing.filter()` returns a `Transformer` that if grouping or joining operations
+follows, it could lead to **unintentional partitioning**.
+
+Be aware operations that any usage of `builder.transformer(...)` will cause re-partitioning when
 grouping or joining downstream ([Kafka docs](https://kafka.apache.org/documentation/streams/developer-guide/dsl-api.html#applying-processors-and-transformers-processor-api-integration)).
 
 ### Why doesn't this trace all Kafka Streams operations?
