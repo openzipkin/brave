@@ -16,7 +16,9 @@ package brave.internal.baggage;
 import brave.baggage.BaggageField;
 import brave.internal.Nullable;
 import brave.internal.Platform;
-import brave.internal.baggage.UnsafeArrayMap.Mapper;
+import brave.internal.collect.LongBitSet;
+import brave.internal.collect.UnsafeArrayMap;
+import brave.internal.collect.UnsafeArrayMap.Mapper;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.ArrayList;
@@ -26,8 +28,8 @@ import java.util.List;
 import java.util.Map;
 
 import static brave.internal.baggage.BaggageFieldsHandler.MAX_DYNAMIC_FIELDS;
-import static brave.internal.baggage.LongBitSet.isSet;
-import static brave.internal.baggage.LongBitSet.setBit;
+import static brave.internal.collect.LongBitSet.isSet;
+import static brave.internal.collect.LongBitSet.setBit;
 
 /**
  * Holds one or more baggage fields in {@link TraceContext#extra()} or {@link
