@@ -30,8 +30,8 @@ import static brave.internal.InternalPropagation.FLAG_SAMPLED;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_LOCAL;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 import static brave.internal.InternalPropagation.FLAG_SHARED;
-import static brave.internal.Lists.ensureImmutable;
-import static brave.internal.Lists.ensureMutable;
+import static brave.internal.collect.Lists.ensureImmutable;
+import static brave.internal.collect.Lists.ensureMutable;
 import static brave.propagation.TraceIdContext.toTraceIdString;
 
 /**

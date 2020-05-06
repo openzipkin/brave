@@ -24,7 +24,7 @@ import java.util.List;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_LOCAL;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
-import static brave.internal.Lists.ensureImmutable;
+import static brave.internal.collect.Lists.ensureImmutable;
 import static brave.propagation.TraceContext.ensureExtraAdded;
 import static java.util.Collections.emptyList;
 

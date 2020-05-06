@@ -11,7 +11,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.internal.baggage;
+package brave.internal.collect;
 
 import java.lang.reflect.Array;
 import java.util.AbstractMap.SimpleImmutableEntry;
@@ -22,8 +22,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
-import static brave.internal.baggage.LongBitSet.isSet;
-import static brave.internal.baggage.LongBitSet.setBit;
+import static brave.internal.collect.LongBitSet.isSet;
+import static brave.internal.collect.LongBitSet.setBit;
 
 /**
  * A potentially read-only map which is a view over an array of {@code key, value} pairs. No key can
@@ -38,29 +38,29 @@ import static brave.internal.baggage.LongBitSet.setBit;
  * #entrySet()} might return constants. As expected, stateful objects such as {@link Iterator} will
  * never be shared.
  */
-class UnsafeArrayMap<K, V> implements Map<K, V> {
+public class UnsafeArrayMap<K, V> implements Map<K, V> {
   static final int MAX_FILTERED_KEYS = LongBitSet.MAX_SIZE;
 
-  interface Mapper<V1, V2> {
+  public interface Mapper<V1, V2> {
     V2 map(V1 input);
   }
 
-  static <K, V> Builder<K, V> newBuilder() {
+  public static <K, V> Builder<K, V> newBuilder() {
     return new Builder<>();
   }
 
-  static final class Builder<K, V> {
+  public static final class Builder<K, V> {
     Mapper<Object, K> keyMapper;
     K[] filteredKeys = (K[]) new Object[0];
 
-    Builder<K, V> mapKeys(Mapper<Object, K> keyMapper) {
+    public Builder<K, V> mapKeys(Mapper<Object, K> keyMapper) {
       if (keyMapper == null) throw new NullPointerException("keyMapper == null");
       this.keyMapper = keyMapper;
       return this;
     }
 
     /** @param filteredKeys keys that won't be visible in the resulting map. */
-    Builder<K, V> filterKeys(K... filteredKeys) {
+    public Builder<K, V> filterKeys(K... filteredKeys) {
       if (filteredKeys == null) throw new NullPointerException("filteredKeys == null");
       if (filteredKeys.length > MAX_FILTERED_KEYS) {
         throw new IllegalArgumentException(
@@ -71,7 +71,7 @@ class UnsafeArrayMap<K, V> implements Map<K, V> {
     }
 
     /** @param array pairwise array holding key values */
-    Map<K, V> build(Object[] array) {
+    public Map<K, V> build(Object[] array) {
       if (array == null) throw new NullPointerException("array == null");
       long filteredBitSet = 0;
       int i = 0, numFiltered = 0;
