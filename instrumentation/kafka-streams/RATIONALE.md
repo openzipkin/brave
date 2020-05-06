@@ -32,10 +32,9 @@ Therefore, is not possible to hook into the topology creation process to instrum
 We considered changing Kafka Streams to have hooks to do this, but it would be a hard sell.
 Adding these and rearrange lacking context would have a considerable library impact.
 
-Even if available, it would potentially expose excessive details as **all**
-operations would be traced (while not all of them are interesting),
-making traces harder to grok; and would probably create the need to support
-functionality to **do not** trace some operations, requiring anyway changes to your code.
+Even if we had hooks, tracing all operations would be excessive. The resulting large
+traces would be harder to understand, leading to requests to disable tracing. The
+code involved to disable tracing may mean more code than visa versa!
 
 Given the current scenario, `KafkaStreamsTracing` is equipped with a set of common DSL operation wrapped as
 Processors/Transformers APIs that enable tracing when needed;
