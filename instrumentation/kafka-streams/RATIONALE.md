@@ -30,7 +30,7 @@ Kafka Streams materializes its topology _internally_ based on DSL operations.
 Therefore, is not possible to hook into the topology creation process to instrument each operation.
 
 We considered changing Kafka Streams to have hooks to do this, but it would be a hard sell.
-The impact of adding these and rearrange lacking context would have a considerable impact surface.
+Adding these and rearrange lacking context would have a considerable library impact.
 
 Even if available, it would potentially expose excessive details as **all**
 operations would be traced (while not all of them are interesting),
