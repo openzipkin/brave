@@ -16,6 +16,9 @@ package brave.propagation;
 import brave.Request;
 import brave.Span;
 import brave.internal.Platform;
+import brave.internal.propagation.StringPropagationAdapter;
+import brave.propagation.TraceContext.Extractor;
+import brave.propagation.TraceContext.Injector;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
@@ -29,7 +32,8 @@ import static java.util.Arrays.asList;
 /**
  * Implements <a href="https://github.com/openzipkin/b3-propagation">B3 Propagation</a>
  */
-public final class B3Propagation<K> implements Propagation<K> {
+// This type was never returned, but we keep the signature for historical reasons
+public abstract class B3Propagation<K> implements Propagation<K> {
   /** Describes the formats used to inject headers. */
   public enum Format {
     /** The trace context is encoded with a several fields prefixed with "x-b3-". */
@@ -110,102 +114,56 @@ public final class B3Propagation<K> implements Propagation<K> {
     }
   }
 
+  /** Header that encodes all trace ID properties in one value. */
+  static final String B3 = "b3";
   /**
    * 128 or 64-bit trace ID lower-hex encoded into 32 or 16 characters (required)
    */
-  static final String TRACE_ID_NAME = "X-B3-TraceId";
+  static final String TRACE_ID = "X-B3-TraceId";
   /**
    * 64-bit span ID lower-hex encoded into 16 characters (required)
    */
-  static final String SPAN_ID_NAME = "X-B3-SpanId";
+  static final String SPAN_ID = "X-B3-SpanId";
   /**
    * 64-bit parent span ID lower-hex encoded into 16 characters (absent on root span)
    */
-  static final String PARENT_SPAN_ID_NAME = "X-B3-ParentSpanId";
+  static final String PARENT_SPAN_ID = "X-B3-ParentSpanId";
   /**
    * "1" means report this span to the tracing system, "0" means do not. (absent means defer the
    * decision to the receiver of this header).
    */
-  static final String SAMPLED_NAME = "X-B3-Sampled";
+  static final String SAMPLED = "X-B3-Sampled";
   static final String SAMPLED_MALFORMED =
-    "Invalid input: expected 0 or 1 for " + SAMPLED_NAME + ", but found '{0}'";
+      "Invalid input: expected 0 or 1 for " + SAMPLED + ", but found '{0}'";
 
   /**
    * "1" implies sampled and is a request to override collection-tier sampling policy.
    */
-  static final String FLAGS_NAME = "X-B3-Flags";
+  static final String FLAGS = "X-B3-Flags";
 
-  final K b3Key, traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey;
-  final List<K> fields;
-  final Format[] injectFormats;
-  final Map<Span.Kind, Format[]> kindToInjectFormats;
+  static final class B3Injector<R> implements Injector<R> {
+    final Factory factory;
+    final Setter<R, String> setter;
 
-  B3Propagation(KeyFactory<K> keyFactory, Factory factory) {
-    this.b3Key = keyFactory.create("b3");
-    this.traceIdKey = keyFactory.create(TRACE_ID_NAME);
-    this.spanIdKey = keyFactory.create(SPAN_ID_NAME);
-    this.parentSpanIdKey = keyFactory.create(PARENT_SPAN_ID_NAME);
-    this.sampledKey = keyFactory.create(SAMPLED_NAME);
-    this.debugKey = keyFactory.create(FLAGS_NAME);
-    this.injectFormats = new Format[] {factory.injectFormat};
-    this.kindToInjectFormats = factory.kindToInjectFormats;
-
-    // Scan for all formats in use
-    boolean injectsMulti = factory.injectFormat.equals(Format.MULTI);
-    boolean injectsSingle = !injectsMulti;
-    for (Format[] formats : kindToInjectFormats.values()) {
-      for (Format format : formats) {
-        if (format.equals(Format.MULTI)) injectsMulti = true;
-        if (!format.equals(Format.MULTI)) injectsSingle = true;
-      }
-    }
-
-    // Convert the formats into a list of possible fields
-    if (injectsMulti && injectsSingle) {
-      this.fields = Collections.unmodifiableList(
-        asList(b3Key, traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey)
-      );
-    } else if (injectsMulti) {
-      this.fields = Collections.unmodifiableList(
-        asList(traceIdKey, spanIdKey, parentSpanIdKey, sampledKey, debugKey)
-      );
-    } else {
-      this.fields = Collections.singletonList(b3Key);
-    }
-  }
-
-  @Override public List<K> keys() {
-    return fields;
-  }
-
-  @Override public <R> TraceContext.Injector<R> injector(Setter<R, K> setter) {
-    if (setter == null) throw new NullPointerException("setter == null");
-    return new B3Injector<>(this, setter);
-  }
-
-  static final class B3Injector<R, K> implements TraceContext.Injector<R> {
-    final B3Propagation<K> propagation;
-    final Setter<R, K> setter;
-
-    B3Injector(B3Propagation<K> propagation, Setter<R, K> setter) {
-      this.propagation = propagation;
+    B3Injector(Factory factory, Setter<R, String> setter) {
+      this.factory = factory;
       this.setter = setter;
     }
 
     @Override public void inject(TraceContext context, R request) {
-      Format[] formats = propagation.injectFormats;
+      Format[] formats = factory.injectFormats;
       if (request instanceof Request) {
         Span.Kind kind = ((Request) request).spanKind();
-        formats = propagation.kindToInjectFormats.get(kind);
+        formats = factory.kindToInjectFormats.get(kind);
       }
 
       for (Format format : formats) {
         switch (format) {
           case SINGLE:
-            setter.put(request, propagation.b3Key, writeB3SingleFormat(context));
+            setter.put(request, B3, writeB3SingleFormat(context));
             break;
           case SINGLE_NO_PARENT:
-            setter.put(request, propagation.b3Key, writeB3SingleFormatWithoutParentId(context));
+            setter.put(request, B3, writeB3SingleFormatWithoutParentId(context));
             break;
           case MULTI:
             injectMulti(context, request);
@@ -215,29 +173,24 @@ public final class B3Propagation<K> implements Propagation<K> {
     }
 
     void injectMulti(TraceContext context, R request) {
-      setter.put(request, propagation.traceIdKey, context.traceIdString());
-      setter.put(request, propagation.spanIdKey, context.spanIdString());
+      setter.put(request, TRACE_ID, context.traceIdString());
+      setter.put(request, SPAN_ID, context.spanIdString());
       String parentId = context.parentIdString();
-      if (parentId != null) setter.put(request, propagation.parentSpanIdKey, parentId);
+      if (parentId != null) setter.put(request, PARENT_SPAN_ID, parentId);
       if (context.debug()) {
-        setter.put(request, propagation.debugKey, "1");
+        setter.put(request, FLAGS, "1");
       } else if (context.sampled() != null) {
-        setter.put(request, propagation.sampledKey, context.sampled() ? "1" : "0");
+        setter.put(request, SAMPLED, context.sampled() ? "1" : "0");
       }
     }
   }
 
-  @Override public <R> TraceContext.Extractor<R> extractor(Getter<R, K> getter) {
-    if (getter == null) throw new NullPointerException("getter == null");
-    return new B3Extractor<>(this, getter);
-  }
+  static final class B3Extractor<R> implements Extractor<R> {
+    final Factory factory;
+    final Getter<R, String> getter;
 
-  static final class B3Extractor<R, K> implements TraceContext.Extractor<R> {
-    final B3Propagation<K> propagation;
-    final Getter<R, K> getter;
-
-    B3Extractor(B3Propagation<K> propagation, Getter<R, K> getter) {
-      this.propagation = propagation;
+    B3Extractor(Factory factory, Getter<R, String> getter) {
+      this.factory = factory;
       this.getter = getter;
     }
 
@@ -245,13 +198,13 @@ public final class B3Propagation<K> implements Propagation<K> {
       if (request == null) throw new NullPointerException("request == null");
 
       // try to extract single-header format
-      String b3 = getter.get(request, propagation.b3Key);
+      String b3 = getter.get(request, B3);
       TraceContextOrSamplingFlags extracted = b3 != null ? parseB3SingleFormat(b3) : null;
       if (extracted != null) return extracted;
 
       // Start by looking at the sampled state as this is used regardless
       // Official sampled value is 1, though some old instrumentation send true
-      String sampled = getter.get(request, propagation.sampledKey);
+      String sampled = getter.get(request, SAMPLED);
       Boolean sampledV;
       if (sampled == null) {
         sampledV = null; // defer decision
@@ -277,9 +230,9 @@ public final class B3Propagation<K> implements Propagation<K> {
 
       // The only flag we action is 1, but it could be that any integer is present.
       // Here, we leniently parse as debug is not a primary consideration of the trace context.
-      boolean debug = "1".equals(getter.get(request, propagation.debugKey));
+      boolean debug = "1".equals(getter.get(request, FLAGS));
 
-      String traceIdString = getter.get(request, propagation.traceIdKey);
+      String traceIdString = getter.get(request, TRACE_ID);
 
       // It is ok to go without a trace ID, if sampling or debug is set
       if (traceIdString == null) {
@@ -293,9 +246,9 @@ public final class B3Propagation<K> implements Propagation<K> {
 
       // Try to parse the trace IDs into the context
       TraceContext.Builder result = TraceContext.newBuilder();
-      if (result.parseTraceId(traceIdString, propagation.traceIdKey)
-        && result.parseSpanId(getter, request, propagation.spanIdKey)
-        && result.parseParentId(getter, request, propagation.parentSpanIdKey)) {
+      if (result.parseTraceId(traceIdString, TRACE_ID)
+          && result.parseSpanId(getter, request, SPAN_ID)
+          && result.parseParentId(getter, request, PARENT_SPAN_ID)) {
         if (sampledV != null) result.sampled(sampledV.booleanValue());
         if (debug) result.debug(true);
         return TraceContextOrSamplingFlags.create(result.build());
@@ -304,29 +257,70 @@ public final class B3Propagation<K> implements Propagation<K> {
     }
   }
 
-  static final class Factory extends Propagation.Factory {
-    final Format injectFormat;
+  static final class Factory extends Propagation.Factory implements Propagation<String> {
+    final List<String> keyNames;
+    final Format[] injectFormats;
     final Map<Span.Kind, Format[]> kindToInjectFormats;
 
     Factory(FactoryBuilder builder) {
-      this.injectFormat = builder.injectFormat;
+      this.injectFormats = new Format[] {builder.injectFormat};
       this.kindToInjectFormats = new EnumMap<>(builder.kindToInjectFormats);
+
+      // Scan for all formats in use
+      boolean injectsMulti = builder.injectFormat.equals(Format.MULTI);
+      boolean injectsSingle = !injectsMulti;
+      for (Format[] formats : kindToInjectFormats.values()) {
+        for (Format format : formats) {
+          if (format.equals(Format.MULTI)) injectsMulti = true;
+          if (!format.equals(Format.MULTI)) injectsSingle = true;
+        }
+      }
+
+      // Convert the formats into a list of possible fields
+      if (injectsMulti && injectsSingle) {
+        this.keyNames = Collections.unmodifiableList(
+            asList(B3, TRACE_ID, SPAN_ID, PARENT_SPAN_ID, SAMPLED, FLAGS)
+        );
+      } else if (injectsMulti) {
+        this.keyNames = Collections.unmodifiableList(
+            asList(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, SAMPLED, FLAGS)
+        );
+      } else {
+        this.keyNames = Collections.singletonList(B3);
+      }
+    }
+
+    @Override public List<String> keys() {
+      return keyNames;
     }
 
     @Override public Propagation<String> get() {
-      return create(KeyFactory.STRING);
+      return this;
     }
 
     @Override public <K1> Propagation<K1> create(KeyFactory<K1> keyFactory) {
-      return new B3Propagation<>(keyFactory, this);
+      return StringPropagationAdapter.create(this, keyFactory);
     }
 
     @Override public boolean supportsJoin() {
       return true;
     }
 
-    @Override public String toString() {
-      return "B3PropagationFactory";
+    @Override public <R> Injector<R> injector(Setter<R, String> setter) {
+      if (setter == null) throw new NullPointerException("setter == null");
+      return new B3Injector<>(this, setter);
     }
+
+    @Override public <R> Extractor<R> extractor(Getter<R, String> getter) {
+      if (getter == null) throw new NullPointerException("getter == null");
+      return new B3Extractor<>(this, getter);
+    }
+
+    @Override public String toString() {
+      return "B3Propagation";
+    }
+  }
+
+  B3Propagation() { // no instances
   }
 }

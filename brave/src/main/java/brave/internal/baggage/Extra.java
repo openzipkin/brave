@@ -30,14 +30,14 @@ import java.util.Arrays;
  *
  * @param <E> Use a final type as otherwise tools like {@link TraceContext#findExtra(Class)} will
  * not work. In most cases, the type should be package private.
- * @param <F> The factory that {@link ExtraHandler#create() creates} this instance.
+ * @param <H> The handler that {@link ExtraHandler#provisionExtra(Object)} creates} this instance.
  */
 // We handle dynamic vs fixed state internally as it..
 //  * hides generic type complexity
 //  * gives us a lock not exposed to users
 //  * allows findExtra(ExtraFieldsSubtype.class)
-public abstract class Extra<E extends Extra<E, F>, F extends ExtraHandler<E, F>> {
-  protected final F factory; // compared by reference to ensure same configuration
+public abstract class Extra<E extends Extra<E, H>, H extends ExtraHandler<E, H>> {
+  protected final H handler; // compared by reference to ensure same configuration
 
   /**
    * Updates like {@link #tryToClaim(long, long)} lock on this object, as should any non-atomic
@@ -52,10 +52,10 @@ public abstract class Extra<E extends Extra<E, F>, F extends ExtraHandler<E, F>>
   long traceId;
   long spanId; // guarded by lock
 
-  protected Extra(F factory) {
-    if (factory == null) throw new NullPointerException("factory == null");
-    this.factory = factory;
-    this.state = factory.initialState;
+  protected Extra(H handler) {
+    if (handler == null) throw new NullPointerException("handler == null");
+    this.handler = handler;
+    this.state = handler.initialState;
   }
 
   /**

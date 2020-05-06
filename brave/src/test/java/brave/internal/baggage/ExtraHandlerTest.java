@@ -121,12 +121,12 @@ public class ExtraHandlerTest {
    * <p>Extracted baggage should merge into the current baggage state instead creating multiple
    * entries in {@link TraceContext#extra()}.
    */
-  @Test public void nextSpanMergesExtraWithImplicitParent_hasvalue() {
+  @Test public void nextSpanMergesExtraWithImplicitParent_hasValue() {
     try (Tracing tracing = withNoopSpanReporter()) {
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
       try {
         TraceContextOrSamplingFlags.Builder builder = TraceContextOrSamplingFlags.EMPTY.toBuilder();
-        handler.provisionExtra(builder, new Object());
+        handler.provisionExtra(builder);
         TraceContextOrSamplingFlags extracted = builder.build();
 
         field1.updateValue(parent.context(), value1);
@@ -153,7 +153,7 @@ public class ExtraHandlerTest {
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
       try {
         TraceContextOrSamplingFlags.Builder builder = TraceContextOrSamplingFlags.EMPTY.toBuilder();
-        handler.provisionExtra(builder, new Object());
+        handler.provisionExtra(builder);
         TraceContextOrSamplingFlags extracted = builder.build();
 
         field2.updateValue(extracted, value3);
@@ -229,10 +229,10 @@ public class ExtraHandlerTest {
 
   @Test public void ensureContainsExtra_claimsFields() {
     List<TraceContext> contexts = asList(
-        context.toBuilder().addExtra(handler.newExtra(null)).build(),
-        context.toBuilder().addExtra(1L).addExtra(handler.newExtra(null)).build(),
-        context.toBuilder().addExtra(handler.newExtra(null)).addExtra(1L).build(),
-        context.toBuilder().addExtra(1L).addExtra(handler.newExtra(null)).addExtra(2L).build()
+        context.toBuilder().addExtra(handler.provisionExtra()).build(),
+        context.toBuilder().addExtra(1L).addExtra(handler.provisionExtra()).build(),
+        context.toBuilder().addExtra(handler.provisionExtra()).addExtra(1L).build(),
+        context.toBuilder().addExtra(1L).addExtra(handler.provisionExtra()).addExtra(2L).build()
     );
 
     for (TraceContext context : contexts) {
@@ -246,10 +246,10 @@ public class ExtraHandlerTest {
 
   @Test public void ensureContainsExtra_redundant() {
     List<TraceContext> contexts = asList(
-        context.toBuilder().addExtra(handler.newExtra(null)).build(),
-        context.toBuilder().addExtra(1L).addExtra(handler.newExtra(null)).build(),
-        context.toBuilder().addExtra(handler.newExtra(null)).addExtra(1L).build(),
-        context.toBuilder().addExtra(1L).addExtra(handler.newExtra(null)).addExtra(2L).build()
+        context.toBuilder().addExtra(handler.provisionExtra()).build(),
+        context.toBuilder().addExtra(1L).addExtra(handler.provisionExtra()).build(),
+        context.toBuilder().addExtra(handler.provisionExtra()).addExtra(1L).build(),
+        context.toBuilder().addExtra(1L).addExtra(handler.provisionExtra()).addExtra(2L).build()
     );
 
     for (TraceContext context : contexts) {

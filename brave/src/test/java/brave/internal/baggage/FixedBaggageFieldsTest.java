@@ -37,6 +37,6 @@ public class FixedBaggageFieldsTest extends BaggageFieldsTest {
   @Test public void putValue_ignores_if_not_defined() {
     extra.updateValue(field3, "1");
 
-    assertThat(isStateEmpty(extra.array())).isTrue();
+    assertThat(isStateEmpty(extra.state())).isTrue();
   }
 }

@@ -19,6 +19,7 @@ import brave.internal.Nullable;
 import brave.internal.baggage.BaggageCodec;
 import brave.internal.baggage.BaggageFields;
 import brave.internal.baggage.BaggageFieldsHandler;
+import brave.internal.propagation.StringPropagationAdapter;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
@@ -91,7 +92,7 @@ import static brave.internal.baggage.ExtraBaggageContext.findExtra;
  * @see CorrelationScopeDecorator
  * @since 5.11
  */
-public class BaggagePropagation<K> implements Propagation<K> {
+public final class BaggagePropagation<K> implements Propagation<K> {
   /** Wraps an underlying propagation implementation, pushing one or more fields. */
   public static FactoryBuilder newFactoryBuilder(Propagation.Factory delegate) {
     return new FactoryBuilder(delegate);
@@ -155,19 +156,6 @@ public class BaggagePropagation<K> implements Propagation<K> {
     }
   }
 
-  /** Only instantiated for remote baggage handling. */
-  static final class BaggageCodecWithKeys<K> {
-    final BaggageCodec baggageCodec;
-    final K[] extractKeys;
-    final K[] injectKeys;
-
-    BaggageCodecWithKeys(BaggagePropagationConfig config, K[] extractKeys, K[] injectKeys) {
-      this.baggageCodec = config.baggageCodec;
-      this.extractKeys = extractKeys;
-      this.injectKeys = injectKeys;
-    }
-  }
-
   /** Stored in {@link TraceContextOrSamplingFlags#extra()} or {@link TraceContext#extra()} */
   static final class Extra {
     final List<String> extractKeyNames;
@@ -177,15 +165,17 @@ public class BaggagePropagation<K> implements Propagation<K> {
     }
   }
 
-  static final class Factory extends Propagation.Factory {
-    final Propagation.Factory delegate;
-    final BaggageFieldsHandler baggageFieldsHandler;
+  static final class Factory extends Propagation.Factory implements Propagation<String> {
+    final Propagation.Factory delegateFactory;
+    final Propagation<String> delegate;
+    final BaggageFieldsHandler baggageHandler;
     final BaggagePropagationConfig[] configs;
     final String[] localFieldNames;
     @Nullable final Extra extra;
 
     Factory(FactoryBuilder factoryBuilder) {
-      this.delegate = factoryBuilder.delegate;
+      this.delegateFactory = factoryBuilder.delegate;
+      this.delegate = delegateFactory.get();
 
       // Don't add another "extra" if there are only local fields
       List<String> extractKeyNames = Lists.ensureImmutable(factoryBuilder.extractKeyNames);
@@ -206,49 +196,48 @@ public class BaggagePropagation<K> implements Propagation<K> {
           dynamic = true;
         }
       }
-      this.baggageFieldsHandler = BaggageFieldsHandler.create(fields, dynamic);
+      this.baggageHandler = BaggageFieldsHandler.create(fields, dynamic);
       this.localFieldNames = localFieldNames.toArray(new String[0]);
     }
 
-    @Override public BaggagePropagation<String> get() {
-      return create(KeyFactory.STRING);
+    @Deprecated @Override public <K1> BaggagePropagation<K1> create(KeyFactory<K1> keyFactory) {
+      return new BaggagePropagation<>(StringPropagationAdapter.create(get(), keyFactory));
     }
 
-    @Override public <K> BaggagePropagation<K> create(KeyFactory<K> keyFactory) {
-      List<BaggageCodecWithKeys<K>> configWithKeys = new ArrayList<>();
-      for (BaggagePropagationConfig config : configs) {
-        if (config.baggageCodec == BaggageCodec.NOOP) continue; // local field
-        K[] extractKeys = newKeyArray(keyFactory, config.baggageCodec.extractKeyNames());
-        K[] injectKeys = newKeyArray(keyFactory, config.baggageCodec.injectKeyNames());
-        if (extractKeys.length == 0 && injectKeys.length == 0) continue;
-        configWithKeys.add(new BaggageCodecWithKeys<>(config, extractKeys, injectKeys));
-      }
-      return new BaggagePropagation<>(delegate.create(keyFactory), this, configWithKeys);
+    @Override public BaggagePropagation<String> get() {
+      return new BaggagePropagation<>(this);
     }
 
     @Override public TraceContext decorate(TraceContext context) {
-      TraceContext result = delegate.decorate(context);
-      return baggageFieldsHandler.ensureContainsExtra(result);
+      TraceContext result = delegateFactory.decorate(context);
+      return baggageHandler.ensureContainsExtra(result);
     }
 
     @Override public boolean supportsJoin() {
-      return delegate.supportsJoin();
+      return delegateFactory.supportsJoin();
     }
 
     @Override public boolean requires128BitTraceId() {
-      return delegate.requires128BitTraceId();
+      return delegateFactory.requires128BitTraceId();
+    }
+
+    @Override public List<String> keys() {
+      return delegate.keys();
+    }
+
+    @Override public <R> Injector<R> injector(Setter<R, String> setter) {
+      return new BaggageInjector<>(this, setter);
+    }
+
+    @Override public <R> Extractor<R> extractor(Getter<R, String> getter) {
+      return new BaggageExtractor<>(this, getter);
     }
   }
 
   final Propagation<K> delegate;
-  final Factory factory;
-  final BaggageCodecWithKeys<K>[] baggageCodecWithKeys;
 
-  BaggagePropagation(Propagation<K> delegate, Factory factory,
-      List<BaggageCodecWithKeys<K>> baggageCodecWithKeys) {
+  BaggagePropagation(Propagation<K> delegate) {
     this.delegate = delegate;
-    this.factory = factory;
-    this.baggageCodecWithKeys = baggageCodecWithKeys.toArray(new BaggageCodecWithKeys[0]);
   }
 
   /**
@@ -308,21 +297,21 @@ public class BaggagePropagation<K> implements Propagation<K> {
   }
 
   @Override public <R> Injector<R> injector(Setter<R, K> setter) {
-    return new BaggageInjector<>(this, setter);
+    return delegate.injector(setter);
   }
 
   @Override public <R> Extractor<R> extractor(Getter<R, K> getter) {
-    return new BaggageExtractor<>(this, getter);
+    return delegate.extractor(getter);
   }
 
-  static final class BaggageInjector<R, K> implements Injector<R> {
-    final BaggagePropagation<K> propagation;
+  static final class BaggageInjector<R> implements Injector<R> {
     final Injector<R> delegate;
-    final Setter<R, K> setter;
+    final Factory factory;
+    final Setter<R, String> setter;
 
-    BaggageInjector(BaggagePropagation<K> propagation, Setter<R, K> setter) {
-      this.propagation = propagation;
-      this.delegate = propagation.delegate.injector(setter);
+    BaggageInjector(Factory factory, Setter<R, String> setter) {
+      this.delegate = factory.delegate.injector(setter);
+      this.factory = factory;
       this.setter = setter;
     }
 
@@ -331,25 +320,31 @@ public class BaggagePropagation<K> implements Propagation<K> {
       BaggageFields extra = context.findExtra(BaggageFields.class);
       if (extra == null) return;
       Map<String, String> values =
-          extra.toMapFilteringFieldNames(propagation.factory.localFieldNames);
+          extra.toMapFilteringFieldNames(factory.localFieldNames);
       if (values.isEmpty()) return;
 
-      for (BaggageCodecWithKeys<K> baggageCodecWithKeys : propagation.baggageCodecWithKeys) {
-        String value = baggageCodecWithKeys.baggageCodec.encode(values, context, request);
+      for (BaggagePropagationConfig config : factory.configs) {
+        if (config.baggageCodec == BaggageCodec.NOOP) continue; // local field
+
+        String value = config.baggageCodec.encode(values, context, request);
         if (value == null) continue;
-        for (K key : baggageCodecWithKeys.extractKeys) setter.put(request, key, value);
+
+        List<String> keys = config.baggageCodec.injectKeyNames();
+        for (int i = 0, length = keys.size(); i < length; i++) {
+          setter.put(request, keys.get(i), value);
+        }
       }
     }
   }
 
-  static final class BaggageExtractor<R, K> implements Extractor<R> {
-    final BaggagePropagation<K> propagation;
+  static final class BaggageExtractor<R> implements Extractor<R> {
+    final Factory factory;
     final Extractor<R> delegate;
-    final Getter<R, K> getter;
+    final Getter<R, String> getter;
 
-    BaggageExtractor(BaggagePropagation<K> propagation, Getter<R, K> getter) {
-      this.propagation = propagation;
-      this.delegate = propagation.delegate.extractor(getter);
+    BaggageExtractor(Factory factory, Getter<R, String> getter) {
+      this.delegate = factory.delegate.extractor(getter);
+      this.factory = factory;
       this.getter = getter;
     }
 
@@ -357,28 +352,23 @@ public class BaggagePropagation<K> implements Propagation<K> {
       TraceContextOrSamplingFlags result = delegate.extract(request);
 
       TraceContextOrSamplingFlags.Builder builder = result.toBuilder();
-      BaggageFields extra = propagation.factory.baggageFieldsHandler.provisionExtra(builder, request);
+      BaggageFields extra = factory.baggageHandler.provisionExtra(builder);
 
-      if (propagation.factory.extra == null) return builder.build();
+      if (factory.extra == null) return builder.build();
 
-      for (BaggageCodecWithKeys<K> baggageCodecWithKeys : propagation.baggageCodecWithKeys) {
-        for (K key : baggageCodecWithKeys.extractKeys) { // possibly multiple keys when prefixes are in use
-          String value = getter.get(request, key);
-          if (value != null && baggageCodecWithKeys.baggageCodec.decode(extra, request, value)) {
+      for (BaggagePropagationConfig config : factory.configs) {
+        if (config.baggageCodec == BaggageCodec.NOOP) continue; // local field
+
+        List<String> keys = config.baggageCodec.injectKeyNames();
+        for (int i = 0, length = keys.size(); i < length; i++) {
+          String value = getter.get(request, keys.get(i));
+          if (value != null && config.baggageCodec.decode(extra, request, value)) {
             break; // accept the first match
           }
         }
       }
 
-      return builder.addExtra(propagation.factory.extra).build();
+      return builder.addExtra(factory.extra).build();
     }
-  }
-
-  static <K1> K1[] newKeyArray(KeyFactory<K1> keyFactory, List<String> keyNames) {
-    K1[] keys = (K1[]) new Object[keyNames.size()];
-    for (int k = 0; k < keys.length; k++) {
-      keys[k] = keyFactory.create(keyNames.get(k));
-    }
-    return keys;
   }
 }
