@@ -38,12 +38,12 @@ public class MapExtra<K, V, A extends MapExtra<K, V, A, F>,
   }
 
   /** When true, calls to {@link #asReadOnlyMap()}, {@link Map#keySet()} cannot be cached. */
-  public final boolean isDynamic() {
+  protected boolean isDynamic() {
     return factory.maxDynamicEntries > 0;
   }
 
   /** Returns {@code true} when all values are {@code null}. */
-  public final boolean isEmpty() {
+  protected boolean isEmpty() {
     Object[] state = state();
     for (int i = 0; i < state.length; i += 2) {
       if (state[i + 1] != null) return false;
@@ -52,7 +52,7 @@ public class MapExtra<K, V, A extends MapExtra<K, V, A, F>,
   }
 
   /** Returns a possibly empty set of all keys even if values are {@code null}. */
-  public Set<K> keySet() {
+  protected Set<K> keySet() {
     if (!isDynamic()) return factory.initialFieldIndices.keySet();
     Object[] state = state();
     Set<K> result = new LinkedHashSet<>(state.length / 2);
@@ -63,12 +63,12 @@ public class MapExtra<K, V, A extends MapExtra<K, V, A, F>,
   }
 
   /** Returns a possibly empty map of all key to non-{@code null} values. */
-  public Map<K, V> asReadOnlyMap() {
+  protected Map<K, V> asReadOnlyMap() {
     return UnsafeArrayMap.<K, V>newBuilder().build(state());
   }
 
   /** Returns the value of the {@code key} or {@code null} if not available. */
-  @Nullable public V get(K key) {
+  @Nullable protected V get(K key) {
     if (key == null) return null;
     Object[] state = state();
     int i = indexOfExistingKey(state, key);
@@ -82,7 +82,7 @@ public class MapExtra<K, V, A extends MapExtra<K, V, A, F>,
    * @return {@code true} if the underlying state changed
    * @since 5.12
    */
-  public boolean put(K key, @Nullable V value) {
+  protected boolean put(K key, @Nullable V value) {
     if (key == null) return false;
 
     int i = indexOfExistingKey(state(), key);

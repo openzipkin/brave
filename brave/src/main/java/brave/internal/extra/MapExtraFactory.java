@@ -48,11 +48,7 @@ public abstract class MapExtraFactory<K, V, A extends MapExtra<K, V, A, F>,
       return (B) this;
     }
 
-    public final F build() {
-      return build((B) this);
-    }
-
-    protected abstract F build(B builder);
+    protected abstract F build();
   }
 
   final Map<K, Integer> initialFieldIndices;
@@ -70,9 +66,5 @@ public abstract class MapExtraFactory<K, V, A extends MapExtra<K, V, A, F>,
     this.maxDynamicEntries = builder.maxDynamicEntries;
   }
 
-  @Override public final A create() {
-    return create((F) this);
-  }
-
-  protected abstract A create(F factory);
+  @Override protected abstract A create();
 }

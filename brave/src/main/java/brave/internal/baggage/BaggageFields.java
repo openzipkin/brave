@@ -14,6 +14,7 @@
 package brave.internal.baggage;
 
 import brave.baggage.BaggageField;
+import brave.internal.Nullable;
 import brave.internal.collect.UnsafeArrayMap;
 import brave.internal.collect.UnsafeArrayMap.Mapper;
 import brave.internal.extra.MapExtra;
@@ -50,7 +51,7 @@ public final class BaggageFields
 
   static final class FactoryBuilder extends
       MapExtraFactory.Builder<BaggageField, String, BaggageFields, Factory, FactoryBuilder> {
-    @Override protected Factory build(FactoryBuilder builder) {
+    @Override protected Factory build() {
       return new Factory(this);
     }
   }
@@ -61,7 +62,7 @@ public final class BaggageFields
       super(builder);
     }
 
-    @Override protected BaggageFields create(Factory factory) {
+    @Override public BaggageFields create() {
       return new BaggageFields(this);
     }
   }
@@ -76,6 +77,10 @@ public final class BaggageFields
 
   @Override public boolean updateValue(BaggageField field, String value) {
     return put(field, value);
+  }
+
+  @Nullable public String getValue(BaggageField key) {
+    return super.get(key);
   }
 
   /**
