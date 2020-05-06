@@ -105,9 +105,9 @@ public final class BaggageField {
    * Used to decouple baggage value updates from {@link TraceContext} or {@link
    * TraceContextOrSamplingFlags} storage.
    *
-   * <p><em>Note</em>: This type is safe to implement as a lambda, or use as a method reference as it
-   * is effectively a {@code FunctionalInterface}. It isn't annotated as such because the project has
-   * a minimum Java language level 6.
+   * <p><em>Note</em>: This type is safe to implement as a lambda, or use as a method reference as
+   * it is effectively a {@code FunctionalInterface}. It isn't annotated as such because the project
+   * has a minimum Java language level 6.
    *
    * @since 5.12
    */
@@ -135,6 +135,7 @@ public final class BaggageField {
      */
     boolean updateValue(BaggageField field, @Nullable String value);
   }
+
   /**
    * @param name See {@link #name()}
    * @since 5.11
@@ -363,8 +364,9 @@ public final class BaggageField {
   static {
     InternalBaggage.instance = new InternalBaggage() {
       @Override
-      public BaggagePropagationConfig newBaggagePropagationConfig(BaggageCodec baggageCodec) {
-        return new BaggagePropagationConfig(baggageCodec);
+      public BaggagePropagationConfig newBaggagePropagationConfig(
+          BaggageCodec baggageCodec, int maxDynamicFields) {
+        return new BaggagePropagationConfig(baggageCodec, maxDynamicFields);
       }
     };
   }

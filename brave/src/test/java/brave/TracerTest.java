@@ -70,7 +70,7 @@ public class TracerTest {
       }
     })
     .propagationFactory(new Propagation.Factory() {
-      @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
+      @Deprecated @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
         return propagationFactory.create(keyFactory);
       }
 
@@ -229,7 +229,7 @@ public class TracerTest {
   @Test public void join_createsChildWhenUnsupportedByPropagation() {
     tracer = Tracing.newBuilder()
       .propagationFactory(new Propagation.Factory() {
-        @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
+        @Deprecated public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
           return B3Propagation.FACTORY.create(keyFactory);
         }
       })

@@ -27,11 +27,10 @@ public abstract class InternalBaggage {
   public static InternalBaggage instance;
 
   /**
-   * {@link BaggageCodec} is not yet a public api, but it is being tested with secondary
-   * sampling.
+   * {@link BaggageCodec} is not yet a public api, but it is being tested with secondary sampling.
    *
    * <p>See https://github.com/openzipkin-contrib/zipkin-secondary-sampling
    */
   public abstract BaggagePropagationConfig newBaggagePropagationConfig(
-      BaggageCodec baggageCodec);
+      BaggageCodec baggageCodec, int maxDynamicFields);
 }

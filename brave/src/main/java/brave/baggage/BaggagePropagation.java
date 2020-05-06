@@ -14,11 +14,10 @@
 package brave.baggage;
 
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
-import brave.internal.collect.Lists;
 import brave.internal.Nullable;
 import brave.internal.baggage.BaggageCodec;
 import brave.internal.baggage.BaggageFields;
-import brave.internal.baggage.BaggageFieldsFactory;
+import brave.internal.collect.Lists;
 import brave.internal.propagation.StringPropagationAdapter;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
@@ -168,7 +167,7 @@ public final class BaggagePropagation<K> implements Propagation<K> {
   static final class Factory extends Propagation.Factory implements Propagation<String> {
     final Propagation.Factory delegateFactory;
     final Propagation<String> delegate;
-    final BaggageFieldsFactory baggageFactory;
+    final BaggageFields.Factory baggageFactory;
     final BaggagePropagationConfig[] configs;
     final String[] localFieldNames;
     @Nullable final Extra extra;
@@ -186,17 +185,16 @@ public final class BaggagePropagation<K> implements Propagation<K> {
 
       List<BaggageField> fields = new ArrayList<>();
       Set<String> localFieldNames = new LinkedHashSet<>();
-      boolean dynamic = false;
+      int maxDynamicFields = 0;
       for (BaggagePropagationConfig config : factoryBuilder.configs) {
+        maxDynamicFields += config.maxDynamicFields;
         if (config instanceof SingleBaggageField) {
           BaggageField field = ((SingleBaggageField) config).field;
           fields.add(field);
           if (config.baggageCodec == BaggageCodec.NOOP) localFieldNames.add(field.name());
-        } else {
-          dynamic = true;
         }
       }
-      this.baggageFactory = BaggageFieldsFactory.create(fields, dynamic);
+      this.baggageFactory = BaggageFields.newFactory(fields, maxDynamicFields);
       this.localFieldNames = localFieldNames.toArray(new String[0]);
     }
 

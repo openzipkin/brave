@@ -135,7 +135,7 @@ public class BaggagePropagationConfig {
     SingleBaggageField(Builder builder) { // sealed to this package
       super(builder.keyNames.isEmpty()
           ? BaggageCodec.NOOP
-          : SingleFieldBaggageCodec.single(builder.field, builder.keyNames));
+          : SingleFieldBaggageCodec.single(builder.field, builder.keyNames), 0);
       field = builder.field;
       keyNames = builder.keyNames.isEmpty() ? Collections.emptySet()
           : Collections.unmodifiableSet(new LinkedHashSet<>(builder.keyNames));
@@ -158,9 +158,11 @@ public class BaggagePropagationConfig {
 
   /** Returns {@link BaggageCodec#NOOP} if {@link SingleBaggageField#local(BaggageField)}. */
   final BaggageCodec baggageCodec;
+  final int maxDynamicFields;
 
-  BaggagePropagationConfig(BaggageCodec baggageCodec) {
+  BaggagePropagationConfig(BaggageCodec baggageCodec, int maxDynamicFields) {
     if (baggageCodec == null) throw new NullPointerException("baggageCodec == null");
     this.baggageCodec = baggageCodec;
+    this.maxDynamicFields = maxDynamicFields;
   }
 }
