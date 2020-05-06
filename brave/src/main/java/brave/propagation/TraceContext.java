@@ -18,7 +18,6 @@ import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.Platform;
 import java.lang.ref.WeakReference;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -42,6 +41,8 @@ import static brave.propagation.TraceIdContext.toTraceIdString;
  * <p>The implementation was originally {@code com.github.kristofa.brave.SpanId}, which was a
  * port of {@code com.twitter.finagle.tracing.TraceId}. Unlike these mentioned, this type does not
  * expose a single binary representation. That's because propagation forms can now vary.
+ *
+ * @since 4.0
  */
 //@Immutable
 public final class TraceContext extends SamplingFlags {
@@ -57,7 +58,14 @@ public final class TraceContext extends SamplingFlags {
    * HttpURLConnection connection = (HttpURLConnection) new URL("http://myserver").openConnection();
    * injector.inject(span.context(), connection);
    * }</pre>
+   *
+   * <p><em>Note</em>: This type is safe to implement as a lambda, or use as a method reference as
+   * it is effectively a {@code FunctionalInterface}. It isn't annotated as such because the project
+   * has a minimum Java language level 6.
+   *
+   * @since 4.0
    */
+  // @FunctionalInterface, except Java language level 6. Do not add methods as it will break API!
   public interface Injector<R> {
     /**
      * Usually calls a setter for each propagation field to send downstream.
@@ -71,8 +79,14 @@ public final class TraceContext extends SamplingFlags {
   /**
    * Used to continue an incoming trace. For example, by reading http headers.
    *
+   * <p><em>Note</em>: This type is safe to implement as a lambda, or use as a method reference as
+   * it is effectively a {@code FunctionalInterface}. It isn't annotated as such because the project
+   * has a minimum Java language level 6.
+   *
    * @see brave.Tracer#nextSpan(TraceContextOrSamplingFlags)
+   * @since 4.0
    */
+  // @FunctionalInterface, except Java language level 6. Do not add methods as it will break API!
   public interface Extractor<R> {
 
     /**
@@ -176,6 +190,8 @@ public final class TraceContext extends SamplingFlags {
    *
    * <p>Implementations are responsible for scoping any data stored here. This can be performed
    * when {@link Propagation.Factory#decorate(TraceContext)} is called.
+   *
+   * @since 4.9
    */
   public List<Object> extra() {
     return extraList;
@@ -188,7 +204,7 @@ public final class TraceContext extends SamplingFlags {
    * to consolidate elements. If it doesn't, there could be multiple instances of a given type and
    * this can break logic.
    */
-  public @Nullable <T> T findExtra(Class<T> type) {
+  @Nullable public <T> T findExtra(Class<T> type) {
     return findExtra(type, extraList);
   }
 
@@ -345,7 +361,10 @@ public final class TraceContext extends SamplingFlags {
       return this;
     }
 
-    /** @deprecated Since 5.12, use {@link #addExtra(Object)} */
+    /**
+     * @since 4.9
+     * @deprecated Since 5.12, use {@link #addExtra(Object)}
+     */
     @Deprecated public final Builder extra(List<Object> extraList) {
       if (extraList == null) throw new NullPointerException("extraList == null");
       for (Object extra : extraList) {
@@ -354,7 +373,10 @@ public final class TraceContext extends SamplingFlags {
       return this;
     }
 
-    /** @see #extra() */
+    /**
+     * @since 5.12
+     * @see #extra()
+     */
     public final Builder addExtra(Object extra) {
       extraList = ensureExtraAdded(extraList, extra);
       return this;

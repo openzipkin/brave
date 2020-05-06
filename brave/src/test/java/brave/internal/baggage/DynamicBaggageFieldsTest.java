@@ -19,8 +19,8 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class DynamicBaggageFieldsTest extends BaggageFieldsTest {
-  @Override BaggageFieldsHandler newHandler() {
-    return BaggageFieldsHandler.create(asList(field1), true);
+  @Override BaggageFieldsFactory newFactory() {
+    return BaggageFieldsFactory.create(asList(field1), true);
   }
 
   @Test public void getAllFields_areNotConstant() {

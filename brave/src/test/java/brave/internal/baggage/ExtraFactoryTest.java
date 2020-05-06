@@ -30,13 +30,13 @@ import static brave.propagation.SamplingFlags.EMPTY;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ExtraHandlerTest {
+public class ExtraFactoryTest {
   BaggageField field1 = BaggageField.create("one");
   BaggageField field2 = BaggageField.create("two");
   String value1 = "1", value2 = "2", value3 = "3";
 
-  // NOTE: while these tests check ExtraHandler, they are themselves coupled to BaggageFields
-  BaggageFieldsHandler handler = BaggageFieldsHandler.create(asList(field1, field2), false);
+  // NOTE: while these tests check ExtraFactory, they are themselves coupled to BaggageFields
+  BaggageFieldsFactory factory = BaggageFieldsFactory.create(asList(field1, field2), false);
   Class<? extends Extra> extraClass = BaggageFields.class;
 
   Propagation.Factory propagationFactory = new Propagation.Factory() {
@@ -45,7 +45,7 @@ public class ExtraHandlerTest {
     }
 
     @Override public TraceContext decorate(TraceContext context) {
-      return handler.ensureContainsExtra(context);
+      return factory.decorate(context);
     }
   };
 
@@ -125,9 +125,9 @@ public class ExtraHandlerTest {
     try (Tracing tracing = withNoopSpanReporter()) {
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
       try {
-        TraceContextOrSamplingFlags.Builder builder = TraceContextOrSamplingFlags.EMPTY.toBuilder();
-        handler.provisionExtra(builder);
-        TraceContextOrSamplingFlags extracted = builder.build();
+        TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.EMPTY.toBuilder()
+            .addExtra(factory.create())
+            .build();
 
         field1.updateValue(parent.context(), value1);
         field1.updateValue(extracted, value2);
@@ -152,9 +152,9 @@ public class ExtraHandlerTest {
 
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
       try {
-        TraceContextOrSamplingFlags.Builder builder = TraceContextOrSamplingFlags.EMPTY.toBuilder();
-        handler.provisionExtra(builder);
-        TraceContextOrSamplingFlags extracted = builder.build();
+        TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.EMPTY.toBuilder()
+            .addExtra(factory.create())
+            .build();
 
         field2.updateValue(extracted, value3);
 
@@ -218,7 +218,7 @@ public class ExtraHandlerTest {
 
     for (TraceContext context : contexts) {
       // adds a new extra container and claims it against the current context.
-      TraceContext ensured = handler.ensureContainsExtra(context);
+      TraceContext ensured = factory.decorate(context);
 
       assertThat(ensured.extra())
           .hasSize(context.extra().size() + 1)
@@ -229,15 +229,15 @@ public class ExtraHandlerTest {
 
   @Test public void ensureContainsExtra_claimsFields() {
     List<TraceContext> contexts = asList(
-        context.toBuilder().addExtra(handler.provisionExtra()).build(),
-        context.toBuilder().addExtra(1L).addExtra(handler.provisionExtra()).build(),
-        context.toBuilder().addExtra(handler.provisionExtra()).addExtra(1L).build(),
-        context.toBuilder().addExtra(1L).addExtra(handler.provisionExtra()).addExtra(2L).build()
+        context.toBuilder().addExtra(factory.create()).build(),
+        context.toBuilder().addExtra(1L).addExtra(factory.create()).build(),
+        context.toBuilder().addExtra(factory.create()).addExtra(1L).build(),
+        context.toBuilder().addExtra(1L).addExtra(factory.create()).addExtra(2L).build()
     );
 
     for (TraceContext context : contexts) {
       // re-uses an extra container and claims it against the current context.
-      TraceContext ensured = handler.ensureContainsExtra(context);
+      TraceContext ensured = factory.decorate(context);
 
       assertThat(ensured.extra()).isSameAs(context.extra());
       assertExtraClaimed(ensured);
@@ -246,22 +246,58 @@ public class ExtraHandlerTest {
 
   @Test public void ensureContainsExtra_redundant() {
     List<TraceContext> contexts = asList(
-        context.toBuilder().addExtra(handler.provisionExtra()).build(),
-        context.toBuilder().addExtra(1L).addExtra(handler.provisionExtra()).build(),
-        context.toBuilder().addExtra(handler.provisionExtra()).addExtra(1L).build(),
-        context.toBuilder().addExtra(1L).addExtra(handler.provisionExtra()).addExtra(2L).build()
+        context.toBuilder().addExtra(factory.create()).build(),
+        context.toBuilder().addExtra(1L).addExtra(factory.create()).build(),
+        context.toBuilder().addExtra(factory.create()).addExtra(1L).build(),
+        context.toBuilder().addExtra(1L).addExtra(factory.create()).addExtra(2L).build()
     );
 
     for (TraceContext context : contexts) {
-      context = handler.ensureContainsExtra(context);
+      context = factory.decorate(context);
 
-      assertThat(handler.ensureContainsExtra(context)).isSameAs(context);
+      assertThat(factory.decorate(context)).isSameAs(context);
     }
+  }
+
+  @Test public void decorate_returnsInputOnCreateNull() {
+    BadFactory badFactory = new BadFactory();
+    assertThat(badFactory.create()).isNull(); // sanity check
+
+    assertThat(badFactory.decorate(context))
+        .isSameAs(context);
+  }
+
+  static abstract class BadExtra extends Extra<BadExtra, BadFactory> {
+    BadExtra(BadFactory factory) {
+      super(factory);
+    }
+  }
+
+  static final class BadFactory extends ExtraFactory<BadExtra, BadFactory> {
+    BadFactory() {
+      super(new Object());
+    }
+
+    @Override protected BadExtra create() {
+      return null;
+    }
+  }
+
+  /** Logs instead of crashing on bad usage */
+  @Test public void decorate_returnsInputOnRedundantExtra() {
+    context = context.toBuilder()
+        .addExtra(factory.create())
+        .addExtra(factory.create())
+        .addExtra(factory.create())
+        .build();
+
+    assertThat(factory.decorate(context))
+        .isSameAs(context);
   }
 
   @Test public void ensureContainsExtra_forksWhenFieldsAlreadyClaimed() {
     TraceContext other = TraceContext.newBuilder().traceId(98L).spanId(99L).build();
-    Extra claimed = handler.ensureContainsExtra(other).findExtra(extraClass);
+    Extra claimed = factory.decorate(other).findExtra(extraClass);
 
     List<TraceContext> contexts = asList(
         context.toBuilder().addExtra(claimed).build(),
@@ -271,7 +307,7 @@ public class ExtraHandlerTest {
     );
 
     for (TraceContext context : contexts) {
-      TraceContext ensured = handler.ensureContainsExtra(context);
+      TraceContext ensured = factory.decorate(context);
 
       assertThat(ensured).isNotSameAs(context);
       assertThat(ensured.extra())

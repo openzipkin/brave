@@ -35,7 +35,7 @@ import static brave.internal.collect.LongBitSet.setBit;
  * Holds one or more baggage fields in {@link TraceContext#extra()} or {@link
  * TraceContextOrSamplingFlags#extra()}.
  */
-public final class BaggageFields extends Extra<BaggageFields, BaggageFieldsHandler>
+public final class BaggageFields extends Extra<BaggageFields, BaggageFieldsFactory>
     implements BaggageField.ValueUpdater {
   static final Mapper<Object, String> FIELD_TO_NAME = new Mapper<Object, String>() {
     @Override public String map(Object input) {
@@ -45,8 +45,8 @@ public final class BaggageFields extends Extra<BaggageFields, BaggageFieldsHandl
   static final UnsafeArrayMap.Builder<String, String> MAP_STRING_STRING_BUILDER =
       UnsafeArrayMap.<String, String>newBuilder().mapKeys(FIELD_TO_NAME);
 
-  BaggageFields(BaggageFieldsHandler handler) {
-    super(handler);
+  BaggageFields(BaggageFieldsFactory factory) {
+    super(factory);
   }
 
   Object[] state() {
@@ -55,12 +55,12 @@ public final class BaggageFields extends Extra<BaggageFields, BaggageFieldsHandl
 
   /** When true, calls to {@link #getAllFields()} cannot be cached. */
   public boolean isDynamic() {
-    return handler.isDynamic;
+    return factory.isDynamic;
   }
 
   /** The list of fields present, regardless of value. */
   public List<BaggageField> getAllFields() {
-    if (!handler.isDynamic) return handler.initialFieldList;
+    if (!factory.isDynamic) return factory.initialFieldList;
     Object[] state = state();
     List<BaggageField> result = new ArrayList<>(state.length / 2);
     for (int i = 0; i < state.length; i += 2) {
@@ -98,7 +98,7 @@ public final class BaggageFields extends Extra<BaggageFields, BaggageFieldsHandl
     if (field == null) return false;
 
     int i = indexOfExistingField(state(), field);
-    if (i == -1 && !handler.isDynamic) {
+    if (i == -1 && !factory.isDynamic) {
       Platform.get().log("Ignoring request to add a dynamic field", null);
       return false;
     }
@@ -133,7 +133,7 @@ public final class BaggageFields extends Extra<BaggageFields, BaggageFieldsHandl
     boolean growthAllowed = true;
     int newstateLength = ourstate.length + LongBitSet.size(newToOurs) * 2;
     if (newstateLength > ourstate.length) {
-      if (!handler.isDynamic) {
+      if (!factory.isDynamic) {
         Platform.get().log("Ignoring request to add a dynamic field", null);
         growthAllowed = false;
       } else if (newstateLength / 2 > MAX_DYNAMIC_FIELDS) {
@@ -179,7 +179,7 @@ public final class BaggageFields extends Extra<BaggageFields, BaggageFieldsHandl
 
   int indexOfExistingField(Object[] state, BaggageField field) {
     int i = indexOfInitialField(field);
-    if (i == -1 && handler.isDynamic) {
+    if (i == -1 && factory.isDynamic) {
       i = indexOfDynamicField(state, field);
     }
     return i;
@@ -190,12 +190,12 @@ public final class BaggageFields extends Extra<BaggageFields, BaggageFieldsHandl
    * stable for instances of this type.
    */
   int indexOfInitialField(BaggageField field) {
-    Integer index = handler.initialFieldIndices.get(field);
+    Integer index = factory.initialFieldIndices.get(field);
     return index != null ? index : -1;
   }
 
   int indexOfDynamicField(Object[] state, BaggageField field) {
-    for (int i = handler.initialArrayLength; i < state.length; i += 2) {
+    for (int i = factory.initialArrayLength; i < state.length; i += 2) {
       if (state[i] == null) break; // end of keys
       if (field.equals(state[i])) return i;
     }

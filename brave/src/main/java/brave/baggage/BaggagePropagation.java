@@ -18,7 +18,7 @@ import brave.internal.collect.Lists;
 import brave.internal.Nullable;
 import brave.internal.baggage.BaggageCodec;
 import brave.internal.baggage.BaggageFields;
-import brave.internal.baggage.BaggageFieldsHandler;
+import brave.internal.baggage.BaggageFieldsFactory;
 import brave.internal.propagation.StringPropagationAdapter;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
@@ -168,7 +168,7 @@ public final class BaggagePropagation<K> implements Propagation<K> {
   static final class Factory extends Propagation.Factory implements Propagation<String> {
     final Propagation.Factory delegateFactory;
     final Propagation<String> delegate;
-    final BaggageFieldsHandler baggageHandler;
+    final BaggageFieldsFactory baggageFactory;
     final BaggagePropagationConfig[] configs;
     final String[] localFieldNames;
     @Nullable final Extra extra;
@@ -196,7 +196,7 @@ public final class BaggagePropagation<K> implements Propagation<K> {
           dynamic = true;
         }
       }
-      this.baggageHandler = BaggageFieldsHandler.create(fields, dynamic);
+      this.baggageFactory = BaggageFieldsFactory.create(fields, dynamic);
       this.localFieldNames = localFieldNames.toArray(new String[0]);
     }
 
@@ -210,7 +210,7 @@ public final class BaggagePropagation<K> implements Propagation<K> {
 
     @Override public TraceContext decorate(TraceContext context) {
       TraceContext result = delegateFactory.decorate(context);
-      return baggageHandler.ensureContainsExtra(result);
+      return baggageFactory.decorate(result);
     }
 
     @Override public boolean supportsJoin() {
@@ -349,10 +349,9 @@ public final class BaggagePropagation<K> implements Propagation<K> {
     }
 
     @Override public TraceContextOrSamplingFlags extract(R request) {
-      TraceContextOrSamplingFlags result = delegate.extract(request);
-
-      TraceContextOrSamplingFlags.Builder builder = result.toBuilder();
-      BaggageFields extra = factory.baggageHandler.provisionExtra(builder);
+      TraceContextOrSamplingFlags.Builder builder = delegate.extract(request).toBuilder();
+      BaggageFields extra = factory.baggageFactory.create();
+      builder.addExtra(extra);
 
       if (factory.extra == null) return builder.build();
 

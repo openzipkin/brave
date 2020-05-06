@@ -24,16 +24,16 @@ public abstract class BaggageFieldsTest {
   final BaggageField field2 = BaggageField.create("two");
   final BaggageField field3 = BaggageField.create("three");
 
-  BaggageFieldsHandler handler;
+  BaggageFieldsFactory factory;
   BaggageFields extra, extra2;
 
   /** Configure {@link #field1} and {@link #field2}, but not {@link #field3} */
-  abstract BaggageFieldsHandler newHandler();
+  abstract BaggageFieldsFactory newFactory();
 
   @Before public void setup() {
-    handler = newHandler();
-    extra = handler.provisionExtra();
-    extra2 = handler.provisionExtra();
+    factory = newFactory();
+    extra = factory.create();
+    extra2 = factory.create();
   }
 
   @Test public void updateValue() {
@@ -152,15 +152,15 @@ public abstract class BaggageFieldsTest {
    */
   @Test public void equalsAndHashCode() {
     // empty extraction is equivalent
-    assertThat(handler.provisionExtra())
-        .isEqualTo(handler.provisionExtra());
-    assertThat(handler.provisionExtra())
-        .hasSameHashCodeAs(handler.provisionExtra());
+    assertThat(factory.create())
+        .isEqualTo(factory.create());
+    assertThat(factory.create())
+        .hasSameHashCodeAs(factory.create());
 
     extra.updateValue(field1, "1");
     extra.updateValue(field2, "2");
 
-    BaggageFields extra2 = handler.provisionExtra();
+    BaggageFields extra2 = factory.create();
     extra2.updateValue(field1, "1");
     extra2.updateValue(field2, "2");
 

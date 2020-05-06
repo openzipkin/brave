@@ -21,23 +21,19 @@ import java.util.Arrays;
 /**
  * Holds extended state in {@link TraceContext#extra()} or {@link TraceContextOrSamplingFlags#extra()}.
  *
- * <p>We need to retain propagation state extracted from headers. However, we don't know the trace
- * identifiers, yet. In order to resolve this ordering concern, we create an object to hold extra
- * state, and defer associating it with a span ID (via {@link ExtraHandler#ensureContainsExtra(TraceContext)}.
- *
  * <p>The implementation of this type uses copy-on-write semantics to prevent changes in a
  * child context from affecting its parent.
  *
  * @param <E> Use a final type as otherwise tools like {@link TraceContext#findExtra(Class)} will
  * not work. In most cases, the type should be package private.
- * @param <H> The handler that {@link ExtraHandler#provisionExtra(Object)} creates} this instance.
+ * @param <F> The factory that {@link ExtraFactory#create() creates} this instance.
  */
 // We handle dynamic vs fixed state internally as it..
 //  * hides generic type complexity
 //  * gives us a lock not exposed to users
 //  * allows findExtra(ExtraFieldsSubtype.class)
-public abstract class Extra<E extends Extra<E, H>, H extends ExtraHandler<E, H>> {
-  protected final H handler; // compared by reference to ensure same configuration
+public abstract class Extra<E extends Extra<E, F>, F extends ExtraFactory<E, F>> {
+  protected final F factory; // compared by reference to ensure same configuration
 
   /**
    * Updates like {@link #tryToClaim(long, long)} lock on this object, as should any non-atomic
@@ -52,10 +48,10 @@ public abstract class Extra<E extends Extra<E, H>, H extends ExtraHandler<E, H>>
   long traceId;
   long spanId; // guarded by lock
 
-  protected Extra(H handler) {
-    if (handler == null) throw new NullPointerException("handler == null");
-    this.handler = handler;
-    this.state = handler.initialState;
+  protected Extra(F factory) {
+    if (factory == null) throw new NullPointerException("factory == null");
+    this.factory = factory;
+    this.state = factory.initialState;
   }
 
   /**
