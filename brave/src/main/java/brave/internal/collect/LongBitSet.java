@@ -11,29 +11,29 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.internal.baggage;
+package brave.internal.collect;
 
 import java.util.BitSet;
 
 /**
  * This is more efficient than {@link BitSet} as this doesn't implicitly allocate arrays.
  */
-final class LongBitSet {
-  static final int MAX_SIZE = Long.SIZE;
+public final class LongBitSet {
+  public static final int MAX_SIZE = Long.SIZE;
 
-  static int size(long bitset) {
+  public static int size(long bitset) {
     return Long.bitCount(bitset);
   }
 
-  static boolean isSet(long bitset, long i) {
+  public static boolean isSet(long bitset, long i) {
     return (bitset & (1 << i)) != 0;
   }
 
-  static long unsetBit(long bitset, long i) {
+  public static long unsetBit(long bitset, long i) {
     return bitset & ~(1 << i);
   }
 
-  static long setBit(long bitset, long i) {
+  public static long setBit(long bitset, long i) {
     return bitset | (1 << i);
   }
 }

@@ -19,7 +19,7 @@ import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.internal.Nullable;
 import brave.internal.Platform;
-import brave.internal.weaklockfree.WeakConcurrentMap;
+import brave.internal.collect.WeakConcurrentMap;
 import brave.propagation.TraceContext;
 import java.lang.ref.Reference;
 import java.util.concurrent.atomic.AtomicBoolean;

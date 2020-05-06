@@ -11,10 +11,10 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.internal.weaklockfree;
+package brave.internal.collect;
 
 import brave.GarbageCollectors;
-import brave.internal.weaklockfree.WeakConcurrentMap.WeakKey;
+import brave.internal.collect.WeakConcurrentMap.WeakKey;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import org.junit.Test;

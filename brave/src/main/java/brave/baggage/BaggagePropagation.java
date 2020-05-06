@@ -14,7 +14,7 @@
 package brave.baggage;
 
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
-import brave.internal.Lists;
+import brave.internal.collect.Lists;
 import brave.internal.Nullable;
 import brave.internal.baggage.BaggageCodec;
 import brave.internal.baggage.BaggageFields;
