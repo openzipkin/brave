@@ -11,7 +11,7 @@ propagated downstream onto the Stream topology. The span context is stored in th
 the Producers at the middle (e.g. `builder.through(topic)`) or at the end of a Stream topology
 will reference the initial span, and mark the end of a Stream Process.
 
-If intermediate steps on the Stream topology require tracing, then `TracingProcessorSupplier` and
+If intermediate steps on the Stream topology require tracing, `TracingProcessorSupplier` and
 `TracingTransformerSupplier` will allow you to define a Processor/Transformer where execution is recorded as Span,
 referencing the parent context stored on Headers, if available.
 
