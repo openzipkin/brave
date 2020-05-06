@@ -1,4 +1,4 @@
-# brave-kafka-streams rationale
+# brave-instrumentation-kafka-streams rationale
 
 ## What's happening?
 Typically, there are at least two spans involved in traces produces by a Kafka Stream application:
