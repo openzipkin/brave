@@ -7,7 +7,7 @@ Typically, there are at least two spans involved in traces produces by a Kafka S
 
 By receiving records in a Kafka Streams application with Tracing enabled, the span created, once
 a record is received, will inject the span context on the headers of the Record, and it will get
-propagated downstream onto the Stream topology. As the span context is stored in the Record Headers,
+propagated downstream onto the Stream topology. The span context is stored in the Record Headers,
 the Producers at the middle (e.g. `builder.through(topic)`) or at the end of a Stream topology
 will reference the initial span, and mark the end of a Stream Process.
 
