@@ -13,7 +13,7 @@
  */
 package brave.propagation;
 
-import brave.internal.HexCodec;
+import brave.internal.codec.HexCodec;
 import java.util.Arrays;
 import org.junit.Test;
 

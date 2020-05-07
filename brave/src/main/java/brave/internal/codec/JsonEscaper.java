@@ -11,7 +11,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.internal;
+package brave.internal.codec;
 
 // Initially, a copy of zipkin2.internal.JsonEscaper
 public final class JsonEscaper {

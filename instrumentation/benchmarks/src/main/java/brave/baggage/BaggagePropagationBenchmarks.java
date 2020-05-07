@@ -14,7 +14,7 @@
 package brave.baggage;
 
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
-import brave.internal.HexCodec;
+import brave.internal.codec.HexCodec;
 import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;

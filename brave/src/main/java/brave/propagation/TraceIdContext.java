@@ -17,8 +17,8 @@ import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.RecyclableBuffers;
 
-import static brave.internal.HexCodec.toLowerHex;
-import static brave.internal.HexCodec.writeHexLong;
+import static brave.internal.codec.HexCodec.toLowerHex;
+import static brave.internal.codec.HexCodec.writeHexLong;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 

@@ -16,7 +16,7 @@ package brave.handler;
 import brave.ErrorParser;
 import brave.Span.Kind;
 import brave.SpanCustomizer;
-import brave.internal.IpLiteral;
+import brave.internal.codec.IpLiteral;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import java.lang.ref.WeakReference;
@@ -24,7 +24,7 @@ import java.util.ArrayList;
 
 import static brave.internal.InternalPropagation.FLAG_DEBUG;
 import static brave.internal.InternalPropagation.FLAG_SHARED;
-import static brave.internal.JsonEscaper.jsonEscape;
+import static brave.internal.codec.JsonEscaper.jsonEscape;
 
 /**
  * This represents a span except for its {@link TraceContext}. It is mutable, for late adjustments.

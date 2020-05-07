@@ -11,7 +11,9 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.internal;
+package brave.internal.codec;
+
+import brave.internal.RecyclableBuffers;
 
 // code originally imported from zipkin.Util
 public final class HexCodec {

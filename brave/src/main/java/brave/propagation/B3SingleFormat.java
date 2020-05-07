@@ -19,7 +19,7 @@ import brave.internal.RecyclableBuffers;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 
-import static brave.internal.HexCodec.writeHexLong;
+import static brave.internal.codec.HexCodec.writeHexLong;
 
 /**
  * This format corresponds to the propagation key "b3" (or "B3"), which delimits fields in the

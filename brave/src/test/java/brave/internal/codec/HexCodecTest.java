@@ -11,13 +11,13 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.internal;
+package brave.internal.codec;
 
 import org.junit.Test;
 
-import static brave.internal.HexCodec.lenientLowerHexToUnsignedLong;
-import static brave.internal.HexCodec.lowerHexToUnsignedLong;
-import static brave.internal.HexCodec.toLowerHex;
+import static brave.internal.codec.HexCodec.lenientLowerHexToUnsignedLong;
+import static brave.internal.codec.HexCodec.lowerHexToUnsignedLong;
+import static brave.internal.codec.HexCodec.toLowerHex;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
