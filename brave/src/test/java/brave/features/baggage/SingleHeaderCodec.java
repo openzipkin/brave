@@ -47,7 +47,7 @@ final class SingleHeaderCodec implements BaggageCodec, EntrySplitter.Handler<Val
   }
 
   @Override public boolean decode(ValueUpdater valueUpdater, Object request, String value) {
-    return ENTRY_SPLITTER.parse(value, this, valueUpdater, true);
+    return ENTRY_SPLITTER.parse(this, valueUpdater, value);
   }
 
   @Override public boolean onEntry(
