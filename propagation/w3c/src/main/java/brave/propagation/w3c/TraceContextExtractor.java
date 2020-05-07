@@ -19,31 +19,26 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
 
 import static brave.propagation.B3SingleFormat.parseB3SingleFormat;
+import static brave.propagation.w3c.TraceContextPropagation.TRACEPARENT;
+import static brave.propagation.w3c.TraceContextPropagation.TRACESTATE;
 
 // TODO: this class has no useful tests wrt traceparent yet
-final class TraceContextExtractor<R, K> implements Extractor<R> {
-  static final TraceContextOrSamplingFlags EXTRACTED_EMPTY =
-      TraceContextOrSamplingFlags.EMPTY.toBuilder().addExtra(Tracestate.EMPTY).build();
+final class TraceContextExtractor<R> implements Extractor<R> {
+  final Getter<R, String> getter;
+  final TraceContextPropagation propagation;
 
-  final Getter<R, K> getter;
-  final K traceparentKey, tracestateKey;
-  final TracestateFormat tracestateFormat;
-  final B3SingleFormatHandler handler = new B3SingleFormatHandler();
-
-  TraceContextExtractor(TraceContextPropagation<K> propagation, Getter<R, K> getter) {
+  TraceContextExtractor(TraceContextPropagation propagation, Getter<R, String> getter) {
     this.getter = getter;
-    this.traceparentKey = propagation.traceparent;
-    this.tracestateKey = propagation.tracestate;
-    this.tracestateFormat = new TracestateFormat(propagation.tracestateKey);
+    this.propagation = propagation;
   }
 
   @Override public TraceContextOrSamplingFlags extract(R request) {
     if (request == null) throw new NullPointerException("request == null");
-    String traceparentString = getter.get(request, traceparentKey);
-    if (traceparentString == null) return EXTRACTED_EMPTY;
+    String traceparentString = getter.get(request, TRACEPARENT);
+    if (traceparentString == null) return TraceContextOrSamplingFlags.EMPTY;
 
     // TODO: add link that says tracestate itself is optional
-    String tracestateString = getter.get(request, tracestateKey);
+    String tracestateString = getter.get(request, TRACESTATE);
     if (tracestateString == null) {
       // NOTE: we may not want to pay attention to the sampled flag. Since it conflates
       // not-yet-sampled with sampled=false, implementations that always set flags to -00 would
@@ -54,29 +49,19 @@ final class TraceContextExtractor<R, K> implements Extractor<R> {
       // read the tracestate header. Trusting the span ID (traceparent calls the span ID parent-id)
       // could result in a headless trace.
       TraceContext maybeUpstream = TraceparentFormat.parseTraceparentFormat(traceparentString);
-      return TraceContextOrSamplingFlags.newBuilder(maybeUpstream)
-          .addExtra(Tracestate.EMPTY) // marker for outbound propagation
-          .build();
+      return TraceContextOrSamplingFlags.create(maybeUpstream);
     }
 
-    Tracestate tracestate = tracestateFormat.parseAndReturnOtherEntries(tracestateString, handler);
-
-    TraceContext context = handler.context;
-    if (context == null) {
-      if (tracestate == Tracestate.EMPTY) return EXTRACTED_EMPTY;
-      return EXTRACTED_EMPTY.toBuilder().addExtra(tracestate).build();
+    Tracestate tracestate = propagation.tracestateFactory.create();
+    TraceContextOrSamplingFlags extracted = null;
+    if (TracestateFormat.INSTANCE.parseInto(tracestateString, tracestate)) {
+      String b3 = tracestate.get(propagation.tracestateKey);
+      if (b3 != null) {
+        tracestate.put(propagation.tracestateKey, null);
+        extracted = parseB3SingleFormat(b3);
+      }
     }
-    return TraceContextOrSamplingFlags.newBuilder(context).addExtra(tracestate).build();
-  }
-
-  static final class B3SingleFormatHandler implements TracestateFormat.Handler {
-    TraceContext context;
-
-    @Override
-    public boolean onThisEntry(CharSequence tracestate, int beginIndex, int endIndex) {
-      TraceContextOrSamplingFlags extracted = parseB3SingleFormat(tracestate, beginIndex, endIndex);
-      if (extracted != null) context = extracted.context();
-      return context != null;
-    }
+    if (extracted == null) extracted = TraceContextOrSamplingFlags.EMPTY;
+    return extracted.toBuilder().addExtra(tracestate).build();
   }
 }

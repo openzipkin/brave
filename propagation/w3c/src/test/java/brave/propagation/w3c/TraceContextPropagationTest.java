@@ -22,15 +22,14 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.Test;
 
-import static brave.internal.HexCodec.lowerHexToUnsignedLong;
-import static brave.propagation.Propagation.KeyFactory.STRING;
+import static brave.internal.codec.HexCodec.lowerHexToUnsignedLong;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TraceContextPropagationTest {
   Map<String, String> request = new LinkedHashMap<>();
-  Propagation<String> propagation = TraceContextPropagation.newFactory().create(STRING);
-  Injector<Map<String, String>> injector = propagation.injector(Map::put);
-  Extractor<Map<String, String>> extractor = propagation.extractor(Map::get);
+  Propagation.Factory propagation = TraceContextPropagation.create();
+  Injector<Map<String, String>> injector = propagation.get().injector(Map::put);
+  Extractor<Map<String, String>> extractor = propagation.get().extractor(Map::get);
 
   TraceContext sampledContext = TraceContext.newBuilder()
       .traceIdHigh(lowerHexToUnsignedLong("67891233abcdef01"))
@@ -40,10 +39,10 @@ public class TraceContextPropagationTest {
       .build();
   String validTraceparent = "00-67891233abcdef012345678912345678-463ac35c9f6413ad-01";
   String validB3Single = "67891233abcdef012345678912345678-463ac35c9f6413ad-1";
-  String otherState = "congo=lZWRzIHRoNhcm5hbCBwbGVhc3VyZS4=";
+  String otherState = "congo=t61rcWkgMzE";
 
   @Test public void injects_b3_when_no_other_tracestate() {
-    sampledContext = sampledContext.toBuilder().addExtra(Tracestate.EMPTY).build();
+    sampledContext = propagation.decorate(sampledContext);
 
     injector.inject(sampledContext, request);
 
@@ -51,9 +50,8 @@ public class TraceContextPropagationTest {
   }
 
   @Test public void injects_b3_before_other_tracestate() {
-    Tracestate tracestate = Tracestate.create(otherState);
-
-    sampledContext = sampledContext.toBuilder().addExtra(tracestate).build();
+    sampledContext = propagation.decorate(sampledContext);
+    TracestateFormat.INSTANCE.parseInto(otherState, sampledContext.findExtra(Tracestate.class));
 
     injector.inject(sampledContext, request);
 
@@ -65,17 +63,18 @@ public class TraceContextPropagationTest {
     request.put("tracestate", "b3=" + validB3Single);
 
     assertThat(extractor.extract(request)).isEqualTo(
-        TraceContextOrSamplingFlags.newBuilder(sampledContext).addExtra(Tracestate.EMPTY).build());
+        TraceContextOrSamplingFlags.create(propagation.decorate(sampledContext)));
   }
 
   @Test public void extracts_b3_before_other_tracestate() {
     request.put("traceparent", validTraceparent);
     request.put("tracestate", "b3=" + validB3Single + "," + otherState);
 
-    Tracestate tracestate = Tracestate.create(otherState);
+    sampledContext = propagation.decorate(sampledContext);
+    TracestateFormat.INSTANCE.parseInto(otherState, sampledContext.findExtra(Tracestate.class));
 
-    assertThat(extractor.extract(request)).isEqualTo(
-        TraceContextOrSamplingFlags.newBuilder(sampledContext).addExtra(tracestate).build());
+    assertThat(extractor.extract(request))
+        .isEqualTo(TraceContextOrSamplingFlags.create(sampledContext));
   }
 
   @Test public void extracted_toString() {
@@ -86,7 +85,7 @@ public class TraceContextPropagationTest {
         "Extracted{"
             + "traceContext=" + sampledContext + ", "
             + "samplingFlags=SAMPLED_REMOTE, "
-            + "extra=[tracestate: " + otherState + "]"
+            + "extra=[Tracestate{" + otherState + "}]"
             + "}");
   }
 
@@ -94,30 +93,10 @@ public class TraceContextPropagationTest {
     request.put("traceparent", validTraceparent);
     request.put("tracestate", otherState + ",b3=" + validB3Single);
 
-    Tracestate tracestate = Tracestate.create(otherState);
+    sampledContext = propagation.decorate(sampledContext);
+    TracestateFormat.INSTANCE.parseInto(otherState, sampledContext.findExtra(Tracestate.class));
 
-    assertThat(extractor.extract(request)).isEqualTo(
-        TraceContextOrSamplingFlags.newBuilder(sampledContext).addExtra(tracestate).build());
-  }
-
-  @Test public void tracestate() {
-    Tracestate b3_withContext = Tracestate.create("b3=" + validB3Single);
-    Tracestate sameState = Tracestate.create("b3=" + validB3Single);
-    assertThat(b3_withContext).isEqualTo(sameState);
-    assertThat(sameState).isEqualTo(b3_withContext);
-    assertThat(b3_withContext).hasSameHashCodeAs(sameState);
-    assertThat(b3_withContext)
-        .hasToString("tracestate: b3=67891233abcdef012345678912345678-463ac35c9f6413ad-1");
-
-    assertThat(Tracestate.create(""))
-        .isNotEqualTo(b3_withContext)
-        .isSameAs(Tracestate.create(null))
-        .isSameAs(Tracestate.EMPTY)
-        .hasToString("tracestate: ");
-
-    Tracestate b3_debugOnly = Tracestate.create("b3=d");
-    assertThat(b3_withContext).isNotEqualTo(b3_debugOnly);
-    assertThat(b3_debugOnly).isNotEqualTo(b3_withContext);
-    assertThat(b3_withContext.hashCode()).isNotEqualTo(b3_debugOnly.hashCode());
+    assertThat(extractor.extract(request))
+        .isEqualTo(TraceContextOrSamplingFlags.create(sampledContext));
   }
 }

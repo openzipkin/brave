@@ -13,38 +13,56 @@
  */
 package brave.propagation.w3c;
 
-import brave.internal.Nullable;
+import brave.internal.extra.MapExtra;
+import brave.internal.extra.MapExtraFactory;
 
-/**
- * This only contains other entries. The entry for the current trace is only written during
- * injection.
- */
-final class Tracestate { // hidden intentionally
-  static final Tracestate EMPTY = new Tracestate("");
-
-  // TODO: this will change
-  final String otherEntries;
-
-  static Tracestate create(@Nullable CharSequence otherEntries) {
-    if (otherEntries == null || otherEntries.length() == 0) return EMPTY;
-    return new Tracestate(otherEntries.toString());
+final class Tracestate extends MapExtra<String, String, Tracestate, Tracestate.Factory> {
+  static Factory newFactory(String tracestateKey) {
+    // max is total initial + dynamic
+    return new FactoryBuilder().addInitialKey(tracestateKey).maxDynamicEntries(31).build();
   }
 
-  private Tracestate(String otherEntries) {
-    this.otherEntries = otherEntries;
+  static final class FactoryBuilder extends
+      MapExtraFactory.Builder<String, String, Tracestate, Factory, FactoryBuilder> {
+    @Override protected Factory build() {
+      return new Factory(this);
+    }
   }
 
-  @Override public String toString() {
-    return "tracestate: " + otherEntries;
+  static final class Factory extends MapExtraFactory<String, String, Tracestate, Factory> {
+    Factory(FactoryBuilder builder) {
+      super(builder);
+    }
+
+    @Override protected Tracestate create() {
+      return new Tracestate(this);
+    }
   }
 
-  @Override public final boolean equals(Object o) {
-    if (o == this) return true;
-    if (!(o instanceof Tracestate)) return false;
-    return otherEntries.equals(((Tracestate) o).otherEntries);
+  Tracestate(Factory factory) {
+    super(factory);
   }
 
-  @Override public final int hashCode() {
-    return otherEntries.hashCode();
+  @Override protected String get(String key) {
+    return super.get(key);
+  }
+
+  @Override protected String stateString() {
+    Object[] array = (Object[]) state;
+    // TODO: SHOULD on 512 char limit https://w3c.github.io/trace-context/#tracestate-limits
+    StringBuilder result = new StringBuilder();
+    boolean empty = true;
+    for (int i = 0; i < array.length; i += 2) {
+      String key = (String) array[i], value = (String) array[i + 1];
+      if (value == null) continue;
+      if (!empty) result.append(',');
+      result.append(key).append('=').append(value);
+      empty = false;
+    }
+    return result.toString();
+  }
+
+  @Override protected boolean put(String key, String value) {
+    return super.put(key, value);
   }
 }

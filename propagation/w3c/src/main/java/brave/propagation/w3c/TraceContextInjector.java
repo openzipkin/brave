@@ -13,39 +13,28 @@
  */
 package brave.propagation.w3c;
 
+import brave.propagation.B3SingleFormat;
 import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Injector;
 
-import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
+import static brave.propagation.w3c.TraceContextPropagation.TRACEPARENT;
+import static brave.propagation.w3c.TraceContextPropagation.TRACESTATE;
 import static brave.propagation.w3c.TraceparentFormat.writeTraceparentFormat;
 
-final class TraceContextInjector<R, K> implements Injector<R> {
-  final TracestateFormat tracestateFormat;
-  final Setter<R, K> setter;
-  final K traceparentKey, tracestateKey;
+final class TraceContextInjector<R> implements Injector<R> {
+  final Setter<R, String> setter;
+  final String tracestateKey;
 
-  TraceContextInjector(TraceContextPropagation<K> propagation, Setter<R, K> setter) {
-    this.tracestateFormat = new TracestateFormat(propagation.tracestateKey);
-    this.traceparentKey = propagation.traceparent;
-    this.tracestateKey = propagation.tracestate;
+  TraceContextInjector(TraceContextPropagation propagation, Setter<R, String> setter) {
     this.setter = setter;
+    this.tracestateKey = propagation.tracestateKey;
   }
 
-  @Override public void inject(TraceContext traceContext, R request) {
-
-    setter.put(request, traceparentKey, writeTraceparentFormat(traceContext));
-
-    CharSequence otherState = null;
-    for (int i = 0, length = traceContext.extra().size(); i < length; i++) {
-      Object next = traceContext.extra().get(i);
-      if (next instanceof Tracestate) {
-        otherState = ((Tracestate) next).otherEntries;
-        break;
-      }
-    }
-
-    String tracestate = tracestateFormat.write(writeB3SingleFormat(traceContext), otherState);
-    setter.put(request, tracestateKey, tracestate);
+  @Override public void inject(TraceContext context, R request) {
+    setter.put(request, TRACEPARENT, writeTraceparentFormat(context));
+    Tracestate tracestate = context.findExtra(Tracestate.class);
+    tracestate.put(tracestateKey, B3SingleFormat.writeB3SingleFormat(context));
+    setter.put(request, TRACESTATE, tracestate.stateString());
   }
 }

@@ -14,8 +14,7 @@
 package brave.propagation.w3c;
 
 import brave.internal.Platform;
-
-import static brave.propagation.w3c.TraceparentFormat.FORMAT_LENGTH;
+import brave.internal.codec.EntrySplitter;
 
 /**
  * Implements https://w3c.github.io/trace-context/#tracestate-header
@@ -25,107 +24,25 @@ import static brave.propagation.w3c.TraceparentFormat.FORMAT_LENGTH;
  * specific. We choose to not use the term vendor as this is open source code. Instead, we use term
  * entry (key/value).
  */
-final class TracestateFormat {
-  final String key;
-  final int keyLength;
-  final int entryLength;
+final class TracestateFormat implements EntrySplitter.Handler<Tracestate> {
+  static final TracestateFormat INSTANCE = new TracestateFormat(false);
 
-  TracestateFormat(String key) {
-    this.key = key;
-    this.keyLength = key.length();
-    this.entryLength = keyLength + 1 /* = */ + FORMAT_LENGTH;
+  final boolean shouldThrow;
+  final EntrySplitter entrySplitter;
+
+  TracestateFormat(boolean shouldThrow) {
+    this.shouldThrow = shouldThrow;
+    entrySplitter = EntrySplitter.newBuilder()
+        .maxEntries(32) // https://w3c.github.io/trace-context/#tracestate-header-field-values
+        .entrySeparator(',')
+        .trimOWSAroundEntrySeparator(true) // https://w3c.github.io/trace-context/#list
+        .keyValueSeparator('=')
+        .trimOWSAroundKeyValueSeparator(false) // https://github.com/w3c/trace-context/issues/409
+        .shouldThrow(shouldThrow)
+        .build();
   }
 
-  enum Op {
-    THIS_ENTRY,
-    OTHER_ENTRIES
-  }
-
-  interface Handler {
-    boolean onThisEntry(CharSequence tracestate, int beginIndex, int endIndex);
-  }
-
-  // TODO: SHOULD on 512 char limit https://w3c.github.io/trace-context/#tracestate-limits
-  String write(String thisValue, CharSequence otherEntries) {
-    int extraLength = otherEntries == null ? 0 : otherEntries.length();
-
-    char[] result;
-    if (extraLength == 0) {
-      result = new char[entryLength];
-    } else {
-      result = new char[entryLength + 1 /* , */ + extraLength];
-    }
-
-    int pos = 0;
-    for (int i = 0; i < keyLength; i++) {
-      result[pos++] = key.charAt(i);
-    }
-    result[pos++] = '=';
-
-    for (int i = 0, len = thisValue.length(); i < len; i++) {
-      result[pos++] = thisValue.charAt(i);
-    }
-
-    if (extraLength > 0) { // Append others after ours
-      result[pos++] = ',';
-      for (int i = 0; i < extraLength; i++) {
-        result[pos++] = otherEntries.charAt(i);
-      }
-    }
-    return new String(result, 0, pos);
-  }
-
-  // TODO: characters were added to the valid list, so it is possible this impl no longer works
-  // TODO: 32 max entries https://w3c.github.io/trace-context/#tracestate-header-field-values
-  // TODO: empty and whitespace-only allowed Ex. 'foo=' or 'foo=  '
-  Tracestate parseAndReturnOtherEntries(String tracestate, Handler handler) {
-    StringBuilder currentString = new StringBuilder(), otherEntries = null;
-    Op op;
-    OUTER:
-    for (int i = 0, length = tracestate.length(); i < length; i++) {
-      char c = tracestate.charAt(i);
-      // OWS is zero or more spaces or tabs https://httpwg.org/specs/rfc7230.html#rfc.section.3.2
-      if (c == ' ' || c == '\t') continue; // trim whitespace
-      if (c == '=') { // we reached a field name
-        if (++i == length) break; // skip '=' character
-        if (currentString.indexOf(key) == 0) {
-          op = Op.THIS_ENTRY;
-        } else {
-          op = Op.OTHER_ENTRIES;
-          if (otherEntries == null) otherEntries = new StringBuilder();
-          otherEntries.append(',').append(currentString);
-        }
-        currentString.setLength(0);
-      } else {
-        currentString.append(c);
-        continue;
-      }
-      // no longer whitespace
-      switch (op) {
-        case OTHER_ENTRIES:
-          otherEntries.append(c);
-          while (i < length && (c = tracestate.charAt(i)) != ',') {
-            otherEntries.append(c);
-            i++;
-          }
-          break;
-        case THIS_ENTRY:
-          int nextComma = tracestate.indexOf(',', i);
-          int endIndex = nextComma != -1 ? nextComma : length;
-          if (!handler.onThisEntry(tracestate, i, endIndex)) {
-            break OUTER;
-          }
-          i = endIndex;
-          break;
-      }
-    }
-    if (otherEntries != null && otherEntries.charAt(0) == ',') {
-      otherEntries.deleteCharAt(0); // TODO: fix the parser so this is eaten before now
-    }
-    return Tracestate.create(otherEntries);
-  }
-
-  // Simplify other rules by allowing value-based lookup on an ASCII value.
+  // Simplify parsing rules by allowing value-based lookup on an ASCII value.
   //
   // This approach is similar to io.netty.util.internal.StringUtil.HEX2B as it uses an array to
   // cache values. Unlike HEX2B, this requires a bounds check when using the character's integer
@@ -143,67 +60,55 @@ final class TracestateFormat {
   }
 
   static boolean isValidTracestateKeyChar(char c) {
-    return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
-        || c == '@' || c == '_' || c == '-' || c == '*' || c == '/';
+    return isLetterOrNumber(c) || c == '@' || c == '_' || c == '-' || c == '*' || c == '/';
+  }
+
+  static boolean isLetterOrNumber(char c) {
+    return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+  }
+
+  @Override
+  public boolean onEntry(
+      Tracestate target, String buffer, int beginKey, int endKey, int beginValue, int endValue) {
+    if (!validateKey(buffer, beginKey, endKey)) return false;
+    if (!validateValue(buffer, beginValue, beginValue)) return false;
+    return target.put(buffer.substring(beginKey, endKey), buffer.substring(beginValue, endValue));
+  }
+
+  boolean parseInto(String tracestateString, Tracestate tracestate) {
+    return entrySplitter.parse(this, tracestate, tracestateString);
   }
 
   /**
-   * Performs validation according to the ABNF of the {code tracestate} key.
+   * Performs validation according to the ABNF of the {@code tracestate} key.
    *
    * <p>See https://www.w3.org/TR/trace-context-1/#key
-   *
-   * @param shouldThrow true raises an {@link IllegalArgumentException} when validation fails
-   * instead of logging.
    */
-  // The intent is to optimize for valid, non-tenant formats. Logic to narrow error messages is
-  // intentionally deferred. Performance matters as this could be called up to 32 times per header.
-  static boolean validateKey(CharSequence key, boolean shouldThrow) {
-    int length = key.length();
-    if (length == 0) return logOrThrow("Invalid input: empty", shouldThrow);
-    if (length > 256) return logOrThrow("Invalid input: too large", shouldThrow);
+  // Logic to narrow error messages is intentionally deferred.
+  // Performance matters as this could be called up to 32 times per header.
+  boolean validateKey(CharSequence buffer, int beginKey, int endKey) {
+    int length = endKey - beginKey;
+    if (length == 0) return logOrThrow("Invalid key: empty", shouldThrow);
+    if (length > 256) return logOrThrow("Invalid key: too large", shouldThrow);
+    char first = buffer.charAt(beginKey);
+    if (!isLetterOrNumber(first)) {
+      return logOrThrow("Invalid key: must start with a-z 0-9", shouldThrow);
+    }
 
-    // Until we scan the entire key, we can't validate the first character, because the rules are
-    // different depending on if there is an '@' or not. When there's an '@', it is Tenant syntax.
-    int atIndex = -1;
-    for (int i = 0; i < length; i++) {
-      char c = key.charAt(i);
+    for (int i = beginKey + 1; i < endKey; i++) {
+      char c = buffer.charAt(i);
 
       if (c > LAST_VALID_KEY_CHAR || !VALID_KEY_CHARS[c]) {
-        return logOrThrow("Invalid input: valid characters are: a-z 0-9 _ - * / @", shouldThrow);
-      }
-
-      if (c == '@') {
-        if (atIndex != -1) return logOrThrow("Invalid input: only one @ is allowed", shouldThrow);
-        atIndex = i;
+        return logOrThrow("Invalid key: valid characters are: a-z 0-9 _ - * / @", shouldThrow);
       }
     }
-
-    // Now, go back and check to see if this was a Tenant formatted key, as the rules are different.
-    // Either way, we already checked the boundary cases.
-    char first = key.charAt(0);
-    if (atIndex == -1) return validateVendorPrefix(first, shouldThrow);
-
-    // Unlike vendor, tenant ID can start with a number.
-    if ((first >= '0' && first <= '9') || first >= 'a') { // && <= 'z' implied
-      int vendorIndex = atIndex + 1;
-      int vendorLength = length - vendorIndex;
-
-      if (vendorLength == 0) return logOrThrow("Invalid input: empty vendor", shouldThrow);
-      if (vendorLength > 14) return logOrThrow("Invalid input: vendor too long", shouldThrow);
-
-      return validateVendorPrefix(key.charAt(vendorIndex), shouldThrow);
-    } else if (atIndex == 0) {
-      return logOrThrow("Invalid input: empty tenant ID", shouldThrow);
-    } else {
-      return logOrThrow("Invalid input: tenant ID must start with a-z", shouldThrow);
-    }
+    return true;
   }
 
-  static boolean validateVendorPrefix(char first, boolean shouldThrow) {
-    if (first >= 'a') { // && <= 'z' implied
-      return true;
-    }
-    return logOrThrow("Invalid input: vendor must start with a-z", shouldThrow);
+  boolean validateValue(CharSequence buffer, int beginValue, int endValue) {
+    // TODO: empty and whitespace-only allowed Ex. 'foo=' or 'foo=  '
+    // There are likely other rules, so figure out what they are and implement.
+    return true;
   }
 
   static boolean logOrThrow(String msg, boolean shouldThrow) {

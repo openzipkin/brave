@@ -13,7 +13,7 @@
  */
 package brave.propagation.w3c;
 
-import brave.internal.HexCodec;
+import brave.internal.codec.HexCodec;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;

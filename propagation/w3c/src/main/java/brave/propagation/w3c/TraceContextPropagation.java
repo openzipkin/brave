@@ -13,23 +13,30 @@
  */
 package brave.propagation.w3c;
 
+import brave.internal.propagation.StringPropagationAdapter;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
-public final class TraceContextPropagation<K> implements Propagation<K> {
-  public static Factory newFactory() {
-    return new FactoryBuilder().build();
+import static java.util.Arrays.asList;
+
+public final class TraceContextPropagation extends Propagation.Factory
+    implements Propagation<String> {
+  static final String TRACEPARENT = "traceparent", TRACESTATE = "tracestate";
+
+  public static Propagation.Factory create() {
+    return new Builder().build();
   }
 
-  public static FactoryBuilder newFactoryBuilder() {
-    return new FactoryBuilder();
+  public static Builder newBuilder() {
+    return new Builder();
   }
 
-  public static final class FactoryBuilder {
+  public static final class Builder {
+    static final TracestateFormat THROWING_VALIDATOR = new TracestateFormat(true);
     String tracestateKey = "b3";
 
     /**
@@ -38,60 +45,56 @@ public final class TraceContextPropagation<K> implements Propagation<K> {
      * @throws IllegalArgumentException if the key doesn't conform to ABNF rules defined by the
      * <href="https://www.w3.org/TR/trace-context-1/#key">trace-context specification</href>.
      */
-    public FactoryBuilder tracestateKey(String key) {
+    public Builder tracestateKey(String key) {
       if (key == null) throw new NullPointerException("key == null");
-      TracestateFormat.validateKey(key, true);
+      THROWING_VALIDATOR.validateKey(key, 0, key.length());
       this.tracestateKey = key;
       return this;
     }
 
-    public Factory build() {
-      return new Factory(this);
+    public Propagation.Factory build() {
+      return new TraceContextPropagation(this);
     }
 
-    FactoryBuilder() {
-    }
-  }
-
-  static final class Factory extends Propagation.Factory {
-    final String tracestateKey;
-
-    Factory(FactoryBuilder builder) {
-      this.tracestateKey = builder.tracestateKey;
-    }
-
-    @Override public <K> Propagation<K> create(KeyFactory<K> keyFactory) {
-      return new TraceContextPropagation<>(keyFactory, tracestateKey);
-    }
-
-    @Override public TraceContext decorate(TraceContext context) {
-      // TODO: almost certain we will need to decorate as not all contexts will start with an
-      // incoming request (ex schedule or client-originated traces)
-      return super.decorate(context);
+    Builder() {
     }
   }
 
   final String tracestateKey;
-  final K traceparent, tracestate;
-  final List<K> keys;
+  final Tracestate.Factory tracestateFactory;
+  final List<String> keys = Collections.unmodifiableList(asList(TRACEPARENT, TRACESTATE));
 
-  TraceContextPropagation(KeyFactory<K> keyFactory, String tracestateKey) {
-    this.tracestateKey = tracestateKey;
-    this.traceparent = keyFactory.create("traceparent");
-    this.tracestate = keyFactory.create("tracestate");
-    this.keys = Arrays.asList(traceparent, tracestate);
+  TraceContextPropagation(Builder builder) {
+    this.tracestateKey = builder.tracestateKey;
+    this.tracestateFactory = Tracestate.newFactory(tracestateKey);
   }
 
-  @Override public List<K> keys() {
+  @Override public List<String> keys() {
     return keys;
   }
 
-  @Override public <R> Injector<R> injector(Setter<R, K> setter) {
+  @Override public boolean requires128BitTraceId() {
+    return true;
+  }
+
+  @Override public TraceContext decorate(TraceContext context) {
+    return tracestateFactory.decorate(context);
+  }
+
+  @Override public Propagation<String> get() {
+    return this;
+  }
+
+  @Override public <K> Propagation<K> create(KeyFactory<K> keyFactory) {
+    return StringPropagationAdapter.create(this, keyFactory);
+  }
+
+  @Override public <R> Injector<R> injector(Setter<R, String> setter) {
     if (setter == null) throw new NullPointerException("setter == null");
     return new TraceContextInjector<>(this, setter);
   }
 
-  @Override public <R> Extractor<R> extractor(Getter<R, K> getter) {
+  @Override public <R> Extractor<R> extractor(Getter<R, String> getter) {
     if (getter == null) throw new NullPointerException("getter == null");
     return new TraceContextExtractor<>(this, getter);
   }

@@ -21,7 +21,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.Test;
 
-import static brave.propagation.Propagation.KeyFactory.STRING;
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 
 public class TraceContextPropagationClassLoaderTest {
@@ -31,11 +30,12 @@ public class TraceContextPropagationClassLoaderTest {
 
   static class BasicUsage implements Runnable {
     @Override public void run() {
-      Propagation<String> propagation = TraceContextPropagation.newFactory().create(STRING);
-      Injector<Map<String, String>> injector = propagation.injector(Map::put);
-      Extractor<Map<String, String>> extractor = propagation.extractor(Map::get);
+      Propagation.Factory propagation = TraceContextPropagation.create();
+      Injector<Map<String, String>> injector = propagation.get().injector(Map::put);
+      Extractor<Map<String, String>> extractor = propagation.get().extractor(Map::get);
 
-      TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
+      TraceContext context =
+          propagation.decorate(TraceContext.newBuilder().traceId(1L).spanId(2L).build());
 
       Map<String, String> headers = new LinkedHashMap<>();
       injector.inject(context, headers);

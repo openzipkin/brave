@@ -18,7 +18,7 @@ import brave.internal.Platform;
 import brave.propagation.TraceContext;
 import java.nio.ByteBuffer;
 
-import static brave.internal.HexCodec.writeHexLong;
+import static brave.internal.codec.HexCodec.writeHexLong;
 
 /** Implements https://w3c.github.io/trace-context/#traceparent-header */
 // TODO: this uses the internal Platform class as it defers access to the logger and makes JUL less
