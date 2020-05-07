@@ -14,6 +14,7 @@
 package brave.internal.codec;
 
 import brave.internal.codec.EntrySplitter.Handler;
+import brave.propagation.TraceContext;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -152,6 +153,70 @@ public class EntrySplitterTest {
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessage("Invalid input: no key before '='");
     }
+  }
+
+  /**
+   * This is an example of how to parse without allocating strings. This is based on
+   * https://github.com/openzipkin/zipkin-aws/blob/master/brave-propagation-aws/src/main/java/brave/propagation/aws/AWSPropagation.java
+   */
+  @Test public void example_parseAWSTraceId() {
+    entrySplitter = EntrySplitter.newBuilder().entrySeparator(';').build();
+
+    String awsTraceId =
+        "Root=1-67891233-abcdef012345678912345678;Parent=463ac35c9f6413ad;Sampled=1";
+
+    Handler<TraceContext.Builder> parseIntoMap =
+        (target, input, beginKey, endKey, beginValue, endValue) -> {
+          int keyLength = endKey - beginKey;
+          if (input.regionMatches(beginKey, "Root", 0, keyLength)) {
+            int valueLength = endValue - beginValue;
+            int i = beginValue;
+            if (valueLength != 35 // length of 1-67891233-abcdef012345678912345678
+                || input.charAt(i++) != '1'
+                || input.charAt(i++) != '-') {
+              return false; // invalid version or format
+            }
+            long high32 = HexCodec.lenientLowerHexToUnsignedLong(input, i, i + 8);
+            i += 9; // skip the hyphen
+            long low32 = HexCodec.lenientLowerHexToUnsignedLong(input, i, i + 8);
+            i += 8;
+            long traceIdHigh = high32 << 32;
+            traceIdHigh = traceIdHigh | low32;
+            long traceId = HexCodec.lenientLowerHexToUnsignedLong(input, i, i + 16);
+            if (traceIdHigh == 0L || traceId == 0L) return false;
+            target.traceIdHigh(traceIdHigh).traceId(traceId);
+            return true;
+          } else if (input.regionMatches(beginKey, "Parent", 0, keyLength)) {
+            long spanId = HexCodec.lenientLowerHexToUnsignedLong(input, beginValue, endValue);
+            if (spanId == 0L) return false;
+            target.spanId(spanId);
+            return true;
+          } else if (input.regionMatches(beginKey, "Sampled", 0, keyLength)) {
+            switch (input.charAt(beginValue)) {
+              case '0':
+                target.sampled(false);
+                break;
+              case '1':
+                target.sampled(true);
+                break;
+              default:
+                return false;
+            }
+          }
+          return true;
+        };
+
+    TraceContext.Builder builder = TraceContext.newBuilder();
+    assertThat(entrySplitter.parse(parseIntoMap, builder, awsTraceId)).isTrue();
+    TraceContext context = builder.build();
+
+    assertThat(context).usingRecursiveComparison().isEqualTo(
+        TraceContext.newBuilder()
+            .traceIdHigh(0x67891233abcdef01L).traceId(0x2345678912345678L)
+            .spanId(0x463ac35c9f6413adL)
+            .sampled(true)
+            .build()
+    );
   }
 
   @Test public void parse_breaksWhenHandlerDoes() {
