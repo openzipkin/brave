@@ -59,7 +59,7 @@ public class SpanMetricsCustomizer implements TracingCustomizer {
     }
 
     @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
-      if (cause != Cause.FINISH) return true;
+      if (cause != Cause.FINISHED) return true;
 
       Tag nameTag = nameToTag.get(span.name());
       if (nameTag == null) return true; // no tag

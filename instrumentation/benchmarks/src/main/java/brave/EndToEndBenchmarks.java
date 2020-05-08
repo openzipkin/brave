@@ -17,13 +17,11 @@ import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagation;
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.context.log4j2.ThreadContextScopeDecorator;
-import brave.handler.FinishedSpanHandler;
-import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.http.HttpServerBenchmarks;
 import brave.okhttp3.TracingCallFactory;
 import brave.propagation.B3Propagation;
 import brave.propagation.ThreadLocalCurrentTraceContext;
-import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import brave.servlet.TracingFilter;
 import io.undertow.servlet.Servlets;
@@ -98,17 +96,11 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
   public static class OnlySampledLocal extends ForwardingTracingFilter {
     public OnlySampledLocal() {
       super(Tracing.newBuilder()
-        .addFinishedSpanHandler(new FinishedSpanHandler() {
-          @Override public boolean handle(TraceContext context, MutableSpan span) {
-            return true;
-          }
-
-          @Override public boolean alwaysSampleLocal() {
-            return true;
-          }
+        .addSpanHandler(new SpanHandler() {
+          // anonymous subtype prevents all recording from being no-op
         })
+        .alwaysSampleLocal()
         .sampler(Sampler.NEVER_SAMPLE)
-        .spanReporter(AsyncReporter.create(new NoopSender()))
         .build());
     }
   }

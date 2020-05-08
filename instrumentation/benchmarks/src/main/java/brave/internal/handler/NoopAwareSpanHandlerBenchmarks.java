@@ -103,15 +103,15 @@ public class NoopAwareSpanHandlerBenchmarks {
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true).build();
 
   @Benchmark public void compose() {
-    composite.end(context, new MutableSpan(), Cause.FINISH);
+    composite.end(context, new MutableSpan(), Cause.FINISHED);
   }
 
   @Benchmark public void compose_index() {
-    listIndexComposite.end(context, new MutableSpan(), Cause.FINISH);
+    listIndexComposite.end(context, new MutableSpan(), Cause.FINISHED);
   }
 
   @Benchmark public void compose_iterator() {
-    listIteratorComposite.end(context, new MutableSpan(), Cause.FINISH);
+    listIteratorComposite.end(context, new MutableSpan(), Cause.FINISHED);
   }
 
   // Convenience main entry-point

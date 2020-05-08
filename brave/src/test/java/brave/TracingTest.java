@@ -291,8 +291,8 @@ public class TracingTest {
     when(two.alwaysSampleLocal()).thenReturn(true);
 
     try (Tracing tracing = Tracing.newBuilder()
-      .addFinishedSpanHandler(one)
-      .addFinishedSpanHandler(two)
+      .addSpanHandler(one)
+      .addSpanHandler(two)
       .build()) {
 
       assertThat(tracing.tracer().alwaysSampleLocal).isTrue();

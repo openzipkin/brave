@@ -53,7 +53,7 @@ public class SkeletalSpansTest {
     }
 
     @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
-      if (cause == Cause.ABANDON || span.kind() == null) return false; // skip local spans
+      if (cause == Cause.ABANDONED || span.kind() == null) return false; // skip local spans
 
       zipkin2.Span.Builder builder = zipkin2.Span.newBuilder()
         .traceId(context.traceIdString())

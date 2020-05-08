@@ -297,7 +297,7 @@ public final class MutableSpan implements Cloneable {
    * the service graph} or {@code null}.
    *
    * <p><em>Note</em>: This is initialized from {@link brave.Tracing.Builder#localServiceName(String)}.
-   * {@linkplain FinishedSpanHandler handlers} that want to conditionally replace the value should
+   * {@linkplain SpanHandler handlers} that want to conditionally replace the value should
    * compare against the same value given to the tracing component.
    *
    * @since 5.4
@@ -323,7 +323,7 @@ public final class MutableSpan implements Cloneable {
    * with this service} or {@code null}.
    *
    * <p><em>Note</em>: This is initialized from {@link brave.Tracing.Builder#localIp(String)}.
-   * {@linkplain FinishedSpanHandler handlers} that want to conditionally replace the value should
+   * {@linkplain SpanHandler handlers} that want to conditionally replace the value should
    * compare against the same value given to the tracing component.
    *
    * @since 5.4
@@ -347,7 +347,7 @@ public final class MutableSpan implements Cloneable {
    * with this service} or zero.
    *
    * <p><em>Note</em>: This is initialized from {@link brave.Tracing.Builder#localPort(int)}.
-   * {@linkplain FinishedSpanHandler handlers} that want to conditionally replace the value should
+   * {@linkplain SpanHandler handlers} that want to conditionally replace the value should
    * compare against the same value given to the tracing component.
    *
    * @since 5.4

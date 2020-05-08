@@ -18,9 +18,11 @@ import brave.ErrorParser;
 import brave.Tracing;
 import brave.TracingCustomizer;
 import brave.handler.FinishedSpanHandler;
+import brave.handler.SpanHandler;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
 import brave.sampler.Sampler;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.beans.factory.config.AbstractFactoryBean;
 import zipkin2.Endpoint;
@@ -32,7 +34,7 @@ public class TracingFactoryBean extends AbstractFactoryBean {
   String localServiceName;
   Object localEndpoint, endpoint; // don't pin zipkin class
   Object spanReporter; // don't pin zipkin class
-  List<FinishedSpanHandler> finishedSpanHandlers;
+  List<SpanHandler> spanHandlers = new ArrayList<>();
   Clock clock;
   Sampler sampler;
   ErrorParser errorParser;
@@ -52,10 +54,8 @@ public class TracingFactoryBean extends AbstractFactoryBean {
     if (spanReporter != null) {
       builder.spanReporter((Reporter<Span>) spanReporter);
     }
-    if (finishedSpanHandlers != null) {
-      for (FinishedSpanHandler finishedSpanHandler : finishedSpanHandlers) {
-        builder.addFinishedSpanHandler(finishedSpanHandler);
-      }
+    for (SpanHandler spanHandler : spanHandlers) {
+      builder.addSpanHandler(spanHandler);
     }
     if (errorParser != null) builder.errorParser(errorParser);
     if (clock != null) builder.clock(clock);
@@ -98,12 +98,12 @@ public class TracingFactoryBean extends AbstractFactoryBean {
     this.spanReporter = spanReporter;
   }
 
-  public List<FinishedSpanHandler> getFinishedSpanHandlers() {
-    return finishedSpanHandlers;
+  @Deprecated public void setFinishedSpanHandlers(List<FinishedSpanHandler> finishedSpanHandlers) {
+    this.spanHandlers.addAll(finishedSpanHandlers);
   }
 
-  public void setFinishedSpanHandlers(List<FinishedSpanHandler> finishedSpanHandlers) {
-    this.finishedSpanHandlers = finishedSpanHandlers;
+  public void setSpanHandlers(List<SpanHandler> spanHandlers) {
+    this.spanHandlers.addAll(spanHandlers);
   }
 
   public void setClock(Clock clock) {

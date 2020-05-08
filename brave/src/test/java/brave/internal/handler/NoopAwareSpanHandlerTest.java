@@ -52,8 +52,8 @@ public class NoopAwareSpanHandlerTest {
 
     assertThat(handler.delegate).isSameAs(one);
 
-    handler.end(context, span, Cause.FINISH);
-    verify(one).end(context, span, Cause.FINISH);
+    handler.end(context, span, Cause.FINISHED);
+    verify(one).end(context, span, Cause.FINISHED);
   }
 
   @Test public void honorsNoop() {
@@ -61,8 +61,8 @@ public class NoopAwareSpanHandlerTest {
 
     noop.set(true);
 
-    handler.end(context, span, Cause.FINISH);
-    verify(one, never()).end(context, span, Cause.FINISH);
+    handler.end(context, span, Cause.FINISHED);
+    verify(one, never()).end(context, span, Cause.FINISHED);
   }
 
   @Test public void create_multiple() {
@@ -82,15 +82,15 @@ public class NoopAwareSpanHandlerTest {
     handlers[1] = two;
     SpanHandler handler = NoopAwareSpanHandler.create(handlers, noop);
     when(one.begin(eq(context), eq(span), isNull())).thenReturn(true);
-    when(one.end(eq(context), eq(span), eq(Cause.FINISH))).thenReturn(true);
+    when(one.end(eq(context), eq(span), eq(Cause.FINISHED))).thenReturn(true);
 
     handler.begin(context, span, null);
-    handler.end(context, span, Cause.FINISH);
+    handler.end(context, span, Cause.FINISHED);
 
     verify(one).begin(context, span, null);
     verify(two).begin(context, span, null);
-    verify(two).end(context, span, Cause.FINISH);
-    verify(one).end(context, span, Cause.FINISH);
+    verify(two).end(context, span, Cause.FINISHED);
+    verify(one).end(context, span, Cause.FINISHED);
   }
 
   @Test public void multiple_shortCircuitWhenFirstReturnsFalse() {
@@ -98,10 +98,10 @@ public class NoopAwareSpanHandlerTest {
     handlers[0] = one;
     handlers[1] = two;
     SpanHandler handler = NoopAwareSpanHandler.create(handlers, noop);
-    handler.end(context, span, Cause.FINISH);
+    handler.end(context, span, Cause.FINISHED);
 
-    verify(one).end(context, span, Cause.FINISH);
-    verify(two, never()).end(context, span, Cause.FINISH);
+    verify(one).end(context, span, Cause.FINISHED);
+    verify(two, never()).end(context, span, Cause.FINISHED);
   }
 
   @Test public void doesntCrashOnNonFatalThrowable() {
@@ -115,17 +115,17 @@ public class NoopAwareSpanHandlerTest {
       }}, noop);
 
     toThrow[0] = new RuntimeException();
-    assertThat(handler.end(context, span, Cause.FINISH)).isTrue();
+    assertThat(handler.end(context, span, Cause.FINISHED)).isTrue();
 
     toThrow[0] = new Exception();
-    assertThat(handler.end(context, span, Cause.FINISH)).isTrue();
+    assertThat(handler.end(context, span, Cause.FINISHED)).isTrue();
 
     toThrow[0] = new Error();
-    assertThat(handler.end(context, span, Cause.FINISH)).isTrue();
+    assertThat(handler.end(context, span, Cause.FINISHED)).isTrue();
 
     toThrow[0] = new StackOverflowError(); // fatal
     try { // assertThatThrownBy doesn't work with StackOverflowError
-      handler.end(context, span, Cause.FINISH);
+      handler.end(context, span, Cause.FINISHED);
       failBecauseExceptionWasNotThrown(StackOverflowError.class);
     } catch (StackOverflowError e) {
     }

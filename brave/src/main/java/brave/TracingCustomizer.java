@@ -14,14 +14,14 @@
 package brave;
 
 import brave.baggage.BaggagePropagationCustomizer;
-import brave.handler.FinishedSpanHandler;
+import brave.handler.SpanHandler;
 import brave.propagation.CurrentTraceContextCustomizer;
 import zipkin2.reporter.Reporter;
 
 /**
  * This allows configuration plugins to collaborate on building an instance of {@link Tracing}.
  *
- * <p>For example a customizer can configure {@link Tracing.Builder#addFinishedSpanHandler(FinishedSpanHandler)
+ * <p>For example a customizer can configure {@link Tracing.Builder#addSpanHandler(SpanHandler)
  * finished span handlers} without having to also configure {@link Tracing.Builder#spanReporter(Reporter)
  * span reporting}.
  *

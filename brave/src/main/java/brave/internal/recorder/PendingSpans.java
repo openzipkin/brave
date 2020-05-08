@@ -97,13 +97,13 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
   /** @see brave.Span#abandon() */
   public void abandon(TraceContext context) {
     PendingSpan last = remove(context);
-    if (last != null) spanHandler.end(last.handlerContext, last.span, Cause.ABANDON);
+    if (last != null) spanHandler.end(last.handlerContext, last.span, Cause.ABANDONED);
   }
 
   /** @see brave.Span#flush() */
   public void flush(TraceContext context) {
     PendingSpan last = remove(context);
-    if (last != null) spanHandler.end(last.handlerContext, last.span, Cause.FLUSH);
+    if (last != null) spanHandler.end(last.handlerContext, last.span, Cause.FLUSHED);
   }
 
   /**
@@ -117,7 +117,7 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
     PendingSpan last = remove(context);
     if (last == null) return;
     last.span.finishTimestamp(timestamp != 0L ? timestamp : last.clock.currentTimeMicroseconds());
-    spanHandler.end(last.handlerContext, last.span, Cause.FINISH);
+    spanHandler.end(last.handlerContext, last.span, Cause.FINISHED);
   }
 
   /** Reports spans orphaned by garbage collection. */
@@ -128,7 +128,7 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
       PendingSpan value = removeStaleEntry(reference);
       if (noop || value == null) continue;
       assert value.context() == null : "unexpected for the weak referent to be present after GC!";
-      spanHandler.end(value.handlerContext, value.span, Cause.ORPHAN);
+      spanHandler.end(value.handlerContext, value.span, Cause.ORPHANED);
     }
   }
 }

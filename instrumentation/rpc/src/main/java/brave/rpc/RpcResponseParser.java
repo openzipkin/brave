@@ -17,7 +17,7 @@ import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tags;
 import brave.Tracing;
-import brave.handler.FinishedSpanHandler;
+import brave.handler.SpanHandler;
 import brave.propagation.TraceContext;
 
 /**
@@ -69,7 +69,7 @@ public interface RpcResponseParser {
    * {@linkplain RpcResponse#error() exception}.
    *
    * <p><em>Note</em>:The exception will be tagged by default in Zipkin, but if you are using a
-   * {@link FinishedSpanHandler} to another destination, you should process accordingly.
+   * {@link SpanHandler} to another destination, you should process accordingly.
    *
    * @since 5.12
    */

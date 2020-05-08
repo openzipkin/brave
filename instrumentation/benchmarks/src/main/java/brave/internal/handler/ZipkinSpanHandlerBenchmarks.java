@@ -43,7 +43,7 @@ import static brave.handler.MutableSpanBenchmarks.newServerMutableSpan;
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Thread)
 @Threads(1)
-public class ZipkinFinishedSpanHandlerBenchmarks {
+public class ZipkinSpanHandlerBenchmarks {
   final ZipkinSpanHandler converter =
     new ZipkinSpanHandler(new MutableSpan(), Reporter.NOOP, ErrorParser.NOOP, true);
   final MutableSpan serverMutableSpan = newServerMutableSpan();
@@ -65,7 +65,7 @@ public class ZipkinFinishedSpanHandlerBenchmarks {
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
       .addProfiler("gc")
-      .include(".*" + ZipkinFinishedSpanHandlerBenchmarks.class.getSimpleName() + ".*")
+      .include(".*" + ZipkinSpanHandlerBenchmarks.class.getSimpleName() + ".*")
       .build();
 
     new Runner(opt).run();

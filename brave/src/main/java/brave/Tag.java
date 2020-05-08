@@ -13,7 +13,7 @@
  */
 package brave;
 
-import brave.handler.FinishedSpanHandler;
+import brave.handler.SpanHandler;
 import brave.handler.MutableSpan;
 import brave.internal.Nullable;
 import brave.internal.Platform;
@@ -112,7 +112,7 @@ public abstract class Tag<I> {
   /**
    * Tags the value parsed from the {@code input}.
    *
-   * @see FinishedSpanHandler#handle(TraceContext, MutableSpan)
+   * @see SpanHandler#handle(TraceContext, MutableSpan)
    * @since 5.11
    */
   public final void tag(I input, @Nullable TraceContext context, MutableSpan span) {

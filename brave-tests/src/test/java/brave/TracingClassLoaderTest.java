@@ -65,7 +65,7 @@ public class TracingClassLoaderTest {
     @Override public void run() {
       Tracing.LogSpanHandler reporter = new Tracing.LogSpanHandler();
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
-      reporter.end(context, new MutableSpan(context, null), SpanHandler.Cause.FINISH);
+      reporter.end(context, new MutableSpan(context, null), SpanHandler.Cause.FINISHED);
     }
   }
 }

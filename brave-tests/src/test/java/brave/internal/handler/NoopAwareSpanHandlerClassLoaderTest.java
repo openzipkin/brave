@@ -38,7 +38,7 @@ public class NoopAwareSpanHandlerClassLoaderTest {
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
       MutableSpan span = new MutableSpan();
       handler.begin(context, span, null);
-      handler.end(context, span, SpanHandler.Cause.FINISH);
+      handler.end(context, span, SpanHandler.Cause.FINISHED);
     }
   }
 
@@ -58,7 +58,7 @@ public class NoopAwareSpanHandlerClassLoaderTest {
       TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
       MutableSpan span = new MutableSpan();
       handler.begin(context, span, null);
-      handler.end(context, span, SpanHandler.Cause.FINISH);
+      handler.end(context, span, SpanHandler.Cause.FINISHED);
     }
   }
 }

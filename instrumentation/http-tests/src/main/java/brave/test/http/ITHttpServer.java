@@ -15,8 +15,8 @@ package brave.test.http;
 
 import brave.SpanCustomizer;
 import brave.baggage.BaggageField;
-import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.http.HttpAdapter;
 import brave.http.HttpRequest;
 import brave.http.HttpRequestParser;
@@ -476,23 +476,23 @@ public abstract class ITHttpServer extends ITRemote {
     httpStatusCodeTagMatchesResponse("/exceptionAsync", ".*not ready");
   }
 
-  @Test public void finishedSpanHandlerSeesException() throws IOException {
-    finishedSpanHandlerSeesException("/exception");
+  @Test public void spanHandlerSeesException() throws IOException {
+    spanHandlerSeesException("/exception");
   }
 
-  @Test public void finishedSpanHandlerSeesException_async() throws IOException {
-    finishedSpanHandlerSeesException("/exceptionAsync");
+  @Test public void spanHandlerSeesException_async() throws IOException {
+    spanHandlerSeesException("/exceptionAsync");
   }
 
   /**
-   * This ensures custom finished span handlers can see the actual exception thrown, not just the
-   * "error" tag value.
+   * This ensures custom span handlers can see the actual exception thrown, not just the "error" tag
+   * value.
    */
-  void finishedSpanHandlerSeesException(String path) throws IOException {
+  void spanHandlerSeesException(String path) throws IOException {
     AtomicReference<Throwable> caughtThrowable = new AtomicReference<>();
     httpTracing = HttpTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE)
-      .addFinishedSpanHandler(new FinishedSpanHandler() {
-        @Override public boolean handle(TraceContext context, MutableSpan span) {
+      .addSpanHandler(new SpanHandler() {
+        @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
           caughtThrowable.set(span.error());
           return true;
         }

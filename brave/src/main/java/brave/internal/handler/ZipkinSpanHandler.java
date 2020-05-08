@@ -64,7 +64,7 @@ public final class ZipkinSpanHandler extends SpanHandler {
    */
   @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
     if (!alwaysReportSpans && !Boolean.TRUE.equals(context.sampled())) return true;
-    if (cause == Cause.ABANDON) return true;
+    if (cause == Cause.ABANDONED) return true;
     spanReporter.report(convert(span));
     return true;
   }

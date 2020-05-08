@@ -15,8 +15,8 @@ package brave.test.http;
 
 import brave.Clock;
 import brave.SpanCustomizer;
-import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.http.HttpAdapter;
 import brave.http.HttpClientParser;
 import brave.http.HttpRequest;
@@ -25,7 +25,6 @@ import brave.http.HttpRuleSampler;
 import brave.http.HttpTags;
 import brave.http.HttpTracing;
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
@@ -363,8 +362,8 @@ public abstract class ITHttpClient<C> extends ITRemote {
       .containsEntry("http.path", "/foo");
   }
 
-  @Test public void finishedSpanHandlerSeesException() throws IOException {
-    finishedSpanHandlerSeesException(get());
+  @Test public void spanHandlerSeesException() throws IOException {
+    spanHandlerSeesException(get());
   }
 
   @Test public void errorTag_onTransportException() {
@@ -379,15 +378,15 @@ public abstract class ITHttpClient<C> extends ITRemote {
   }
 
   /**
-   * This ensures custom finished span handlers can see the actual exception thrown, not just the
-   * "error" tag value.
+   * This ensures custom span handlers can see the actual exception thrown, not just the "error"
+   * tag value.
    */
-  void finishedSpanHandlerSeesException(Callable<Void> get) throws IOException {
+  void spanHandlerSeesException(Callable<Void> get) throws IOException {
     AtomicReference<Throwable> caughtThrowable = new AtomicReference<>();
     closeClient(client);
     httpTracing = HttpTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE)
-      .addFinishedSpanHandler(new FinishedSpanHandler() {
-        @Override public boolean handle(TraceContext context, MutableSpan span) {
+      .addSpanHandler(new SpanHandler() {
+        @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
           caughtThrowable.set(span.error());
           return true;
         }

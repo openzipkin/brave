@@ -57,7 +57,7 @@ public class ZipkinSpanHandlerTest {
     MutableSpan span = new MutableSpan();
     span.traceId(context.traceIdString());
     span.id(context.spanIdString());
-    handler.end(context, span, SpanHandler.Cause.FINISH);
+    handler.end(context, span, SpanHandler.Cause.FINISHED);
 
     assertThat(spans.get(0)).isEqualToComparingFieldByField(
       Span.newBuilder()
@@ -73,7 +73,7 @@ public class ZipkinSpanHandlerTest {
     span.traceId(context.traceIdString());
     span.id(context.spanIdString());
     span.setDebug();
-    handler.end(context, span, SpanHandler.Cause.FINISH);
+    handler.end(context, span, SpanHandler.Cause.FINISHED);
 
     assertThat(spans.get(0)).isEqualToComparingFieldByField(
       Span.newBuilder()
@@ -87,7 +87,7 @@ public class ZipkinSpanHandlerTest {
   @Test public void doesntReportUnsampledSpan() {
     TraceContext context =
       TraceContext.newBuilder().traceId(1).spanId(2).sampled(false).sampledLocal(true).build();
-    handler.end(context, new MutableSpan(), SpanHandler.Cause.FINISH);
+    handler.end(context, new MutableSpan(), SpanHandler.Cause.FINISHED);
 
     assertThat(spans).isEmpty();
   }
@@ -100,7 +100,7 @@ public class ZipkinSpanHandlerTest {
     MutableSpan span = new MutableSpan();
     span.traceId(context.traceIdString());
     span.id(context.spanIdString());
-    handler.end(context, span, SpanHandler.Cause.FINISH);
+    handler.end(context, span, SpanHandler.Cause.FINISHED);
 
     assertThat(spans).isNotEmpty();
   }

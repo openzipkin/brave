@@ -43,6 +43,6 @@ public class ITTracingFilter extends ITServletContainer {
   }
 
   @Override @Ignore("TODO: make a spark.ExceptionMapper that adds the \"error\" request property")
-  public void finishedSpanHandlerSeesException() {
+  public void spanHandlerSeesException() {
   }
 }

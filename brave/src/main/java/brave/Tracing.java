@@ -226,12 +226,12 @@ public abstract class Tracing implements Closeable {
      *
      * <p>See https://github.com/openzipkin/zipkin-reporter-java
      *
-     * <h3>Relationship to {@link #addFinishedSpanHandler(FinishedSpanHandler)}</h3>
+     * <h3>Relationship to {@link #addSpanHandler(SpanHandler)}</h3>
      * There may only be one {@code spanReporter}. When present, this will be converted as the
-     * <em>last</em> {@link FinishedSpanHandler}. This ensures any customization or redaction
+     * <em>last</em> {@link SpanHandler}. This ensures any customization or redaction
      * happen spans are sent out of process.
      *
-     * @see #addFinishedSpanHandler(FinishedSpanHandler)
+     * @see #addSpanHandler(SpanHandler)
      */
     public Builder spanReporter(Reporter<zipkin2.Span> spanReporter) {
       if (spanReporter == null) throw new NullPointerException("spanReporter == null");
@@ -322,33 +322,10 @@ public abstract class Tracing implements Closeable {
     }
 
     /**
-     * Inputs receive {code (context, span)} pairs for every {@linkplain TraceContext#sampledLocal()
-     * locally sampled} span. The span is mutable for customization or redaction purposes and
-     * handlers execute in order: If any handler returns {code false}, the next will not see the
-     * span.
-     *
-     * <h3>Advanced notes</h3>
-     *
-     * <p>When {@link #alwaysSampleLocal()}, handlers here receive data even when spans are not
-     * sampled remotely. This setting is often used for metrics aggregation.
-     *
-     * <h3>Relationship to {@link #spanReporter(Reporter)}</h3>
-     * This is similar to {@link #spanReporter(Reporter)} except for a few things:
-     * <ul>
-     *   <li>This is decoupled from Zipkin types</li>
-     *   <li>This receives both {@linkplain TraceContext#sampled() remote} and {@linkplain TraceContext#sampledLocal() local} sampled spans</li>
-     *   <li>{@link MutableSpan} is mutable and has a raw {@link Throwable} error</li>
-     *   <li>{@link TraceContext} allows late lookup of {@linkplain BaggageField baggage}</li>
-     * </ul>
-     *
-     * <p>This is used to create more efficient or completely different data structures than what's
-     * provided in the {@code io.zipkin.reporter2:zipkin-reporter} library. For example, you can use
-     * a higher performance codec or disruptor, or you can forward to a vendor-specific trace exporter.
-     *
-     * @param handler skipped if {@link FinishedSpanHandler#NOOP} or already added
-     * @see #spanReporter(Reporter)
-     * @see #alwaysSampleLocal()
-     * @see TraceContext#sampledLocal()
+     * @since 5.4
+     * @deprecated Since 5.12 {@linkplain #addSpanHandler(SpanHandler) add a span handler} that
+     * implements {@link SpanHandler#end(TraceContext, MutableSpan, SpanHandler.Cause)} with {@link
+     * SpanHandler.Cause#FINISHED}
      */
     public Builder addFinishedSpanHandler(FinishedSpanHandler handler) {
       // Some configuration can coerce to no-op, ignore in this case.
@@ -356,6 +333,15 @@ public abstract class Tracing implements Closeable {
       return addSpanHandler(handler);
     }
 
+    /**
+     * Inputs receive {code (context, span)} pairs for every {@linkplain TraceContext#sampledLocal()
+     * locally sampled} span. The span is mutable for customization or redaction purposes and
+     * handlers execute in order: If any handler returns {code false}, the next will not see the
+     * span.
+     *
+     * @param spanHandler skipped if {@link SpanHandler#NOOP} or already added
+     * @since 5.12
+     */
     public Builder addSpanHandler(SpanHandler spanHandler) {
       if (spanHandler == null) throw new NullPointerException("spanHandler == null");
 
@@ -383,7 +369,7 @@ public abstract class Tracing implements Closeable {
      * example, if your sampling condition is not consistent on a call tree, the resulting data
      * could appear broken.
      *
-     * @see #addFinishedSpanHandler(FinishedSpanHandler)
+     * @see #addSpanHandler(SpanHandler)
      * @see TraceContext#sampledLocal()
      * @since 5.12
      */
@@ -402,13 +388,13 @@ public abstract class Tracing implements Closeable {
      * value of a {@link BaggageField baggage field}. This means that data will report when either
      * the trace is normally sampled, or secondarily sampled via a custom header.
      *
-     * <p>This is simpler than {@link #addFinishedSpanHandler(FinishedSpanHandler)}, because you
+     * <p>This is simpler than {@link #addSpanHandler(SpanHandler)}, because you
      * don't have to duplicate transport mechanics already implemented in the {@link
      * #spanReporter(Reporter) span reporter}. However, this assumes your backend can properly
      * process the partial traces implied when using conditional sampling. For example, if your
      * sampling condition is not consistent on a call tree, the resulting data could appear broken.
      *
-     * @see #addFinishedSpanHandler(FinishedSpanHandler)
+     * @see #addSpanHandler(SpanHandler)
      * @see TraceContext#sampledLocal()
      * @since 5.8
      */
@@ -418,14 +404,13 @@ public abstract class Tracing implements Closeable {
     }
 
     /**
-     * When true, this logs the caller which orphaned a span to the category "brave.Tracer" at
-     * {@link Level#FINE}. Defaults to false.
+     * When true, a {@link SpanHandler} is added that  logs the caller which orphaned a span to the
+     * category "brave.Tracer" at {@link Level#FINE}. Defaults to false.
      *
      * <p>If you see data with the annotation "brave.flush", you may have an instrumentation bug.
      * To see which code was involved, set this and ensure the logger {@link Tracing} is at {@link
      * Level#FINE}. Do not do this in production as tracking orphaned data incurs higher overhead.
      *
-     * @see FinishedSpanHandler#supportsOrphans()
      * @since 5.9
      */
     public Builder trackOrphans() {

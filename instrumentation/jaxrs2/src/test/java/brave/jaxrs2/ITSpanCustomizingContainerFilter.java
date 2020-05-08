@@ -53,7 +53,7 @@ public class ITSpanCustomizingContainerFilter extends ITServletContainer {
   }
 
   @Override @Ignore("resteasy swallows the exception")
-  public void finishedSpanHandlerSeesException() {
+  public void spanHandlerSeesException() {
   }
 
   @Override @Ignore("resteasy swallows the exception")
@@ -61,7 +61,7 @@ public class ITSpanCustomizingContainerFilter extends ITServletContainer {
   }
 
   @Override @Ignore("resteasy swallows the exception")
-  public void finishedSpanHandlerSeesException_async() {
+  public void spanHandlerSeesException_async() {
   }
 
   @Test public void tagsResource() throws Exception {

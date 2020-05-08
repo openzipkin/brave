@@ -24,13 +24,14 @@ import java.util.Set;
 
 import static java.util.Collections.emptyIterator;
 
+/** Aggregates the direct children of the parent for purpose such as counting them. */
 abstract class ParentToChildrenHandler extends SpanHandler {
 
   abstract void onFinish(MutableSpan parent, Iterator<MutableSpan> children);
 
   /** This holds the children of the current parent until the former is finished or abandoned. */
   final WeakConcurrentMap<TraceContext, TraceContext> childToParent =
-    new WeakConcurrentMap<>(false);
+      new WeakConcurrentMap<>(false);
   final ParentToChildren parentToChildren = new ParentToChildren();
 
   @Override
@@ -44,7 +45,7 @@ abstract class ParentToChildrenHandler extends SpanHandler {
 
   @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
     // Kick-out if this was not a normal finish
-    if (cause != Cause.FINISH && !context.isLocalRoot()) { // a child
+    if (cause != Cause.FINISHED && !context.isLocalRoot()) { // a child
       TraceContext parent = childToParent.remove(context);
       parentToChildren.remove(parent, span);
       return true;
@@ -62,7 +63,7 @@ abstract class ParentToChildrenHandler extends SpanHandler {
 
   static final class ParentToChildren {
     final WeakConcurrentMap<TraceContext, Set<MutableSpan>> delegate =
-      new WeakConcurrentMap<>(false);
+        new WeakConcurrentMap<>(false);
 
     void add(TraceContext parent, MutableSpan child) {
       Set<MutableSpan> children = delegate.getIfPresent(parent);

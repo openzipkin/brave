@@ -14,6 +14,7 @@
 package brave.handler;
 
 import brave.Span;
+import brave.Tracer;
 import brave.Tracing;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
@@ -30,11 +31,11 @@ import java.lang.ref.WeakReference;
  * <p>A {@link TraceContext} could be recorded twice, for example, if a long operation
  * began, called {@link Span#flush()} (recording 1) and later called {@link Span#finish()}
  * (recording 2). A {@link TraceContext} could be abrupted by garbage collection resulting in a
- * {@link Cause#ABANDON}. A user could even {@linkplain Cause#ABANDON abandon} a span without
+ * {@link Cause#ABANDONED}. A user could even {@linkplain Cause#ABANDONED abandon} a span without
  * recording anything!
  *
  * <p>Collectors that process finished spans will need to look at the {link Cause} and {@link
- * MutableSpan} collected. For example, {@link Cause#FINISH} is usually a good enough heuristic to
+ * MutableSpan} collected. For example, {@link Cause#FINISHED} is usually a good enough heuristic to
  * find complete spans.
  *
  * <h3>Advanced Notes</h3>
@@ -49,9 +50,15 @@ import java.lang.ref.WeakReference;
  *
  * <p>The {@link #begin} callback primarily supports tracking of children, or partitioning of
  * data for backend that needs to see an entire {@linkplain TraceContext#localRootId() local root}.
+ *
+ * @since 5.12
  */
 public abstract class SpanHandler {
-  /** What ended the data collection? */
+  /**
+   * What ended the data collection?
+   *
+   * @since 5.12
+   */
   public enum Cause {
     /**
      * Called on {@link Span#abandon()}.
@@ -62,33 +69,65 @@ public abstract class SpanHandler {
      * <p><em>Note:</em>Abandoned spans should be ignored as they aren't indicative of an error.
      * Some instrumentation speculatively create a span for possible outcomes such as retry.
      */
-    ABANDON,
+    ABANDONED,
     /**
      * Called on {@link Span#finish()} and is the simplest cause to reason with. When {@link
      * MutableSpan#startTimestamp()} is present, you can assume with high confidence you have all
      * recorded data for this span.
      */
-    FINISH,
+    FINISHED,
     /**
      * Called on {@link Span#flush()}.
      *
      * <p>Even though the span here is incomplete (missing {@link MutableSpan#finishTimestamp()},
-     * it is reported to the tracing system unless a {@link FinishedSpanHandler} returns false.
+     * it is reported to the tracing system unless a {@link SpanHandler} returns false.
      */
-    FLUSH,
+    FLUSHED,
     /**
      * Called when the trace context was garbage collected prior to completion.
      *
-     * <p>Unlike {@link FinishedSpanHandler#supportsOrphans()}, this is called even if empty.
-     * Non-empty spans are reported to the tracing system unless a {@link FinishedSpanHandler}
-     * returns false.
+     * <p>Normally, {@link #end(TraceContext, MutableSpan, Cause)} is only called upon explicit
+     * termination of a span: {@link Span#finish()}, {@link Span#finish(long)} or {@link
+     * Span#flush()}. Upon this cause, the callback will also receive data orphaned due to spans
+     * being never terminated or data added after termination.
      *
-     * @see FinishedSpanHandler#supportsOrphans()
+     * <p><em>Note</em>: If you are doing redaction, you should redact for all causes, not just
+     * {@link #FINISHED}, as orphans may have sensitive data also.
+     *
+     * <h3>What is an orphaned span?</h3>
+     *
+     * <p>An orphan is  when data remains associated with a span when it is garbage collected. This
+     * is almost always a bug. For example, calling {@link Span#tag(String, String)} after calling
+     * {@link Span#finish()}, or calling {@link Tracer#nextSpan()} yet never using the result. To
+     * track down bugs like this, set the logger {@link brave.Tracer} to FINE level.
+     *
+     * <h3>Why handle orphaned spans?</h3>
+     *
+     * <p>Use cases for handling orphans logging a different way than default, or incrementing bug
+     * counters. For example, you could use the same credit card cleaner here as you do on the
+     * success path.
+     *
+     * <h3>What shouldn't handle orphaned spans?</h3>
+     *
+     * <p>As this is related to bugs, no assumptions can be made about span count etc. For example,
+     * one span context can result in many calls to this handler, unrelated to the actual operation
+     * performed. Handlers that redact or clean data work for normal spans and orphans. However,
+     * aggregation handlers, such as dependency linkers or success/fail counters, can create
+     * problems if used against orphaned spans.
+     *
+     * <h2>Implementation</h2>
+     * <p>The {@link MutableSpan} parameter to {@link #end(TraceContext, MutableSpan, Cause)}
+     * includes data configured by default and any state that was was orphaned (ex a tag). You
+     * cannot assume the span has a {@link MutableSpan#startTimestamp()} for example.
      */
-    ORPHAN
+    ORPHANED
   }
 
-  /** Use to avoid comparing against null references */
+  /**
+   * Use to avoid comparing against {@code null} references.
+   *
+   * @since 5.12
+   */
   public static final SpanHandler NOOP = new SpanHandler() {
     @Override public String toString() {
       return "NoopSpanHandler{}";
@@ -108,26 +147,24 @@ public abstract class SpanHandler {
    * @return {@code true} retains the span, and should almost always be used. {@code false} makes it
    * invisible to later handlers such as Zipkin.
    * @see Tracing.Builder#alwaysSampleLocal()
+   * @see #end(TraceContext, MutableSpan, Cause)
+   * @since 5.12
    */
   public boolean begin(TraceContext context, MutableSpan span, @Nullable TraceContext parent) {
     return true;
   }
 
   /**
-   * Called when data collection completes for one of the following reasons:
-   *
-   * <p><ol>
-   * <li>{@link Cause#ABANDON} if it was a speculative context</li>
-   * <li>{@link Cause#FINISH} if it was reported complete</li>
-   * <li>{@link Cause#FLUSH} if it was intentionally reported incomplete</li>
-   * <li>{@link Cause#ORPHAN} if it was reported incomplete due to garbage collection</li>
-   * </ol>
+   * Called when data collection complete.
    *
    * @param context same instance as passed to {@link #begin}
    * @param span same instance as passed to {@link #begin}
    * @param cause why the data collection stopped.
    * @return {@code true} retains the span, and should almost always be used. {@code false} drops
    * the span, making it invisible to later handlers such as Zipkin.
+   * @see #begin(TraceContext, MutableSpan, TraceContext)
+   * @see Cause
+   * @since 5.12
    */
   public boolean end(TraceContext context, MutableSpan span, Cause cause) {
     return true;
