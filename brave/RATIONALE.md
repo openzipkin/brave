@@ -34,17 +34,24 @@ utilities.
 Brave is a library with embedded use cases, such as inside Java agents or
 Android code.
 
+For example, Android has a []hard limit on total methods in an application](https://developer.android.com/studio/build/multidex#avoid).
+Fields marked private imply accessors in order to share state in the same
+package. We routinely share state, such as sampling flag internals inside a
+package. If we marked fields private, we'd count against that limit without
+adding value.
+
 Modifiers on fields and methods are distracting to read and increase the size
 of the bytecode generated during compilation. By recovering the size otherwise
-spent on private modifiers, we are able to add more code in the same jar size.
+spent on private modifiers, we not only avoid hitting limits, but we are also
+able to add more code with the same jar size.
 
 For example, Brave 5.12 remains less than 250KiB, with no dependencies, all
 features including deprecation bridges, and an embedded json serializer.
 
-We do not support sharing our packages with third parties. This means that
-instead of marking symbols private, we trust our developers to proceed with
-caution. In the first seven years of project history, we have had no issues
-relating to abuse by our developers to our own packages.
+This means we don not support sharing our packages with third parties, but we
+do support an "always share inside a package" in our repository. In other
+words, we trust our developers to proceed with caution. In the first seven
+years of project history, we have had no issues raised with this policy.
 
 ### Zero dependency policy
 Brave is a telemetry library, which means it is used inside other low-level
