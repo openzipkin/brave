@@ -73,7 +73,7 @@ public final class EntrySplitter {
      * keyValueSeparator} character.
      *
      * <p>For example, the input "condition=animal=cat" with {@code keyValueSeparator} '=' parses
-     * {@code [("condition", "animal=cat7")]}
+     * {@code [("condition", "animal=cat")]}
      *
      * @see #keyValueSeparator(char)
      */
