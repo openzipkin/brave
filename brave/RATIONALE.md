@@ -48,7 +48,7 @@ able to add more code with the same jar size.
 For example, Brave 5.12 remains less than 250KiB, with no dependencies, all
 features including deprecation bridges, and an embedded json serializer.
 
-This means we don not support sharing our packages with third parties, but we
+This means we do not support sharing our packages with third parties, but we
 do support an "always share inside a package" in our repository. In other
 words, we trust our developers to proceed with caution. In the first seven
 years of project history, we have had no issues raised with this policy.
