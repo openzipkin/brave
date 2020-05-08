@@ -341,4 +341,49 @@ public class EntrySplitterTest {
 
     assertThat(map.isEmpty());
   }
+
+  @Test public void builder_illegal() {
+    EntrySplitter.Builder builder = EntrySplitter.newBuilder();
+
+    assertThatThrownBy(() -> builder.maxEntries(-1))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("maxEntries <= 0");
+    assertThatThrownBy(() -> builder.maxEntries(0))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("maxEntries <= 0");
+
+    assertThatThrownBy(() -> builder.entrySeparator((char) 0))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("entrySeparator == 0");
+    assertThatThrownBy(() -> builder.keyValueSeparator(';').entrySeparator(';'))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("entrySeparator == keyValueSeparator");
+
+    assertThatThrownBy(() -> builder.keyValueSeparator((char) 0))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("keyValueSeparator == 0");
+    assertThatThrownBy(() -> builder.entrySeparator(';').keyValueSeparator(';'))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("entrySeparator == keyValueSeparator");
+  }
+
+  @Test public void parse_badParameters() {
+    assertThatThrownBy(() -> entrySplitter.parse(null, map, ""))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("handler == null");
+    assertThatThrownBy(() -> entrySplitter.parse(parseIntoMap, null, ""))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("target == null");
+    assertThatThrownBy(() -> entrySplitter.parse(parseIntoMap, map, null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("input == null");
+
+    assertThatThrownBy(() -> entrySplitter.parse(parseIntoMap, map, "", -1, 1))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("beginIndex < 0");
+
+    assertThatThrownBy(() -> entrySplitter.parse(parseIntoMap, map, "", 0, 2))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("endIndex > input.length()");
+  }
 }

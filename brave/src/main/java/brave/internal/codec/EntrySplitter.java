@@ -44,7 +44,7 @@ public final class EntrySplitter {
      * be smaller than this amount.
      */
     public Builder maxEntries(int maxEntries) {
-      if (maxEntries == 0) throw new IllegalArgumentException("maxEntries == 0");
+      if (maxEntries <= 0) throw new IllegalArgumentException("maxEntries <= 0");
       this.maxEntries = maxEntries;
       return this;
     }
@@ -58,6 +58,9 @@ public final class EntrySplitter {
      */
     public Builder entrySeparator(char entrySeparator) {
       if (entrySeparator == 0) throw new IllegalArgumentException("entrySeparator == 0");
+      if (entrySeparator == keyValueSeparator) {
+        throw new IllegalArgumentException("entrySeparator == keyValueSeparator");
+      }
       this.entrySeparator = entrySeparator;
       return this;
     }
@@ -70,13 +73,16 @@ public final class EntrySplitter {
      * until the next {@link #entrySeparator(char)}. This means values can include the {@code
      * keyValueSeparator} character.
      *
-     * <p>For example, the string "authcache;ttl=1;spanId=19f84f102048e047", with
-     * {@code keyValueSeparator=;} parses {@code [("authcache", "ttl=1;spanId=19f84f102048e047)]}
+     * <p>For example, the string "condition=animal=cat", with
+     * {@code keyValueSeparator} '=' parses {@code [("condition", "animal=cat7)]}
      *
      * @see #keyValueSeparator(char)
      */
     public Builder keyValueSeparator(char keyValueSeparator) {
       if (keyValueSeparator == 0) throw new IllegalArgumentException("keyValueSeparator == 0");
+      if (keyValueSeparator == entrySeparator) {
+        throw new IllegalArgumentException("keyValueSeparator == entrySeparator");
+      }
       this.keyValueSeparator = keyValueSeparator;
       return this;
     }
@@ -192,6 +198,7 @@ public final class EntrySplitter {
    * @return true if we reached the {@code endIndex} without failures.
    */
   public <T> boolean parse(Handler<T> handler, T target, String input) {
+    if (input == null) throw new NullPointerException("input == null");
     return parse(handler, target, input, 0, input.length());
   }
 
@@ -205,6 +212,12 @@ public final class EntrySplitter {
    */
   public <T> boolean parse(
       Handler<T> handler, T target, String input, int beginIndex, int endIndex) {
+    if (handler == null) throw new NullPointerException("handler == null");
+    if (target == null) throw new NullPointerException("target == null");
+    if (input == null) throw new NullPointerException("input == null");
+    if (beginIndex < 0) throw new IllegalArgumentException("beginIndex < 0");
+    if (endIndex > input.length()) throw new IllegalArgumentException("endIndex > input.length()");
+
     int remainingEntries = maxEntries, beginKey = -1, endKey = -1, beginValue = -1;
     for (int i = beginIndex; i < endIndex; i++) {
       char c = input.charAt(i);
