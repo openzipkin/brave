@@ -284,6 +284,27 @@ timestamp overwritten is overwritten. Hence we avoid using state terminology
 that overlaps with `Span` methods. `SpanHandler` handles recorded data, but is
 not a one-to-one mapping to the state model.
 
+### Why `SpanHandler` instead of `SpanCollector` or `SpanInterceptor`?
+We chose the name `SpanHandler` to cause the least confusion possible, even if
+the name is imperfect.
+
+`SpanCollector` was the original name in Brave <4, but the name was confusing
+as most think of server-side collectors.
+
+`SpanInterceptor` was considered, as it is used for common functionality, such
+as in `kafka-clients`. However, interceptor usually means getting in the middle
+of something. ex
+
+```
+void intercept(thing, chain){
+  return chain.proceed(thing);
+}
+```
+
+At the end, we chose a name we use elsewhere, such as `HttpServerHandler`, as
+the semantics are similar enough to what's going on, and the familiarity is
+relevant.
+
 ## Rate-limiting sampler
 `RateLimitingSampler` was made to allow Amazon X-Ray rules to be
 expressed in Brave. We considered their [Reservoir design](https://github.com/aws/aws-xray-sdk-java/blob/2.0.1/aws-xray-recorder-sdk-core/src/main/java/com/amazonaws/xray/strategy/sampling/reservoir/Reservoir.java).
