@@ -16,8 +16,9 @@ package brave.internal.codec;
 import brave.internal.Platform;
 
 /**
- * Splits a character sequence that's in a delimited string trimming optional whitespace (OWS)
- * before or after delimiters.
+ * Splits a character sequence that's in a delimited string, optionally trimming optional whitespace
+ * (<a href="https://httpwg.org/specs/rfc7230.html#rfc.section.3.2">OWS</a>) before or after
+ * delimiters.
  *
  * <p>This is intended to be initialized as a constant, as doing so per-request will add
  * unnecessary overhead.
@@ -33,34 +34,90 @@ public final class EntrySplitter {
     boolean trimOWSAroundEntrySeparator = true, trimOWSAroundKeyValueSeparator = true;
     boolean keyValueSeparatorRequired = true, shouldThrow = false;
 
+    /**
+     * When set, {@link Handler} will be called maximum {@code maxEntries} times per parse. After
+     * that, {@link #parse(Handler, Object, String)} returns false or throws an exception, based on
+     * {@link #shouldThrow(boolean)}. Default: {@link Integer#MAX_VALUE}.
+     *
+     * <p>This is used to implement strict format constraints. For example, above 32 entries is
+     * malformed. This is separate from any capacity constraints of the {@link Handler}, which may
+     * be smaller than this amount.
+     */
     public Builder maxEntries(int maxEntries) {
-      if (maxEntries == 0) throw new NullPointerException("maxEntries == 0");
+      if (maxEntries == 0) throw new IllegalArgumentException("maxEntries == 0");
       this.maxEntries = maxEntries;
       return this;
     }
 
+    /**
+     * The separator to use between entries. For example, given a string "k1=v1,k2=v2", the {@code
+     * entrySeparator} should be ','. Given a string "k1=v1;k2=v2" the {@code entrySeparator} should
+     * be ';'. Default: ','
+     *
+     * @see #keyValueSeparator(char)
+     */
     public Builder entrySeparator(char entrySeparator) {
-      if (entrySeparator == 0) throw new NullPointerException("entrySeparator == 0");
+      if (entrySeparator == 0) throw new IllegalArgumentException("entrySeparator == 0");
       this.entrySeparator = entrySeparator;
       return this;
     }
 
+    /**
+     * The separator to use between a key and value. For example, given a string "k1=v1,k2=v2", the
+     * {@code keyValueSeparator} should be '='. Default: '='
+     *
+     * <p><em>Note:</em> Only the first {@code keyValueSeparator} identifies the end of the key
+     * until the next {@link #entrySeparator(char)}. This means values can include the {@code
+     * keyValueSeparator} character.
+     *
+     * <p>For example, the string "authcache;ttl=1;spanId=19f84f102048e047", with
+     * {@code keyValueSeparator=;} parses {@code [("authcache", "ttl=1;spanId=19f84f102048e047)]}
+     *
+     * @see #keyValueSeparator(char)
+     */
     public Builder keyValueSeparator(char keyValueSeparator) {
-      if (keyValueSeparator == 0) throw new NullPointerException("keyValueSeparator == 0");
+      if (keyValueSeparator == 0) throw new IllegalArgumentException("keyValueSeparator == 0");
       this.keyValueSeparator = keyValueSeparator;
       return this;
     }
 
+    /**
+     * When {@code true}, optional whitespace (spaces and tabs aka <a href="https://httpwg.org/specs/rfc7230.html#rfc.section.3.2">OWS</a>)
+     * are removed around the {@link #entrySeparator} and string boundaries. Default: {@code true}
+     *
+     * <p>For example, given the string "  k1   =   v1  ,  k2   =   v2  ", this trims around the
+     * "=" character and string boundaries: {@code [("k1   ","   v1"),("k2   ", "   v2")]}.
+     *
+     * @see #trimOWSAroundKeyValueSeparator(boolean)
+     */
     public Builder trimOWSAroundEntrySeparator(boolean trimOWSAroundEntrySeparator) {
       this.trimOWSAroundEntrySeparator = trimOWSAroundEntrySeparator;
       return this;
     }
 
+    /**
+     * When {@code true}, optional whitespace (spaces and tabs aka <a href="https://httpwg.org/specs/rfc7230.html#rfc.section.3.2">OWS</a>)
+     * are removed around the {@link #keyValueSeparator(char)}. Default: {@code true}
+     *
+     * <p>For example, given the string "  k1   =   v1  ,  k2   =   v2  ", this trims around the
+     * "=" character and string boundaries: {@code [("  k1", "v1  "),("  k2", "v2  ")]}.
+     *
+     * @see #trimOWSAroundKeyValueSeparator(boolean)
+     */
     public Builder trimOWSAroundKeyValueSeparator(boolean trimOWSAroundKeyValueSeparator) {
       this.trimOWSAroundKeyValueSeparator = trimOWSAroundKeyValueSeparator;
       return this;
     }
 
+    /**
+     * When {@code true}, when a {@link #keyValueSeparator(char)} does not follow a key, {@link
+     * #parse(Handler, Object, String)} returns false or throws an exception, based on {@link
+     * #shouldThrow(boolean)}. Default: {@code true}.
+     *
+     * <p>Setting this to {@code false} makes "k1,k2=v2" interpreted the same as if there was
+     * a {@link #keyValueSeparator(char)}: "k1=,k2=v2". This is used for formats such as HTTP
+     * queries where separators are optional.
+     */
     public Builder keyValueSeparatorRequired(boolean keyValueSeparatorRequired) {
       this.keyValueSeparatorRequired = keyValueSeparatorRequired;
       return this;
