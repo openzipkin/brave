@@ -13,9 +13,9 @@
  */
 package brave.features.baggage;
 
+import brave.baggage.Access;
 import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
-import brave.internal.InternalBaggage;
 import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
@@ -38,7 +38,7 @@ public class BaggageInSingleHeaderTest {
       .injectFormat(B3Propagation.Format.SINGLE).build())
       .add(SingleBaggageField.remote(field1))
       .add(SingleBaggageField.local(field2))
-      .add(InternalBaggage.instance.newBaggagePropagationConfig(SingleHeaderCodec.get(), 32))
+      .add(Access.newBaggagePropagationConfig(SingleHeaderCodec.get(), 32))
       .build();
 
   /** This shows that we can encode arbitrary fields into a single header. */
