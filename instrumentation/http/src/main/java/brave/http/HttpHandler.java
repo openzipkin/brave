@@ -69,7 +69,7 @@ abstract class HttpHandler {
     if (span.isNoop()) return;
 
     if (response.error() != null) {
-      span.error(response.error()); // Ensures MutableSpan.error() for FinishedSpanHandler
+      span.error(response.error()); // Ensures MutableSpan.error() for SpanHandler
     }
 
     try {

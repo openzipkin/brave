@@ -242,12 +242,12 @@ headers are parsed. This is needed to provide custom sampling mechanisms.
 Also, Brave has a small core library and doesn't package any specific
 storage abstraction, admin pages or latency processors. As such, we can't
 define specifically what sampled local means as Census' could. All it
-means is that `FinishedSpanHandler` will see data for that trace context.
+means is that `SpanHandler` will see data for that trace context.
 
-## FinishedSpanHandler Api
+## SpanHandler Api
 Brave had for a long time re-used zipkin's Reporter library, which is
 like Census' SpanExporter in so far that they both allow pushing a specific
-format elsewhere, usually to a service. Brave's [FinishedSpanHandler](https://github.com/openzipkin/brave/blob/master/brave/src/main/java/brave/handler/FinishedSpanHandler.java)
+format elsewhere, usually to a service. Brave's [SpanHandler](https://github.com/openzipkin/brave/blob/master/brave/src/main/java/brave/handler/SpanHandler.java)
 is a little more like Census' [SpanExporter.Handler](https://github.com/census-instrumentation/opencensus-java/blob/master/api/src/main/java/io/opencensus/trace/export/SpanExporter.java)
 in so far as the structure includes the trace context.. something we need
 access to in order to do things like advanced sampling.
@@ -259,6 +259,51 @@ allows us to render data into different formats such as [Amazon's stack frames](
 without having to guess what will be needed by parsing up front. As
 error parsing is deferred, overhead is less in cases where errors are not
 recorded (such as is the case on spans intentionally dropped).
+
+It is notable that the initial design, `FinishedSpanHandler`, only could see
+spans at the end. Brave 5.12 deprecated `FinishedSpanHandler` for `SpanHandler`
+to allow more sophisticated integrations.
+
+### Why not just an `end` hook?
+`SpanHandler` has a `begin` and also `end` hook. The main use cases for `begin`
+are correlated data collection. In other words, you can collect implicit data
+from the span, or data from alternate apis, correlated with Brave's `context`.
+Upon `end`, you can harvest that data along with what's recorded by default
+into `MutableSpan` or a custom type.
+
+Let's take an example of Google Stackdriver. In their model, [child_span_count](https://cloud.google.com/trace/docs/reference/v2/rpc/google.devtools.cloudtrace.v2#google.devtools.cloudtrace.v2.Span)
+refers to the direct children of a span. Without a `begin` hook, especially
+without one that has reference to a parent, you cannot easily aggregate this
+information.
+
+### Why no `start` or `finish` hook?
+The hooks `begin` and `end` are intentionally different than `Span.start()`
+or `Span.finish()`, as they reflect one of possibly many recordings of a given
+trace context. Sometimes spans are never started, and other times their start
+timestamp overwritten is overwritten. Hence we avoid using state terminology
+that overlaps with `Span` methods. `SpanHandler` handles recorded data, but is
+not a one-to-one mapping to the state model.
+
+### Why `SpanHandler` instead of `SpanCollector` or `SpanInterceptor`?
+We chose the name `SpanHandler` to cause the least confusion possible, even if
+the name is imperfect.
+
+`SpanCollector` was the original name in Brave <4, but the name was confusing
+as most think of server-side collectors.
+
+`SpanInterceptor` was considered, as it is used for common functionality, such
+as in `kafka-clients`. However, interceptor usually means getting in the middle
+of something. ex
+
+```
+void intercept(thing, chain){
+  return chain.proceed(thing);
+}
+```
+
+At the end, we chose a name we use elsewhere, such as `HttpServerHandler`, as
+the semantics are similar enough to what's going on, and the familiarity is
+relevant.
 
 ## Rate-limiting sampler
 `RateLimitingSampler` was made to allow Amazon X-Ray rules to be
@@ -467,6 +512,30 @@ We created `UnsafeArrayMap` as a view over our pair-wise internal state array.
 The implementation is very simple except that we have a redaction use case to
 address, which implies filtering keys. To address that, we keep a bitmap of all
 filtered keys and consider that when performing any scan operations.
+
+## SpanHandler
+There are a few reasons why `SpanHandler` exists. For example:
+
+* We need to manipulate Baggage without overriding `PropagationFactory`, e.g. when
+some baggage are derived (parsed from other headers): Given a create hook, one can post process
+baggage before the span is visible to the user.
+* Another example is parent-child relationships: With a create hook someone can do things like count
+children (needed by [stackdriver model](https://cloud.google.com/trace/docs/reference/v2/rpc/google.devtools.cloudtrace.v2#google.devtools.cloudtrace.v2.Span)).
+* Some services require the entire "local root" to be reported at the same time. The only
+known example of this is [DataDog](https://github.com/DataDog/dd-trace-java/blob/406b324a82b482d7d8ad3faa5f9ccdd307c72308/dd-trace-ot/src/main/java/datadog/trace/common/writer/Writer.java#L20): A create hook can be used track a local root, allowing buffering of all descendants.
+
+### What's with all the termination hooks?
+Most users will be unaware that there's an end state besides `Span.finish()`, but here are all
+possibilities:
+
+ * `Span.abandon()` - if a speculative context
+ * `Span.flush()` - if intentionally reported incomplete
+ * `Span.finish()` - normal case
+ * "orphan" - a possibly empty span reported incomplete due to garbage collection
+
+The above hooks ensure every created trace context has an end state. This is particularly different
+than `SpanHandler`, which doesn't see some nuance such as allocated, but unused contexts,
+which would end up orphaned. The cause of these is usually a leak.
 
 ## CorrelationScopeDecorator
 

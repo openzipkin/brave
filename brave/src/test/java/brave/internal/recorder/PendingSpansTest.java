@@ -14,8 +14,8 @@
 package brave.internal.recorder;
 
 import brave.GarbageCollectors;
-import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.internal.InternalPropagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
@@ -26,7 +26,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin2.Annotation;
 import zipkin2.Span;
 
 import static brave.internal.InternalPropagation.FLAG_LOCAL_ROOT;
@@ -56,8 +55,8 @@ public class PendingSpansTest {
   PendingSpans pendingSpans;
 
   @Before public void init() {
-    init(new FinishedSpanHandler() {
-      @Override public boolean handle(TraceContext ctx, MutableSpan span) {
+    init(new SpanHandler() {
+      @Override public boolean end(TraceContext ctx, MutableSpan span, Cause cause) {
         if (!Boolean.TRUE.equals(ctx.sampled())) return true;
 
         Span.Builder b = Span.newBuilder().traceId(ctx.traceIdString()).id(ctx.traceIdString());
@@ -66,16 +65,15 @@ public class PendingSpansTest {
         spans.add(b.build());
         return true;
       }
-    }, false);
+    });
   }
 
-  void init(FinishedSpanHandler handler, boolean trackOrphans) {
+  void init(SpanHandler handler) {
     MutableSpan defaultSpan = new MutableSpan();
     defaultSpan.localServiceName("favistar");
     defaultSpan.localIp("1.2.3.4");
-    pendingSpans =
-      new PendingSpans(defaultSpan, () -> clock.incrementAndGet() * 1000L, handler, trackOrphans,
-        new AtomicBoolean());
+    pendingSpans = new PendingSpans(defaultSpan, () -> clock.incrementAndGet() * 1000L, handler,
+      new AtomicBoolean());
   }
 
   @Test
@@ -148,8 +146,6 @@ public class PendingSpansTest {
       context.toBuilder().spanId(5).sampledLocal(true).sampled(false).build();
     pendingSpans.getOrCreate(null, context5, false);
 
-    int initialClockVal = clock.get();
-
     // By clearing strong references in this test, we are left with the weak ones in the map
     context1 = context2 = context5 = null;
     GarbageCollectors.blockOnGC();
@@ -162,10 +158,6 @@ public class PendingSpansTest {
     // orphaned with data
     assertThat(spans.get(1).id()).isEqualTo("0000000000000001");
     assertThat(spans.get(1).name()).isEqualTo("foo"); // data was flushed
-
-    assertThat(spans)
-      .allSatisfy(s -> assertThat(s.annotations())
-        .containsExactly(Annotation.create((initialClockVal + 1) * 1000, "brave.flush")));
   }
 
   @Test
@@ -200,12 +192,12 @@ public class PendingSpansTest {
     TraceContext context1 = context.toBuilder().extra(asList(1, true)).build();
 
     TraceContext[] handledContext = {null};
-    init(new FinishedSpanHandler() {
-      @Override public boolean handle(TraceContext context, MutableSpan span) {
+    init(new SpanHandler() {
+      @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
         handledContext[0] = context;
         return true;
       }
-    }, false);
+    });
 
     TraceContext context = this.context.toBuilder().build();
     pendingSpans.getOrCreate(null, context, false).state().tag("foo", "bar");
@@ -225,12 +217,12 @@ public class PendingSpansTest {
       context.toBuilder().sampled(null).sampledLocal(true).shared(true).build();
 
     TraceContext[] handledContext = {null};
-    init(new FinishedSpanHandler() {
-      @Override public boolean handle(TraceContext context, MutableSpan span) {
+    init(new SpanHandler() {
+      @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
         handledContext[0] = context;
         return true;
       }
-    }, false);
+    });
 
     TraceContext context = context1.toBuilder().build();
     pendingSpans.getOrCreate(null, context, false).state().tag("foo", "bar");

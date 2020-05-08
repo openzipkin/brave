@@ -84,7 +84,7 @@ public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
   }
 
   @Override @Ignore("automatic error propagation is impossible")
-  public void finishedSpanHandlerSeesException() {
+  public void spanHandlerSeesException() {
   }
 
   @Override @Ignore("blind to the implementation of redirects")

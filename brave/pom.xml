@@ -56,6 +56,13 @@
       <scope>provided</scope>
     </dependency>
 
+    <!-- To show off SpanHandler -->
+    <dependency>
+      <groupId>com.blogspot.mydailyjava</groupId>
+      <artifactId>weak-lock-free</artifactId>
+      <version>0.16</version>
+      <scope>test</scope>
+    </dependency>
     <!-- to mock Platform calls -->
     <dependency>
       <groupId>org.powermock</groupId>

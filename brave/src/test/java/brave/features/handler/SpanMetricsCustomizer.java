@@ -15,7 +15,7 @@ package brave.features.handler;
 
 import brave.Tracing;
 import brave.TracingCustomizer;
-import brave.handler.FinishedSpanHandler;
+import brave.handler.SpanHandler;
 import brave.handler.MutableSpan;
 import brave.propagation.TraceContext;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -38,10 +38,10 @@ public class SpanMetricsCustomizer implements TracingCustomizer {
     // We need to read the span name to determine if it will be recorded as a metric or not. This
     // isn't known for sure until the end of the span.
     builder.alwaysSampleLocal();
-    builder.addFinishedSpanHandler(spanMetricsHandler);
+    builder.addSpanHandler(spanMetricsHandler);
   }
 
-  static class SpanMetricsHandler extends FinishedSpanHandler {
+  static class SpanMetricsHandler extends SpanHandler {
     static final Tag EXCEPTION_NONE = Tag.of("exception", "None");
 
     final MeterRegistry registry;
@@ -58,7 +58,9 @@ public class SpanMetricsCustomizer implements TracingCustomizer {
       this.nameToTag = nameToTag;
     }
 
-    @Override public boolean handle(TraceContext context, MutableSpan span) {
+    @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
+      if (cause != Cause.FINISHED) return true;
+
       Tag nameTag = nameToTag.get(span.name());
       if (nameTag == null) return true; // no tag
 

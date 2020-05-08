@@ -16,10 +16,10 @@ package brave.features.handler;
 import brave.GarbageCollectors;
 import brave.ScopedSpan;
 import brave.Tracing;
-import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.handler.MutableSpan.AnnotationUpdater;
 import brave.handler.MutableSpan.TagUpdater;
+import brave.handler.SpanHandler;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import java.util.concurrent.BlockingQueue;
@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 /** One reason {@link brave.handler.MutableSpan} is mutable is to support redaction */
-public class RedactingFinishedSpanHandlerTest {
+public class RedactingSpanHandlerTest {
   /**
    * This is just a dummy pattern. See <a href="https://github.com/ExpediaDotCom/haystack-secrets-commons/blob/master/src/main/java/com/expedia/www/haystack/commons/secretDetector/HaystackCompositeCreditCardFinder.java">HaystackCompositeCreditCardFinder</a>
    * for a realistic one.
@@ -66,30 +66,17 @@ public class RedactingFinishedSpanHandlerTest {
   }
 
   BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
-  FinishedSpanHandler redacter = new FinishedSpanHandler() {
-    @Override public boolean handle(TraceContext context, MutableSpan span) {
+  SpanHandler redacter = new SpanHandler() {
+    @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
       span.forEachTag(ValueRedactor.INSTANCE);
       span.forEachAnnotation(ValueRedactor.INSTANCE);
-      return true;
-    }
-
-    @Override public boolean supportsOrphans() {
-      return true; // also redact data leaked by bugs
-    }
-  };
-
-  // Only handles non-orphans
-  FinishedSpanHandler markFinished = new FinishedSpanHandler() {
-    @Override public boolean handle(TraceContext context, MutableSpan span) {
-      span.tag("oliver-twist", "false");
       return true;
     }
   };
 
   Tracing tracing = Tracing.newBuilder()
     .currentTraceContext(StrictCurrentTraceContext.create())
-    .addFinishedSpanHandler(redacter)
-    .addFinishedSpanHandler(markFinished)
+    .addSpanHandler(redacter)
     .spanReporter(spans::add)
     .build();
 
@@ -108,19 +95,17 @@ public class RedactingFinishedSpanHandlerTest {
       span.finish();
     }
 
-    Span finished = spans.take();
-    assertThat(finished.tags()).containsExactly(
+    Span reported = spans.take();
+    assertThat(reported.tags()).containsExactly(
       entry("a", "1"),
       // credit card tag was nuked
-      entry("c", "3"),
-      // non-orphan handler ran
-      entry("oliver-twist", "false")
+      entry("c", "3")
     );
-    assertThat(finished.annotations()).flatExtracting(Annotation::value).containsExactly(
+    assertThat(reported.annotations()).flatExtracting(Annotation::value).containsExactly(
       "cc=xxxx-xxxx-xxxx-xxxx"
     );
 
-    // Leak some data by adding a tag using the same context after the span was finished.
+    // Leak some data by adding a tag using the same context after the span was .
     tracing.tracer().toSpan(span.context()).tag("d", "cc=4121-2319-1483-3421");
     span = null; // Orphans are via GC, to test this, we have to drop any reference to the context
     GarbageCollectors.blockOnGC();
@@ -132,10 +117,6 @@ public class RedactingFinishedSpanHandlerTest {
     assertThat(leaked.tags()).containsExactly(
       // credit card tag was nuked
       entry("d", "cc=xxxx-xxxx-xxxx-xxxx")
-      // non-orphan handler didn't run
-    );
-    assertThat(leaked.annotations()).flatExtracting(Annotation::value).containsExactly(
-      "brave.flush"
     );
   }
 }

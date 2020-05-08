@@ -13,7 +13,7 @@
  */
 package brave;
 
-import brave.handler.FinishedSpanHandler;
+import brave.handler.SpanHandler;
 import brave.handler.MutableSpan;
 import brave.internal.Nullable;
 
@@ -49,7 +49,7 @@ public abstract class Response {
    *
    * <h3>Handling errors</h3>
    * Handlers invoke {@link Span#error(Throwable)} prior to passing control to user-defined response
-   * parsers. This allows any {@link FinishedSpanHandler} to see the raw error via {@link
+   * parsers. This allows any {@link SpanHandler} to see the raw error via {@link
    * MutableSpan#error()}, in case of export to a non-Zipkin backend such as metrics.
    *
    * <p>User-defined parsers can take any error here into consideration when deriving a {@link

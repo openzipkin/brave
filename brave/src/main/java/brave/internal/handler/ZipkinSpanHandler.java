@@ -15,8 +15,8 @@ package brave.internal.handler;
 
 import brave.ErrorParser;
 import brave.Tags;
-import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import zipkin2.Endpoint;
@@ -28,7 +28,7 @@ import zipkin2.reporter.Reporter;
  *
  * <p><em>Note:</em> This is an internal type and will change at any time.
  */
-public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
+public final class ZipkinSpanHandler extends SpanHandler {
   final Reporter<Span> spanReporter;
   /**
    * Zipkin format uses the {@linkplain Tags#ERROR "error" tag}, but alternative formats may have a
@@ -42,7 +42,7 @@ public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
   final Endpoint defaultEndpoint;
   final boolean alwaysReportSpans;
 
-  public ZipkinFinishedSpanHandler(MutableSpan defaultSpan, Reporter<Span> spanReporter,
+  public ZipkinSpanHandler(MutableSpan defaultSpan, Reporter<Span> spanReporter,
     ErrorParser errorParser, boolean alwaysReportSpans) {
     this.spanReporter = spanReporter;
     this.errorParser = errorParser;
@@ -62,13 +62,10 @@ public final class ZipkinFinishedSpanHandler extends FinishedSpanHandler {
    * brave.Tracing.Builder#alwaysSampleLocal()} is called, we have to double-check here that the
    * span was only remotely sampled (to Zipkin). Otherwise, we could accidentally send 100% data.
    */
-  @Override public boolean handle(TraceContext context, MutableSpan span) {
+  @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
     if (!alwaysReportSpans && !Boolean.TRUE.equals(context.sampled())) return true;
+    if (cause == Cause.ABANDONED) return true;
     spanReporter.report(convert(span));
-    return true;
-  }
-
-  @Override public boolean supportsOrphans() {
     return true;
   }
 

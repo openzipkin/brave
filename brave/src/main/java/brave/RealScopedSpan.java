@@ -13,7 +13,6 @@
  */
 package brave;
 
-import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.CurrentTraceContext.Scope;
@@ -26,22 +25,19 @@ final class RealScopedSpan extends ScopedSpan {
   final MutableSpan state;
   final Clock clock;
   final PendingSpans pendingSpans;
-  final FinishedSpanHandler finishedSpanHandler;
 
   RealScopedSpan(
     TraceContext context,
     Scope scope,
     MutableSpan state,
     Clock clock,
-    PendingSpans pendingSpans,
-    FinishedSpanHandler finishedSpanHandler
+    PendingSpans pendingSpans
   ) {
     this.context = context;
     this.scope = scope;
     this.pendingSpans = pendingSpans;
     this.state = state;
     this.clock = clock;
-    this.finishedSpanHandler = finishedSpanHandler;
   }
 
   @Override public boolean isNoop() {
@@ -74,8 +70,7 @@ final class RealScopedSpan extends ScopedSpan {
 
   @Override public void finish() {
     scope.close();
-    if (!pendingSpans.finish(context, 0L)) return; // don't double-report
-    finishedSpanHandler.handle(context, state);
+    pendingSpans.finish(context, 0L);
   }
 
   @Override public boolean equals(Object o) {

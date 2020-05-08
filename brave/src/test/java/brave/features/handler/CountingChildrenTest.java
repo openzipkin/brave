@@ -15,8 +15,8 @@ package brave.features.handler;
 
 import brave.Tracer;
 import brave.Tracing;
-import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -28,15 +28,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
 /**
- * This shows how a {@link FinishedSpanHandler} can add data some external formats need, such as
- * child count.
+ * This shows how a {@link SpanHandler} can add data some external formats need, such as child
+ * count.
  *
  * <p><em>Note:</em> this currently only works with children fully enclosed by their parents. If
  * you have spans that finish after their parent, you'll need a more fancy implementation.
  */
 public class CountingChildrenTest {
-  static final class TagChildCount extends FinishedChildrenHandler {
-    @Override protected void handle(MutableSpan parent, Iterator<MutableSpan> children) {
+  static final class TagChildCount extends ParentToChildrenHandler {
+    @Override protected void onFinish(MutableSpan parent, Iterator<MutableSpan> children) {
       int count = 0;
       for (; children.hasNext(); children.next()) {
         count++;
@@ -48,7 +48,7 @@ public class CountingChildrenTest {
   List<zipkin2.Span> spans = new ArrayList<>();
   Tracing tracing = Tracing.newBuilder()
     .spanReporter(spans::add)
-    .addFinishedSpanHandler(new TagChildCount())
+    .addSpanHandler(new TagChildCount())
     .build();
   Tracer tracer = tracing.tracer();
 
@@ -89,10 +89,11 @@ public class CountingChildrenTest {
   }
 
   /**
-   * The implementation doesn't currently help async spans that complete after their parent
-   * finishes. A more sophisticated one could be made in the future when we have a new span hook.
+   * This reliably counts children even in async with one caveat: If a parent speculatively creates
+   * children, the count will be higher than it should be, if it calls {@link brave.Span#abandon()}
+   * after the parent finishes. This is quite an edge case.
    */
-  @Test public void countChildren_doesntWorkAsync() {
+  @Test public void countChildren_async() {
     brave.Span root1 = tracer.newTrace().name("root1").start();
     brave.Span root1Child1 = tracer.newChild(root1.context()).name("root1Child1").start();
     brave.Span root1Child2 = tracer.newChild(root1.context()).name("root1Child2").start();
@@ -103,7 +104,7 @@ public class CountingChildrenTest {
     assertThat(spans)
       .extracting(Span::name, s -> s.tags().get("childCount"))
       .containsExactly(
-        tuple("root1", "0"), tuple("root1child1", "0"), tuple("root1child2", "0")
+        tuple("root1", "2"), tuple("root1child1", "0"), tuple("root1child2", "0")
       );
   }
 }

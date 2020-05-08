@@ -15,6 +15,7 @@ package brave;
 
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.propagation.B3SinglePropagation;
 import brave.propagation.Propagation;
 import brave.propagation.StrictCurrentTraceContext;
@@ -35,8 +36,8 @@ import static org.mockito.Mockito.when;
 public class TracingTest {
   List<zipkin2.Span> spans = new ArrayList<>();
   List<MutableSpan> mutableSpans = new ArrayList<>();
-  FinishedSpanHandler finishedSpanHandler = new FinishedSpanHandler() {
-    @Override public boolean handle(TraceContext context, MutableSpan span) {
+  SpanHandler spanHandler = new SpanHandler() {
+    @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
       mutableSpans.add(span);
       return true;
     }
@@ -103,57 +104,57 @@ public class TracingTest {
     assertThat(zipkinSpans).isNotEmpty(); // ensures the assertions passed.
   }
 
-  @Test public void finishedSpanHandler_loggingByDefault() {
+  @Test public void spanHandler_loggingByDefault() {
     try (Tracing tracing = Tracing.newBuilder().build()) {
-      assertThat(tracing.tracer().finishedSpanHandler)
-        .isInstanceOf(Tracing.LogFinishedSpanHandler.class);
+      assertThat(tracing.tracer().pendingSpans).extracting("spanHandler.delegate")
+        .isInstanceOf(Tracing.LogSpanHandler.class);
     }
   }
 
-  @Test public void finishedSpanHandler_ignoresNoop() {
+  @Test public void spanHandler_ignoresNoop() {
     try (Tracing tracing = Tracing.newBuilder()
-      .addFinishedSpanHandler(FinishedSpanHandler.NOOP)
+      .addSpanHandler(SpanHandler.NOOP)
       .build()) {
-      assertThat(tracing.tracer().finishedSpanHandler)
-        .isInstanceOf(Tracing.LogFinishedSpanHandler.class);
+      assertThat(tracing.tracer().pendingSpans).extracting("spanHandler.delegate")
+        .isInstanceOf(Tracing.LogSpanHandler.class);
     }
   }
 
-  @Test public void finishedSpanHandler_multiple() {
-    FinishedSpanHandler one = new FinishedSpanHandler() {
-      @Override public boolean handle(TraceContext context, MutableSpan span) {
+  @Test public void spanHandler_multiple() {
+    SpanHandler one = new SpanHandler() {
+      @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
         return true;
       }
     };
-    FinishedSpanHandler two = new FinishedSpanHandler() {
-      @Override public boolean handle(TraceContext context, MutableSpan span) {
+    SpanHandler two = new SpanHandler() {
+      @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
         return true;
       }
     };
     try (Tracing tracing = Tracing.newBuilder()
-      .addFinishedSpanHandler(one)
-      .addFinishedSpanHandler(two)
+      .addSpanHandler(one)
+      .addSpanHandler(two)
       .build()) {
-      assertThat(tracing.tracer().finishedSpanHandler).extracting("delegate.handlers")
-        .asInstanceOf(InstanceOfAssertFactories.array(FinishedSpanHandler[].class))
+      assertThat(tracing.tracer().pendingSpans).extracting("spanHandler.delegate.handlers")
+        .asInstanceOf(InstanceOfAssertFactories.array(SpanHandler[].class))
         .containsExactly(one, two);
     }
   }
 
   /** This test shows that duplicates are not allowed. This prevents needless overhead. */
-  @Test public void finishedSpanHandler_dupesIgnored() {
-    FinishedSpanHandler finishedSpanHandler = new FinishedSpanHandler() {
-      @Override public boolean handle(TraceContext context, MutableSpan span) {
+  @Test public void spanHandler_dupesIgnored() {
+    SpanHandler spanHandler = new SpanHandler() {
+      @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
         return true;
       }
     };
 
     try (Tracing tracing = Tracing.newBuilder()
-      .addFinishedSpanHandler(finishedSpanHandler)
-      .addFinishedSpanHandler(finishedSpanHandler) // dupe
+      .addSpanHandler(spanHandler)
+      .addSpanHandler(spanHandler) // dupe
       .build()) {
-      assertThat(tracing.tracer().finishedSpanHandler).extracting("delegate")
-        .isEqualTo(finishedSpanHandler);
+      assertThat(tracing.tracer().pendingSpans).extracting("spanHandler.delegate")
+        .isEqualTo(spanHandler);
     }
   }
 
@@ -173,11 +174,11 @@ public class TracingTest {
     assertThat(spans).isNotEmpty();
   }
 
-  @Test public void finishedSpanHandler_dataChangesVisibleToZipkin() {
+  @Test public void spanHandler_dataChangesVisibleToZipkin() {
     String serviceNameOverride = "favistar";
 
-    FinishedSpanHandler finishedSpanHandler = new FinishedSpanHandler() {
-      @Override public boolean handle(TraceContext context, MutableSpan span) {
+    SpanHandler spanHandler = new SpanHandler() {
+      @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
         span.localServiceName(serviceNameOverride);
         return true;
       }
@@ -185,7 +186,7 @@ public class TracingTest {
 
     try (Tracing tracing = Tracing.newBuilder()
       .spanReporter(spans::add)
-      .addFinishedSpanHandler(finishedSpanHandler)
+      .addSpanHandler(spanHandler)
       .build()) {
       tracing.tracer().newTrace().start().finish();
     }
@@ -193,10 +194,10 @@ public class TracingTest {
     assertThat(spans.get(0).localServiceName()).isEqualTo(serviceNameOverride);
   }
 
-  @Test public void finishedSpanHandler_recordsWhenSampled() {
+  @Test public void spanHandler_recordsWhenSampled() {
     try (Tracing tracing = Tracing.newBuilder()
       .spanReporter(spans::add)
-      .addFinishedSpanHandler(finishedSpanHandler)
+      .addSpanHandler(spanHandler)
       .build()) {
       tracing.tracer().newTrace().start().name("aloha").finish();
     }
@@ -209,10 +210,10 @@ public class TracingTest {
     assertThat(spans.get(0).durationAsLong()).isEqualTo(mutableSpanDuration);
   }
 
-  @Test public void finishedSpanHandler_doesntRecordWhenUnsampled() {
+  @Test public void spanHandler_doesntRecordWhenUnsampled() {
     try (Tracing tracing = Tracing.newBuilder()
       .spanReporter(spans::add)
-      .addFinishedSpanHandler(finishedSpanHandler)
+      .addSpanHandler(spanHandler)
       .sampler(Sampler.NEVER_SAMPLE)
       .build()) {
       tracing.tracer().newTrace().start().name("aloha").finish();
@@ -222,10 +223,10 @@ public class TracingTest {
     assertThat(mutableSpans).isEmpty();
   }
 
-  @Test public void finishedSpanHandler_recordsWhenReporterIsNoopIfAlwaysSampleLocal() {
+  @Test public void spanHandler_recordsWhenReporterIsNoopIfAlwaysSampleLocal() {
     try (Tracing tracing = Tracing.newBuilder()
       .spanReporter(Reporter.NOOP)
-      .addFinishedSpanHandler(finishedSpanHandler)
+      .addSpanHandler(spanHandler)
       .build()) {
       tracing.tracer().newTrace().start().name("aloha").finish();
     }
@@ -234,16 +235,13 @@ public class TracingTest {
     assertThat(mutableSpans).hasSize(1);
   }
 
-  @Test public void finishedSpanHandler_recordsWhenUnsampledIfAlwaysSampleLocal() {
+  @Test public void spanHandler_recordsWhenUnsampledIfAlwaysSampleLocal() {
     try (Tracing tracing = Tracing.newBuilder()
       .spanReporter(spans::add)
-      .addFinishedSpanHandler(new FinishedSpanHandler() {
-        @Override public boolean handle(TraceContext context, MutableSpan span) {
+      .alwaysSampleLocal()
+      .addSpanHandler(new SpanHandler() {
+        @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
           mutableSpans.add(span);
-          return true;
-        }
-
-        @Override public boolean alwaysSampleLocal() {
           return true;
         }
       })
@@ -256,7 +254,7 @@ public class TracingTest {
     assertThat(mutableSpans).hasSize(1);
   }
 
-  @Test public void finishedSpanHandler_recordsWhenUnsampledIfContextSamplesLocal() {
+  @Test public void spanHandler_recordsWhenUnsampledIfContextSamplesLocal() {
     AtomicBoolean sampledLocal = new AtomicBoolean();
     try (Tracing tracing = Tracing.newBuilder()
       .spanReporter(spans::add)
@@ -270,7 +268,7 @@ public class TracingTest {
           return context.toBuilder().sampledLocal(true).build();
         }
       })
-      .addFinishedSpanHandler(finishedSpanHandler)
+      .addSpanHandler(spanHandler)
       .sampler(Sampler.NEVER_SAMPLE)
       .build()) {
       tracing.tracer().newTrace().start().name("one").finish();
@@ -280,36 +278,6 @@ public class TracingTest {
     assertThat(spans).isEmpty();
     assertThat(mutableSpans).hasSize(1);
     assertThat(mutableSpans.get(0).name()).isEqualTo("one");
-  }
-
-  /** This ensures handlers not designed for orphans aren't accidentally used. */
-  @Test public void finishedSpanHandler_splitsHandlersBasedOnOrphanSupport() {
-    FinishedSpanHandler one = mock(FinishedSpanHandler.class);
-    when(one.supportsOrphans()).thenReturn(true);
-    FinishedSpanHandler two = mock(FinishedSpanHandler.class);
-    when(two.supportsOrphans()).thenReturn(false);
-    FinishedSpanHandler three = mock(FinishedSpanHandler.class);
-    when(three.supportsOrphans()).thenReturn(true);
-    FinishedSpanHandler four = mock(FinishedSpanHandler.class);
-    when(four.supportsOrphans()).thenReturn(false);
-
-    try (Tracing tracing = Tracing.newBuilder()
-      .addFinishedSpanHandler(one)
-      .addFinishedSpanHandler(two)
-      .addFinishedSpanHandler(three)
-      .addFinishedSpanHandler(four)
-      .build()) {
-
-      // Handlers, regardless of whether they support orphans, should be invoked in order
-      assertThat(tracing.tracer().finishedSpanHandler).extracting("delegate.handlers")
-        .asInstanceOf(InstanceOfAssertFactories.ARRAY)
-        .startsWith(one, two, three, four);
-
-      // Only orphaned handlers should be invoked on the orphan path
-      assertThat(tracing.tracer().pendingSpans).extracting("orphanedSpanHandler.delegate.handlers")
-        .asInstanceOf(InstanceOfAssertFactories.ARRAY)
-        .startsWith(one, three);
-    }
   }
 
   /**
@@ -323,8 +291,8 @@ public class TracingTest {
     when(two.alwaysSampleLocal()).thenReturn(true);
 
     try (Tracing tracing = Tracing.newBuilder()
-      .addFinishedSpanHandler(one)
-      .addFinishedSpanHandler(two)
+      .addSpanHandler(one)
+      .addSpanHandler(two)
       .build()) {
 
       assertThat(tracing.tracer().alwaysSampleLocal).isTrue();

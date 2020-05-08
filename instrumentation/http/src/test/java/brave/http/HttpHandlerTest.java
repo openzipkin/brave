@@ -15,7 +15,7 @@ package brave.http;
 
 import brave.Span;
 import brave.SpanCustomizer;
-import brave.handler.FinishedSpanHandler;
+import brave.handler.SpanHandler;
 import brave.propagation.TraceContext;
 import org.junit.Before;
 import org.junit.Test;
@@ -100,7 +100,7 @@ public class HttpHandlerTest {
     verify(responseParser).parse(response, context, spanCustomizer);
   }
 
-  /** Allows {@link FinishedSpanHandler} to see the error regardless of parsing. */
+  /** Allows {@link SpanHandler} to see the error regardless of parsing. */
   @Test public void handleFinish_errorRecordedInSpan() {
     RuntimeException error = new RuntimeException("foo");
     when(response.error()).thenReturn(error);

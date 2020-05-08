@@ -15,10 +15,10 @@ package brave.internal.recorder;
 
 import brave.Clock;
 import brave.Tracer;
-import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
+import brave.handler.SpanHandler.Cause;
 import brave.internal.Nullable;
-import brave.internal.Platform;
 import brave.internal.collect.WeakConcurrentMap;
 import brave.propagation.TraceContext;
 import java.lang.ref.Reference;
@@ -35,18 +35,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * orphans to Zipkin. Spans in this state will have a "brave.flush" annotation added to them.
  */
 public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingSpan> {
-  @Nullable final WeakConcurrentMap<MutableSpan, Throwable> spanToCaller;
   final MutableSpan defaultSpan;
   final Clock clock;
-  final FinishedSpanHandler orphanedSpanHandler;
+  final SpanHandler spanHandler;
   final AtomicBoolean noop;
 
-  public PendingSpans(MutableSpan defaultSpan, Clock clock, FinishedSpanHandler orphanedSpanHandler,
-    boolean trackOrphans, AtomicBoolean noop) {
+  public PendingSpans(MutableSpan defaultSpan, Clock clock, SpanHandler spanHandler,
+    AtomicBoolean noop) {
     this.defaultSpan = defaultSpan;
     this.clock = clock;
-    this.orphanedSpanHandler = orphanedSpanHandler;
-    this.spanToCaller = trackOrphans ? new WeakConcurrentMap<>() : null;
+    this.spanHandler = spanHandler;
     this.noop = noop;
   }
 
@@ -72,6 +70,8 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
     // save overhead calculating time if the parent is in-progress (usually is)
     TickClock clock;
     if (parentSpan != null) {
+      TraceContext parentContext = parentSpan.context();
+      if (parentContext != null) parent = parentContext;
       clock = parentSpan.clock;
       if (start) span.startTimestamp(clock.currentTimeMicroseconds());
     } else {
@@ -89,25 +89,21 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
     assert parent != null || context.isLocalRoot() :
       "Bug (or unexpected call to internal code): parent can only be null in a local root!";
 
-    if (spanToCaller != null) {
-      Throwable oldCaller = spanToCaller.putIfProbablyAbsent(newSpan.span,
-        new Throwable("Thread " + Thread.currentThread().getName() + " allocated span here"));
-      assert oldCaller == null :
-        "Bug: unexpected to have an existing reference to a new MutableSpan!";
-    }
+    spanHandler.begin(newSpan.handlerContext, newSpan.span, parentSpan != null
+      ? parentSpan.handlerContext : null);
     return newSpan;
   }
 
   /** @see brave.Span#abandon() */
   public void abandon(TraceContext context) {
-    remove(context);
+    PendingSpan last = remove(context);
+    if (last != null) spanHandler.end(last.handlerContext, last.span, Cause.ABANDONED);
   }
 
   /** @see brave.Span#flush() */
-  public boolean flush(TraceContext context) {
+  public void flush(TraceContext context) {
     PendingSpan last = remove(context);
-    if (last == null) return false;
-    return true;
+    if (last != null) spanHandler.end(last.handlerContext, last.span, Cause.FLUSHED);
   }
 
   /**
@@ -117,40 +113,22 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
    * @see brave.Span#finish()
    */
   // zero here allows us to skip overhead of using the clock when the span already finished!
-  public boolean finish(TraceContext context, long timestamp) {
+  public void finish(TraceContext context, long timestamp) {
     PendingSpan last = remove(context);
-    if (last == null) return false;
+    if (last == null) return;
     last.span.finishTimestamp(timestamp != 0L ? timestamp : last.clock.currentTimeMicroseconds());
-    return true;
+    spanHandler.end(last.handlerContext, last.span, Cause.FINISHED);
   }
 
   /** Reports spans orphaned by garbage collection. */
   @Override protected void expungeStaleEntries() {
     Reference<?> reference;
-    // This is called on critical path of unrelated traced operations. If we have orphaned spans, be
-    // careful to not penalize the performance of the caller. It is better to cache time when
-    // flushing a span than hurt performance of unrelated operations by calling
-    // currentTimeMicroseconds N times
-    long flushTime = 0L;
-    boolean noop = orphanedSpanHandler == FinishedSpanHandler.NOOP || this.noop.get();
+    boolean noop = this.noop.get();
     while ((reference = poll()) != null) {
       PendingSpan value = removeStaleEntry(reference);
       if (noop || value == null) continue;
       assert value.context() == null : "unexpected for the weak referent to be present after GC!";
-      if (flushTime == 0L) flushTime = clock.currentTimeMicroseconds();
-
-      Throwable caller = spanToCaller != null ? spanToCaller.getIfPresent(value.span) : null;
-      TraceContext context = value.backupContext;
-
-      if (caller != null) {
-        String message = value.span.equals(new MutableSpan(context, null))
-          ? "Span " + context + " was allocated but never used"
-          : "Span " + context + " neither finished nor flushed before GC";
-        Platform.get().log(message, caller);
-      }
-
-      value.span.annotate(flushTime, "brave.flush");
-      orphanedSpanHandler.handle(context, value.span);
+      spanHandler.end(value.handlerContext, value.span, Cause.ORPHANED);
     }
   }
 }

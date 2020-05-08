@@ -18,10 +18,12 @@ import brave.ErrorParser;
 import brave.Tracing;
 import brave.TracingCustomizer;
 import brave.handler.FinishedSpanHandler;
+import brave.handler.SpanHandler;
 import brave.handler.MutableSpan;
 import brave.propagation.B3SinglePropagation;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.After;
 import org.junit.Test;
 import zipkin2.reporter.Reporter;
@@ -126,24 +128,58 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-      .extracting("tracer.finishedSpanHandler.delegate.spanReporter")
+      .extracting("tracer.spanHandler.delegate.spanReporter")
       .isEqualTo(Reporter.CONSOLE);
   }
 
-  public static final FinishedSpanHandler FIREHOSE_HANDLER = mock(FinishedSpanHandler.class);
+  public static final FinishedSpanHandler FINISHED_SPAN_HANDLER = mock(FinishedSpanHandler.class);
 
   @Test public void finishedSpanHandlers() {
     context = new XmlBeans(""
+        + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
+        + "  <property name=\"finishedSpanHandlers\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".FINISHED_SPAN_HANDLER\"/>\n"
+        + "  </property>\n"
+        + "</bean>"
+    );
+
+    assertThat(context.getBean("tracing", Tracing.class))
+        .extracting("tracer.spanHandler.delegate")
+        .isEqualTo(FINISHED_SPAN_HANDLER);
+  }
+
+  public static final SpanHandler SPAN_HANDLER = mock(SpanHandler.class);
+
+  @Test public void spanHandlers() {
+    context = new XmlBeans(""
       + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
-      + "  <property name=\"finishedSpanHandlers\">\n"
-      + "    <util:constant static-field=\"" + getClass().getName() + ".FIREHOSE_HANDLER\"/>\n"
+      + "  <property name=\"spanHandlers\">\n"
+      + "    <util:constant static-field=\"" + getClass().getName() + ".SPAN_HANDLER\"/>\n"
       + "  </property>\n"
       + "</bean>"
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-      .extracting("tracer.finishedSpanHandler.delegate")
-      .isEqualTo(FIREHOSE_HANDLER);
+      .extracting("tracer.spanHandler.delegate")
+      .isEqualTo(SPAN_HANDLER);
+  }
+
+  @Test public void bothSpanHandlers() {
+    context = new XmlBeans(""
+        + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
+        + "  <property name=\"finishedSpanHandlers\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".FINISHED_SPAN_HANDLER\"/>\n"
+        + "  </property>\n"
+        + "  <property name=\"spanHandlers\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".SPAN_HANDLER\"/>\n"
+        + "  </property>\n"
+        + "</bean>"
+    );
+
+    assertThat(context.getBean("tracing", Tracing.class))
+        .extracting("tracer.spanHandler.delegate.handlers")
+        .asInstanceOf(InstanceOfAssertFactories.ARRAY)
+        .containsExactly(FINISHED_SPAN_HANDLER, SPAN_HANDLER);
   }
 
   @Test public void clock() {

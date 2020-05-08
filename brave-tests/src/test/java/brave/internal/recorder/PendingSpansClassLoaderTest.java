@@ -13,10 +13,11 @@
  */
 package brave.internal.recorder;
 
-import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.internal.InternalPropagation;
 import brave.internal.Platform;
+import brave.internal.handler.OrphanTracker;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.test.util.GarbageCollectors;
@@ -53,7 +54,7 @@ public class PendingSpansClassLoaderTest {
   static class CreateAndRemove implements Runnable {
     @Override public void run() {
       PendingSpans pendingSpans = new PendingSpans(new MutableSpan(),
-        Platform.get().clock(), FinishedSpanHandler.NOOP, true, new AtomicBoolean());
+        Platform.get().clock(), SpanHandler.NOOP, new AtomicBoolean());
 
       TraceContext context = CONTEXT.toBuilder().build(); // intentionally make a copy
       pendingSpans.getOrCreate(null, context, true);
@@ -66,10 +67,9 @@ public class PendingSpansClassLoaderTest {
   }
 
   static class OrphanedContext implements Runnable {
-
     @Override public void run() {
       PendingSpans pendingSpans = new PendingSpans(new MutableSpan(),
-        Platform.get().clock(), FinishedSpanHandler.NOOP, true, new AtomicBoolean());
+        Platform.get().clock(), new OrphanTracker(Platform.get().clock()), new AtomicBoolean());
 
       TraceContext context = CONTEXT.toBuilder().build(); // intentionally make a copy
       pendingSpans.getOrCreate(null, context, true);

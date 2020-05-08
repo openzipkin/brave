@@ -18,8 +18,8 @@ import brave.Tracer.SpanInScope;
 import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagation;
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
-import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
@@ -97,8 +97,8 @@ public class TracerTest {
   @Test public void handler_hasNiceToString() {
     tracer = Tracing.newBuilder().build().tracer();
 
-    assertThat(tracer.finishedSpanHandler)
-      .hasToString("LogFinishedSpanHandler{name=brave.Tracer}");
+    assertThat(tracer.pendingSpans).extracting("spanHandler")
+      .hasToString("LogSpanHandler{name=brave.Tracer}");
   }
 
   @Test public void sampler() {
@@ -629,7 +629,7 @@ public class TracerTest {
     TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).sampled(true).build();
     try (SpanInScope ws = tracer.withSpanInScope(tracer.toSpan(context))) {
       assertThat(tracer.toString()).hasToString(
-        "Tracer{currentSpan=0000000000000001/000000000000000a, finishedSpanHandler=MyReporter{}}"
+        "Tracer{currentSpan=0000000000000001/000000000000000a, spanHandler=MyReporter{}}"
       );
     }
   }
@@ -638,13 +638,13 @@ public class TracerTest {
     Tracing.current().setNoop(true);
 
     assertThat(tracer).hasToString(
-      "Tracer{noop=true, finishedSpanHandler=MyReporter{}}"
+      "Tracer{noop=true, spanHandler=MyReporter{}}"
     );
   }
 
-  @Test public void toString_withFinishedSpanHandler() {
-    tracer = Tracing.newBuilder().addFinishedSpanHandler(new FinishedSpanHandler() {
-      @Override public boolean handle(TraceContext context, MutableSpan span) {
+  @Test public void toString_withSpanHandler() {
+    tracer = Tracing.newBuilder().addSpanHandler(new SpanHandler() {
+      @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
         return true;
       }
 
@@ -661,7 +661,7 @@ public class TracerTest {
     }).build().tracer();
 
     assertThat(tracer).hasToString(
-      "Tracer{finishedSpanHandler=[MyHandler, MyReporter]}"
+      "Tracer{spanHandler=[MyHandler, MyReporter]}"
     );
   }
 
@@ -1191,18 +1191,14 @@ public class TracerTest {
 
   Map<Long, List<String>> tracerThatPartitionsNamesOnlocalRootId() {
     Map<Long, List<String>> reportedNames = new LinkedHashMap<>();
-    tracer = Tracing.newBuilder().addFinishedSpanHandler(new FinishedSpanHandler() {
-      @Override public boolean handle(TraceContext context, MutableSpan span) {
+    tracer = Tracing.newBuilder().addSpanHandler(new SpanHandler() {
+      @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
         assertThat(context.localRootId()).isNotZero();
         reportedNames.computeIfAbsent(context.localRootId(), k -> new ArrayList<>())
           .add(span.name());
         return true; // retain
       }
-
-      @Override public boolean alwaysSampleLocal() {
-        return true;
-      }
-    }).spanReporter(Reporter.NOOP).build().tracer();
+    }).alwaysSampleLocal().spanReporter(Reporter.NOOP).build().tracer();
     return reportedNames;
   }
 }

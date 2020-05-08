@@ -42,30 +42,25 @@ public class MutableSpanTest {
   static final Pattern CREDIT_CARD = Pattern.compile("[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{4}");
 
   /**
-   * This shows an edge case of someone implementing a {@link FinishedSpanHandler} whose intent is
+   * This shows an edge case of someone implementing a {@link SpanHandler} whose intent is
    * only handle orphans.
    */
   @Test public void hasAnnotation_usageExplained() {
-    class AbandonCounter extends FinishedSpanHandler {
+    class AbandonCounter extends SpanHandler {
       int orphans;
 
-      @Override public boolean handle(TraceContext context, MutableSpan span) {
-        if (span.containsAnnotation("brave.flush")) orphans++;
-        return true;
-      }
-
-      @Override public boolean supportsOrphans() {
+      @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
+        if (cause == Cause.ORPHANED) orphans++;
         return true;
       }
     }
 
     AbandonCounter counter = new AbandonCounter();
     MutableSpan orphan = new MutableSpan();
-    orphan.annotate(1, "brave.flush"); // orphaned spans have this annotation
 
-    counter.handle(null, orphan);
-    counter.handle(null, new MutableSpan());
-    counter.handle(null, orphan);
+    counter.end(null, orphan, SpanHandler.Cause.ORPHANED);
+    counter.end(null, new MutableSpan(), SpanHandler.Cause.FLUSHED);
+    counter.end(null, orphan, SpanHandler.Cause.ORPHANED);
 
     assertThat(counter.orphans).isEqualTo(2);
   }

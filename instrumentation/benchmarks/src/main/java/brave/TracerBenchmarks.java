@@ -15,8 +15,7 @@ package brave;
 
 import brave.baggage.BaggagePropagation;
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
-import brave.handler.FinishedSpanHandler;
-import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
@@ -39,7 +38,6 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
-import zipkin2.reporter.Reporter;
 
 import static brave.baggage.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
 import static brave.propagation.SamplingFlags.NOT_SAMPLED;
@@ -76,19 +74,15 @@ public class TracerBenchmarks {
 
   @Setup(Level.Trial) public void init() {
     tracer = Tracing.newBuilder()
-      .addFinishedSpanHandler(new FinishedSpanHandler() {
-        @Override public boolean handle(TraceContext context, MutableSpan span) {
-          return true; // anonymous subtype prevents all recording from being no-op
-        }
+      .addSpanHandler(new SpanHandler() {
+        // anonymous subtype prevents all recording from being no-op
       })
-      .spanReporter(Reporter.NOOP).build().tracer();
+      .build().tracer();
     tracerBaggage = Tracing.newBuilder().propagationFactory(baggageFactory)
-      .addFinishedSpanHandler(new FinishedSpanHandler() {
-        @Override public boolean handle(TraceContext context, MutableSpan span) {
-          return true; // anonymous subtype prevents all recording from being no-op
-        }
+      .addSpanHandler(new SpanHandler() {
+        // anonymous subtype prevents all recording from being no-op
       })
-      .spanReporter(Reporter.NOOP).build().tracer();
+      .build().tracer();
   }
 
   @TearDown(Level.Trial) public void close() {

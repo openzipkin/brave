@@ -15,6 +15,7 @@ package brave.internal.handler;
 
 import brave.ErrorParser;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,9 +31,9 @@ import static brave.Span.Kind.SERVER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public class ZipkinFinishedSpanHandlerTest {
+public class ZipkinSpanHandlerTest {
   List<Span> spans = new ArrayList<>();
-  ZipkinFinishedSpanHandler handler;
+  ZipkinSpanHandler handler;
   MutableSpan defaultSpan;
 
   @Before public void init() {
@@ -47,8 +48,8 @@ public class ZipkinFinishedSpanHandlerTest {
     MutableSpan defaultSpan = new MutableSpan();
     defaultSpan.localServiceName("favistar");
     defaultSpan.localIp("1.2.3.4");
-    handler = new ZipkinFinishedSpanHandler(defaultSpan, spanReporter, ErrorParser.get(),
-      alwaysReportSpans);
+    handler =
+      new ZipkinSpanHandler(defaultSpan, spanReporter, ErrorParser.get(), alwaysReportSpans);
   }
 
   @Test public void reportsSampledSpan() {
@@ -56,7 +57,7 @@ public class ZipkinFinishedSpanHandlerTest {
     MutableSpan span = new MutableSpan();
     span.traceId(context.traceIdString());
     span.id(context.spanIdString());
-    handler.handle(context, span);
+    handler.end(context, span, SpanHandler.Cause.FINISHED);
 
     assertThat(spans.get(0)).isEqualToComparingFieldByField(
       Span.newBuilder()
@@ -72,7 +73,7 @@ public class ZipkinFinishedSpanHandlerTest {
     span.traceId(context.traceIdString());
     span.id(context.spanIdString());
     span.setDebug();
-    handler.handle(context, span);
+    handler.end(context, span, SpanHandler.Cause.FINISHED);
 
     assertThat(spans.get(0)).isEqualToComparingFieldByField(
       Span.newBuilder()
@@ -86,7 +87,7 @@ public class ZipkinFinishedSpanHandlerTest {
   @Test public void doesntReportUnsampledSpan() {
     TraceContext context =
       TraceContext.newBuilder().traceId(1).spanId(2).sampled(false).sampledLocal(true).build();
-    handler.handle(context, new MutableSpan());
+    handler.end(context, new MutableSpan(), SpanHandler.Cause.FINISHED);
 
     assertThat(spans).isEmpty();
   }
@@ -99,7 +100,7 @@ public class ZipkinFinishedSpanHandlerTest {
     MutableSpan span = new MutableSpan();
     span.traceId(context.traceIdString());
     span.id(context.spanIdString());
-    handler.handle(context, span);
+    handler.end(context, span, SpanHandler.Cause.FINISHED);
 
     assertThat(spans).isNotEmpty();
   }
