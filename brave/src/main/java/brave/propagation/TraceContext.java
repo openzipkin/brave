@@ -21,9 +21,9 @@ import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.List;
 
-import static brave.internal.HexCodec.lenientLowerHexToUnsignedLong;
-import static brave.internal.HexCodec.toLowerHex;
-import static brave.internal.HexCodec.writeHexLong;
+import static brave.internal.codec.HexCodec.lenientLowerHexToUnsignedLong;
+import static brave.internal.codec.HexCodec.toLowerHex;
+import static brave.internal.codec.HexCodec.writeHexLong;
 import static brave.internal.InternalPropagation.FLAG_LOCAL_ROOT;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_LOCAL;

@@ -13,7 +13,7 @@
  */
 package brave.kafka.clients;
 
-import brave.internal.HexCodec;
+import brave.internal.codec.HexCodec;
 import brave.internal.propagation.StringPropagationAdapter;
 import brave.messaging.MessagingRuleSampler;
 import brave.messaging.MessagingTracing;

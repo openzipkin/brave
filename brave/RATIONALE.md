@@ -18,9 +18,56 @@ thought as it would betray productivity and make this document unreadable.
 Rationale here should be limited to impactful designs, and aspects non-obvious,
 non-conventional or subtle.
 
-## Public namespace
+## Java conventions
 Brave 4's public namespace is more defensive that the past, using a package
 accessor design from [OkHttp](https://github.com/square/okhttp).
+
+We only expose types public internally or after significant demand. This keeps
+the api small and easier to manage when charting migration paths. Otherwise,
+types are always package private.
+
+Methods should only be marked public when they are intentional apis or
+inheritance requires it. This practice prevents accidental dependence on
+utilities.
+
+### Why no private symbols? (methods and fields)
+Brave is a library with embedded use cases, such as inside Java agents or
+Android code.
+
+For example, Android has a []hard limit on total methods in an application](https://developer.android.com/studio/build/multidex#avoid).
+Fields marked private imply accessors in order to share state in the same
+package. We routinely share state, such as sampling flag internals inside a
+package. If we marked fields private, we'd count against that limit without
+adding value.
+
+Modifiers on fields and methods are distracting to read and increase the size
+of the bytecode generated during compilation. By recovering the size otherwise
+spent on private modifiers, we not only avoid hitting limits, but we are also
+able to add more code with the same jar size.
+
+For example, Brave 5.12 remains less than 250KiB, with no dependencies, all
+features including deprecation bridges, and an embedded json serializer.
+
+This means we do not support sharing our packages with third parties, but we
+do support an "always share inside a package" in our repository. In other
+words, we trust our developers to proceed with caution. In the first seven
+years of project history, we have had no issues raised with this policy.
+
+### Zero dependency policy
+Brave is a telemetry library, which means it is used inside other low-level
+libraries. We are unable to predict the version ranges of those libraries, and
+attempting to do that would limit the applicability of Brave, which is an anti-
+goal. Instead, we choose to use nothing except floor Java version features,
+currently Java 6.
+
+### Why `new NullPointerException("xxx == null")`
+For public entry points, we eagerly check null and throw `NullPointerException`
+with a message like "xxx == null". This is not a normal pre-condition, such as
+argument validation, which you'd throw `IllegalArgumentException` for. What's
+happening here is we are making debugging (literally NPEs are bugs) easier, by
+not deferring to Java to raise the NPE. If we deferred, it could be confusing
+which local was null, especially as deferring results in an exception with no
+message.
 
 ## Stateful Span object
 Brave 4 allows you to pass around a Span object which can report itself

@@ -16,7 +16,7 @@ package brave;
 import brave.baggage.BaggageField;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
-import brave.internal.IpLiteral;
+import brave.internal.codec.IpLiteral;
 import brave.internal.Nullable;
 import brave.internal.Platform;
 import brave.internal.handler.NoopAwareFinishedSpanHandler;

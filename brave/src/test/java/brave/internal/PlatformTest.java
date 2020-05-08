@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,6 +13,7 @@
  */
 package brave.internal;
 
+import brave.internal.codec.HexCodec;
 import com.google.common.collect.Sets;
 import java.net.Inet6Address;
 import java.net.InetAddress;

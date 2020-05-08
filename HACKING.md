@@ -27,6 +27,9 @@ the intent of the feature are often merged and released in days. If a
 merged change isn't immediately released and it is of priority to you,
 nag (make a comment) on your merged pull request until it is released.
 
+It is best to review rationale documents such as [brave/RATIONALE.md]
+prior to raising a pull request.
+
 ## How to experiment
 Changes to Brave's code are best addressed by the feature requestor in a
 pull request *after* discussing in an issue or on gitter. By discussing

@@ -11,11 +11,11 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.internal;
+package brave.internal.codec;
 
 import org.junit.Test;
 
-import static brave.internal.JsonEscaper.jsonEscape;
+import static brave.internal.codec.JsonEscaper.jsonEscape;
 import static org.assertj.core.api.Assertions.assertThat;
 
 // initially a copy of zipkin2.internal.JsonEscaperTest

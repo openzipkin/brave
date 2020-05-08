@@ -11,7 +11,9 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.internal;
+package brave.internal.codec;
+
+import brave.internal.Nullable;
 
 /** Internal utility class to validate IPv4 or IPv6 literals */
 public final class IpLiteral {

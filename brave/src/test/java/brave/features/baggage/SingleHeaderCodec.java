@@ -16,6 +16,7 @@ package brave.features.baggage;
 import brave.baggage.BaggageField;
 import brave.baggage.BaggageField.ValueUpdater;
 import brave.internal.baggage.BaggageCodec;
+import brave.internal.codec.EntrySplitter;
 import brave.propagation.TraceContext;
 import java.util.Collections;
 import java.util.List;
@@ -26,7 +27,8 @@ import java.util.Map;
  *
  * <p>See https://github.com/w3c/correlation-context/blob/master/correlation_context/HTTP_HEADER_FORMAT.md
  */
-final class SingleHeaderCodec implements BaggageCodec {
+final class SingleHeaderCodec implements BaggageCodec, EntrySplitter.Handler<ValueUpdater> {
+  static final EntrySplitter ENTRY_SPLITTER = EntrySplitter.newBuilder().build();
   static final SingleHeaderCodec INSTANCE = new SingleHeaderCodec();
 
   static BaggageCodec get() {
@@ -45,12 +47,14 @@ final class SingleHeaderCodec implements BaggageCodec {
   }
 
   @Override public boolean decode(ValueUpdater valueUpdater, Object request, String value) {
-    boolean decoded = false;
-    for (String entry : value.split(",", -1)) {
-      String[] keyValue = entry.split("=", 2);
-      if (valueUpdater.updateValue(BaggageField.create(keyValue[0]), keyValue[1])) decoded = true;
-    }
-    return decoded;
+    return ENTRY_SPLITTER.parse(this, valueUpdater, value);
+  }
+
+  @Override public boolean onEntry(
+      ValueUpdater target, String buffer, int beginKey, int endKey, int beginValue, int endValue) {
+    BaggageField field = BaggageField.create(buffer.substring(beginKey, endKey));
+    String value = buffer.substring(beginValue, endValue);
+    return target.updateValue(field, value);
   }
 
   @Override public String encode(Map<String, String> values, TraceContext context, Object request) {

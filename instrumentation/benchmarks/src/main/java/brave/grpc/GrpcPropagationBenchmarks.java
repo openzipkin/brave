@@ -14,7 +14,7 @@
 package brave.grpc;
 
 import brave.grpc.GrpcPropagation.TagsBin;
-import brave.internal.HexCodec;
+import brave.internal.codec.HexCodec;
 import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;

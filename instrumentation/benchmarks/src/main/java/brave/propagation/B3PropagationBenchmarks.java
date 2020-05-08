@@ -13,7 +13,7 @@
  */
 package brave.propagation;
 
-import brave.internal.HexCodec;
+import brave.internal.codec.HexCodec;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import java.util.Collections;
