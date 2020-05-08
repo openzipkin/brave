@@ -15,14 +15,10 @@ package brave.internal.extra;
 
 import brave.Tracing;
 import brave.baggage.BaggageField;
-import brave.internal.InternalPropagation;
 import brave.internal.Platform;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * This manages an mutable element of {@link TraceContext#extra()} of type ({@link Extra}). The most
@@ -127,8 +123,8 @@ public abstract class ExtraFactory<E extends Extra<E, F>, F extends ExtraFactory
     long traceId = context.traceId(), spanId = context.spanId();
 
     E claimed = null;
-    int existingIndex = -1;
-    for (int i = 0, length = context.extra().size(); i < length; i++) {
+    int existingIndex = -1, extraLength = context.extra().size();
+    for (int i = 0; i < extraLength; i++) {
       Object next = context.extra().get(i);
       if (next instanceof Extra) {
         Extra nextExtra = (Extra) next;
@@ -154,8 +150,6 @@ public abstract class ExtraFactory<E extends Extra<E, F>, F extends ExtraFactory
       return context;
     }
 
-    ArrayList<Object> mutableExtraList = new ArrayList<>(context.extra());
-
     // If context.extra() didn't have an unclaimed extra instance, create one for this context.
     if (claimed == null) {
       claimed = create();
@@ -164,25 +158,25 @@ public abstract class ExtraFactory<E extends Extra<E, F>, F extends ExtraFactory
         return context;
       }
       claimed.tryToClaim(traceId, spanId);
-      mutableExtraList.add(claimed);
     }
 
-    if (existingIndex != -1) {
-      E existing = (E) mutableExtraList.remove(existingIndex);
+    TraceContext.Builder builder = context.toBuilder().clearExtra().addExtra(claimed);
 
-      // If the claimed extra instance was new or had no changes, simply assign existing to it 
-      if (claimed.state == initialState) {
-        claimed.state = existing.state;
-      } else if (existing.state != initialState) {
-        claimed.mergeStateKeepingOursOnConflict(existing);
+    for (int i = 0; i < extraLength; i++) {
+      Object next = context.extra().get(i);
+      if (i == existingIndex) {
+        E existing = (E) next;
+        // If the claimed extra instance was new or had no changes, simply assign existing to it
+        if (claimed.state == initialState) {
+          claimed.state = existing.state;
+        } else if (existing.state != initialState) {
+          claimed.mergeStateKeepingOursOnConflict(existing);
+        }
+      } else if (!next.equals(claimed)) {
+        builder.addExtra(next);
       }
     }
 
-    return contextWithExtra(context, Collections.unmodifiableList(mutableExtraList));
-  }
-
-  // TODO: this is internal. If this ever expose it otherwise, this should use Lists.ensureImmutable
-  TraceContext contextWithExtra(TraceContext context, List<Object> extra) {
-    return InternalPropagation.instance.withExtra(context, extra);
+    return builder.build();
   }
 }

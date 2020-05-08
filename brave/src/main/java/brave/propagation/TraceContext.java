@@ -365,7 +365,7 @@ public final class TraceContext extends SamplingFlags {
      * @since 4.9
      * @deprecated Since 5.12, use {@link #addExtra(Object)}
      */
-    @Deprecated public final Builder extra(List<Object> extraList) {
+    @Deprecated public Builder extra(List<Object> extraList) {
       if (extraList == null) throw new NullPointerException("extraList == null");
       for (Object extra : extraList) {
         addExtra(extra);
@@ -374,10 +374,20 @@ public final class TraceContext extends SamplingFlags {
     }
 
     /**
+     * Allows you to control {@link #extra()} explicitly.
+     *
      * @since 5.12
-     * @see #extra()
      */
-    public final Builder addExtra(Object extra) {
+    public Builder clearExtra() {
+      extraList = Collections.emptyList();
+      return this;
+    }
+
+    /**
+     * @see #extra()
+     * @since 5.12
+     */
+    public Builder addExtra(Object extra) {
       extraList = ensureExtraAdded(extraList, extra);
       return this;
     }
@@ -404,7 +414,7 @@ public final class TraceContext extends SamplingFlags {
      * @return false if the input is null or malformed
      */
     // temporarily package protected until we figure out if this is reusable enough to expose
-    final boolean parseTraceId(String traceIdString, Object key) {
+    boolean parseTraceId(String traceIdString, Object key) {
       if (isNull(key, traceIdString)) return false;
       int length = traceIdString.length();
       if (invalidIdLength(key, length, 32)) return false;
@@ -443,7 +453,7 @@ public final class TraceContext extends SamplingFlags {
     }
 
     /** Parses the parent id from the input string. Returns true if the ID was missing or valid. */
-    final <R, K> boolean parseParentId(Propagation.Getter<R, K> getter, R request, K key) {
+    <R, K> boolean parseParentId(Propagation.Getter<R, K> getter, R request, K key) {
       String parentIdString = getter.get(request, key);
       if (parentIdString == null) return true; // absent parent is ok
       int length = parentIdString.length();
@@ -456,7 +466,7 @@ public final class TraceContext extends SamplingFlags {
     }
 
     /** Parses the span id from the input string. Returns true if the ID is valid. */
-    final <R, K> boolean parseSpanId(Propagation.Getter<R, K> getter, R request, K key) {
+    <R, K> boolean parseSpanId(Propagation.Getter<R, K> getter, R request, K key) {
       String spanIdString = getter.get(request, key);
       if (isNull(key, spanIdString)) return false;
       int length = spanIdString.length();
@@ -504,7 +514,7 @@ public final class TraceContext extends SamplingFlags {
     }
 
     /** @throws IllegalArgumentException if missing trace ID or span ID */
-    public final TraceContext build() {
+    public TraceContext build() {
       String missing = "";
       if (traceIdHigh == 0L && traceId == 0L) missing += " traceId";
       if (spanId == 0L) missing += " spanId";

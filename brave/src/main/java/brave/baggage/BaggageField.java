@@ -14,9 +14,7 @@
 package brave.baggage;
 
 import brave.Tracing;
-import brave.internal.InternalBaggage;
 import brave.internal.Nullable;
-import brave.internal.baggage.BaggageCodec;
 import brave.internal.baggage.BaggageContext;
 import brave.internal.baggage.ExtraBaggageContext;
 import brave.propagation.TraceContext;
@@ -359,15 +357,5 @@ public final class BaggageField {
   @Nullable static TraceContext currentTraceContext() {
     Tracing tracing = Tracing.current();
     return tracing != null ? tracing.currentTraceContext().get() : null;
-  }
-
-  static {
-    InternalBaggage.instance = new InternalBaggage() {
-      @Override
-      public BaggagePropagationConfig newBaggagePropagationConfig(
-          BaggageCodec baggageCodec, int maxDynamicFields) {
-        return new BaggagePropagationConfig(baggageCodec, maxDynamicFields);
-      }
-    };
   }
 }
