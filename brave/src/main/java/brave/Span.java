@@ -126,14 +126,20 @@ public abstract class Span implements SpanCustomizer {
   /** {@inheritDoc} */
   @Override public abstract Span tag(String key, String value);
 
-  /** Adds tags depending on the configured {@link Tracing#errorParser() error parser} */
+  /**
+   * Records an error that impacted this operation.
+   *
+   * <p><em>Note:</em> Calling this does not {@linkplain #finish() finish} the span.
+   *
+   * @since 4.19
+   */
   // Design note: <T extends Throwable> T error(T throwable) is tempting but this doesn't work in
   // multi-catch. In practice, you should always at least catch RuntimeException and Error.
   public abstract Span error(Throwable throwable);
 
   /**
-   * @deprecated Use {@link #remoteServiceName(String)} {@link #remoteIpAndPort(String, int)}. Will
-   * be removed in Brave v6.
+   * @deprecated Since 5.0, use {@link #remoteServiceName(String)} {@link #remoteIpAndPort(String,
+   * int)}.
    */
   @Deprecated public Span remoteEndpoint(Endpoint endpoint) {
     if (endpoint == null) return this;

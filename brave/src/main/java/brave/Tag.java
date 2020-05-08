@@ -112,7 +112,7 @@ public abstract class Tag<I> {
   /**
    * Tags the value parsed from the {@code input}.
    *
-   * @see SpanHandler#handle(TraceContext, MutableSpan)
+   * @see SpanHandler#end(TraceContext, MutableSpan, SpanHandler.Cause)
    * @since 5.11
    */
   public final void tag(I input, @Nullable TraceContext context, MutableSpan span) {

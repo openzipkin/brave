@@ -14,24 +14,12 @@
 package brave;
 
 import brave.handler.MutableSpan;
+import brave.propagation.TraceContext;
 
-/**
- * This is a simplified type used for parsing errors. It only allows annotations or tags.
- *
- * @see Tags#ERROR
- */
-// This implementation works with SpanCustomizer, MutableSpan and ScopedSpan, which don't share a
-// common interface, yet both support tag and annotations.
-public class ErrorParser {
-  static final ErrorParser INSTANCE = new ErrorParser();
-
-  /**
-   * Returns a singleton default instance.
-   *
-   * @since 5.12
-   */
-  public static ErrorParser get() {
-    return INSTANCE;
+/** @deprecated Since 5.12 Use Tags#ERROR or defer to {@link zipkin2.reporter.brave.ZipkinSpanHandler} */
+public class ErrorParser extends Tag<Throwable> {
+  public ErrorParser() {
+    super("error");
   }
 
   /** Adds no tags to the span representing the operation in error. */
@@ -55,15 +43,11 @@ public class ErrorParser {
    * this tags "error" as the message or simple name of the type.
    */
   protected void error(Throwable error, Object span) {
-    tag(span, "error", parse(error));
+    Tags.ERROR.tag(span, error, null);
   }
 
-  /**
-   * Prefers {@link Throwable#getMessage()} over the {@link Class#getSimpleName()}.
-   *
-   * @since 5.12
-   */
-  public static String parse(Throwable error) {
+  /** Prefers {@link Throwable#getMessage()} over the {@link Class#getSimpleName()}. */
+  static String parse(Throwable error) {
     if (error == null) throw new NullPointerException("error == null");
     String message = error.getMessage();
     if (message != null) return message;
@@ -86,6 +70,28 @@ public class ErrorParser {
       ((SpanCustomizer) span).tag(key, message);
     } else if (span instanceof MutableSpan) {
       ((MutableSpan) span).tag(key, message);
+    } else if (span instanceof KeyValueAdapter) {
+      KeyValueAdapter keyValueAdapter = (KeyValueAdapter) span;
+      keyValueAdapter.key = key;
+      keyValueAdapter.value = message;
     }
+  }
+
+  static final class KeyValueAdapter {
+    String key, value;
+  }
+
+  @Override protected final String key(Throwable input) {
+    if (getClass() == ErrorParser.class) return Tags.ERROR.key();
+    KeyValueAdapter kv = new KeyValueAdapter();
+    error(input, kv);
+    return kv.key;
+  }
+
+  @Override protected final String parseValue(Throwable input, TraceContext context) {
+    if (getClass() == ErrorParser.class) return parse(input);
+    KeyValueAdapter kv = new KeyValueAdapter();
+    error(input, kv);
+    return kv.value;
   }
 }

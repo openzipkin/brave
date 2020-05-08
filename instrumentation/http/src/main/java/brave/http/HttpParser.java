@@ -15,34 +15,20 @@ package brave.http;
 
 import brave.ErrorParser;
 import brave.SpanCustomizer;
-import brave.Tracing;
 import brave.internal.Nullable;
 
 import static brave.http.HttpResponseParser.Default.catchAllName;
 
 /** @deprecated Since 5.10, use {@link HttpRequestParser} and {@link HttpResponseParser} */
 @Deprecated public class HttpParser {
-  static final ErrorParser DEFAULT_ERROR_PARSER = ErrorParser.get();
+  static final ErrorParser ERROR_PARSER = new ErrorParser();
 
   /**
-   * Override when making custom types. Typically, you'll use {@link Tracing#errorParser()}
-   *
-   * <pre>{@code
-   * class MyHttpClientParser extends HttpClientParser {
-   *   ErrorParser errorParser;
-   *
-   *   MyHttpClientParser(Tracing tracing) {
-   *     errorParser = tracing.errorParser();
-   *   }
-   *
-   *   protected ErrorParser errorParser() {
-   *     return errorParser;
-   *   }
-   * --snip--
-   * }</pre>
+   * @deprecated This is only used in Zipkin reporting. Since 5.12, use {@link
+   * zipkin2.reporter.brave.ZipkinSpanHandler.Builder#errorParser(ErrorParser)}
    */
   protected ErrorParser errorParser() {
-    return DEFAULT_ERROR_PARSER;
+    return ERROR_PARSER;
   }
 
   /**

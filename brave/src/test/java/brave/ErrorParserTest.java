@@ -22,14 +22,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+@Deprecated
 @RunWith(MockitoJUnitRunner.class)
 public class ErrorParserTest {
   @Mock SpanCustomizer customizer;
   @Mock ScopedSpan scopedSpan;
-  ErrorParser parser = ErrorParser.get();
+  ErrorParser parser = new ErrorParser();
 
   @Test public void error_customizer() {
     parser.error(new RuntimeException("this cake is a lie"), customizer);
+
+    verify(customizer).tag("error", "this cake is a lie");
+  }
+
+  @Test public void error_customizer_asTag() {
+    parser.tag(new RuntimeException("this cake is a lie"), customizer);
 
     verify(customizer).tag("error", "this cake is a lie");
   }
@@ -72,5 +79,23 @@ public class ErrorParserTest {
   @Test public void parse_anonymous_message() {
     assertThat(ErrorParser.parse(new RuntimeException("this cake is a lie") {
     })).isEqualTo("this cake is a lie");
+  }
+
+  ErrorParser subclassErrorParser = new ErrorParser() {
+    @Override protected void error(Throwable error, Object span) {
+      tag(span, "noterror", "the cake is fine");
+    }
+  };
+
+  @Test public void subclass() {
+    subclassErrorParser.error(new RuntimeException("this cake is a lie"), customizer);
+
+    verify(customizer).tag("noterror", "the cake is fine");
+  }
+
+  @Test public void subclass_asTag() {
+    subclassErrorParser.tag(new RuntimeException("this cake is a lie"), customizer);
+
+    verify(customizer).tag("noterror", "the cake is fine");
   }
 }

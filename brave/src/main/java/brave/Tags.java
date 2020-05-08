@@ -25,6 +25,9 @@ public final class Tags {
   /**
    * This tags "error" as the message or simple name of the throwable.
    *
+   * <p><em>Note:</em>Conventionally, Zipkin handlers will not overwrite a tag named "error" if set
+   * directly such as this.
+   *
    * @see Span#error(Throwable)
    * @since 5.11
    */

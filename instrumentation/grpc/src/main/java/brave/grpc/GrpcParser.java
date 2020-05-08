@@ -16,7 +16,6 @@ package brave.grpc;
 import brave.ErrorParser;
 import brave.Span;
 import brave.SpanCustomizer;
-import brave.Tracing;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import brave.rpc.RpcResponse;
@@ -29,6 +28,7 @@ import io.grpc.Status;
 /** @deprecated Since 5.12 use parsers in {@link RpcTracing}. */
 @Deprecated
 public class GrpcParser extends MessageProcessor implements RpcResponseParser {
+  static final ErrorParser ERROR_PARSER = new ErrorParser();
   static final RpcResponseParser LEGACY_RESPONSE_PARSER = new GrpcParser();
 
   @Override
@@ -48,24 +48,11 @@ public class GrpcParser extends MessageProcessor implements RpcResponseParser {
   }
 
   /**
-   * Override when making custom types. Typically, you'll use {@link Tracing#errorParser()}
-   *
-   * <pre>{@code
-   * class MyGrpcParser extends GrpcParser {
-   *   ErrorParser errorParser;
-   *
-   *   MyGrpcParser(Tracing tracing) {
-   *     errorParser = tracing.errorParser();
-   *   }
-   *
-   *   protected ErrorParser errorParser() {
-   *     return errorParser;
-   *   }
-   * --snip--
-   * }</pre>
+   * @deprecated This is only used in Zipkin reporting. Since 5.12, use {@link
+   * zipkin2.reporter.brave.ZipkinSpanHandler.Builder#errorParser(ErrorParser)}
    */
-  protected ErrorParser errorParser() {
-    return ErrorParser.get();
+  @Deprecated protected ErrorParser errorParser() {
+    return ERROR_PARSER;
   }
 
   /** Returns the span name of the request. Defaults to the full grpc method name. */
@@ -87,13 +74,13 @@ public class GrpcParser extends MessageProcessor implements RpcResponseParser {
     if (status.getCause() == null) span.tag("error", code);
   }
 
-  static @Nullable String method(String fullMethodName) {
+  @Nullable static String method(String fullMethodName) {
     int index = fullMethodName.lastIndexOf('/');
     if (index == -1 || index == 0) return null;
     return fullMethodName.substring(index + 1);
   }
 
-  static @Nullable String service(String fullMethodName) {
+  @Nullable static String service(String fullMethodName) {
     int index = fullMethodName.lastIndexOf('/');
     if (index == -1 || index == 0) return null;
     return fullMethodName.substring(0, index);

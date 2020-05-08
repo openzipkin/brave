@@ -81,7 +81,9 @@ public abstract class ScopedSpan implements SpanCustomizer {
   @Override public abstract ScopedSpan annotate(String value);
 
   /**
-   * Adds tags depending on the configured {@link Tracing#errorParser() error parser}   *
+   * Records an error that impacted this operation.
+   *
+   * <p><em>Note:</em> Calling this does not {@linkplain #finish() finish} the span.
    *
    * @since 4.19
    */
