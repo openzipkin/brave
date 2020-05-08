@@ -355,14 +355,13 @@ public class EntrySplitterTest {
     assertThatThrownBy(() -> builder.entrySeparator((char) 0))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("entrySeparator == 0");
-    assertThatThrownBy(() -> builder.keyValueSeparator(';').entrySeparator(';'))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("entrySeparator == keyValueSeparator");
 
     assertThatThrownBy(() -> builder.keyValueSeparator((char) 0))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("keyValueSeparator == 0");
-    assertThatThrownBy(() -> builder.entrySeparator(';').keyValueSeparator(';'))
+
+    builder.keyValueSeparator(';').entrySeparator(';');
+    assertThatThrownBy(builder::build)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("entrySeparator == keyValueSeparator");
   }

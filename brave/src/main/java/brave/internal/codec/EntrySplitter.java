@@ -57,9 +57,6 @@ public final class EntrySplitter {
      */
     public Builder entrySeparator(char entrySeparator) {
       if (entrySeparator == 0) throw new IllegalArgumentException("entrySeparator == 0");
-      if (entrySeparator == keyValueSeparator) {
-        throw new IllegalArgumentException("entrySeparator == keyValueSeparator");
-      }
       this.entrySeparator = entrySeparator;
       return this;
     }
@@ -79,9 +76,6 @@ public final class EntrySplitter {
      */
     public Builder keyValueSeparator(char keyValueSeparator) {
       if (keyValueSeparator == 0) throw new IllegalArgumentException("keyValueSeparator == 0");
-      if (keyValueSeparator == entrySeparator) {
-        throw new IllegalArgumentException("keyValueSeparator == entrySeparator");
-      }
       this.keyValueSeparator = keyValueSeparator;
       return this;
     }
@@ -138,6 +132,9 @@ public final class EntrySplitter {
     }
 
     public EntrySplitter build() {
+      if (entrySeparator == keyValueSeparator) {
+        throw new IllegalArgumentException("entrySeparator == keyValueSeparator");
+      }
       return new EntrySplitter(this);
     }
   }
