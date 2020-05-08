@@ -244,7 +244,7 @@ public final class EntrySplitter {
           // boundary conditions.
           //
           // For example, using entry separator ',' and KV separator '=':
-          // "...,k1" and input[i] == 'y', we want i + 1, so that the key includes the 'y'
+          // "...,k1"  and input[i] == 'y', we want i + 1, so that the key includes the 'y'
           // "...,k1 " and input[i] == ' ', we want i + 1, as the key includes a trailing ' '
           // "...,k1=" and input[i] == '=', we want i, bc a KV separator isn't part of the key
           // "k1 , k2" and input[i] == ',', we want i, bc an entry separator isn't part of the key
