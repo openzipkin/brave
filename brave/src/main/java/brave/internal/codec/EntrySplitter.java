@@ -50,9 +50,8 @@ public final class EntrySplitter {
     }
 
     /**
-     * The separator to use between entries. For example, given a string "k1=v1,k2=v2", the {@code
-     * entrySeparator} should be ','. Given a string "k1=v1;k2=v2" the {@code entrySeparator} should
-     * be ';'. Default: ','
+     * The separator to use between entries. For example, the input "k1=v1,k2=v2", should have
+     * {@code entrySeparator} ','. Default: ','
      *
      * @see #keyValueSeparator(char)
      */
@@ -66,15 +65,15 @@ public final class EntrySplitter {
     }
 
     /**
-     * The separator to use between a key and value. For example, given a string "k1=v1,k2=v2", the
-     * {@code keyValueSeparator} should be '='. Default: '='
+     * The separator to use between a key and value. For example, the input "k1=v1,k2=v2" should
+     * have {@code keyValueSeparator} '='. Default: '='
      *
      * <p><em>Note:</em> Only the first {@code keyValueSeparator} identifies the end of the key
      * until the next {@link #entrySeparator(char)}. This means values can include the {@code
      * keyValueSeparator} character.
      *
-     * <p>For example, the string "condition=animal=cat", with
-     * {@code keyValueSeparator} '=' parses {@code [("condition", "animal=cat7)]}
+     * <p>For example, the input "condition=animal=cat" with {@code keyValueSeparator} '=' parses
+     * {@code [("condition", "animal=cat7")]}
      *
      * @see #keyValueSeparator(char)
      */
@@ -91,7 +90,7 @@ public final class EntrySplitter {
      * When {@code true}, optional whitespace (spaces and tabs aka <a href="https://httpwg.org/specs/rfc7230.html#rfc.section.3.2">OWS</a>)
      * are removed around the {@link #entrySeparator} and string boundaries. Default: {@code true}
      *
-     * <p>For example, given the string "  k1   =   v1  ,  k2   =   v2  ", this trims around the
+     * <p>For example, given the input "  k1   =   v1  ,  k2   =   v2  ", this trims around the
      * "=" character and string boundaries: {@code [("k1   ","   v1"),("k2   ", "   v2")]}.
      *
      * @see #trimOWSAroundKeyValueSeparator(boolean)
@@ -105,7 +104,7 @@ public final class EntrySplitter {
      * When {@code true}, optional whitespace (spaces and tabs aka <a href="https://httpwg.org/specs/rfc7230.html#rfc.section.3.2">OWS</a>)
      * are removed around the {@link #keyValueSeparator(char)}. Default: {@code true}
      *
-     * <p>For example, given the string "  k1   =   v1  ,  k2   =   v2  ", this trims around the
+     * <p>For example, given the input "  k1   =   v1  ,  k2   =   v2  ", this trims around the
      * "=" character and string boundaries: {@code [("  k1", "v1  "),("  k2", "v2  ")]}.
      *
      * @see #trimOWSAroundKeyValueSeparator(boolean)
@@ -225,15 +224,16 @@ public final class EntrySplitter {
       boolean nextIsEnd = i + 1 == endIndex;
       if (c == entrySeparator || nextIsEnd) { // finished an entry
         if (c == keyValueSeparator) {
-          beginValue = i; // empty value: ex "key=" "k1 ="
+          beginValue = i; // key separator at end of the input. ex "key=" or "k1 =", but not "k1"
         }
 
         if (beginKey == -1 && beginValue == -1) {
           continue; // ignore empty entries, like ",,"
         } else if (beginKey == -1) {
           return logOrThrow(missingKey, shouldThrow); // ex. "=" ",="
-        } else if (nextIsEnd && beginValue == -1) { // ex "k1" "k1 " "a=b" "..=,"
+        } else if (nextIsEnd && beginValue == -1) {
           // We reached the end of a key-only entry, a single character entry or an empty entry
+          // at the end of the input. ex "k1" "k1 " "a=b" "..=,"
           beginValue = c == entrySeparator ? i + 1 : i;
         }
 
