@@ -44,11 +44,14 @@ import static brave.kafka.streams.KafkaStreamsTags.KAFKA_STREAMS_FILTERED_TAG;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITKafkaStreamsTracing extends ITKafkaStreams {
+
   @ClassRule
   public static final KafkaJunitRule kafka = new KafkaJunitRule(EphemeralKafkaBroker.create());
 
-  private final Consumed<String, String> stringConsumed = Consumed.with(Serdes.String(), Serdes.String());
-  private final Produced<String, String> stringProduced = Produced.with(Serdes.String(), Serdes.String());
+  private final Consumed<String, String> stringConsumed =
+    Consumed.with(Serdes.String(), Serdes.String());
+  private final Produced<String, String> stringProduced =
+    Produced.with(Serdes.String(), Serdes.String());
   Producer<String, String> producer = createProducer();
   KafkaStreams streams;
 
@@ -61,9 +64,8 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_span_from_stream_input_topic() {
-    Topology topology = givenStream(builder -> builder
-      .foreach((k, v) -> {
-      }));
+    Topology topology = givenStream(builder -> builder.foreach((k, v) -> {
+    }));
 
     recordReceived();
     runStream(topology);
@@ -74,13 +76,12 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_multiple_span_from_stream_input_topic_whenSharingDisabled() {
-    Topology topology = givenStream(builder -> builder
-      .foreach((k, v) -> {
-      })
-    );
+    Topology topology = givenStream(builder -> builder.foreach((k, v) -> {
+    }));
+
     KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.newBuilder(tracing)
-      .singleRootSpanOnReceiveBatch(false)
-      .build();
+                                                .singleRootSpanOnReceiveBatch(false)
+                                                .build();
 
     recordsReceived(3);
     start(kafkaStreamsTracing.kafkaStreams(topology, streamsProperties()));
@@ -93,14 +94,13 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_one_span_from_stream_input_topic_whenSharingEnabled() {
-    Topology topology = givenStream(builder -> builder
-      .foreach((k, v) -> {
-      })
-    );
+    Topology topology = givenStream(builder -> builder.foreach((k, v) -> {
+    }));
+
     MessagingTracing messagingTracing = MessagingTracing.create(tracing);
     KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.newBuilder(messagingTracing)
-      .singleRootSpanOnReceiveBatch(true)
-      .build();
+                                                .singleRootSpanOnReceiveBatch(true)
+                                                .build();
 
     recordsReceived(3);
     start(kafkaStreamsTracing.kafkaStreams(topology, streamsProperties()));
@@ -111,13 +111,13 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_span_from_stream_input_topic_using_kafka_client_supplier() {
-    Topology topology = givenStream(builder -> builder
-      .foreach((k, v) -> {
-      })
-    );
+    Topology topology = givenStream(builder -> builder.foreach((k, v) -> {
+    }));
 
     recordReceived();
-    start(new KafkaStreams(topology, streamsProperties(), kafkaStreamsTracing.kafkaClientSupplier()));
+    start(new KafkaStreams(topology,
+      streamsProperties(),
+      kafkaStreamsTracing.kafkaClientSupplier()));
 
     Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
     hasTag(spanInput, "kafka.topic", inputTopic());
@@ -143,8 +143,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_processor() {
-    Topology topology = givenStream(builder -> builder
-      .process(tracingProcessor()));
+    Topology topology = givenStream(builder -> builder.process(tracingProcessor()));
 
     recordReceived();
     runStream(topology);
@@ -158,10 +157,10 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_filter_predicate_true() {
-    Topology topology = givenStream(builder ->
-      builder
-        .transform(kafkaStreamsTracing.filter("filter-1", (key, value) -> true))
-        .to(outputTopic(), stringProduced));
+    Topology topology =
+      givenStream(builder -> builder.transform(kafkaStreamsTracing.filter("filter-1",
+        (key, value) -> true))
+                               .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -182,10 +181,10 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_filter_predicate_false() {
-    Topology topology = givenStream(builder ->
-      builder
-        .transform(kafkaStreamsTracing.filter("filter-2", (key, value) -> false))
-        .to(outputTopic(), stringProduced));
+    Topology topology =
+      givenStream(builder -> builder.transform(kafkaStreamsTracing.filter("filter-2",
+        (key, value) -> false))
+                               .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -202,20 +201,23 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_spans_and_propagate_extra_from_stream_with_multi_processor() {
-    Topology topology = givenStream(builder ->
-      builder
-        .transformValues(kafkaStreamsTracing.peek("transform1", (o, o2) -> {
-          TraceContext context = currentTraceContext.get();
-          assertThat(BAGGAGE_FIELD.getValue(context)).isEqualTo("user1");
-          BAGGAGE_FIELD.updateValue(context, "user2");
-        }))
-        .transformValues(kafkaStreamsTracing.peek("transform2", (s, s2) -> {
-          TraceContext context = currentTraceContext.get();
-          assertThat(BAGGAGE_FIELD.getValue(context)).isEqualTo("user2");
-        }))
-        .to(outputTopic(), stringProduced));
+    Topology topology =
+      givenStream(builder -> builder
+                               .transformValues(kafkaStreamsTracing.peek("transform1",
+                                 (o, o2) -> {
+                                   TraceContext context = currentTraceContext.get();
+                                   assertThat(BAGGAGE_FIELD.getValue(context)).isEqualTo("user1");
+                                   BAGGAGE_FIELD.updateValue(context, "user2");
+                                 }))
+                               .transformValues(kafkaStreamsTracing.peek("transform2",
+                                 (s, s2) -> {
+                                   TraceContext context = currentTraceContext.get();
+                                   assertThat(BAGGAGE_FIELD.getValue(context)).isEqualTo("user2");
+                                 }))
+                               .to(outputTopic(), stringProduced));
 
-    ProducerRecord<String, String> record = new ProducerRecord<>(inputTopic(), TEST_KEY, TEST_VALUE);
+    ProducerRecord<String, String> record =
+      new ProducerRecord<>(inputTopic(), TEST_KEY, TEST_VALUE);
     record.headers().add(BAGGAGE_FIELD_KEY, "user1".getBytes());
     send(record);
     runStream(topology);
@@ -236,10 +238,10 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_filter_not_predicate_true() {
-    Topology topology = givenStream(builder ->
-      builder
-        .transform(kafkaStreamsTracing.filterNot("filterNot-1", (key, value) -> true))
-        .to(outputTopic(), stringProduced));
+    Topology topology =
+      givenStream(builder -> builder.transform(
+        kafkaStreamsTracing.filterNot("filterNot-1", (key, value) -> true))
+                               .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -256,10 +258,12 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_filter_not_predicate_false() {
-    Topology topology = givenStream(builder ->
-      builder
-        .transform(kafkaStreamsTracing.filterNot("filterNot-2", (key, value) -> false))
-        .to(outputTopic(), stringProduced));
+    Topology topology =
+      givenStream(builder -> builder
+                               .transform(kafkaStreamsTracing.filterNot(
+                                 "filterNot-2",
+                                 (key, value) -> false))
+                               .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -281,9 +285,11 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
   @Test
   public void should_create_spans_from_stream_with_tracing_mark_as_filtered_predicate_true() {
     Topology topology = givenStream(builder -> builder
-      .transformValues(kafkaStreamsTracing.markAsFiltered("filter-1", (key, value) -> true))
-      .filterNot((k, v) -> Objects.isNull(v))
-      .to(outputTopic(), stringProduced));
+                                                 .transformValues(kafkaStreamsTracing.markAsFiltered(
+                                                   "filter-1",
+                                                   (key, value) -> true))
+                                                 .filterNot((k, v) -> Objects.isNull(v))
+                                                 .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -304,11 +310,12 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_mark_as_filtered_predicate_false() {
-    Topology topology = givenStream(builder ->
-      builder
-        .transformValues(kafkaStreamsTracing.markAsFiltered("filter-2", (key, value) -> false))
-        .filterNot((k, v) -> Objects.isNull(v))
-        .to(outputTopic(), stringProduced));
+    Topology topology =
+      givenStream(builder -> builder
+                               .transformValues(kafkaStreamsTracing.markAsFiltered(
+                                 "filter-2", (key, value) -> false))
+                               .filterNot((k, v) -> Objects.isNull(v))
+                               .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -325,11 +332,12 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_mark_as_not_filtered_predicate_true() {
-    Topology topology = givenStream(builder ->
-      builder
-        .transformValues(kafkaStreamsTracing.markAsNotFiltered("filterNot-1", (key, value) -> true))
-        .filterNot((k, v) -> Objects.isNull(v))
-        .to(outputTopic(), stringProduced));
+    Topology topology =
+      givenStream(builder -> builder
+                               .transformValues(kafkaStreamsTracing.markAsNotFiltered(
+                                 "filterNot-1", (key, value) -> true))
+                               .filterNot((k, v) -> Objects.isNull(v))
+                               .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -346,12 +354,13 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_mark_as_not_filtered_predicate_false() {
-    Topology topology = givenStream(builder ->
-      builder
-        .transformValues(
-          kafkaStreamsTracing.markAsNotFiltered("filterNot-2", (key, value) -> false))
-        .filterNot((k, v) -> Objects.isNull(v))
-        .to(outputTopic(), stringProduced));
+    Topology topology =
+      givenStream(builder -> builder
+                               .transformValues(
+                                 kafkaStreamsTracing.markAsNotFiltered(
+                                   "filterNot-2", (key, value) -> false))
+                               .filterNot((k, v) -> Objects.isNull(v))
+                               .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -374,12 +383,16 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
   public void should_create_spans_from_stream_with_tracing_peek() {
     long now = System.currentTimeMillis();
 
-    Topology topology = givenStream(builder -> builder
-      .transformValues(kafkaStreamsTracing.peek("peek-1", (key, value) -> {
-        doSomething();
-        tracing.tracer().currentSpan().annotate(now, "test");
-      }))
-      .to(outputTopic(), stringProduced));
+    Topology topology =
+      givenStream(builder -> builder
+                               .transformValues(kafkaStreamsTracing.peek("peek-1",
+                                 (key, value) -> {
+                                   doSomething();
+                                   tracing.tracer()
+                                     .currentSpan()
+                                     .annotate(now, "test");
+                                 }))
+                               .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -398,10 +411,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_mark() {
-    Topology topology = givenStream(builder ->
-      builder
-        .transformValues(kafkaStreamsTracing.mark("mark-1"))
-        .to(outputTopic(), stringProduced));
+    Topology topology = givenStream(builder -> builder
+                                                 .transformValues(kafkaStreamsTracing.mark("mark-1"))
+                                                 .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -419,11 +431,11 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_foreach() {
-    Topology topology = givenStream(builder ->
-      builder
-        .process(kafkaStreamsTracing.foreach("foreach-1", (key, value) -> {
-          doSomething();
-        })));
+    Topology topology = givenStream(builder -> builder
+                                                 .process(kafkaStreamsTracing.foreach("foreach-1",
+                                                   (key, value) -> {
+                                                     doSomething();
+                                                   })));
 
     recordReceived();
     runStream(topology);
@@ -437,8 +449,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_spans_from_stream_without_tracing_and_tracing_processor() {
-    Topology topology = givenStream(builder -> builder
-      .process(tracingProcessor()));
+    Topology topology = givenStream(builder -> builder.process(tracingProcessor()));
 
     recordReceived();
     runKafkaStreamsWithoutTracing(topology);
@@ -450,8 +461,8 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
   @Test
   public void should_create_spans_from_stream_with_tracing_transformer() {
     Topology topology = givenStream(builder -> builder
-      .transform(tracingTransformer())
-      .to(outputTopic(), stringProduced));
+                                                 .transform(tracingTransformer())
+                                                 .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -472,17 +483,20 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     TransformerSupplier<String, String, KeyValue<String, String>> throwingTransformer =
       kafkaStreamsTracing.transformer(
         "exception-transformer", () ->
-          new TestTransformer<KeyValue<String, String>>() {
-            @Override
-            public KeyValue<String, String> transform(String key, String value) {
-              throw new IllegalArgumentException("illegal-argument");
-            }
-          });
+                                   new TestTransformer<KeyValue<String, String>>() {
+
+                                     @Override
+                                     public KeyValue<String, String> transform(
+                                       String key,
+                                       String value) {
+                                       throw new IllegalArgumentException("illegal-argument");
+                                     }
+                                   });
 
     Topology topology = givenStream(builder ->
-      builder
-        .transform(throwingTransformer)
-        .to(outputTopic(), stringProduced));
+                                      builder
+                                        .transform(throwingTransformer)
+                                        .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -501,18 +515,22 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
       kafkaStreamsTracing.transformer(
         "sneaky-exception-transformer", () ->
-          new TestTransformer<KeyValue<String, String>>() {
-            @Override
-            public KeyValue<String, String> transform(String key, String value) {
-              doThrowUnsafely(new FileNotFoundException("file-not-found"));
-              return KeyValue.pair(key, value);
-            }
-          });
+                                          new TestTransformer<KeyValue<String, String>>() {
+
+                                            @Override
+                                            public KeyValue<String, String> transform(
+                                              String key,
+                                              String value) {
+                                              doThrowUnsafely(new FileNotFoundException(
+                                                "file-not-found"));
+                                              return KeyValue.pair(key, value);
+                                            }
+                                          });
 
     Topology topology = givenStream(builder ->
-      builder
-        .transform(transformerSupplier)
-        .to(outputTopic(), stringProduced));
+                                      builder
+                                        .transform(transformerSupplier)
+                                        .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -531,18 +549,22 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     TransformerSupplier<String, String, Iterable<KeyValue<String, String>>> transformerSupplier =
       kafkaStreamsTracing.transformer(
         "double-transformer-1", () ->
-          new TestTransformer<Iterable<KeyValue<String, String>>>() {
-            @Override
-            public Iterable<KeyValue<String, String>> transform(String key, String value) {
-              doSomething();
-              return Arrays.asList(KeyValue.pair(key, value), KeyValue.pair(key, value));
-            }
-          });
+                                  new TestTransformer<Iterable<KeyValue<String, String>>>() {
+
+                                    @Override
+                                    public Iterable<KeyValue<String, String>> transform(
+                                      String key,
+                                      String value) {
+                                      doSomething();
+                                      return Arrays.asList(KeyValue.pair(key, value),
+                                        KeyValue.pair(key, value));
+                                    }
+                                  });
 
     Topology topology = givenStream(builder ->
-      builder
-        .flatTransform(transformerSupplier)
-        .to(outputTopic(), stringProduced));
+                                      builder
+                                        .flatTransform(transformerSupplier)
+                                        .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -564,10 +586,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_spans_from_stream_without_tracing_with_tracing_transformer() {
-    Topology topology = givenStream(builder ->
-      builder
-        .transform(tracingTransformer())
-        .to(outputTopic(), stringProduced));
+    Topology topology = givenStream(builder -> builder
+                                                 .transform(tracingTransformer())
+                                                 .to(outputTopic(), stringProduced));
 
     recordReceived();
     runKafkaStreamsWithoutTracing(topology);
@@ -578,10 +599,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_valueTransformer() {
-    Topology topology = givenStream(builder ->
-      builder
-        .transformValues(tracingValueTransformer())
-        .to(outputTopic(), stringProduced));
+    Topology topology = givenStream(builder -> builder
+                                                 .transformValues(tracingValueTransformer())
+                                                 .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -599,13 +619,13 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_map() {
-    Topology topology = givenStream(builder ->
-      builder
-        .transform(kafkaStreamsTracing.map("map-1", (key, value) -> {
-          doSomething();
-          return KeyValue.pair(key, value);
-        }))
-        .to(outputTopic(), stringProduced));
+    Topology topology = givenStream(builder -> builder
+                                                 .transform(kafkaStreamsTracing.map("map-1",
+                                                   (key, value) -> {
+                                                     doSomething();
+                                                     return KeyValue.pair(key, value);
+                                                   }))
+                                                 .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -623,13 +643,16 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_flatMap() {
-    Topology topology = givenStream(builder ->
-      builder
-        .flatTransform(kafkaStreamsTracing.flatMap("flat-map-1", (key, value) -> {
-          doSomething();
-          return Arrays.asList(KeyValue.pair(key, value + "-1"), KeyValue.pair(key, value + "-2"));
-        }))
-        .to(outputTopic(), stringProduced));
+    Topology topology = givenStream(builder -> builder
+                                                 .flatTransform(kafkaStreamsTracing.flatMap(
+                                                   "flat-map-1",
+                                                   (key, value) -> {
+                                                     doSomething();
+                                                     return Arrays.asList(KeyValue.pair(key,
+                                                       value + "-1"),
+                                                       KeyValue.pair(key, value + "-2"));
+                                                   }))
+                                                 .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -651,10 +674,11 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_spans_from_stream_with_tracing_mapValues() {
-    Topology topology = givenStream(builder ->
-      builder
-        .transformValues(kafkaStreamsTracing.mapValues("mapValue-1", this::valueMapper))
-        .to(outputTopic(), stringProduced));
+    Topology topology = givenStream(builder -> builder
+                                                 .transformValues(kafkaStreamsTracing.mapValues(
+                                                   "mapValue-1",
+                                                   this::valueMapper))
+                                                 .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -673,10 +697,11 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
   @Test
   public void should_create_spans_from_stream_with_tracing_mapValues_withKey() {
 
-    Topology topology = givenStream(builder ->
-      builder
-        .transformValues(kafkaStreamsTracing.mapValues("mapValue-1", (key, value) -> valueMapper(value)))
-        .to(outputTopic(), stringProduced));
+    Topology topology = givenStream(builder -> builder
+                                                 .transformValues(kafkaStreamsTracing.mapValues(
+                                                   "mapValue-1",
+                                                   (key, value) -> valueMapper(value)))
+                                                 .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -696,10 +721,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
   @Test
   public void should_create_spans_from_stream_without_tracing_with_tracing_valueTransformer() {
 
-    Topology topology = givenStream(builder ->
-      builder
-        .transformValues(tracingValueTransformer())
-        .to(outputTopic(), stringProduced));
+    Topology topology = givenStream(builder -> builder
+                                                 .transformValues(tracingValueTransformer())
+                                                 .to(outputTopic(), stringProduced));
 
     recordReceived();
     runKafkaStreamsWithoutTracing(topology);
@@ -712,10 +736,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
   @Test
   public void should_create_spans_from_stream_with_tracing_valueTransformerWithKey() {
 
-    Topology topology = givenStream(builder ->
-      builder
-        .transformValues(someValueWithKeyTransformer())
-        .to(outputTopic(), stringProduced));
+    Topology topology = givenStream(builder -> builder
+                                                 .transformValues(someValueWithKeyTransformer())
+                                                 .to(outputTopic(), stringProduced));
 
     recordReceived();
     runStream(topology);
@@ -733,10 +756,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   @Test
   public void should_create_spans_from_stream_without_tracing_with_tracing_valueTransformerWithKey() {
-    Topology topology = givenStream(builder ->
-      builder
-        .transformValues(someValueWithKeyTransformer())
-        .to(outputTopic(), stringProduced));
+    Topology topology = givenStream(builder -> builder
+                                                 .transformValues(someValueWithKeyTransformer())
+                                                 .to(outputTopic(), stringProduced));
 
     recordReceived();
     runKafkaStreamsWithoutTracing(topology);
@@ -748,17 +770,19 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
   private TransformerSupplier<String, String, KeyValue<String, String>> tracingTransformer() {
     return kafkaStreamsTracing.transformer(
       "transformer-1", () ->
-        new TestTransformer<KeyValue<String, String>>() {
-          @Override
-          public KeyValue<String, String> transform(String key, String value) {
-            doSomething();
-            return KeyValue.pair(key, value);
-          }
-        });
+                         new TestTransformer<KeyValue<String, String>>() {
+
+                           @Override
+                           public KeyValue<String, String> transform(String key, String value) {
+                             doSomething();
+                             return KeyValue.pair(key, value);
+                           }
+                         });
   }
 
   private ValueTransformerWithKeySupplier<String, String, String> someValueWithKeyTransformer() {
-    return kafkaStreamsTracing.valueTransformerWithKey("transformer-1", this::valueTransformerWithKey);
+    return kafkaStreamsTracing.valueTransformerWithKey("transformer-1",
+      this::valueTransformerWithKey);
   }
   // Armeria Black Magic copied from
   // https://github.com/line/armeria/blob/master/core/src/main/java/com/linecorp/armeria/common/util/Exceptions.java#L197
@@ -770,8 +794,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   private Topology givenStream(java.util.function.Consumer<KStream<String, String>> configurer) {
     StreamsBuilder streamsBuilder = new StreamsBuilder();
-    KStream<String, String> stream = streamsBuilder
-      .stream(inputTopic(), stringConsumed);
+    KStream<String, String> stream = streamsBuilder.stream(inputTopic(), stringConsumed);
     configurer.accept(stream);
     return streamsBuilder.build();
   }
@@ -816,16 +839,19 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
   }
 
   private ProcessorSupplier<String, String> tracingProcessor() {
-    return kafkaStreamsTracing.processor("forward-1", () -> new AbstractProcessor<String, String>() {
-      @Override
-      public void process(String key, String value) {
-        doSomething();
-      }
-    });
+    return kafkaStreamsTracing.processor("forward-1",
+      () -> new AbstractProcessor<String, String>() {
+
+        @Override
+        public void process(String key, String value) {
+          doSomething();
+        }
+      });
   }
 
   private ValueTransformerWithKey<String, String, String> valueTransformerWithKey() {
     return new ValueTransformerWithKey<String, String, String>() {
+
       ProcessorContext context;
 
       @Override
@@ -855,6 +881,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   private ValueTransformer<String, String> valueTransformer() {
     return new ValueTransformer<String, String>() {
+
       ProcessorContext context;
 
       @Override
@@ -904,7 +931,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
   Consumer<String, String> createTracingConsumer(String... topics) {
     if (topics.length == 0) {
-      topics = new String[]{testName.getMethodName()};
+      topics = new String[] {testName.getMethodName()};
     }
     KafkaConsumer<String, String> consumer = kafka.helper().createStringConsumer();
     List<TopicPartition> assignments = new ArrayList<>();
