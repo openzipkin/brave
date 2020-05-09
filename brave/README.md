@@ -622,7 +622,7 @@ public boolean end(TraceContext context, MutableSpan span, Cause cause) {
 Some data formats desire knowing how many spans a parent created. Below is an
 example of how to do that, using [WeakConcurrentMap](https://github.com/raphw/weak-lock-free).
 
-```
+```java
 static final class TagChildCountDirect extends SpanHandler {
 --snip--
   public boolean begin(TraceContext context, MutableSpan span, @Nullable TraceContext parent) {
