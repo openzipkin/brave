@@ -22,7 +22,7 @@ import org.junit.After;
 /** Starts a jetty server which runs a servlet container */
 public abstract class ITServletContainer extends ITHttpServer {
   public static final UnavailableException NOT_READY_UE =
-    new UnavailableException("not ready", 1 /* temporary implies 503 */) {
+    new UnavailableException(NOT_READY_ISE.getMessage(), 1 /* temporary implies 503 */) {
       @Override public Throwable fillInStackTrace() {
         return this; // don't fill logs as we are only testing
       }

@@ -36,6 +36,7 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.servlet.UnavailableException;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -447,9 +448,11 @@ public abstract class ITHttpServer extends ITRemote {
   }
 
   /**
-   * Throw {@link ITHttpServer#NOT_READY_ISE} inside your controller unless you cannot control the
-   * HTTP status code. When this is the case, you may be able to use a wrapped exception such as
-   * {@link ITServletContainer#NOT_READY_UE} instead.
+   * Throw {@link ITHttpServer#NOT_READY_ISE} inside your controller after setting the status code
+   * {code 503}.
+   *
+   * <p><em>Note</em>: Don't throw {@link UnavailableException} as Jetty ignores the exception
+   * message!
    */
   @Test public void httpStatusCodeTagMatchesResponse_onException() throws IOException {
     httpStatusCodeTagMatchesResponse("/exception", ".+");
@@ -459,13 +462,32 @@ public abstract class ITHttpServer extends ITRemote {
     httpStatusCodeTagMatchesResponse("/exceptionAsync", ".+");
   }
 
-  Span httpStatusCodeTagMatchesResponse(String path, String message) throws IOException {
+  /**
+   * This tests that the actual code is {@code 503}, not {@code 500} on exception.
+   *
+   * <p>Usually, frameworks have an exception wrapper which allow you to control the status code.
+   * Other times, you have to set the status before raising the exception.
+   *
+   * <p><em>Note</em>: Some frameworks cannot control the status code upon unhandled error in a
+   * controller at all. If this is the case, just override and ignore this test.
+   */
+  @Test public void httpStatusCodeSettable_onUncaughtException() throws IOException {
+    assertThat(httpStatusCodeTagMatchesResponse("/exception", ".+").code())
+        .isEqualTo(503);
+  }
+
+  @Test public void httpStatusCodeSettable_onUncaughtException_async() throws IOException {
+    assertThat(httpStatusCodeTagMatchesResponse("/exceptionAsync", ".+").code())
+        .isEqualTo(503);
+  }
+
+  Response httpStatusCodeTagMatchesResponse(String path, String message) throws IOException {
     Response response = get(path);
 
     Span span = reporter.takeRemoteSpanWithError(Span.Kind.SERVER, message);
     assertThat(span.tags())
       .containsEntry("http.status_code", String.valueOf(response.code()));
-    return span;
+    return response;
   }
 
   @Test public void errorTag_exceptionOverridesHttpStatus() throws IOException {
