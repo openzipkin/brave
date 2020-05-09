@@ -356,7 +356,7 @@ public abstract class Tracing implements Closeable {
 
     /**
      * When true, all spans become real spans even if they aren't sampled remotely. This allows
-     * finished span handlers (such as metrics) to consider attributes that are not always visible
+     * span handlers (such as metrics) to consider attributes that are not always visible
      * before-the-fact, such as http paths. Defaults to false and affects {@link
      * TraceContext#sampledLocal()}.
      *
@@ -443,7 +443,7 @@ public abstract class Tracing implements Closeable {
       MutableSpan defaultSpan = new MutableSpan(builder.defaultSpan); // safe copy
 
       Set<SpanHandler> spanHandlers = new LinkedHashSet<>(builder.spanHandlers);
-      // When present, the Zipkin handler is invoked after the user-supplied finished span handlers.
+      // When present, the Zipkin handler is invoked after the user-supplied span handlers.
       if (builder.zipkinSpanReporter != null) {
         spanHandlers.add(
             ZipkinSpanHandler.newBuilder((Reporter<zipkin2.Span>) builder.zipkinSpanReporter)

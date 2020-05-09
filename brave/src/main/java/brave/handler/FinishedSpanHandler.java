@@ -58,8 +58,8 @@ import brave.propagation.TraceContext;
   /**
    * @since 5.4
    * @deprecated Since 5.12, set {@link Tracing.Builder#alwaysSampleLocal()}. Tip: the same {@link
-   * TracingCustomizer} that {@linkplain Tracing.Builder#addFinishedSpanHandler(FinishedSpanHandler)
-   * adds this handler} can also also set {@link Tracing.Builder#alwaysSampleLocal()}.
+   * TracingCustomizer} that {@linkplain Tracing.Builder#addSpanHandler(SpanHandler) adds this
+   * handler} can also also set {@link Tracing.Builder#alwaysSampleLocal()}.
    */
   @Deprecated public boolean alwaysSampleLocal() {
     return false;

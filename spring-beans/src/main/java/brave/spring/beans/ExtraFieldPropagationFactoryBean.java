@@ -18,17 +18,24 @@ import brave.propagation.ExtraFieldCustomizer;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import java.util.List;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.FactoryBean;
 
-/** @deprecated Since 5.11 use {@link BaggageFieldFactoryBean} */
+/** @deprecated Since 5.11 use {@link BaggagePropagationFactoryBean} */
 @Deprecated public class ExtraFieldPropagationFactoryBean implements FactoryBean {
+  // Spring uses commons logging
+  static final Log logger = LogFactory.getLog(ExtraFieldPropagationFactoryBean.class);
+
   Propagation.Factory propagationFactory = B3Propagation.FACTORY;
   List<String> fields;
   List<ExtraFieldCustomizer> customizers;
 
   @Override public Propagation.Factory getObject() {
+    logger.warn("The factory '" + getClass().getName() + "' will be removed in a future release.\n"
+        + "Use '" + BaggagePropagationFactoryBean.class.getName() + "' instead");
     ExtraFieldPropagation.FactoryBuilder builder =
-      ExtraFieldPropagation.newFactoryBuilder(propagationFactory);
+        ExtraFieldPropagation.newFactoryBuilder(propagationFactory);
     if (fields != null) {
       for (String field : fields) builder.addField(field);
     }
