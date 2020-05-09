@@ -89,7 +89,7 @@ public class MutableSpanTest {
     // When exporting into a list, a lambda would usually need to close over the list, which results
     // in a new instance per invocation. Since there's a target type parameter, the lambda for this
     // style of conversion can be constant, reducing overhead.
-    List<Tag> listTarget = new ArrayList<>(span.tags().size());
+    List<Tag> listTarget = new ArrayList<>(span.tagCount());
     span.forEachTag((target, key, value) -> target.add(new Tag(key, value)), listTarget);
 
     assertThat(listTarget).containsExactly(
@@ -126,19 +126,45 @@ public class MutableSpanTest {
     );
   }
 
+  @Test public void annotations_copyOnWrite() {
+    MutableSpan span = new MutableSpan();
+    span.annotate(1L, "ws");
+
+    MutableSpan span2 = new MutableSpan(span);
+    assertThat(span2.annotations).isSameAs(span.annotations);
+
+    span.annotate(2L, "wr");
+    assertThat(span2.annotations).isNotSameAs(span.annotations);
+
+    assertThat(span.annotations()).containsExactly(
+        entry(1L, "ws"),
+        entry(2L, "wr")
+    );
+    assertThat(span2.annotations()).containsExactly(
+        entry(1L, "ws")
+    );
+  }
+
   @Test public void annotations() {
     MutableSpan span = new MutableSpan();
+    assertThat(span.annotationCount()).isZero();
     assertThat(span.annotations()).isEmpty();
+
     span.annotate(1L, "1");
+    assertThat(span.annotationCount()).isOne();
     assertThat(span.annotations()).containsExactly(
         entry(1L, "1")
     );
+
     span.annotate(2L, "2");
+    assertThat(span.annotationCount()).isEqualTo(2);
     assertThat(span.annotations()).containsExactly(
         entry(1L, "1"),
         entry(2L, "2")
     );
+
     span.forEachAnnotation((t, v) -> v.equals("1") ? v : null);
+    assertThat(span.annotationCount()).isOne();
     assertThat(span.annotations()).containsExactly(
         entry(1L, "1")
     );
@@ -161,7 +187,7 @@ public class MutableSpanTest {
     span.forEachAnnotation((target, timestamp, value) -> {
       LogRecord record = new LogRecord(Level.FINE, value);
       record.setParameters(
-          new Object[] {context.traceIdString(), context.spanIdString()});
+        new Object[] {context.traceIdString(), context.spanIdString()});
       record.setMillis(timestamp / 1000L);
       target.log(record);
     }, logger);
@@ -543,19 +569,45 @@ public class MutableSpanTest {
       .isEqualTo(new MutableSpan(context, null));
   }
 
-  @Test public void tags() {
+  @Test public void tags_copyOnWrite() {
     MutableSpan span = new MutableSpan();
-    assertThat(span.tags()).isEmpty();
     span.tag("http.method", "GET");
-    assertThat(span.tags()).containsExactly(
-        entry("http.method", "GET")
-    );
+
+    MutableSpan span2 = new MutableSpan(span);
+    assertThat(span2.tags).isSameAs(span.tags);
+
     span.tag("error", "500");
+    assertThat(span2.tags).isNotSameAs(span.tags);
+
     assertThat(span.tags()).containsExactly(
         entry("http.method", "GET"),
         entry("error", "500")
     );
+    assertThat(span2.tags()).containsExactly(
+        entry("http.method", "GET")
+    );
+  }
+
+  @Test public void tags() {
+    MutableSpan span = new MutableSpan();
+    assertThat(span.tagCount()).isZero();
+    assertThat(span.tags()).isEmpty();
+
+    span.tag("http.method", "GET");
+    assertThat(span.tagCount()).isOne();
+    assertThat(span.tags()).containsExactly(
+        entry("http.method", "GET")
+    );
+
+    span.tag("error", "500");
+    assertThat(span.tagCount()).isEqualTo(2);
+    assertThat(span.tags()).containsExactly(
+        entry("http.method", "GET"),
+        entry("error", "500")
+    );
+
     span.forEachTag((t, v) -> v.equals("GET") ? v : null);
+    assertThat(span.tagCount()).isOne();
     assertThat(span.tags()).containsExactly(
         entry("http.method", "GET")
     );

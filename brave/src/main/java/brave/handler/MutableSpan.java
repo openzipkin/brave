@@ -117,7 +117,7 @@ public final class MutableSpan implements Cloneable {
   /** @since 5.12 */
   public MutableSpan(MutableSpan toCopy) {
     if (toCopy == null) throw new NullPointerException("toCopy == null");
-    if (toCopy == EMPTY) return;
+    if (toCopy.equals(EMPTY)) return;
     traceId = toCopy.traceId;
     localRootId = toCopy.localRootId;
     parentId = toCopy.parentId;
@@ -491,6 +491,11 @@ public final class MutableSpan implements Cloneable {
     flags |= FLAG_SHARED;
   }
 
+  /** @since 5.12 */
+  public int annotationCount() {
+    return annotations.length / 2;
+  }
+
   /**
    * A read-only view of the current annotations as a collection of {@code (epochMicroseconds ->
    * value)}.
@@ -584,6 +589,11 @@ public final class MutableSpan implements Cloneable {
     if (timestamp == 0L) return; // silently ignore data Zipkin would drop
     // Annotations are always add. copy-on-write means we can share initial data until a write
     annotations = add(annotations, timestamp, value);
+  }
+
+  /** @since 5.12 */
+  public int tagCount() {
+    return tags.length / 2;
   }
 
   /**
