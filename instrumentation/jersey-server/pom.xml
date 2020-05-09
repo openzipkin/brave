@@ -69,12 +69,19 @@
       <version>${jersey.version}</version>
       <scope>test</scope>
     </dependency>
+    <!-- Avoid InjectionManagerFactory not found -->
+    <dependency>
+      <groupId>org.glassfish.jersey.inject</groupId>
+      <artifactId>jersey-hk2</artifactId>
+      <version>${jersey.version}</version>
+      <scope>test</scope>
+    </dependency>
 
     <!-- to test the inject annotations -->
     <dependency>
       <groupId>com.google.inject</groupId>
       <artifactId>guice</artifactId>
-      <version>4.2.2</version>
+      <version>4.2.3</version>
       <scope>test</scope>
     </dependency>
 

@@ -26,6 +26,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import okhttp3.Response;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.AfterClass;
@@ -107,10 +108,11 @@ public abstract class ITServlet3Container extends ITServlet25Container {
   }
 
   @Test public void errorTag_onException_asyncTimeout() throws Exception {
-    Span span = httpStatusCodeTagMatchesResponse("/exceptionAsyncTimeout", "Timed out after 1ms");
+    Response response =
+        httpStatusCodeTagMatchesResponse("/exceptionAsyncTimeout", "Timed out after 1ms");
 
-    assertThat(span.tags())
-      .containsEntry("http.status_code", "500"); // TODO: why is this not 504?
+    assertThat(response.code())
+        .isEqualTo(500); // TODO: why is this not 504?
   }
 
   static class TimeoutExceptionAsyncServlet extends HttpServlet {

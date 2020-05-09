@@ -24,7 +24,6 @@ import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
-import javax.servlet.UnavailableException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -76,13 +75,10 @@ public abstract class ITServlet25Container extends ITServletContainer {
   }
 
   static class ExceptionServlet extends HttpServlet {
-    @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp)
-      throws UnavailableException {
+    @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
       // Change the status from 500 to 503
       req.setAttribute(RequestDispatcher.ERROR_STATUS_CODE, 503);
-      // TODO: org.eclipse.jetty.server.HttpChannelState.onError() clobbers ^^ and hard-codes
-      // status based on servlet types.
-      throw NOT_READY_UE;
+      throw NOT_READY_ISE;
     }
   }
 

@@ -24,6 +24,7 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.bio.SocketConnector;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.junit.Ignore;
 
 public class ITTracingFilter extends ITServlet25Container {
   public ITTracingFilter() {
@@ -52,5 +53,9 @@ public class ITTracingFilter extends ITServlet25Container {
 
   @Override protected void addFilter(ServletContextHandler handler, Filter filter) {
     handler.addFilter(new FilterHolder(filter), "/*", EnumSet.allOf(DispatcherType.class));
+  }
+
+  @Ignore("We can't set the error code for an uncaught exception with jetty-servlet")
+  @Override public void httpStatusCodeSettable_onUncaughtException() {
   }
 }

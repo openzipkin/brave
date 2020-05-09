@@ -45,4 +45,8 @@ public class ITTracingFilter extends ITServletContainer {
   @Override @Ignore("TODO: make a spark.ExceptionMapper that adds the \"error\" request property")
   public void spanHandlerSeesException() {
   }
+
+  @Ignore("We can't set the error code for an uncaught exception with jetty-servlet")
+  @Override public void httpStatusCodeSettable_onUncaughtException() {
+  }
 }
