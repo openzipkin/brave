@@ -17,9 +17,7 @@ import brave.Span;
 import brave.internal.InternalPropagation;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -42,8 +40,8 @@ public class MutableSpanTest {
   static final Pattern CREDIT_CARD = Pattern.compile("[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{4}");
 
   /**
-   * This shows an edge case of someone implementing a {@link SpanHandler} whose intent is
-   * only handle orphans.
+   * This shows an edge case of someone implementing a {@link SpanHandler} whose intent is only
+   * handle orphans.
    */
   @Test public void hasAnnotation_usageExplained() {
     class AbandonCounter extends SpanHandler {
@@ -91,7 +89,7 @@ public class MutableSpanTest {
     // When exporting into a list, a lambda would usually need to close over the list, which results
     // in a new instance per invocation. Since there's a target type parameter, the lambda for this
     // style of conversion can be constant, reducing overhead.
-    List<Tag> listTarget = new ArrayList<>(span.tagCount());
+    List<Tag> listTarget = new ArrayList<>(span.tags().size());
     span.forEachTag((target, key, value) -> target.add(new Tag(key, value)), listTarget);
 
     assertThat(listTarget).containsExactly(
@@ -121,22 +119,29 @@ public class MutableSpanTest {
       return value;
     });
 
-    assertThat(tagsToMap(span)).containsExactly(
+    assertThat(span.tags()).containsExactly(
       entry("a", "1"),
       entry("cc-suffix", "cc=xxxx-xxxx-xxxx-xxxx"),
       entry("c", "3")
     );
   }
 
-  @Test public void annotationCount() {
+  @Test public void annotations() {
     MutableSpan span = new MutableSpan();
-    assertThat(span.annotationCount()).isZero();
+    assertThat(span.annotations()).isEmpty();
     span.annotate(1L, "1");
-    assertThat(span.annotationCount()).isEqualTo(1);
+    assertThat(span.annotations()).containsExactly(
+        entry(1L, "1")
+    );
     span.annotate(2L, "2");
-    assertThat(span.annotationCount()).isEqualTo(2);
+    assertThat(span.annotations()).containsExactly(
+        entry(1L, "1"),
+        entry(2L, "2")
+    );
     span.forEachAnnotation((t, v) -> v.equals("1") ? v : null);
-    assertThat(span.annotationCount()).isEqualTo(1);
+    assertThat(span.annotations()).containsExactly(
+        entry(1L, "1")
+    );
   }
 
   /** See {@link #forEachTag_consumer_usageExplained()} */
@@ -156,7 +161,7 @@ public class MutableSpanTest {
     span.forEachAnnotation((target, timestamp, value) -> {
       LogRecord record = new LogRecord(Level.FINE, value);
       record.setParameters(
-        new Object[] {context.traceIdString(), context.spanIdString()});
+          new Object[] {context.traceIdString(), context.spanIdString()});
       record.setMillis(timestamp / 1000L);
       target.log(record);
     }, logger);
@@ -182,7 +187,7 @@ public class MutableSpanTest {
       return value;
     });
 
-    assertThat(annotationsToList(span)).containsExactly(
+    assertThat(span.annotations()).containsExactly(
       entry(1L, "1"),
       entry(2L, "cc=xxxx-xxxx-xxxx-xxxx"),
       entry(3L, "3")
@@ -538,15 +543,22 @@ public class MutableSpanTest {
       .isEqualTo(new MutableSpan(context, null));
   }
 
-  @Test public void tagCount() {
+  @Test public void tags() {
     MutableSpan span = new MutableSpan();
-    assertThat(span.tagCount()).isZero();
+    assertThat(span.tags()).isEmpty();
     span.tag("http.method", "GET");
-    assertThat(span.tagCount()).isEqualTo(1);
+    assertThat(span.tags()).containsExactly(
+        entry("http.method", "GET")
+    );
     span.tag("error", "500");
-    assertThat(span.tagCount()).isEqualTo(2);
+    assertThat(span.tags()).containsExactly(
+        entry("http.method", "GET"),
+        entry("error", "500")
+    );
     span.forEachTag((t, v) -> v.equals("GET") ? v : null);
-    assertThat(span.tagCount()).isEqualTo(1);
+    assertThat(span.tags()).containsExactly(
+        entry("http.method", "GET")
+    );
   }
 
   @Test public void accessorScansTags() {
@@ -597,15 +609,15 @@ public class MutableSpanTest {
       + "}");
   }
 
-  static Map<String, String> tagsToMap(MutableSpan span) {
-    Map<String, String> map = new LinkedHashMap<>();
-    span.forEachTag(Map::put, map);
-    return map;
-  }
+  @Test public void remove() {
+    Object[] input = {1, 2, 3, 4, 5, 6};
 
-  static List<Map.Entry<Long, String>> annotationsToList(MutableSpan span) {
-    List<Map.Entry<Long, String>> listTarget = new ArrayList<>();
-    span.forEachAnnotation((target, key, value) -> target.add(entry(key, value)), listTarget);
-    return listTarget;
+    // internally, remove is never called on odd number, or at or after array length
+    assertThat(MutableSpan.remove(input, 0))
+        .containsExactly(3, 4, 5, 6);
+    assertThat(MutableSpan.remove(input, 2))
+        .containsExactly(1, 2, 5, 6);
+    assertThat(MutableSpan.remove(input, 4))
+        .containsExactly(1, 2, 3, 4);
   }
 }
