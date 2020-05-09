@@ -130,12 +130,13 @@ public class MutableSpanTest {
     MutableSpan span = new MutableSpan();
     span.annotate(1L, "ws");
 
+    // this shows the copy-constructor copies internal arrays.
     MutableSpan span2 = new MutableSpan(span);
-    assertThat(span2.annotations).isSameAs(span.annotations);
+    assertThat(span2.annotations)
+        .isNotSameAs(span.annotations)
+        .isEqualTo(span.annotations);
 
     span.annotate(2L, "wr");
-    assertThat(span2.annotations).isNotSameAs(span.annotations);
-
     assertThat(span.annotations()).containsExactly(
         entry(1L, "ws"),
         entry(2L, "wr")
@@ -569,16 +570,17 @@ public class MutableSpanTest {
       .isEqualTo(new MutableSpan(context, null));
   }
 
-  @Test public void tags_copyOnWrite() {
+  @Test public void tags_copyConstructor() {
     MutableSpan span = new MutableSpan();
     span.tag("http.method", "GET");
 
+    // this shows the copy-constructor copies internal arrays.
     MutableSpan span2 = new MutableSpan(span);
-    assertThat(span2.tags).isSameAs(span.tags);
+    assertThat(span2.tags)
+        .isNotSameAs(span.tags)
+        .isEqualTo(span.tags);
 
     span.tag("error", "500");
-    assertThat(span2.tags).isNotSameAs(span.tags);
-
     assertThat(span.tags()).containsExactly(
         entry("http.method", "GET"),
         entry("error", "500")
@@ -633,7 +635,7 @@ public class MutableSpanTest {
         .doesNotContain(":0");
     }
 
-    // now, test something more interesting zipkin2.TestObjects.CLIENT_SPAN
+    // now, test something more interesting .TestObjects.CLIENT_SPAN
     MutableSpan span = new MutableSpan();
     span.traceId("1");
     span.localRootId("2"); // not in zipkin format
