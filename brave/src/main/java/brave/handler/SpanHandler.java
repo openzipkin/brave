@@ -157,6 +157,8 @@ public abstract class SpanHandler {
   /**
    * Called when data collection complete.
    *
+   * <p><em>Note</em>: {@link Cause#ORPHANED} means the data is not intended to be recorded!
+   *
    * @param context same instance as passed to {@link #begin}
    * @param span same instance as passed to {@link #begin}
    * @param cause why the data collection stopped.

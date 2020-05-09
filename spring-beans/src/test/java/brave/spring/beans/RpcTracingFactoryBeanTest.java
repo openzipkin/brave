@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,6 +14,8 @@
 package brave.spring.beans;
 
 import brave.Tracing;
+import brave.rpc.RpcRequestParser;
+import brave.rpc.RpcResponseParser;
 import brave.rpc.RpcTracing;
 import brave.rpc.RpcTracingCustomizer;
 import brave.sampler.SamplerFunctions;
@@ -28,6 +30,8 @@ import static org.mockito.Mockito.verify;
 public class RpcTracingFactoryBeanTest {
 
   public static Tracing TRACING = mock(Tracing.class);
+  public static RpcRequestParser REQUEST_PARSER = mock(RpcRequestParser.class);
+  public static RpcResponseParser RESPONSE_PARSER = mock(RpcResponseParser.class);
 
   XmlBeans context;
 
@@ -47,6 +51,74 @@ public class RpcTracingFactoryBeanTest {
     assertThat(context.getBean("rpcTracing", RpcTracing.class))
       .extracting("tracing")
       .isEqualTo(TRACING);
+  }
+
+  @Test public void clientRequestParser() {
+    context = new XmlBeans(""
+        + "<bean id=\"httpTracing\" class=\"brave.spring.beans.RpcTracingFactoryBean\">\n"
+        + "  <property name=\"tracing\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".TRACING\"/>\n"
+        + "  </property>\n"
+        + "  <property name=\"clientRequestParser\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".REQUEST_PARSER\"/>\n"
+        + "  </property>\n"
+        + "</bean>"
+    );
+
+    assertThat(context.getBean("httpTracing", RpcTracing.class))
+        .extracting("clientRequestParser")
+        .isEqualTo(REQUEST_PARSER);
+  }
+
+  @Test public void clientResponseParser() {
+    context = new XmlBeans(""
+        + "<bean id=\"httpTracing\" class=\"brave.spring.beans.RpcTracingFactoryBean\">\n"
+        + "  <property name=\"tracing\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".TRACING\"/>\n"
+        + "  </property>\n"
+        + "  <property name=\"clientResponseParser\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".RESPONSE_PARSER\"/>\n"
+        + "  </property>\n"
+        + "</bean>"
+    );
+
+    assertThat(context.getBean("httpTracing", RpcTracing.class))
+        .extracting("clientResponseParser")
+        .isEqualTo(RESPONSE_PARSER);
+  }
+
+  @Test public void serverRequestParser() {
+    context = new XmlBeans(""
+        + "<bean id=\"httpTracing\" class=\"brave.spring.beans.RpcTracingFactoryBean\">\n"
+        + "  <property name=\"tracing\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".TRACING\"/>\n"
+        + "  </property>\n"
+        + "  <property name=\"serverRequestParser\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".REQUEST_PARSER\"/>\n"
+        + "  </property>\n"
+        + "</bean>"
+    );
+
+    assertThat(context.getBean("httpTracing", RpcTracing.class))
+        .extracting("serverRequestParser")
+        .isEqualTo(REQUEST_PARSER);
+  }
+
+  @Test public void serverResponseParser() {
+    context = new XmlBeans(""
+        + "<bean id=\"httpTracing\" class=\"brave.spring.beans.RpcTracingFactoryBean\">\n"
+        + "  <property name=\"tracing\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".TRACING\"/>\n"
+        + "  </property>\n"
+        + "  <property name=\"serverResponseParser\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".RESPONSE_PARSER\"/>\n"
+        + "  </property>\n"
+        + "</bean>"
+    );
+
+    assertThat(context.getBean("httpTracing", RpcTracing.class))
+        .extracting("serverResponseParser")
+        .isEqualTo(RESPONSE_PARSER);
   }
 
   @Test public void clientSampler() {

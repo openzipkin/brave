@@ -39,7 +39,11 @@ Here are some example beans using the factories in this module:
   <!-- Controls aspects of tracing such as the service name that shows up in the UI -->
   <bean id="tracing" class="brave.spring.beans.TracingFactoryBean">
     <property name="localServiceName" value="brave-webmvc-example"/>
-    <property name="spanReporter" ref="spanReporter"/>
+    <property name="spanHandlers">
+      <bean class="zipkin2.reporter.beans.ZipkinSpanHandlerFactoryBean">
+        <property name="spanReporter" ref="spanReporter"/>
+      </bean>
+    </property>
     <property name="currentTraceContext">
       <bean class="brave.spring.beans.CurrentTraceContextFactoryBean">
         <property name="scopeDecorators" ref="correlationScopeDecorator"/>

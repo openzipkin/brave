@@ -47,6 +47,7 @@ import brave.rpc.RpcTracing;
 import brave.rpc.RpcRuleSampler;
 import org.apache.dubbo.common.extension.ExtensionFactory;
 import zipkin2.reporter.AsyncReporter;
+import zipkin2.reporter.brave.ZipkinSpanHandler;
 import zipkin2.Span;
 
 import static brave.rpc.RpcRequestMatchers.methodEquals;
@@ -71,7 +72,7 @@ public class TracingExtensionFactory implements ExtensionFactory {
   Tracing tracing() {
     return Tracing.newBuilder()
                   .localServiceName("my-service")
-                  .spanReporter(spanReporter())
+                  .addSpanHandler(ZipkinSpanHandler.create(spanReporter()))
                   .build();
   }
 

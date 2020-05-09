@@ -13,11 +13,11 @@
  */
 package brave.handler;
 
-import brave.ErrorParser;
 import brave.Span.Kind;
 import brave.SpanCustomizer;
-import brave.internal.codec.IpLiteral;
+import brave.Tags;
 import brave.internal.Nullable;
+import brave.internal.codec.IpLiteral;
 import brave.propagation.TraceContext;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -829,7 +829,9 @@ public final class MutableSpan implements Cloneable {
       }
       if (error != null && !wroteError) {
         if (tagLength > 0) b.append(',');
-        writeKeyValue(b, "error", ErrorParser.parse(error));
+        MutableSpan errorCatcher = new MutableSpan();
+        Tags.ERROR.tag(error, null, errorCatcher);
+        writeKeyValue(b, "error", errorCatcher.tag("error"));
       }
       b.append('}');
     }

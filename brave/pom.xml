@@ -41,12 +41,12 @@
   </properties>
 
   <dependencies>
-    <!-- For Tracing.Builder.spanReporter -->
+    <!-- Intentionally pinned so that we can move off Tracing.Builder.spanReporter
+         Once zipkin-reporter-brave is out a while, we can un-pin it. -->
     <dependency>
       <groupId>io.zipkin.reporter2</groupId>
-      <artifactId>zipkin-reporter</artifactId>
+      <artifactId>zipkin-reporter-brave</artifactId>
       <version>${zipkin-reporter.version}</version>
-      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>org.jvnet</groupId>

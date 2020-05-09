@@ -17,9 +17,15 @@ import brave.Tracer;
 import brave.Tracing;
 import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
+import brave.internal.Nullable;
+import brave.propagation.TraceContext;
+import com.blogspot.mydailyjava.weaklockfree.WeakConcurrentMap;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import org.assertj.core.groups.Tuple;
 import org.junit.After;
 import org.junit.Test;
 import zipkin2.Span;
@@ -45,10 +51,55 @@ public class CountingChildrenTest {
     }
   }
 
+  /**
+   * {@link ParentToChildrenHandler} is flexible, but if all you are doing is counting children, you
+   * can implement counting directly.
+   */
+  static final class TagChildCountDirect extends SpanHandler {
+    /** This holds the children of the current parent until the former is finished or abandoned. */
+    final WeakConcurrentMap<TraceContext, TraceContext> childToParent =
+        new WeakConcurrentMap<>(false);
+    final WeakConcurrentMap<TraceContext, AtomicInteger> parentToChildCount =
+        new WeakConcurrentMap<TraceContext, AtomicInteger>(false) {
+          @Override protected AtomicInteger defaultValue(TraceContext key) {
+            return new AtomicInteger();
+          }
+        };
+
+    @Override
+    public boolean begin(TraceContext context, MutableSpan span, @Nullable TraceContext parent) {
+      if (!context.isLocalRoot()) { // a child
+        childToParent.putIfProbablyAbsent(context, parent);
+        parentToChildCount.get(parent).incrementAndGet();
+      }
+      return true;
+    }
+
+    @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
+      // Kick-out if this was not a normal finish
+      if (cause != Cause.FINISHED && !context.isLocalRoot()) { // a child
+        TraceContext parent = childToParent.remove(context);
+        AtomicInteger childCount = parentToChildCount.getIfPresent(parent);
+        if (childCount != null) childCount.decrementAndGet();
+        return true;
+      }
+
+      AtomicInteger childCount = parentToChildCount.getIfPresent(context);
+      span.tag("childCountDirect", childCount != null ? childCount.toString() : "0");
+
+      // clean up so no OutOfMemoryException!
+      childToParent.remove(context);
+      parentToChildCount.remove(context);
+
+      return true;
+    }
+  }
+
   List<zipkin2.Span> spans = new ArrayList<>();
   Tracing tracing = Tracing.newBuilder()
     .spanReporter(spans::add)
     .addSpanHandler(new TagChildCount())
+    .addSpanHandler(new TagChildCountDirect())
     .build();
   Tracer tracer = tracing.tracer();
 
@@ -75,8 +126,15 @@ public class CountingChildrenTest {
     root1Child1.finish();
     root1.finish();
 
-    assertThat(spans)
-      .extracting(Span::name, s -> s.tags().get("childCount"))
+    List<Tuple> nameToChildCount = spans.stream()
+      .map(s -> tuple(s.name(), s.tags().get("childCount")))
+      .collect(Collectors.toList());
+    List<Tuple> nameToChildCountDirect = spans.stream()
+      .map(s -> tuple(s.name(), s.tags().get("childCountDirect")))
+      .collect(Collectors.toList());
+
+    assertThat(nameToChildCount)
+      .isEqualTo(nameToChildCountDirect)
       .containsExactly(
         tuple("root1child1child2child1", "0"),
         tuple("root2child1", "0"),

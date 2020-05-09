@@ -46,6 +46,7 @@ import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import zipkin2.reporter.AsyncReporter;
+import zipkin2.reporter.brave.ZipkinSpanHandler;
 
 import static javax.servlet.DispatcherType.REQUEST;
 
@@ -108,7 +109,7 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
   public static class Traced extends ForwardingTracingFilter {
     public Traced() {
       super(Tracing.newBuilder()
-        .spanReporter(AsyncReporter.create(new NoopSender()))
+        .addSpanHandler(ZipkinSpanHandler.create(AsyncReporter.create(new NoopSender())))
         .build());
     }
   }
@@ -121,7 +122,7 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
           .addScopeDecorator(ThreadContextScopeDecorator.get())
           .addScopeDecorator(ThreadContextScopeDecorator.get())
           .build())
-        .spanReporter(AsyncReporter.create(new NoopSender()))
+        .addSpanHandler(ZipkinSpanHandler.create(AsyncReporter.create(new NoopSender())))
         .build());
     }
   }
@@ -138,7 +139,7 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
             .addKeyName("baggage-user-id")
             .build())
           .build())
-        .spanReporter(AsyncReporter.create(new NoopSender()))
+        .addSpanHandler(ZipkinSpanHandler.create(AsyncReporter.create(new NoopSender())))
         .build());
     }
   }
@@ -147,7 +148,7 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
     public Traced128() {
       super(Tracing.newBuilder()
         .traceId128Bit(true)
-        .spanReporter(AsyncReporter.create(new NoopSender()))
+        .addSpanHandler(ZipkinSpanHandler.create(AsyncReporter.create(new NoopSender())))
         .build());
     }
   }

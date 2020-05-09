@@ -23,13 +23,18 @@ import brave.http.HttpTracing;
 import brave.http.HttpTracingCustomizer;
 import brave.sampler.SamplerFunction;
 import java.util.List;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.FactoryBean;
 
 /** Spring XML config does not support chained builders. This converts accordingly */
 public class HttpTracingFactoryBean implements FactoryBean {
+  // Spring uses commons logging
+  static final Log logger = LogFactory.getLog(HttpTracingFactoryBean.class);
+
   Tracing tracing;
-  HttpClientParser clientParser;
-  HttpServerParser serverParser;
+  @Deprecated HttpClientParser clientParser;
+  @Deprecated HttpServerParser serverParser;
   HttpRequestParser clientRequestParser, serverRequestParser;
   HttpResponseParser clientResponseParser, serverResponseParser;
   SamplerFunction<HttpRequest> clientSampler, serverSampler;
@@ -63,7 +68,9 @@ public class HttpTracingFactoryBean implements FactoryBean {
     this.tracing = tracing;
   }
 
-  public void setClientParser(HttpClientParser clientParser) {
+  @Deprecated public void setClientParser(HttpClientParser clientParser) {
+    logger.warn("The property 'setClientParser' will be removed in a future release.\n"
+        + "Use the property 'clientRequestParser' or 'clientResponseParser' instead");
     this.clientParser = clientParser;
   }
 
@@ -83,7 +90,9 @@ public class HttpTracingFactoryBean implements FactoryBean {
     this.serverResponseParser = serverResponseParser;
   }
 
-  public void setServerParser(HttpServerParser serverParser) {
+  @Deprecated public void setServerParser(HttpServerParser serverParser) {
+    logger.warn("The property 'setServerParser' will be removed in a future release.\n"
+        + "Use the property 'serverRequestParser' or 'serverResponseParser' instead");
     this.serverParser = serverParser;
   }
 

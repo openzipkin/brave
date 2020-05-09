@@ -16,7 +16,7 @@ package brave.http;
 import brave.ErrorParser;
 import brave.Span;
 import brave.SpanCustomizer;
-import brave.Tracing;
+import brave.Tags;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 
@@ -50,16 +50,16 @@ public interface HttpResponseParser {
   /**
    * Implement to choose what data from the http response are parsed into the span representing it.
    *
-   * <p>Note: This is called after {@link Span#error(Throwable)}, which means any "error" tag set
-   * here will overwrite what the {@linkplain Tracing#errorParser() error parser} set.
+   * <p><em>Note:</em> This is called after {@link Span#error(Throwable)}. Conventionally, Zipkin
+   * handlers will not overwrite a tag named "error" if you set it here based on the response.
    *
    * @see Default
    */
   void parse(HttpResponse response, TraceContext context, SpanCustomizer span);
 
   /**
-   * The default data policy sets the span name to the HTTP route when available, and sets the and
-   * adds the "http.status_code" and "error" tags.
+   * The default data policy sets the span name to the HTTP route when available, along with the
+   * {@linkplain HttpTags#STATUS_CODE "http.status_code"} and {@linkplain Tags#ERROR "error"} tags.
    *
    * <p><h3>Route-based span name</h3>
    * If routing is supported, and a GET didn't match due to 404, the span name will be "get

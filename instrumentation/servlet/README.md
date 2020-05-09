@@ -22,7 +22,8 @@ public class TracingServletContextListener implements ServletContextListener {
   AsyncReporter<Span> spanReporter = AsyncReporter.create(sender);
   Tracing tracing = Tracing.newBuilder()
         .localServiceName("my-service-name")
-        .spanReporter(spanReporter).build();
+        .addSpanHandler(ZipkinSpanHandler.create(spanReporter))
+        .build();
 
   @Override
   public void contextInitialized(ServletContextEvent servletContextEvent) {
@@ -69,7 +70,8 @@ public class DelegatingTracingFilter implements Filter {
   AsyncReporter<Span> spanReporter = AsyncReporter.create(sender);
   Tracing tracing = Tracing.newBuilder()
         .localServiceName("my-service-name")
-        .spanReporter(spanReporter).build();
+        .addSpanHandler(ZipkinSpanHandler.create(spanReporter))
+        .build();
   Filter delegate = TracingFilter.create(tracing);
 
   @Override

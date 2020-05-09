@@ -12,21 +12,23 @@ http headers.
 
 ## Setup
 
-Most importantly, you need a Tracer, configured to [report to Zipkin](https://github.com/openzipkin/zipkin-reporter-java).
+Most importantly, you need a Tracer, usually configured to [report to Zipkin](https://github.com/openzipkin/zipkin-reporter-java).
 
 Here's an example setup that sends trace data (spans) to Zipkin over
-http (as opposed to Kafka).
+HTTP (as opposed to Kafka).
 
 ```java
 // Configure a reporter, which controls how often spans are sent
-//   (the dependency is io.zipkin.reporter2:zipkin-sender-okhttp3)
+//   (this dependency is io.zipkin.reporter2:zipkin-sender-okhttp3)
 sender = OkHttpSender.create("http://127.0.0.1:9411/api/v2/spans");
 spanReporter = AsyncReporter.create(sender);
+//   (this dependency is io.zipkin.reporter2:zipkin-reporter-brave)
+zipkinHandler = ZipkinSpanHandler.create(reporter)
 
 // Create a tracing component with the service name you want to see in Zipkin.
 tracing = Tracing.newBuilder()
                  .localServiceName("my-service")
-                 .spanReporter(spanReporter)
+                 .addSpanHandler(ZipkinSpanHandler.create(reporter))
                  .build();
 
 // Tracing exposes objects you might need, most importantly the tracer
@@ -48,6 +50,7 @@ Zipkin v1 format. See [zipkin-reporter](https://github.com/openzipkin/zipkin-rep
 sender = URLConnectionSender.create("http://localhost:9411/api/v1/spans");
 reporter = AsyncReporter.builder(sender)
                         .build(SpanBytesEncoder.JSON_V1);
+zipkinHandler = ZipkinSpanHandler.create(reporter)
 ```
 
 ## Tracing
@@ -589,6 +592,69 @@ customizer = b -> b.alwaysSampleLocal().addSpanHandler(new SpanHandler() {
 customizer.customize(tracingBuilder);
 ```
 A span metrics example is [here](src/test/java/brave/features/handler/SpanMetricsCustomizer.java)
+
+### Non-Zipkin Span Reporting example
+<h3>Non-Zipkin Span Reporting example</h3>
+When reporting to a Zipkin compatible collector, use [io.zipkin.reporter2:zipkin-reporter-brave](https://github.com/openzipkin/zipkin-reporter-java).
+
+The below example highlights notes for those sending data into a different
+format. Notably, most trace systems only need data at the `end` hook.
+
+```java
+public boolean end(TraceContext context, MutableSpan span, Cause cause) {
+  // Return when a user intentionally called Span.abandon()
+  if (cause == Cause.ABANDONED) return true;
+  // Sampled means "remote sampled", e.g. to the tracing system.
+  if (!Boolean.TRUE.equals(context.sampled())) return true;
+
+  // span.tags("error") is only set when instrumentation sets it. If your
+  // format requires span.tags("error"), use Tags.ERROR when span.error()
+  // is set, but span.tags("error") is not. Some formats will look at the
+  // stack trace instead.
+  maybeAddErrorTag(context, span);
+  MyFormat customFormat = convert(context, span);
+  nonZipkinReporter.report(converted);
+  return true;
+}
+```
+
+### Child Counting Example
+Some data formats desire knowing how many spans a parent created. Below is an
+example of how to do that, using [WeakConcurrentMap](https://github.com/raphw/weak-lock-free).
+
+```java
+static final class TagChildCountDirect extends SpanHandler {
+--snip--
+  public boolean begin(TraceContext context, MutableSpan span, @Nullable TraceContext parent) {
+    if (!context.isLocalRoot()) { // a child
+      childToParent.putIfProbablyAbsent(context, parent);
+      parentToChildCount.get(parent).incrementAndGet();
+    }
+    return true;
+  }
+
+  public boolean end(TraceContext context, MutableSpan span, Cause cause) {
+    // Kick-out if this was not a normal finish
+    if (cause != Cause.FINISHED && !context.isLocalRoot()) { // a child
+      TraceContext parent = childToParent.remove(context);
+      AtomicInteger childCount = parentToChildCount.getIfPresent(parent);
+      if (childCount != null) childCount.decrementAndGet();
+      return true;
+    }
+
+    AtomicInteger childCount = parentToChildCount.getIfPresent(context);
+    span.tag("childCountDirect", childCount != null ? childCount.toString() : "0");
+
+    // clean up so no OutOfMemoryException!
+    childToParent.remove(context);
+    parentToChildCount.remove(context);
+
+    return true;
+  }
+}
+```
+
+The above is a partial implementation, the full code is [here](src/test/java/brave/features/handler/CountingChildrenTest.java).
 
 ## Current Tracing Component
 Brave supports a "current tracing component" concept which should only
