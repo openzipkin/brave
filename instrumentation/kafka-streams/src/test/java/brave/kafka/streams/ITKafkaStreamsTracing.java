@@ -56,7 +56,6 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
   public void close() {
     streams.close();
     streams.cleanUp();
-    streams = null;
     producer.close();
   }
 
