@@ -803,7 +803,7 @@ public class TracerTest {
     tracer.newTrace().start().abandon(); //trigger orphaned span check
 
     // We expect the span to be reported to the NOOP reporter, and nothing to be reported to "spans"
-    assertThat(spans).hasSize(0);
+    assertThat(spans).isEmpty();
   }
 
   /**

@@ -88,7 +88,7 @@ public class RealSpanTest {
     span.start();
     span.abandon();
 
-    assertThat(spans).hasSize(0);
+    assertThat(spans).isEmpty();
   }
 
   @Test public void annotate() {
@@ -158,7 +158,7 @@ public class RealSpanTest {
     span.abandon();
     span.finish();
 
-    assertThat(spans).hasSize(0);
+    assertThat(spans).isEmpty();
   }
 
   @Test public void abandonAfterFinishDoesNothing() {
