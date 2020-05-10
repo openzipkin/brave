@@ -63,10 +63,10 @@ public abstract class B3Propagation<K> implements Propagation<K> {
 
   /**
    * Defaults to {@link Format#MULTI} for client/server spans and {@link Format#SINGLE_NO_PARENT}
-   * for messaging. Non-request spans default to {@link Format#MULTI}.
+   * for messaging. Non-request spans default to {@link Format#SINGLE_NO_PARENT}.
    */
   public static final class FactoryBuilder {
-    Format injectFormat = Format.MULTI;
+    Format injectFormat = Format.SINGLE_NO_PARENT;
     final EnumMap<Span.Kind, Format[]> kindToInjectFormats = new EnumMap<>(Span.Kind.class);
 
     FactoryBuilder() {
@@ -76,7 +76,7 @@ public abstract class B3Propagation<K> implements Propagation<K> {
       kindToInjectFormats.put(Span.Kind.CONSUMER, new Format[] {Format.SINGLE_NO_PARENT});
     }
 
-    /** Overrides the default format of {@link Format#MULTI}. */
+    /** Overrides the default format of {@link Format#SINGLE_NO_PARENT}. */
     public FactoryBuilder injectFormat(Format format) {
       if (format == null) throw new NullPointerException("format == null");
       injectFormat = format;

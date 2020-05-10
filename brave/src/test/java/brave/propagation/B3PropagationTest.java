@@ -77,6 +77,7 @@ public class B3PropagationTest {
 
   @Test public void keys_withoutB3Single() {
     propagation = B3Propagation.newFactoryBuilder()
+      .injectFormat(Format.MULTI)
       .injectFormat(Span.Kind.PRODUCER, Format.MULTI)
       .injectFormat(Span.Kind.CONSUMER, Format.MULTI)
       .build().get();
@@ -92,7 +93,6 @@ public class B3PropagationTest {
 
   @Test public void keys_onlyB3Single() {
     propagation = B3Propagation.newFactoryBuilder()
-      .injectFormat(Format.SINGLE)
       .injectFormat(Span.Kind.CLIENT, Format.SINGLE)
       .injectFormat(Span.Kind.SERVER, Format.SINGLE)
       .build().get();

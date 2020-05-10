@@ -36,8 +36,7 @@ public class NonStringPropagationKeysTest {
     Metadata metadata = new Metadata();
     injector.inject(context, metadata);
 
-    assertThat(metadata.keys())
-      .containsExactly("x-b3-traceid", "x-b3-spanid", "x-b3-sampled");
+    assertThat(metadata.keys()).containsExactly("b3");
 
     assertThat(extractor.extract(metadata).context())
       .isEqualTo(context);

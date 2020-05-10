@@ -109,9 +109,7 @@ public class OpenTracingAdapterTest {
     opentracing.inject(new BraveSpanContext(context), Format.Builtin.HTTP_HEADERS, request);
 
     assertThat(map).containsExactly(
-      entry("X-B3-TraceId", "0000000000000001"),
-      entry("X-B3-SpanId", "0000000000000002"),
-      entry("X-B3-Sampled", "1")
+      entry("b3", "0000000000000001-0000000000000002-1")
     );
   }
 
