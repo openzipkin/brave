@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Copyright 2013-2019 The OpenZipkin Authors
+# Copyright 2015-2020 The OpenZipkin Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
 # in compliance with the License. You may obtain a copy of the License at
@@ -104,6 +104,49 @@ safe_checkout_master() {
   fi
 }
 
+javadoc_to_gh_pages() {
+  version="$(print_project_version)"
+  rm -rf javadoc-builddir
+  builddir="javadoc-builddir/$version"
+
+  # Collect javadoc for all modules
+  for jar in $(find . -name "*${version}-javadoc.jar"); do
+    module="$(echo "$jar" | sed "s~.*/\(.*\)-${version}-javadoc.jar~\1~")"
+    this_builddir="$builddir/$module"
+    if [ -d "$this_builddir" ]; then
+        # Skip modules we've already processed.
+        # We may find multiple instances of the same javadoc jar because of, for instance,
+        # integration tests copying jars around.
+        continue
+    fi
+    mkdir -p "$this_builddir"
+    unzip "$jar" -d "$this_builddir"
+    # Build a simple module-level index
+    echo "<li><a href=\"${module}/index.html\">${module}</a></li>" >> "${builddir}/index.html"
+  done
+
+  # Update gh-pages
+  git fetch origin gh-pages:gh-pages
+  git checkout gh-pages
+  rm -rf "$version"
+  mv "javadoc-builddir/$version" ./
+  rm -rf "javadoc-builddir"
+
+  # Update simple version-level index
+  if ! grep "$version" index.html 2>/dev/null; then
+    echo "<li><a href=\"${version}/index.html\">${version}</a></li>" >> index.html
+  fi
+
+  # Ensure links are ordered by versions, latest on top
+  sort -rV index.html > index.html.sorted
+  mv index.html.sorted index.html
+
+  git add "$version"
+  git add index.html
+  git commit -m "Automatically updated javadocs for $version"
+  git push origin gh-pages
+}
+
 #----------------------
 # MAIN
 #----------------------
@@ -133,6 +176,7 @@ elif is_travis_branch_master; then
   # If the deployment succeeded, sync it to Maven Central. Note: this needs to be done once per project, not module, hence -N
   if is_release_commit; then
     ./mvnw --batch-mode -s ./.settings.xml -nsu -N io.zipkin.centralsync-maven-plugin:centralsync-maven-plugin:sync
+    javadoc_to_gh_pages
   fi
 
 # If we are on a release tag, the following will update any version references and push a version tag for deployment.
