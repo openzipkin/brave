@@ -96,15 +96,12 @@ public final class MutableSpan implements Cloneable {
 
   //
   // The below use object arrays instead of ArrayList. The intent is not for safe sharing
-  // (copy-on-write), as this type is externally synchronized. In other words, this isn't copy-on-write.
+  // (copy-on-write), as this type is externally synchronized. In other words, this isn't
+  // copy-on-write. We just grow arrays as we need to similar to how ArrayList does it.
   //
-  // rather just resizing
-  // the array similar to how ArrayList does internally.
-  //
-  /** To reduce the amount of allocation use a pair-indexed list for tag (key, value). */
-  Object[] tags = EMPTY_ARRAY;
-  /** Also use pair indexing for annotations, but type object to store (timestamp, value). */
-  Object[] annotations = EMPTY_ARRAY;
+  // tags [(key, value)] annotations [(timestamp, value)]
+  Object[] tags = EMPTY_ARRAY, annotations = EMPTY_ARRAY;
+  int tagCount, annotationCount;
 
   /** @since 5.4 */
   public MutableSpan() {
@@ -151,7 +148,9 @@ public final class MutableSpan implements Cloneable {
     remotePort = toCopy.remotePort;
     // In case this is a default span, don't hold a reference to the same array!
     tags = copy(toCopy.tags);
+    tagCount = toCopy.tagCount;
     annotations = copy(toCopy.annotations);
+    annotationCount = toCopy.annotationCount;
     error = toCopy.error;
   }
 
@@ -532,7 +531,7 @@ public final class MutableSpan implements Cloneable {
 
   /** @since 5.12 */
   public int annotationCount() {
-    return annotations.length / 2;
+    return annotationCount;
   }
 
   /**
@@ -565,7 +564,7 @@ public final class MutableSpan implements Cloneable {
    * @since 5.4
    */
   public <T> void forEachAnnotation(AnnotationConsumer<T> annotationConsumer, T target) {
-    for (int i = 0, length = annotations.length; i < length; i += 2) {
+    for (int i = 0, length = annotationCount * 2; i < length; i += 2) {
       long timestamp = (long) annotations[i];
       annotationConsumer.accept(target, timestamp, annotations[i + 1].toString());
     }
@@ -588,14 +587,15 @@ public final class MutableSpan implements Cloneable {
    * @since 5.4
    */
   public void forEachAnnotation(AnnotationUpdater annotationUpdater) {
-    for (int i = 0, length = annotations.length; i < length; i += 2) {
+    for (int i = 0, length = annotationCount * 2; i < length; i += 2) {
       String value = annotations[i + 1].toString();
       String newValue = annotationUpdater.update((long) annotations[i], value);
       if (newValue != null) {
-        annotations = update(annotations, i, newValue);
+        update(annotations, i, newValue);
       } else {
-        annotations = remove(annotations, i);
+        remove(annotations, i);
         length -= 2;
+        annotationCount--;
         i -= 2;
       }
     }
@@ -610,7 +610,7 @@ public final class MutableSpan implements Cloneable {
    */
   public boolean containsAnnotation(String value) {
     if (value == null) throw new NullPointerException("value == null");
-    for (int i = 0, length = annotations.length; i < length; i += 2) {
+    for (int i = 0, length = annotationCount * 2; i < length; i += 2) {
       if (value.equals(annotations[i + 1])) return true;
     }
     return false;
@@ -626,12 +626,14 @@ public final class MutableSpan implements Cloneable {
   public void annotate(long timestamp, String value) {
     if (value == null) throw new NullPointerException("value == null");
     if (timestamp == 0L) return; // silently ignore data Zipkin would drop
-    annotations = add(annotations, timestamp, value); // Annotations are always add.
+    annotations =
+        add(annotations, annotationCount * 2, timestamp, value); // Annotations are always add.
+    annotationCount++;
   }
 
   /** @since 5.12 */
   public int tagCount() {
-    return tags.length / 2;
+    return tagCount;
   }
 
   /**
@@ -653,7 +655,7 @@ public final class MutableSpan implements Cloneable {
   @Nullable public String tag(String key) {
     if (key == null) throw new NullPointerException("key == null");
     if (key.isEmpty()) throw new IllegalArgumentException("key is empty");
-    for (int i = 0, length = tags.length; i < length; i += 2) {
+    for (int i = 0, length = tagCount * 2; i < length; i += 2) {
       if (key.equals(tags[i])) return (String) tags[i + 1];
     }
     return null;
@@ -675,7 +677,7 @@ public final class MutableSpan implements Cloneable {
    * @since 5.4
    */
   public <T> void forEachTag(TagConsumer<T> tagConsumer, T target) {
-    for (int i = 0, length = tags.length; i < length; i += 2) {
+    for (int i = 0, length = tagCount * 2; i < length; i += 2) {
       tagConsumer.accept(target, (String) tags[i], (String) tags[i + 1]);
     }
   }
@@ -698,14 +700,15 @@ public final class MutableSpan implements Cloneable {
    * @since 5.4
    */
   public void forEachTag(TagUpdater tagUpdater) {
-    for (int i = 0, length = tags.length; i < length; i += 2) {
+    for (int i = 0, length = tagCount * 2; i < length; i += 2) {
       String value = (String) tags[i + 1];
       String newValue = tagUpdater.update((String) tags[i], value);
       if (newValue != null) {
-        tags = update(tags, i, newValue);
+        update(tags, i, newValue);
       } else {
-        tags = remove(tags, i);
+        remove(tags, i);
         length -= 2;
+        tagCount--;
         i -= 2;
       }
     }
@@ -721,58 +724,54 @@ public final class MutableSpan implements Cloneable {
     if (key == null) throw new NullPointerException("key == null");
     if (key.isEmpty()) throw new IllegalArgumentException("key is empty");
     if (value == null) throw new NullPointerException("value of " + key + " == null");
-    for (int i = 0, length = tags.length; i < length; i += 2) {
+    int i = 0;
+    for (int length = tagCount * 2; i < length; i += 2) {
       if (key.equals(tags[i])) {
-        tags = update(tags, i, value);
+        update(tags, i, value);
         return;
       }
     }
-    tags = add(tags, key, value);
+    tags = add(tags, i, key, value);
+    tagCount++;
   }
 
-  volatile int hashCode; // Lazily initialized and cached.
-
   @Override public int hashCode() {
-    int h = hashCode;
-    if (h == 0) {
-      h = 1000003;
-      h ^= traceId == null ? 0 : traceId.hashCode();
-      h *= 1000003;
-      h ^= localRootId == null ? 0 : localRootId.hashCode();
-      h *= 1000003;
-      h ^= parentId == null ? 0 : parentId.hashCode();
-      h *= 1000003;
-      h ^= id == null ? 0 : id.hashCode();
-      h *= 1000003;
-      h ^= kind == null ? 0 : kind.hashCode();
-      h *= 1000003;
-      h ^= flags;
-      h *= 1000003;
-      h ^= (int) ((startTimestamp >>> 32) ^ startTimestamp);
-      h *= 1000003;
-      h ^= (int) ((finishTimestamp >>> 32) ^ finishTimestamp);
-      h *= 1000003;
-      h ^= name == null ? 0 : name.hashCode();
-      h *= 1000003;
-      h ^= localServiceName == null ? 0 : localServiceName.hashCode();
-      h *= 1000003;
-      h ^= localIp == null ? 0 : localIp.hashCode();
-      h *= 1000003;
-      h ^= localPort;
-      h *= 1000003;
-      h ^= remoteServiceName == null ? 0 : remoteServiceName.hashCode();
-      h *= 1000003;
-      h ^= remoteIp == null ? 0 : remoteIp.hashCode();
-      h *= 1000003;
-      h ^= remotePort;
-      h *= 1000003;
-      h ^= Arrays.hashCode(tags);
-      h *= 1000003;
-      h ^= Arrays.hashCode(annotations);
-      h *= 1000003;
-      h ^= error == null ? 0 : error.hashCode();
-      hashCode = h;
-    }
+    int h = 1000003; // mutable! cannot cache hashCode
+    h ^= traceId == null ? 0 : traceId.hashCode();
+    h *= 1000003;
+    h ^= localRootId == null ? 0 : localRootId.hashCode();
+    h *= 1000003;
+    h ^= parentId == null ? 0 : parentId.hashCode();
+    h *= 1000003;
+    h ^= id == null ? 0 : id.hashCode();
+    h *= 1000003;
+    h ^= kind == null ? 0 : kind.hashCode();
+    h *= 1000003;
+    h ^= flags;
+    h *= 1000003;
+    h ^= (int) ((startTimestamp >>> 32) ^ startTimestamp);
+    h *= 1000003;
+    h ^= (int) ((finishTimestamp >>> 32) ^ finishTimestamp);
+    h *= 1000003;
+    h ^= name == null ? 0 : name.hashCode();
+    h *= 1000003;
+    h ^= localServiceName == null ? 0 : localServiceName.hashCode();
+    h *= 1000003;
+    h ^= localIp == null ? 0 : localIp.hashCode();
+    h *= 1000003;
+    h ^= localPort;
+    h *= 1000003;
+    h ^= remoteServiceName == null ? 0 : remoteServiceName.hashCode();
+    h *= 1000003;
+    h ^= remoteIp == null ? 0 : remoteIp.hashCode();
+    h *= 1000003;
+    h ^= remotePort;
+    h *= 1000003;
+    h ^= Arrays.hashCode(tags);
+    h *= 1000003;
+    h ^= Arrays.hashCode(annotations);
+    h *= 1000003;
+    h ^= error == null ? 0 : error.hashCode();
     return h;
   }
 
@@ -798,8 +797,8 @@ public final class MutableSpan implements Cloneable {
         && equal(remoteServiceName, that.remoteServiceName)
         && equal(remoteIp, that.remoteIp)
         && remotePort == that.remotePort
-        && Arrays.equals(tags, that.tags)
-        && Arrays.equals(annotations, that.annotations)
+        && nonNullEntriesEqual(tags, tagCount, that.tags, that.tagCount)
+        && nonNullEntriesEqual(annotations, annotationCount, that.annotations, that.annotationCount)
         && equal(error, that.error);
   }
 
@@ -848,32 +847,32 @@ public final class MutableSpan implements Cloneable {
       b.append(",\"remoteEndpoint\":");
       writeEndpoint(b, remoteServiceName, remoteIp, remotePort);
     }
-    if (annotations.length > 0) {
+    if (annotationCount > 0) {
       b.append(",\"annotations\":");
       b.append('[');
-      for (int i = 0, length = annotations.length; i < length; ) {
+      for (int i = 0, length = annotationCount * 2; i < length; ) {
         b.append("{\"timestamp\":");
         b.append(annotations[i]);
         b.append(",\"value\":\"");
         jsonEscape(annotations[i + 1].toString(), b);
         b.append('}');
         i += 2;
-        if (i < annotations.length) b.append(',');
+        if (i < length) b.append(',');
       }
       b.append(']');
     }
-    if (tags.length > 0 || error != null) {
+    if (tagCount > 0 || error != null) {
       b.append(",\"tags\":{");
       boolean wroteError = false;
-      for (int i = 0, length = tags.length; i < length; ) {
+      for (int i = 0, length = tagCount * 2; i < length; ) {
         String key = (String) tags[i];
         if (key.equals("error")) wroteError = true;
         writeKeyValue(b, key, (String) tags[i + 1]);
         i += 2;
-        if (i < tags.length) b.append(',');
+        if (i < length) b.append(',');
       }
       if (error != null && !wroteError) {
-        if (tags.length > 0) b.append(',');
+        if (tagCount > 0) b.append(',');
         MutableSpan errorCatcher = new MutableSpan();
         Tags.ERROR.tag(error, null, errorCatcher);
         writeKeyValue(b, "error", errorCatcher.tag("error"));
@@ -928,30 +927,46 @@ public final class MutableSpan implements Cloneable {
     b.append('}');
   }
 
-  static Object[] add(Object[] input, Object key, Object value) {
-    int newIndex = input.length;
-    Object[] result = Arrays.copyOf(input, input.length + 2); // copy-on-write
-    result[newIndex] = key;
-    result[newIndex + 1] = value;
+  static Object[] add(Object[] input, int i, Object key, Object value) {
+    Object[] result;
+    if (i == input.length) {
+      result = Arrays.copyOf(input, i + 2); // grow for one more entry
+    } else {
+      result = input;
+    }
+    result[i] = key;
+    result[i + 1] = value;
     return result;
   }
 
   // this is externally synchronized, so we can edit it directly
-  static Object[] update(Object[] input, int i, Object value) {
-    if (value.equals(input[i + 1])) return input;
+  static void update(Object[] input, int i, Object value) {
+    if (value.equals(input[i + 1])) return;
     input[i + 1] = value;
-    return input;
+  }
+
+  // This shifts and backfills nulls so that we don't thrash copying arrays
+  // when deleting. UnsafeArray will still work as it skips on first null key.
+  static void remove(Object[] input, int i) {
+    int j = i + 2;
+    for (; j < input.length; i += 2, j += 2) {
+      if (input[j] == null) break; // found null key
+      input[i] = input[j];
+      input[i + 1] = input[j + 1];
+    }
+    input[i] = input[i + 1] = null;
   }
 
   static Object[] copy(Object[] input) {
     return input.length > 0 ? Arrays.copyOf(input, input.length) : EMPTY_ARRAY;
   }
 
-  static Object[] remove(Object[] input, int i) {
-    if (input.length == 2 && i == 0) return EMPTY_ARRAY;
-    Object[] result = Arrays.copyOf(input, input.length - 2);
-    System.arraycopy(input, i + 2, result, i, input.length - i - 2);
-    return result;
+  static boolean nonNullEntriesEqual(Object[] left, int leftCount, Object[] right, int rightCount) {
+    if (leftCount != rightCount) return false;
+    for (int i = 0; i < leftCount * 2; i++) {
+      if (!equal(left[i], right[i])) return false;
+    }
+    return true;
   }
 
   static boolean equal(@Nullable Object a, @Nullable Object b) {
