@@ -11,13 +11,18 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave;
+package brave.no_deps;
 
+import brave.ScopedSpan;
+import brave.Tracing;
+import brave.handler.SpanHandler;
 import org.junit.Test;
 
 public class TracingTest {
   @Test public void basicUsage() {
-    try (Tracing tracing = Tracing.newBuilder().build()) {
+    try (Tracing tracing = Tracing.newBuilder().addSpanHandler(new SpanHandler() {
+      // avoid NOOP short-circuiting tracing
+    }).build()) {
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
       tracing.tracer().newChild(parent.context()).finish();
       parent.finish();

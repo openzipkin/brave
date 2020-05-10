@@ -19,8 +19,8 @@ import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
+import brave.test.TestSpanHandler;
 import com.blogspot.mydailyjava.weaklockfree.WeakConcurrentMap;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -28,7 +28,6 @@ import java.util.stream.Collectors;
 import org.assertj.core.groups.Tuple;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -95,11 +94,11 @@ public class CountingChildrenTest {
     }
   }
 
-  List<zipkin2.Span> spans = new ArrayList<>();
+  TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing = Tracing.newBuilder()
-    .spanReporter(spans::add)
     .addSpanHandler(new TagChildCount())
     .addSpanHandler(new TagChildCountDirect())
+    .addSpanHandler(spans)
     .build();
   Tracer tracer = tracing.tracer();
 
@@ -136,12 +135,12 @@ public class CountingChildrenTest {
     assertThat(nameToChildCount)
       .isEqualTo(nameToChildCountDirect)
       .containsExactly(
-        tuple("root1child1child2child1", "0"),
-        tuple("root2child1", "0"),
-        tuple("root1child1child1", "1"),
+        tuple("root1Child1Child2Child1", "0"),
+        tuple("root2Child1", "0"),
+        tuple("root1Child1Child1", "1"),
         tuple("root2", "1"),
-        tuple("root1child1child2", "0"),
-        tuple("root1child1", "2"),
+        tuple("root1Child1Child2", "0"),
+        tuple("root1Child1", "2"),
         tuple("root1", "1")
       );
   }
@@ -160,9 +159,9 @@ public class CountingChildrenTest {
     root1Child2.finish();
 
     assertThat(spans)
-      .extracting(Span::name, s -> s.tags().get("childCount"))
+      .extracting(MutableSpan::name, s -> s.tags().get("childCount"))
       .containsExactly(
-        tuple("root1", "2"), tuple("root1child1", "0"), tuple("root1child2", "0")
+        tuple("root1", "2"), tuple("root1Child1", "0"), tuple("root1Child2", "0")
       );
   }
 }

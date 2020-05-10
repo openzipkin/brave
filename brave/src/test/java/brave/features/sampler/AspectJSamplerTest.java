@@ -20,10 +20,9 @@ import brave.propagation.StrictCurrentTraceContext;
 import brave.sampler.DeclarativeSampler;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
+import brave.test.TestSpanHandler;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -39,7 +38,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.stereotype.Component;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -48,7 +46,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class AspectJSamplerTest {
 
   // Don't use static configuration in real life. This is only to satisfy the unit test runner
-  static List<Span> spans = new ArrayList<>();
+  static TestSpanHandler spans = new TestSpanHandler();
   static AtomicReference<Tracing> tracing = new AtomicReference<>();
 
   @Autowired Service service;
@@ -56,7 +54,7 @@ public class AspectJSamplerTest {
   @Before public void clear() {
     tracing.set(Tracing.newBuilder()
       .currentTraceContext(StrictCurrentTraceContext.create())
-      .spanReporter(spans::add)
+      .addSpanHandler(spans)
       .sampler(new Sampler() {
         @Override public boolean isSampled(long traceId) {
           throw new AssertionError(); // in this case, we aren't expecting a fallback

@@ -23,7 +23,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -35,7 +34,6 @@ public class StrictScopeDecoratorTest {
     .addScopeDecorator(decorator)
     .build();
   Tracing tracing = Tracing.newBuilder()
-    .spanReporter(Reporter.NOOP)
     .currentTraceContext(currentTraceContext)
     .build();
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).build();

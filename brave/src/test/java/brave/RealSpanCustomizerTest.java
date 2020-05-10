@@ -13,18 +13,16 @@
  */
 package brave;
 
-import java.util.ArrayList;
-import java.util.List;
+import brave.test.TestSpanHandler;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.Annotation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 public class RealSpanCustomizerTest {
-  List<zipkin2.Span> spans = new ArrayList<>();
-  Tracing tracing = Tracing.newBuilder().spanReporter(spans::add).build();
+  TestSpanHandler spans = new TestSpanHandler();
+  Tracing tracing = Tracing.newBuilder().addSpanHandler(spans).build();
   Span span = tracing.tracer().newTrace();
   SpanCustomizer spanCustomizer = span.customizer();
 
@@ -36,17 +34,16 @@ public class RealSpanCustomizerTest {
     spanCustomizer.name("foo");
     span.flush();
 
-    assertThat(spans).extracting(zipkin2.Span::name)
-      .containsExactly("foo");
+    assertThat(spans.get(0).name())
+      .isEqualTo("foo");
   }
 
   @Test public void annotate() {
     spanCustomizer.annotate("foo");
     span.flush();
 
-    assertThat(spans).flatExtracting(zipkin2.Span::annotations)
-      .extracting(Annotation::value)
-      .containsExactly("foo");
+    assertThat(spans.get(0).containsAnnotation("foo"))
+      .isTrue();
   }
 
   @Test public void tag() {

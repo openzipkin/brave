@@ -14,22 +14,17 @@
 package brave;
 
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
-import java.util.ArrayList;
-import java.util.List;
+import brave.test.TestSpanHandler;
 import org.junit.After;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class LazySpanTest {
-  List<zipkin2.Span> spans = new ArrayList<>();
-  Tracing tracing = Tracing.newBuilder()
-    .currentTraceContext(StrictCurrentTraceContext.create())
-    .spanReporter(spans::add)
-    .build();
+  TestSpanHandler spans = new TestSpanHandler();
+  Tracing tracing = Tracing.newBuilder().addSpanHandler(spans).build();
 
   TraceContext context = tracing.tracer().newTrace().context();
   TraceContext context2 = tracing.tracer().newTrace().context();

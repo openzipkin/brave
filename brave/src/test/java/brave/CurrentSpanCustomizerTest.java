@@ -13,37 +13,34 @@
  */
 package brave;
 
-import brave.propagation.StrictCurrentTraceContext;
-import java.util.ArrayList;
-import java.util.List;
+import brave.Tracer.SpanInScope;
+import brave.handler.MutableSpan;
+import brave.test.TestSpanHandler;
+import java.util.Map;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.Annotation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 public class CurrentSpanCustomizerTest {
-  List<zipkin2.Span> spans = new ArrayList<>();
-  Tracing tracing = Tracing.newBuilder()
-    .currentTraceContext(StrictCurrentTraceContext.create())
-    .spanReporter(spans::add)
-    .build();
+  TestSpanHandler spans = new TestSpanHandler();
+  Tracing tracing = Tracing.newBuilder().addSpanHandler(spans).build();
   CurrentSpanCustomizer spanCustomizer = CurrentSpanCustomizer.create(tracing);
   Span span = tracing.tracer().newTrace();
 
   @After public void close() {
-    Tracing.current().close();
+    tracing.close();
   }
 
   @Test public void name() {
     span.start();
-    try (Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
+    try (SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
       spanCustomizer.name("newname");
     }
     span.flush();
 
-    assertThat(spans).extracting(zipkin2.Span::name)
+    assertThat(spans).extracting(MutableSpan::name)
       .containsExactly("newname");
   }
 
@@ -53,7 +50,7 @@ public class CurrentSpanCustomizerTest {
 
   @Test public void tag() {
     span.start();
-    try (Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
+    try (SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
       spanCustomizer.tag("foo", "bar");
     }
     span.flush();
@@ -68,13 +65,13 @@ public class CurrentSpanCustomizerTest {
 
   @Test public void annotate() {
     span.start();
-    try (Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
+    try (SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
       spanCustomizer.annotate("foo");
     }
     span.flush();
 
-    assertThat(spans).flatExtracting(zipkin2.Span::annotations)
-      .extracting(Annotation::value)
+    assertThat(spans.get(0).annotations())
+      .extracting(Map.Entry::getValue)
       .containsExactly("foo");
   }
 
