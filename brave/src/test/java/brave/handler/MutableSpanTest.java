@@ -666,13 +666,13 @@ public class MutableSpanTest {
     span.forEachTag((key, value) -> !key.equals("redacted") ? value : null);
 
     assertThat(span).hasToString("{"
-        + "\"traceId\":\"1\",\"parentId\":\"2\",\"id\":\"2\","
-        + "\"kind\":\"CLIENT\",\"name\":\"get\",\"timestamp\":1000,\"duration\":200,"
-        + "\"localEndpoint\":{\"serviceName\":\"frontend\",\"ipv4\":\"127.0.0.1\"},"
-        + "\"remoteEndpoint\":{\"serviceName\":\"backend\",\"ipv4\":\"192.168.99.101\",\"port\":9000},"
-        + "\"annotations\":[{\"timestamp\":1100,\"value\":\"foo}],"
-        + "\"tags\":{\"http.path\":\"/api\",\"clnt/finagle.version\":\"6.45.0\"}"
-        + "}");
+      + "\"traceId\":\"1\",\"parentId\":\"2\",\"id\":\"2\","
+      + "\"kind\":\"CLIENT\",\"name\":\"get\",\"timestamp\":1000,\"duration\":200,"
+      + "\"localEndpoint\":{\"serviceName\":\"frontend\",\"ipv4\":\"127.0.0.1\"},"
+      + "\"remoteEndpoint\":{\"serviceName\":\"backend\",\"ipv4\":\"192.168.99.101\",\"port\":9000},"
+      + "\"annotations\":[{\"timestamp\":1100,\"value\":\"foo}],"
+      + "\"tags\":{\"http.path\":\"/api\",\"clnt/finagle.version\":\"6.45.0\"}"
+      + "}");
   }
 
   @Test public void remove() {
