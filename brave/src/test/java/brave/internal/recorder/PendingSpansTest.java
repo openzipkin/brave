@@ -17,6 +17,7 @@ import brave.GarbageCollectors;
 import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
 import brave.internal.InternalPropagation;
+import brave.internal.handler.OrphanTracker;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.test.TestSpanHandler;
@@ -51,11 +52,13 @@ public class PendingSpansTest {
   );
   AtomicInteger clock = new AtomicInteger();
   PendingSpans pendingSpans;
+  OrphanTracker orphanTracker = new OrphanTracker(clock::getAndIncrement);
 
   @Before public void init() {
     init(new SpanHandler() {
       @Override public boolean end(TraceContext ctx, MutableSpan span, Cause cause) {
-        spans.end(ctx, new MutableSpan(span), cause); // take a copy so we don't hold up GC!
+        orphanTracker.end(ctx, span, cause);
+        spans.end(ctx, span, cause);
         return true;
       }
     });
@@ -139,6 +142,12 @@ public class PendingSpansTest {
     pendingSpans.getOrCreate(null, context3, false);
     TraceContext context4 = context.toBuilder().traceId(4).spanId(4).build();
     pendingSpans.getOrCreate(null, context4, false);
+    // ensure sampled local spans are not reported when orphaned unless they are also sampled remote
+    TraceContext context5 =
+      context.toBuilder().spanId(5).sampledLocal(true).sampled(false).build();
+    pendingSpans.getOrCreate(null, context5, false);
+
+    int initialClockVal = clock.get();
 
     // By clearing strong references in this test, we are left with the weak ones in the map
     context1 = context2 = null;
@@ -149,9 +158,12 @@ public class PendingSpansTest {
     assertThat(spans).hasSize(2);
     // orphaned without data
     assertThat(spans.get(0).id()).isEqualTo("0000000000000002");
+    assertThat(spans.get(0).containsAnnotation("brave.flush")).isTrue();
+
     // orphaned with data
     assertThat(spans.get(1).id()).isEqualTo("0000000000000001");
     assertThat(spans.get(1).tags()).hasSize(2); // data was flushed
+    assertThat(spans.get(0).containsAnnotation("brave.flush")).isTrue();
   }
 
   @Test
