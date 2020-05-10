@@ -294,10 +294,13 @@ public class BaggageFieldTest {
     // different case format is equivalent
     BaggageField sameName = BaggageField.create("fOo");
     assertThat(field).isEqualTo(sameName);
+    assertThat(sameName).isEqualTo(field);
     assertThat(field).hasSameHashCodeAs(sameName);
 
     // different values are not equivalent
-    assertThat(field).isNotEqualTo(BaggageField.create("bar"));
-    assertThat(field.hashCode()).isNotEqualTo(BaggageField.create("bar").hashCode());
+    BaggageField differentValue = BaggageField.create("different");
+    assertThat(field).isNotEqualTo(differentValue);
+    assertThat(differentValue).isNotEqualTo(field);
+    assertThat(field.hashCode()).isNotEqualTo(differentValue.hashCode());
   }
 }

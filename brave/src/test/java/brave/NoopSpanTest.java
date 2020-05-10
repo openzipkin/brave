@@ -14,6 +14,9 @@
 package brave;
 
 import brave.Tracer.SpanInScope;
+import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
+import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import org.junit.After;
 import org.junit.Test;
@@ -25,8 +28,10 @@ public class NoopSpanTest {
     .clock(() -> {
       throw new AssertionError();
     })
-    .spanReporter(s -> {
-      throw new AssertionError();
+    .addSpanHandler(new SpanHandler() {
+      @Override public boolean begin(TraceContext context, MutableSpan span, TraceContext parent) {
+        throw new AssertionError();
+      }
     })
     .build().tracer();
   Span span = tracer.newTrace();

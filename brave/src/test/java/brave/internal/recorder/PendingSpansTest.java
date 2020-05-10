@@ -19,14 +19,12 @@ import brave.handler.SpanHandler;
 import brave.internal.InternalPropagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
-import java.util.ArrayList;
+import brave.test.TestSpanHandler;
 import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin2.Span;
 
 import static brave.internal.InternalPropagation.FLAG_LOCAL_ROOT;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
@@ -39,7 +37,7 @@ public class PendingSpansTest {
     SamplingFlags.NOT_SAMPLED.toString(); // ensure InternalPropagation is wired for tests
   }
 
-  List<zipkin2.Span> spans = new ArrayList<>();
+  TestSpanHandler spans = new TestSpanHandler();
   // PendingSpans should always be passed a trace context instantiated by the Tracer. This fakes
   // a local root span, so that we don't have to depend on the Tracer to run these tests.
   TraceContext context = InternalPropagation.instance.newTraceContext(
@@ -57,12 +55,7 @@ public class PendingSpansTest {
   @Before public void init() {
     init(new SpanHandler() {
       @Override public boolean end(TraceContext ctx, MutableSpan span, Cause cause) {
-        if (!Boolean.TRUE.equals(ctx.sampled())) return true;
-
-        Span.Builder b = Span.newBuilder().traceId(ctx.traceIdString()).id(ctx.traceIdString());
-        b.name(span.name());
-        span.forEachAnnotation(Span.Builder::addAnnotation, b);
-        spans.add(b.build());
+        spans.end(ctx, new MutableSpan(span), cause); // take a copy so we don't hold up GC!
         return true;
       }
     });
@@ -133,21 +126,22 @@ public class PendingSpansTest {
   public void reportOrphanedSpans_afterGC() {
     TraceContext context1 = context.toBuilder().traceId(1).spanId(1).build();
     PendingSpan span = pendingSpans.getOrCreate(null, context1, false);
-    span.span.name("foo");
+    span.span.tag("foo", "bar");
+    span.span.tag("ice", "melt");
+
+    // Prove that copy constructor doesn't pin GC
+    MutableSpan copyOfData = new MutableSpan(span.span);
     span = null; // clear reference so GC occurs
+
     TraceContext context2 = context.toBuilder().traceId(2).spanId(2).build();
     pendingSpans.getOrCreate(null, context2, false);
     TraceContext context3 = context.toBuilder().traceId(3).spanId(3).build();
     pendingSpans.getOrCreate(null, context3, false);
     TraceContext context4 = context.toBuilder().traceId(4).spanId(4).build();
     pendingSpans.getOrCreate(null, context4, false);
-    // ensure sampled local spans are not reported when orphaned unless they are also sampled remote
-    TraceContext context5 =
-      context.toBuilder().spanId(5).sampledLocal(true).sampled(false).build();
-    pendingSpans.getOrCreate(null, context5, false);
 
     // By clearing strong references in this test, we are left with the weak ones in the map
-    context1 = context2 = context5 = null;
+    context1 = context2 = null;
     GarbageCollectors.blockOnGC();
 
     pendingSpans.expungeStaleEntries();
@@ -157,7 +151,7 @@ public class PendingSpansTest {
     assertThat(spans.get(0).id()).isEqualTo("0000000000000002");
     // orphaned with data
     assertThat(spans.get(1).id()).isEqualTo("0000000000000001");
-    assertThat(spans.get(1).name()).isEqualTo("foo"); // data was flushed
+    assertThat(spans.get(1).tags()).hasSize(2); // data was flushed
   }
 
   @Test

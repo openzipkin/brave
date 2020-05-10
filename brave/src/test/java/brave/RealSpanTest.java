@@ -13,21 +13,21 @@
  */
 package brave;
 
+import brave.handler.MutableSpan;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
-import java.util.ArrayList;
-import java.util.List;
+import brave.test.TestSpanHandler;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.Annotation;
 import zipkin2.Endpoint;
 
+import static brave.Span.Kind;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 public class RealSpanTest {
-  List<zipkin2.Span> spans = new ArrayList<>();
-  Tracing tracing = Tracing.newBuilder().spanReporter(spans::add).build();
+  TestSpanHandler spans = new TestSpanHandler();
+  Tracing tracing = Tracing.newBuilder().addSpanHandler(spans).build();
 
   TraceContext context = tracing.tracer().newTrace().context();
   TraceContext context2 = tracing.tracer().newTrace().context();
@@ -54,36 +54,34 @@ public class RealSpanTest {
     span.start();
     span.flush();
 
-    assertThat(spans).hasSize(1).first()
-      .extracting(zipkin2.Span::timestamp)
-      .isNotNull();
+    assertThat(spans.get(0).startTimestamp())
+      .isPositive();
   }
 
   @Test public void start_timestamp() {
     span.start(2);
     span.flush();
 
-    assertThat(spans).hasSize(1).first()
-      .extracting(zipkin2.Span::timestamp)
-      .isEqualTo(2L);
+    assertThat(spans.get(0).startTimestamp())
+      .isEqualTo(2);
   }
 
   @Test public void finish() {
     span.start();
     span.finish();
 
-    assertThat(spans).hasSize(1).first()
-      .extracting(zipkin2.Span::duration)
-      .isNotNull();
+    assertThat(spans.get(0).finishTimestamp())
+      .isPositive();
   }
 
   @Test public void finish_timestamp() {
     span.start(2);
     span.finish(5);
 
-    assertThat(spans).hasSize(1).first()
-      .extracting(zipkin2.Span::duration)
-      .isEqualTo(3L);
+    assertThat(spans.get(0).startTimestamp())
+      .isEqualTo(2);
+    assertThat(spans.get(0).finishTimestamp())
+      .isEqualTo(5);
   }
 
   @Test public void abandon() {
@@ -97,24 +95,25 @@ public class RealSpanTest {
     span.annotate("foo");
     span.flush();
 
-    assertThat(spans).flatExtracting(zipkin2.Span::annotations)
-      .extracting(Annotation::value)
-      .containsExactly("foo");
+    assertThat(spans.get(0).containsAnnotation("foo"))
+      .isTrue();
   }
 
   @Deprecated @Test public void remoteEndpoint_nulls() {
     span.remoteEndpoint(Endpoint.newBuilder().build());
     span.flush();
 
-    assertThat(spans.get(0).remoteEndpoint()).isNull();
+    assertThat(spans.get(0).remoteServiceName()).isNull();
+    assertThat(spans.get(0).remoteIp()).isNull();
+    assertThat(spans.get(0).remotePort()).isZero();
   }
 
   @Test public void annotate_timestamp() {
     span.annotate(2, "foo");
     span.flush();
 
-    assertThat(spans).flatExtracting(zipkin2.Span::annotations)
-      .containsExactly(Annotation.create(2L, "foo"));
+    assertThat(spans.get(0).annotations())
+      .containsExactly(entry(2L, "foo"));
   }
 
   @Test public void tag() {
@@ -126,22 +125,22 @@ public class RealSpanTest {
   }
 
   @Test public void finished_client_annotation() {
-    finish("cs", "cr", zipkin2.Span.Kind.CLIENT);
+    finish("cs", "cr", Kind.CLIENT);
   }
 
   @Test public void finished_server_annotation() {
-    finish("sr", "ss", zipkin2.Span.Kind.SERVER);
+    finish("sr", "ss", Kind.SERVER);
   }
 
-  private void finish(String start, String end, zipkin2.Span.Kind span2Kind) {
+  private void finish(String start, String end, Kind span2Kind) {
     Span span = tracing.tracer().newTrace().name("foo").start();
     span.annotate(1L, start);
     span.annotate(2L, end);
 
-    zipkin2.Span span2 = spans.get(0);
+    MutableSpan span2 = spans.get(0);
     assertThat(span2.annotations()).isEmpty();
-    assertThat(span2.timestamp()).isEqualTo(1L);
-    assertThat(span2.duration()).isEqualTo(1L);
+    assertThat(span2.startTimestamp()).isEqualTo(1L);
+    assertThat(span2.finishTimestamp()).isEqualTo(2L);
     assertThat(span2.kind()).isEqualTo(span2Kind);
   }
 
@@ -171,19 +170,14 @@ public class RealSpanTest {
   }
 
   @Test public void error() {
-    span.error(new RuntimeException("this cake is a lie"));
+    RuntimeException error = new RuntimeException("this cake is a lie");
+    span.error(error);
     span.flush();
 
-    assertThat(spans).flatExtracting(s -> s.tags().entrySet())
-      .containsExactly(entry("error", "this cake is a lie"));
-  }
-
-  @Test public void error_noMessage() {
-    span.error(new RuntimeException());
-    span.flush();
-
-    assertThat(spans).flatExtracting(s -> s.tags().entrySet())
-      .containsOnly(entry("error", "RuntimeException"));
+    assertThat(spans.get(0).error())
+      .isSameAs(error);
+    assertThat(spans.get(0).tags())
+      .doesNotContainKey("error");
   }
 
   @Test public void equals_sameContext() {

@@ -13,7 +13,6 @@
  */
 package brave;
 
-import brave.Span.Kind;
 import brave.Tracer.SpanInScope;
 import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagation;
@@ -31,6 +30,7 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunctions;
+import brave.test.TestSpanHandler;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,10 +39,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.Annotation;
 import zipkin2.Endpoint;
 import zipkin2.reporter.Reporter;
 
+import static brave.Span.Kind.CLIENT;
+import static brave.Span.Kind.SERVER;
 import static brave.propagation.SamplingFlags.EMPTY;
 import static brave.sampler.SamplerFunctions.deferDecision;
 import static brave.sampler.SamplerFunctions.neverSample;
@@ -54,21 +55,13 @@ public class TracerTest {
   static final BaggageField BAGGAGE_FIELD = BaggageField.create("user-id");
 
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).shared(true).build();
-  List<zipkin2.Span> spans = new ArrayList<>();
+  TestSpanHandler spans = new TestSpanHandler();
   Propagation.Factory propagationFactory = B3Propagation.FACTORY;
   CurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   Propagation.Factory baggageFactory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
     .add(SingleBaggageField.remote(BAGGAGE_FIELD)).build();
   Tracer tracer = Tracing.newBuilder()
-    .spanReporter(new Reporter<zipkin2.Span>() {
-      @Override public void report(zipkin2.Span span) {
-        spans.add(span);
-      }
-
-      @Override public String toString() {
-        return "MyReporter{}";
-      }
-    })
+    .addSpanHandler(spans)
     .propagationFactory(new Propagation.Factory() {
       @Deprecated @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
         return propagationFactory.create(keyFactory);
@@ -187,27 +180,27 @@ public class TracerTest {
    * other for the server.
    */
   @Test public void join_sharedDataIsSeparate() {
-    Span clientSide = tracer.newTrace().kind(Kind.CLIENT).start(1L);
-    Span serverSide = tracer.joinSpan(clientSide.context()).kind(Kind.SERVER).start(2L);
+    Span clientSide = tracer.newTrace().kind(CLIENT).start(1L);
+    Span serverSide = tracer.joinSpan(clientSide.context()).kind(SERVER).start(2L);
     serverSide.finish(3L);
     clientSide.finish(4L);
 
     // Ensure they use the same span ID (sanity check)
     String spanId = spans.get(0).id();
-    assertThat(spans).extracting(zipkin2.Span::id)
+    assertThat(spans).extracting(MutableSpan::id)
       .containsExactly(spanId, spanId);
 
     // Ensure the important parts are separated correctly
     assertThat(spans).extracting(
-      zipkin2.Span::kind, zipkin2.Span::shared, zipkin2.Span::timestamp, zipkin2.Span::duration
+      MutableSpan::kind, MutableSpan::shared, MutableSpan::startTimestamp, MutableSpan::finishTimestamp
     ).containsExactly(
-      tuple(zipkin2.Span.Kind.SERVER, true, 2L, 1L),
-      tuple(zipkin2.Span.Kind.CLIENT, null, 1L, 3L)
+      tuple(SERVER, true, 2L, 3L),
+      tuple(CLIENT, false, 1L, 4L)
     );
   }
 
   @Test public void join_createsChildWhenUnsupported() {
-    tracer = Tracing.newBuilder().supportsJoin(false).spanReporter(spans::add).build().tracer();
+    tracer = Tracing.newBuilder().supportsJoin(false).addSpanHandler(spans).build().tracer();
 
     TraceContext fromIncomingRequest = tracer.newTrace().context();
 
@@ -219,8 +212,10 @@ public class TracerTest {
   }
 
   @Test public void finish_doesntCrashOnBadReporter() {
-    tracer = Tracing.newBuilder().spanReporter(span -> {
-      throw new RuntimeException();
+    tracer = Tracing.newBuilder().addSpanHandler(new SpanHandler() {
+      @Override public boolean begin(TraceContext context, MutableSpan span, TraceContext parent) {
+        throw new RuntimeException();
+      }
     }).build().tracer();
 
     tracer.newTrace().start().finish();
@@ -233,7 +228,7 @@ public class TracerTest {
           return B3Propagation.FACTORY.create(keyFactory);
         }
       })
-      .spanReporter(spans::add).build().tracer();
+      .addSpanHandler(spans).build().tracer();
 
     TraceContext fromIncomingRequest = tracer.newTrace().context();
 
@@ -629,7 +624,7 @@ public class TracerTest {
     TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).sampled(true).build();
     try (SpanInScope ws = tracer.withSpanInScope(tracer.toSpan(context))) {
       assertThat(tracer.toString()).hasToString(
-        "Tracer{currentSpan=0000000000000001/000000000000000a, spanHandler=MyReporter{}}"
+        "Tracer{currentSpan=0000000000000001/000000000000000a, spanHandler=TestSpanHandler{[]}}"
       );
     }
   }
@@ -638,11 +633,11 @@ public class TracerTest {
     Tracing.current().setNoop(true);
 
     assertThat(tracer).hasToString(
-      "Tracer{noop=true, spanHandler=MyReporter{}}"
+      "Tracer{noop=true, spanHandler=TestSpanHandler{[]}}"
     );
   }
 
-  @Test public void toString_withSpanHandler() {
+  @Test public void toString_withSpanReporter() {
     tracer = Tracing.newBuilder().addSpanHandler(new SpanHandler() {
       @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
         return true;
@@ -772,7 +767,7 @@ public class TracerTest {
 
     assertThat(spans.get(0).name())
       .isEqualTo("foo");
-    assertThat(spans.get(0).durationAsLong())
+    assertThat(spans.get(0).finishTimestamp())
       .isPositive();
   }
 
@@ -794,7 +789,7 @@ public class TracerTest {
     assertThat(spans).hasSize(1);
     assertThat(spans.stream()
       .flatMap(span -> span.annotations().stream())
-      .map(Annotation::value)
+      .map(Map.Entry::getValue)
       .collect(Collectors.toList())).doesNotContain("brave.flush");
   }
 
@@ -810,7 +805,7 @@ public class TracerTest {
     assertThat(spans).hasSize(0);
     assertThat(spans.stream()
       .flatMap(span -> span.annotations().stream())
-      .map(Annotation::value)
+      .map(Map.Entry::getValue)
       .collect(Collectors.toList())).doesNotContain("brave.flush");
   }
 
@@ -1158,17 +1153,17 @@ public class TracerTest {
     Function<TraceContextOrSamplingFlags, Span> ctxFn
   ) {
     Map<Long, List<String>> reportedNames = tracerThatPartitionsNamesOnlocalRootId();
-    Span server1 = ctxFn.apply(ctx1).name("server1").kind(Kind.SERVER).start();
-    Span server2 = ctxFn.apply(ctx2).name("server2").kind(Kind.SERVER).start();
+    Span server1 = ctxFn.apply(ctx1).name("server1").kind(SERVER).start();
+    Span server2 = ctxFn.apply(ctx2).name("server2").kind(SERVER).start();
     try {
-      Span client1 = tracer.newChild(server1.context()).name("client1").kind(Kind.CLIENT).start();
+      Span client1 = tracer.newChild(server1.context()).name("client1").kind(CLIENT).start();
       ScopedSpan processor1 = tracer.startScopedSpanWithParent("processor1", server1.context());
       try {
         try {
           ScopedSpan processor2 = tracer.startScopedSpanWithParent("processor2", server2.context());
           try {
-            tracer.nextSpan().name("client2").kind(Kind.CLIENT).start().finish();
-            tracer.nextSpan().name("client3").kind(Kind.CLIENT).start().finish();
+            tracer.nextSpan().name("client2").kind(CLIENT).start().finish();
+            tracer.nextSpan().name("client3").kind(CLIENT).start().finish();
           } finally {
             processor2.finish();
           }
@@ -1198,7 +1193,7 @@ public class TracerTest {
           .add(span.name());
         return true; // retain
       }
-    }).alwaysSampleLocal().spanReporter(Reporter.NOOP).build().tracer();
+    }).alwaysSampleLocal().build().tracer();
     return reportedNames;
   }
 }

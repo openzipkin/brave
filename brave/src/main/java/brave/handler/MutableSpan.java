@@ -970,7 +970,7 @@ public final class MutableSpan implements Cloneable {
   }
 
   static int entriesHashCode(Object[] entries, int count) {
-    int h = 1000003; // mutable! cannot cache hashCode
+    int h = 1000003;
     for (int i = 0; i < count * 2; i++) {
       h ^= entries[i] == null ? 0 : entries[i].hashCode();
       h *= 1000003;

@@ -19,15 +19,13 @@ import brave.baggage.BaggagePropagation;
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.propagation.B3Propagation;
 import brave.propagation.TraceContext;
+import brave.test.TestSpanHandler;
 import io.opentracing.propagation.Format;
 import io.opentracing.propagation.TextMapAdapter;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.Annotation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.MapEntry.entry;
@@ -39,12 +37,12 @@ import static org.assertj.core.data.MapEntry.entry;
 public class OpenTracingAdapterTest {
   static final BaggageField BAGGAGE_FIELD = BaggageField.create("userId");
 
-  List<zipkin2.Span> spans = new ArrayList<>();
+  TestSpanHandler spans = new TestSpanHandler();
   Tracing brave = Tracing.newBuilder()
     .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
         .add(SingleBaggageField.newBuilder(BAGGAGE_FIELD)
             .addKeyName("user-id").build()).build())
-    .spanReporter(spans::add).build();
+    .addSpanHandler(spans).build();
 
   BraveTracer opentracing = BraveTracer.wrap(brave);
 
@@ -120,12 +118,12 @@ public class OpenTracingAdapterTest {
   void checkSpanReportedToZipkin() {
     assertThat(spans).first().satisfies(s -> {
         assertThat(s.name()).isEqualTo("encode");
-        assertThat(s.timestamp()).isEqualTo(1L);
+        assertThat(s.startTimestamp()).isEqualTo(1L);
         assertThat(s.annotations())
-          .containsExactly(Annotation.create(2L, "pump fake"));
+          .containsExactly(entry(2L, "pump fake"));
         assertThat(s.tags())
           .containsExactly(entry("lc", "codec"));
-        assertThat(s.duration()).isEqualTo(2L);
+        assertThat(s.finishTimestamp()).isEqualTo(3L);
       }
     );
   }

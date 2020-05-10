@@ -14,14 +14,12 @@
 package brave.features.handler;
 
 import brave.Tracing;
+import brave.test.TestSpanHandler;
 import io.micrometer.core.instrument.search.MeterNotFoundException;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import java.util.ArrayList;
-import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
@@ -30,11 +28,11 @@ public class SpanMetricsCustomizerTest {
   SimpleMeterRegistry registry = new SimpleMeterRegistry();
   SpanMetricsCustomizer spanMetricsCustomizer = new SpanMetricsCustomizer(registry, "span", "foo");
 
-  List<Span> spans = new ArrayList<>();
+  TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing;
 
   @Before public void setup() {
-    Tracing.Builder builder = Tracing.newBuilder().spanReporter(spans::add);
+    Tracing.Builder builder = Tracing.newBuilder().addSpanHandler(spans);
 
     // It is typical for multiple customizers to collaborate on a builder.
     // This example is simplified to use only one customizer.

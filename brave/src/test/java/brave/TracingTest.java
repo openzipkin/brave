@@ -21,12 +21,12 @@ import brave.propagation.Propagation;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
+import brave.test.TestSpanHandler;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.Test;
-import zipkin2.Span;
 import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,14 +34,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class TracingTest {
-  List<zipkin2.Span> spans = new ArrayList<>();
-  List<MutableSpan> mutableSpans = new ArrayList<>();
-  SpanHandler spanHandler = new SpanHandler() {
-    @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
-      mutableSpans.add(span);
-      return true;
-    }
-  };
+  TestSpanHandler spans = new TestSpanHandler();
 
   /**
    * This behavior could be problematic as downstream services may report spans based on propagated
@@ -50,7 +43,7 @@ public class TracingTest {
   @Test public void setNoop_dropsDataButDoesntAffectSampling() {
     try (Tracing tracing = Tracing.newBuilder()
       .currentTraceContext(StrictCurrentTraceContext.create())
-      .spanReporter(spans::add).build()) {
+      .addSpanHandler(spans).build()) {
       ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
 
       tracing.setNoop(true);
@@ -84,8 +77,8 @@ public class TracingTest {
     String expectedLocalServiceName = "favistar", expectedLocalIp = "1.2.3.4";
     int expectedLocalPort = 80;
 
-    List<Span> zipkinSpans = new ArrayList<>();
-    Reporter<Span> spanReporter = span -> {
+    List<zipkin2.Span> zipkinSpans = new ArrayList<>();
+    Reporter<zipkin2.Span> spanReporter = span -> {
       assertThat(span.localServiceName()).isEqualTo(expectedLocalServiceName);
       assertThat(span.localEndpoint().ipv4()).isEqualTo(expectedLocalIp);
       assertThat(span.localEndpoint().portAsInt()).isEqualTo(expectedLocalPort);
@@ -162,9 +155,8 @@ public class TracingTest {
     TraceContext sampledLocal =
       TraceContext.newBuilder().traceId(1).spanId(1).sampledLocal(true).build();
 
-    List<Span> spans = new ArrayList<>();
     try (Tracing tracing = Tracing.newBuilder()
-      .spanReporter(spans::add)
+      .addSpanHandler(spans)
       .sampler(Sampler.NEVER_SAMPLE)
       .alwaysReportSpans()
       .build()) {
@@ -184,80 +176,57 @@ public class TracingTest {
       }
     };
 
+    List<zipkin2.Span> zipkinSpans = new ArrayList<>();
     try (Tracing tracing = Tracing.newBuilder()
-      .spanReporter(spans::add)
+      .spanReporter(zipkinSpans::add)
       .addSpanHandler(spanHandler)
       .build()) {
       tracing.tracer().newTrace().start().finish();
     }
 
-    assertThat(spans.get(0).localServiceName()).isEqualTo(serviceNameOverride);
+    assertThat(zipkinSpans.get(0).localServiceName()).isEqualTo(serviceNameOverride);
   }
 
   @Test public void spanHandler_recordsWhenSampled() {
     try (Tracing tracing = Tracing.newBuilder()
-      .spanReporter(spans::add)
-      .addSpanHandler(spanHandler)
+      .addSpanHandler(spans)
       .build()) {
       tracing.tracer().newTrace().start().name("aloha").finish();
     }
 
-    assertThat(spans).hasSameSizeAs(mutableSpans).hasSize(1);
-    assertThat(spans.get(0).name()).isEqualTo(mutableSpans.get(0).name());
-    assertThat(spans.get(0).timestampAsLong()).isEqualTo(mutableSpans.get(0).startTimestamp());
-    long mutableSpanDuration =
-      Math.max(1, mutableSpans.get(0).finishTimestamp() - mutableSpans.get(0).startTimestamp());
-    assertThat(spans.get(0).durationAsLong()).isEqualTo(mutableSpanDuration);
+    assertThat(spans).hasSize(1);
+    assertThat(spans.get(0).name()).isEqualTo("aloha");
+    assertThat(spans.get(0).startTimestamp()).isPositive();
+    assertThat(spans.get(0).finishTimestamp())
+      .isGreaterThanOrEqualTo(spans.get(0).startTimestamp());
   }
 
   @Test public void spanHandler_doesntRecordWhenUnsampled() {
     try (Tracing tracing = Tracing.newBuilder()
-      .spanReporter(spans::add)
-      .addSpanHandler(spanHandler)
+      .addSpanHandler(spans)
       .sampler(Sampler.NEVER_SAMPLE)
       .build()) {
       tracing.tracer().newTrace().start().name("aloha").finish();
     }
 
     assertThat(spans).isEmpty();
-    assertThat(mutableSpans).isEmpty();
-  }
-
-  @Test public void spanHandler_recordsWhenReporterIsNoopIfAlwaysSampleLocal() {
-    try (Tracing tracing = Tracing.newBuilder()
-      .spanReporter(Reporter.NOOP)
-      .addSpanHandler(spanHandler)
-      .build()) {
-      tracing.tracer().newTrace().start().name("aloha").finish();
-    }
-
-    assertThat(spans).isEmpty();
-    assertThat(mutableSpans).hasSize(1);
   }
 
   @Test public void spanHandler_recordsWhenUnsampledIfAlwaysSampleLocal() {
     try (Tracing tracing = Tracing.newBuilder()
-      .spanReporter(spans::add)
+      .addSpanHandler(spans)
       .alwaysSampleLocal()
-      .addSpanHandler(new SpanHandler() {
-        @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
-          mutableSpans.add(span);
-          return true;
-        }
-      })
       .sampler(Sampler.NEVER_SAMPLE)
       .build()) {
       tracing.tracer().newTrace().start().name("aloha").finish();
     }
 
-    assertThat(spans).isEmpty();
-    assertThat(mutableSpans).hasSize(1);
+    assertThat(spans).hasSize(1);
   }
 
   @Test public void spanHandler_recordsWhenUnsampledIfContextSamplesLocal() {
     AtomicBoolean sampledLocal = new AtomicBoolean();
     try (Tracing tracing = Tracing.newBuilder()
-      .spanReporter(spans::add)
       .propagationFactory(new Propagation.Factory() {
         @Deprecated public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
           return B3SinglePropagation.FACTORY.create(keyFactory);
@@ -268,16 +237,15 @@ public class TracingTest {
           return context.toBuilder().sampledLocal(true).build();
         }
       })
-      .addSpanHandler(spanHandler)
+      .addSpanHandler(spans)
       .sampler(Sampler.NEVER_SAMPLE)
       .build()) {
       tracing.tracer().newTrace().start().name("one").finish();
       tracing.tracer().newTrace().start().name("two").finish();
     }
 
-    assertThat(spans).isEmpty();
-    assertThat(mutableSpans).hasSize(1);
-    assertThat(mutableSpans.get(0).name()).isEqualTo("one");
+    assertThat(spans).hasSize(1);
+    assertThat(spans.get(0).name()).isEqualTo("one");
   }
 
   /**

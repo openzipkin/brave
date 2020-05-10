@@ -19,8 +19,7 @@ import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
-import java.util.ArrayList;
-import java.util.List;
+import brave.test.TestSpanHandler;
 import org.junit.After;
 import org.junit.Test;
 
@@ -32,7 +31,7 @@ import static org.assertj.core.api.Assertions.entry;
  * environment details that are not request-specific, such as region.
  */
 public class DefaultTagsTest {
-  List<zipkin2.Span> spans = new ArrayList<>();
+  TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing = Tracing.newBuilder()
     .currentTraceContext(StrictCurrentTraceContext.create())
     .addSpanHandler(new SpanHandler() {
@@ -45,7 +44,7 @@ public class DefaultTagsTest {
         return true;
       }
     })
-    .spanReporter(spans::add)
+    .addSpanHandler(spans)
     .build();
 
   @After public void close() {

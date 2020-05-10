@@ -30,10 +30,6 @@ import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin2.DependencyLink;
-import zipkin2.Endpoint;
-import zipkin2.internal.DependencyLinker;
-import zipkin2.reporter.Reporter;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,61 +39,48 @@ import static org.assertj.core.api.Assertions.assertThat;
  * cherry-picking data used by the dependency linker, mostly to make it simpler.
  */
 public class SkeletalSpansTest {
-  class ReportSkeletalSpans extends SpanHandler {
-    final String localServiceName;
-    final Reporter<zipkin2.Span> delegate;
-
-    ReportSkeletalSpans(String localServiceName, Reporter<zipkin2.Span> delegate) {
-      this.localServiceName = localServiceName;
-      this.delegate = delegate;
-    }
-
+  static class RetainSkeletalSpans extends SpanHandler {
     @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
       if (cause == Cause.ABANDONED || span.kind() == null) return false; // skip local spans
 
-      zipkin2.Span.Builder builder = zipkin2.Span.newBuilder()
-        .traceId(context.traceIdString())
-        .parentId(
-          context.isLocalRoot() ? null : context.localRootIdString()) // rewrite the parent ID
-        .id(context.spanIdString())
-        .name(span.name())
-        .kind(zipkin2.Span.Kind.valueOf(span.kind().name()))
-        .localEndpoint(Endpoint.newBuilder().serviceName(localServiceName).build());
-
-      if (span.error() != null || span.tag("error") != null) {
-        builder.putTag("error", ""); // linking counts errors: the value isn't important
+      if (!context.isLocalRoot()) {
+        span.parentId(context.localRootIdString()); // rewrite the parent ID
       }
-      if (span.remoteServiceName() != null) {
-        builder.remoteEndpoint(Endpoint.newBuilder().serviceName(span.remoteServiceName()).build());
-      }
-
-      delegate.report(builder.build());
-      return false; // end of the line
+      span.forEachAnnotation((timestamp, value) -> null); // drop all annotations
+      span.forEachTag((key, value) -> {
+        if (key.equals("error")) return ""; // linking counts errors: the value isn't important
+        return null;
+      });
+      span.remoteIp(null); // retain only the service name
+      span.remotePort(0);
+      return true;
     }
   }
 
-  Map<String, List<zipkin2.Span>>
+  Map<String, List<MutableSpan>>
     spans = new LinkedHashMap<>(),
     skeletalSpans = new LinkedHashMap<>();
 
   Tracer server1Tracer = Tracing.newBuilder()
     .localServiceName("server1")
-    .spanReporter(toReporter(spans))
+    .addSpanHandler(toSpanHandler(spans))
     .build().tracer();
 
   Tracer server2Tracer = Tracing.newBuilder()
     .localServiceName("server2")
-    .spanReporter(toReporter(spans))
+    .addSpanHandler(toSpanHandler(spans))
     .build().tracer();
 
   Tracer server1SkeletalTracer = Tracing.newBuilder()
-    .addSpanHandler(new ReportSkeletalSpans("server1", toReporter(skeletalSpans)))
-    .spanReporter(Reporter.NOOP)
+    .localServiceName("server1")
+    .addSpanHandler(new RetainSkeletalSpans())
+    .addSpanHandler(toSpanHandler(skeletalSpans))
     .build().tracer();
 
   Tracer server2SkeletalTracer = Tracing.newBuilder()
-    .addSpanHandler(new ReportSkeletalSpans("server2", toReporter(skeletalSpans)))
-    .spanReporter(Reporter.NOOP)
+    .localServiceName("server2")
+    .addSpanHandler(new RetainSkeletalSpans())
+    .addSpanHandler(toSpanHandler(skeletalSpans))
     .build().tracer();
 
   @Before public void acceptTwoServerRequests() {
@@ -111,7 +94,7 @@ public class SkeletalSpansTest {
 
   @Test public void skeletalSpans_skipLocalSpans() {
     assertThat(spans.values())
-      .extracting(s -> s.stream().map(zipkin2.Span::name).collect(Collectors.toList()))
+      .extracting(s -> s.stream().map(MutableSpan::name).collect(Collectors.toList()))
       .containsExactly(
         asList("post", "post", "controller", "get"),
         asList("async1"),
@@ -120,37 +103,11 @@ public class SkeletalSpansTest {
       );
 
     assertThat(skeletalSpans.values())
-      .extracting(s -> s.stream().map(zipkin2.Span::name).collect(Collectors.toList()))
+      .extracting(s -> s.stream().map(MutableSpan::name).collect(Collectors.toList()))
       .containsExactly(
         asList("post", "post", "get"),
         asList("post", "post", "post", "get")
       );
-  }
-
-  @Test public void skeletalSpans_produceSameServiceGraph() {
-    assertThat(link(spans))
-      .containsExactly(
-        DependencyLink.newBuilder()
-          .parent("server1")
-          .child("server2")
-          .callCount(2L)
-          .errorCount(1L)
-          .build(),
-        DependencyLink.newBuilder()
-          .parent("server1")
-          .child("uninstrumentedserver")
-          .callCount(1L)
-          .errorCount(1L)
-          .build()
-      )
-      .isEqualTo(link(skeletalSpans));
-  }
-
-  /** Executes the linker for each collected trace */
-  static List<DependencyLink> link(Map<String, List<zipkin2.Span>> spans) {
-    DependencyLinker linker = new DependencyLinker();
-    spans.values().forEach(trace -> linker.putTrace(trace));
-    return linker.link();
   }
 
   /** Simulates some service calls */
@@ -205,8 +162,14 @@ public class SkeletalSpansTest {
   }
 
   /** Ensures reporting is partitioned by trace ID */
-  static Reporter<zipkin2.Span> toReporter(Map<String, List<zipkin2.Span>> spans) {
-    return s -> spans.computeIfAbsent(s.traceId(), k -> new ArrayList<>()).add(s);
+  static SpanHandler toSpanHandler(Map<String, List<MutableSpan>> spans) {
+    return new SpanHandler() {
+      @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
+        if (cause == Cause.ABANDONED) return true;
+        spans.computeIfAbsent(span.traceId(), k -> new ArrayList<>()).add(span);
+        return true;
+      }
+    };
   }
 
   /** To reduce code, we don't use real client-server instrumentation. This fakes headers. */

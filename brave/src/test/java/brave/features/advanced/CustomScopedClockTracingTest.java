@@ -16,12 +16,10 @@ package brave.features.advanced;
 import brave.Clock;
 import brave.Tracing;
 import brave.propagation.StrictCurrentTraceContext;
-import java.util.ArrayList;
-import java.util.List;
+import brave.test.TestSpanHandler;
 import java.util.UUID;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,10 +31,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>See https://github.com/openzipkin/brave/issues/564
  */
 public class CustomScopedClockTracingTest {
-  List<Span> spans = new ArrayList<>();
+  TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing = Tracing.newBuilder()
     .currentTraceContext(StrictCurrentTraceContext.create())
-    .spanReporter(spans::add)
+    .addSpanHandler(spans)
     .build();
 
   @After public void close() {

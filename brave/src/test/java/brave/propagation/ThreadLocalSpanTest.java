@@ -14,19 +14,17 @@
 package brave.propagation;
 
 import brave.Tracing;
-import java.util.ArrayList;
-import java.util.List;
+import brave.test.TestSpanHandler;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ThreadLocalSpanTest {
-  List<Span> spans = new ArrayList<>();
+  TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing = Tracing.newBuilder()
     .currentTraceContext(StrictCurrentTraceContext.create())
-    .spanReporter(spans::add)
+    .addSpanHandler(spans)
     .build();
 
   ThreadLocalSpan threadLocalSpan = ThreadLocalSpan.create(tracing.tracer());
