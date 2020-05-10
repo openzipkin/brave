@@ -13,6 +13,7 @@
  */
 package brave.jersey.server;
 
+import brave.Span;
 import brave.test.http.ITServletContainer;
 import brave.test.http.Jetty9ServerController;
 import okhttp3.Response;
@@ -22,7 +23,6 @@ import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 import org.junit.AssumptionViolatedException;
 import org.junit.Test;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -38,7 +38,7 @@ public class ITTracingApplicationEventListener extends ITServletContainer {
   @Test public void tagsResource() throws Exception {
     get("/foo");
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags())
+    assertThat(spanHandler.takeRemoteSpan(Span.Kind.SERVER).tags())
       .containsEntry("jaxrs.resource.class", "TestResource")
       .containsEntry("jaxrs.resource.method", "foo");
   }
@@ -48,7 +48,7 @@ public class ITTracingApplicationEventListener extends ITServletContainer {
     Response response = get("/managedAsync");
     assertThat(response.isSuccessful()).withFailMessage("not successful: " + response).isTrue();
 
-    reporter.takeRemoteSpan(Span.Kind.SERVER);
+    spanHandler.takeRemoteSpan(Span.Kind.SERVER);
   }
 
   @Override public void init(ServletContextHandler handler) {

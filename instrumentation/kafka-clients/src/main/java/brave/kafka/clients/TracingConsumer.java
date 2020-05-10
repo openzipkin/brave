@@ -22,7 +22,6 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.SamplerFunction;
 import java.time.Duration;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;

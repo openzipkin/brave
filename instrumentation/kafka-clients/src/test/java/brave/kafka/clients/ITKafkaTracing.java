@@ -13,6 +13,8 @@
  */
 package brave.kafka.clients;
 
+import brave.Span.Kind;
+import brave.handler.MutableSpan;
 import brave.internal.codec.HexCodec;
 import brave.internal.propagation.StringPropagationAdapter;
 import brave.messaging.MessagingRuleSampler;
@@ -23,7 +25,7 @@ import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
 import brave.sampler.Sampler;
-import brave.test.TestSpanReporter;
+import brave.test.IntegrationTestSpanHandler;
 import com.github.charithe.kafka.EphemeralKafkaBroker;
 import com.github.charithe.kafka.KafkaJunitRule;
 import java.util.ArrayList;
@@ -41,32 +43,29 @@ import org.junit.After;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
-import zipkin2.DependencyLink;
-import zipkin2.Span;
-import zipkin2.Span.Kind;
-import zipkin2.internal.DependencyLinker;
 
 import static brave.kafka.clients.KafkaTags.KAFKA_TOPIC_TAG;
+import static brave.kafka.clients.KafkaTest.TEST_KEY;
+import static brave.kafka.clients.KafkaTest.TEST_VALUE;
 import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static brave.messaging.MessagingRequestMatchers.operationEquals;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.groups.Tuple.tuple;
 
 public class ITKafkaTracing extends ITKafka {
   @ClassRule
   public static KafkaJunitRule kafkaRule = new KafkaJunitRule(EphemeralKafkaBroker.create());
 
-  @Rule public TestSpanReporter producerReporter = new TestSpanReporter();
-  @Rule public TestSpanReporter consumerReporter = new TestSpanReporter();
+  @Rule public IntegrationTestSpanHandler producerSpanHandler = new IntegrationTestSpanHandler();
+  @Rule public IntegrationTestSpanHandler consumerSpanHandler = new IntegrationTestSpanHandler();
 
   KafkaTracing producerTracing = KafkaTracing.create(
     tracingBuilder(Sampler.ALWAYS_SAMPLE).localServiceName("producer")
-      .spanReporter(producerReporter).build()
+      .clearSpanHandlers().addSpanHandler(producerSpanHandler).build()
   );
 
   KafkaTracing consumerTracing = KafkaTracing.create(
     tracingBuilder(Sampler.ALWAYS_SAMPLE).localServiceName("consumer")
-      .spanReporter(consumerReporter).build()
+      .clearSpanHandlers().addSpanHandler(consumerSpanHandler).build()
   );
 
   Producer<String, String> producer;
@@ -90,8 +89,8 @@ public class ITKafkaTracing extends ITKafka {
     ConsumerRecords<String, String> records = consumer.poll(10000);
 
     assertThat(records).hasSize(2);
-    Span producerSpan1 = takeProducerSpan(), producerSpan2 = takeProducerSpan();
-    Span consumerSpan1 = takeConsumerSpan(), consumerSpan2 = takeConsumerSpan();
+    MutableSpan producerSpan1 = takeProducerSpan(), producerSpan2 = takeProducerSpan();
+    MutableSpan consumerSpan1 = takeConsumerSpan(), consumerSpan2 = takeConsumerSpan();
 
     // Check to see the trace is continued between the producer and the consumer
     // we don't know the order the spans will come in. Correlate with the tag instead.
@@ -115,12 +114,12 @@ public class ITKafkaTracing extends ITKafka {
     callback.join();
   }
 
-  Span takeProducerSpan() {
-    return producerReporter.takeRemoteSpan(Kind.PRODUCER);
+  MutableSpan takeProducerSpan() {
+    return producerSpanHandler.takeRemoteSpan(Kind.PRODUCER);
   }
 
-  Span takeConsumerSpan() {
-    return consumerReporter.takeRemoteSpan(Kind.CONSUMER);
+  MutableSpan takeConsumerSpan() {
+    return consumerSpanHandler.takeRemoteSpan(Kind.CONSUMER);
   }
 
   @Test
@@ -153,15 +152,13 @@ public class ITKafkaTracing extends ITKafka {
 
     consumer.poll(10000);
 
-    List<Span> allSpans = new ArrayList<>();
-    allSpans.add(takeConsumerSpan());
-    allSpans.add(takeProducerSpan());
+    MutableSpan producerSpan = takeProducerSpan();
+    MutableSpan consumerSpan = takeConsumerSpan();
 
-    List<DependencyLink> links = new DependencyLinker().putTrace(allSpans).link();
-    assertThat(links).extracting("parent", "child").containsExactly(
-      tuple("producer", "kafka"),
-      tuple("kafka", "consumer")
-    );
+    assertThat(producerSpan.localServiceName()).isEqualTo("producer");
+    assertThat(producerSpan.remoteServiceName()).isEqualTo("kafka");
+    assertThat(consumerSpan.remoteServiceName()).isEqualTo("kafka");
+    assertThat(consumerSpan.localServiceName()).isEqualTo("consumer");
   }
 
   @Test
@@ -174,11 +171,11 @@ public class ITKafkaTracing extends ITKafka {
     ConsumerRecords<String, String> records = consumer.poll(10000);
 
     assertThat(records).hasSize(1);
-    Span producerSpan = takeProducerSpan();
-    Span consumerSpan = takeConsumerSpan();
+    MutableSpan producerSpan = takeProducerSpan();
+    MutableSpan consumerSpan = takeConsumerSpan();
 
     for (ConsumerRecord<String, String> record : records) {
-      brave.Span processor = consumerTracing.nextSpan(record);
+      brave.Span processor = kafkaTracing.nextSpan(record);
 
       assertThat(consumerSpan.tags())
         .containsEntry(KAFKA_TOPIC_TAG, record.topic());
@@ -189,7 +186,7 @@ public class ITKafkaTracing extends ITKafka {
       processor.start().name("processor").finish();
 
       // The processor doesn't taint the consumer span which has already finished
-      Span processorSpan = consumerReporter.takeLocalSpan();
+      MutableSpan processorSpan = spanHandler.takeLocalSpan();
       assertThat(processorSpan.id())
         .isNotEqualTo(consumerSpan.id());
     }
@@ -228,11 +225,11 @@ public class ITKafkaTracing extends ITKafka {
   @Test
   public void continues_a_trace_when_only_trace_id_propagated() {
     consumerTracing = KafkaTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE)
-      .spanReporter(consumerReporter)
+      .clearSpanHandlers().addSpanHandler(consumerSpanHandler)
       .propagationFactory(new TraceIdOnlyPropagation())
       .build());
     producerTracing = KafkaTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE)
-      .spanReporter(producerReporter)
+      .clearSpanHandlers().addSpanHandler(producerSpanHandler)
       .propagationFactory(new TraceIdOnlyPropagation())
       .build());
 
@@ -246,8 +243,8 @@ public class ITKafkaTracing extends ITKafka {
     ConsumerRecords<String, String> records = consumer.poll(10_000L);
 
     assertThat(records).hasSize(1);
-    Span producerSpan = takeProducerSpan();
-    Span consumerSpan = takeConsumerSpan();
+    MutableSpan producerSpan = takeProducerSpan();
+    MutableSpan consumerSpan = takeConsumerSpan();
 
     assertThat(producerSpan.traceId())
       .isEqualTo(consumerSpan.traceId());

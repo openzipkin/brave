@@ -13,6 +13,7 @@
  */
 package brave.jms;
 
+import brave.handler.MutableSpan;
 import brave.messaging.MessagingRuleSampler;
 import brave.messaging.MessagingTracing;
 import brave.propagation.CurrentTraceContext.Scope;
@@ -33,9 +34,8 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
-import zipkin2.Span;
-import zipkin2.Span.Kind;
 
+import static brave.Span.Kind.PRODUCER;
 import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -74,7 +74,7 @@ public class ITTracingJMSProducer extends ITJms {
     producer.send(jms.queue, "foo");
 
     Message received = consumer.receive();
-    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan producerSpan = spanHandler.takeRemoteSpan(PRODUCER);
 
     assertThat(propertiesToMap(received))
       .containsAllEntriesOf(existingProperties)
@@ -89,7 +89,7 @@ public class ITTracingJMSProducer extends ITJms {
 
     Message received = consumer.receive();
 
-    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan producerSpan = spanHandler.takeRemoteSpan(PRODUCER);
     assertChildOf(producerSpan, parent);
 
     assertThat(propertiesToMap(received))
@@ -107,7 +107,7 @@ public class ITTracingJMSProducer extends ITJms {
 
     Message received = consumer.receive();
 
-    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan producerSpan = spanHandler.takeRemoteSpan(PRODUCER);
     assertChildOf(producerSpan, parent);
 
     assertThat(propertiesToMap(received))
@@ -120,12 +120,12 @@ public class ITTracingJMSProducer extends ITJms {
 
     consumer.receive();
 
-    Span producerSpan = reporter.takeRemoteSpan(Kind.PRODUCER);
+    MutableSpan producerSpan = spanHandler.takeRemoteSpan(PRODUCER);
     assertThat(producerSpan.name()).isEqualTo("send");
     assertThat(producerSpan.tags()).containsEntry("jms.queue", jms.queueName);
   }
 
-  @Test public void should_record_error() {
+  @Test public void should_set_error() {
     jms.after();
 
     String message;
@@ -136,7 +136,7 @@ public class ITTracingJMSProducer extends ITJms {
       message = e.getMessage();
     }
 
-    reporter.takeRemoteSpanWithError(Kind.PRODUCER, message);
+    spanHandler.takeRemoteSpanWithErrorMessage(PRODUCER, message);
   }
 
   @Test public void should_complete_on_callback() {
@@ -151,7 +151,7 @@ public class ITTracingJMSProducer extends ITJms {
     });
     producer.send(jms.queue, "foo");
 
-    assertThat(reporter.takeRemoteSpan(Kind.PRODUCER).tags())
+    assertThat(spanHandler.takeRemoteSpan(PRODUCER).tags())
       .containsKeys("onCompletion");
   }
 

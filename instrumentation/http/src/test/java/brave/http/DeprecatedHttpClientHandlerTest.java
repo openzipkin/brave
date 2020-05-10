@@ -17,17 +17,17 @@ import brave.ScopedSpan;
 import brave.Tracing;
 import brave.http.HttpClientAdapters.FromRequestAdapter;
 import brave.propagation.TraceContext;
-import java.util.ArrayList;
-import java.util.List;
+import brave.test.IntegrationTestSpanHandler;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.MockitoJUnitRunner;
-import zipkin2.Span;
 
+import static brave.Span.Kind.CLIENT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -39,8 +39,9 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 @Deprecated public class DeprecatedHttpClientHandlerTest {
+  @Rule public IntegrationTestSpanHandler spanHandler = new IntegrationTestSpanHandler();
+
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(1L).sampled(true).build();
-  List<Span> spans = new ArrayList<>();
   @Mock HttpSampler sampler;
   HttpTracing httpTracing;
   HttpClientHandler<Object, Object> handler;
@@ -68,7 +69,7 @@ import static org.mockito.Mockito.when;
   }
 
   Tracing.Builder tracingBuilder() {
-    return Tracing.newBuilder().spanReporter(spans::add);
+    return Tracing.newBuilder().addSpanHandler(spanHandler);
   }
 
   @After public void close() {
@@ -93,6 +94,7 @@ import static org.mockito.Mockito.when;
     } finally {
       parent.finish();
     }
+    spanHandler.takeLocalSpan();
   }
 
   @Test public void handleSend_makesRequestBasedSamplingDecision() {
@@ -123,9 +125,8 @@ import static org.mockito.Mockito.when;
 
     HttpClientHandler.create(httpTracing, adapter).handleSend(injector, request).finish();
 
-    assertThat(spans)
-      .extracting(Span::remoteServiceName)
-      .containsExactly("remote-service");
+    assertThat(spanHandler.takeRemoteSpan(CLIENT).remoteServiceName())
+      .isEqualTo("remote-service");
   }
 
   @Test public void handleSend_skipsClientAddressWhenUnparsed() {
@@ -133,9 +134,8 @@ import static org.mockito.Mockito.when;
 
     handler.handleSend(injector, request).finish();
 
-    assertThat(spans)
-      .extracting(Span::remoteServiceName)
-      .containsNull();
+    assertThat(spanHandler.takeRemoteSpan(CLIENT).remoteServiceName())
+      .isNull();
   }
 
   @Test public void handleReceive() {

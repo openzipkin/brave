@@ -13,6 +13,7 @@
  */
 package brave.httpclient;
 
+import brave.handler.MutableSpan;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
@@ -21,8 +22,8 @@ import java.util.Arrays;
 import okhttp3.mockwebserver.MockResponse;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.junit.Test;
-import zipkin2.Span;
 
+import static brave.Span.Kind.CLIENT;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilder {
@@ -49,11 +50,11 @@ public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilde
 
     assertThat(server.getRequestCount()).isEqualTo(1);
 
-    Span real = reporter.takeRemoteSpan(Span.Kind.CLIENT);
-    Span cached = reporter.takeLocalSpan();
+    MutableSpan real = spanHandler.takeRemoteSpan(CLIENT);
+    MutableSpan cached = spanHandler.takeLocalSpan();
     assertThat(cached.tags()).containsKey("http.cache_hit");
 
-    for (Span child : Arrays.asList(real, cached)) {
+    for (MutableSpan child : Arrays.asList(real, cached)) {
       assertChildOf(child, parent);
     }
 

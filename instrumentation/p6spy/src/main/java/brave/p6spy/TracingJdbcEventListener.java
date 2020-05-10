@@ -25,6 +25,8 @@ import java.sql.SQLException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static brave.Span.Kind.CLIENT;
+
 final class TracingJdbcEventListener extends SimpleJdbcEventListener {
 
   private static final Pattern URL_SERVICE_NAME_FINDER =
@@ -56,7 +58,8 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
     Span span = ThreadLocalSpan.CURRENT_TRACER.next();
     if (span == null || span.isNoop()) return;
 
-    span.kind(Span.Kind.CLIENT).name(sql.substring(0, sql.indexOf(' ')));
+    int spaceIndex = sql.indexOf(' '); // Allow span names of single-word statements like COMMIT
+    span.kind(CLIENT).name(spaceIndex == -1 ? sql : sql.substring(0, spaceIndex));
     span.tag("sql.query", sql);
     parseServerIpAndPort(info.getConnectionInformation().getConnection(), span);
     span.start();
@@ -67,6 +70,7 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
     if (span == null || span.isNoop()) return;
 
     if (e != null) {
+      span.error(e);
       span.tag("error", Integer.toString(e.getErrorCode()));
     }
     span.finish();

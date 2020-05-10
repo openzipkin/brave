@@ -20,8 +20,9 @@ import org.apache.dubbo.rpc.Invoker;
 import org.apache.dubbo.rpc.Result;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin2.Span.Kind;
 
+import static brave.Span.Kind.CLIENT;
+import static brave.Span.Kind.SERVER;
 import static org.mockito.Mockito.mock;
 
 public class FinishSpanTest extends ITTracingFilter {
@@ -36,108 +37,108 @@ public class FinishSpanTest extends ITTracingFilter {
   }
 
   @Test public void finish_null_result_and_error_DubboClientRequest() {
-    Span span = tracing.tracer().nextSpan().kind(Span.Kind.CLIENT).start();
+    Span span = tracing.tracer().nextSpan().kind(CLIENT).start();
 
     FinishSpan.finish(filter, clientRequest, null, null, span);
 
-    reporter.takeRemoteSpan(Kind.CLIENT);
+    spanHandler.takeRemoteSpan(CLIENT);
   }
 
   @Test public void finish_null_result_and_error_DubboServerRequest() {
-    Span span = tracing.tracer().nextSpan().kind(Span.Kind.SERVER).start();
+    Span span = tracing.tracer().nextSpan().kind(SERVER).start();
 
     FinishSpan.finish(filter, serverRequest, null, null, span);
 
-    reporter.takeRemoteSpan(Kind.SERVER);
+    spanHandler.takeRemoteSpan(SERVER);
   }
 
   @Test public void finish_result_but_null_error_DubboClientRequest() {
-    Span span = tracing.tracer().nextSpan().kind(Span.Kind.CLIENT).start();
+    Span span = tracing.tracer().nextSpan().kind(CLIENT).start();
 
     FinishSpan.finish(filter, clientRequest, mock(Result.class), null, span);
 
-    reporter.takeRemoteSpan(Kind.CLIENT);
+    spanHandler.takeRemoteSpan(CLIENT);
   }
 
   @Test public void finish_result_but_null_error_DubboServerRequest() {
-    Span span = tracing.tracer().nextSpan().kind(Span.Kind.SERVER).start();
+    Span span = tracing.tracer().nextSpan().kind(SERVER).start();
 
     FinishSpan.finish(filter, serverRequest, mock(Result.class), null, span);
 
-    reporter.takeRemoteSpan(Kind.SERVER);
+    spanHandler.takeRemoteSpan(SERVER);
   }
 
   @Test public void finish_error_but_null_result_DubboClientRequest() {
-    Span span = tracing.tracer().nextSpan().kind(Span.Kind.CLIENT).start();
+    Span span = tracing.tracer().nextSpan().kind(CLIENT).start();
 
     Throwable error = new RuntimeException("melted");
     FinishSpan.finish(filter, clientRequest, null, error, span);
 
-    reporter.takeRemoteSpanWithError(Kind.CLIENT, error.getMessage());
+    spanHandler.takeRemoteSpanWithError(CLIENT, error);
   }
 
   @Test public void finish_error_but_null_result_DubboServerRequest() {
-    Span span = tracing.tracer().nextSpan().kind(Span.Kind.SERVER).start();
+    Span span = tracing.tracer().nextSpan().kind(SERVER).start();
 
     Throwable error = new RuntimeException("melted");
     FinishSpan.finish(filter, serverRequest, null, error, span);
 
-    reporter.takeRemoteSpanWithError(Kind.SERVER, error.getMessage());
+    spanHandler.takeRemoteSpanWithError(SERVER, error);
   }
 
   @Test public void create_null_result_value_and_error_DubboClientRequest() {
-    Span span = tracing.tracer().nextSpan().kind(Span.Kind.CLIENT).start();
+    Span span = tracing.tracer().nextSpan().kind(CLIENT).start();
 
     FinishSpan.create(filter, clientRequest, mock(Result.class), span)
         .accept(null, null);
 
-    reporter.takeRemoteSpan(Kind.CLIENT);
+    spanHandler.takeRemoteSpan(CLIENT);
   }
 
   @Test public void create_null_result_value_and_error_DubboServerRequest() {
-    Span span = tracing.tracer().nextSpan().kind(Span.Kind.SERVER).start();
+    Span span = tracing.tracer().nextSpan().kind(SERVER).start();
 
     FinishSpan.create(filter, serverRequest, mock(Result.class), span)
         .accept(null, null);
 
-    reporter.takeRemoteSpan(Kind.SERVER);
+    spanHandler.takeRemoteSpan(SERVER);
   }
 
   @Test public void create_result_value_but_null_error_DubboClientRequest() {
-    Span span = tracing.tracer().nextSpan().kind(Span.Kind.CLIENT).start();
+    Span span = tracing.tracer().nextSpan().kind(CLIENT).start();
 
     FinishSpan.create(filter, clientRequest, mock(Result.class), span)
         .accept(new Object(), null);
 
-    reporter.takeRemoteSpan(Kind.CLIENT);
+    spanHandler.takeRemoteSpan(CLIENT);
   }
 
   @Test public void create_result_value_but_null_error_DubboServerRequest() {
-    Span span = tracing.tracer().nextSpan().kind(Span.Kind.SERVER).start();
+    Span span = tracing.tracer().nextSpan().kind(SERVER).start();
 
     FinishSpan.create(filter, serverRequest, mock(Result.class), span)
         .accept(new Object(), null);
 
-    reporter.takeRemoteSpan(Kind.SERVER);
+    spanHandler.takeRemoteSpan(SERVER);
   }
 
   @Test public void create_error_but_null_result_value_DubboClientRequest() {
-    Span span = tracing.tracer().nextSpan().kind(Span.Kind.CLIENT).start();
+    Span span = tracing.tracer().nextSpan().kind(CLIENT).start();
 
     Throwable error = new RuntimeException("melted");
     FinishSpan.create(filter, clientRequest, mock(Result.class), span)
         .accept(null, error);
 
-    reporter.takeRemoteSpanWithError(Kind.CLIENT, error.getMessage());
+    spanHandler.takeRemoteSpanWithError(CLIENT, error);
   }
 
   @Test public void create_error_but_null_result_value_DubboServerRequest() {
-    Span span = tracing.tracer().nextSpan().kind(Span.Kind.SERVER).start();
+    Span span = tracing.tracer().nextSpan().kind(SERVER).start();
 
     Throwable error = new RuntimeException("melted");
     FinishSpan.create(filter, serverRequest, mock(Result.class), span)
         .accept(null, error);
 
-    reporter.takeRemoteSpanWithError(Kind.SERVER, error.getMessage());
+    spanHandler.takeRemoteSpanWithError(SERVER, error);
   }
 }

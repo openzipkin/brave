@@ -34,36 +34,8 @@ import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 
 abstract class ITKafka extends ITRemote {
-  String TEST_TOPIC = "myTopic";
-  String TEST_KEY = "foo";
-  String TEST_VALUE = "bar";
-
-  ConsumerRecord<String, String> fakeRecord =
-    new ConsumerRecord<>(TEST_TOPIC, 0, 1L, TEST_KEY, TEST_VALUE);
-
   MessagingTracing messagingTracing = MessagingTracing.create(tracing);
   KafkaTracing kafkaTracing = KafkaTracing.create(messagingTracing);
-  TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
-
-  <K, V> void addB3MultiHeaders(ConsumerRecord<K, V> record) {
-    Propagation.B3_STRING.injector(KafkaPropagation.SETTER).inject(parent, record.headers());
-  }
-
-  static Set<Map.Entry<String, String>> lastHeaders(Headers headers) {
-    Map<String, String> result = new LinkedHashMap<>();
-    headers.forEach(h -> result.put(h.key(), new String(h.value(), Charsets.UTF_8)));
-    return result.entrySet();
-  }
-
-  static Map<String, String> lastHeaders(MockProducer<Object, String> mockProducer) {
-    Map<String, String> headers = new LinkedHashMap<>();
-    List<ProducerRecord<Object, String>> history = mockProducer.history();
-    ProducerRecord<Object, String> lastRecord = history.get(history.size() - 1);
-    for (Header header : lastRecord.headers()) {
-      headers.put(header.key(), new String(header.value(), StandardCharsets.UTF_8));
-    }
-    return headers;
-  }
 
   /** {@link #join()} waits for the callback to complete without any errors */
   static final class BlockingCallback implements Callback {

@@ -13,6 +13,7 @@
  */
 package brave.kafka.clients;
 
+import brave.handler.MutableSpan;
 import brave.propagation.CurrentTraceContext.Scope;
 import java.util.Arrays;
 import java.util.List;
@@ -21,19 +22,18 @@ import org.apache.kafka.clients.producer.MockProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
 import org.junit.Test;
-import zipkin2.Span;
 
+import static brave.Span.Kind.PRODUCER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public class TracingProducerTest extends ITKafka {
+public class TracingProducerTest extends KafkaTest {
   MockProducer<Object, String> mockProducer = new MockProducer<>();
-  KafkaTracing kafkaTracing = KafkaTracing.create(tracing);
   TracingProducer<Object, String> tracingProducer =
     (TracingProducer<Object, String>) kafkaTracing.producer(mockProducer);
 
   @Test public void should_add_b3_headers_to_records() {
-    tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
+    tracingProducer.send(producerRecord);
 
     List<String> headerKeys = mockProducer.history().stream()
       .flatMap(records -> Arrays.stream(records.headers().toArray()))
@@ -49,7 +49,8 @@ public class TracingProducerTest extends ITKafka {
     tracingProducer.send(record);
     mockProducer.completeNext();
 
-    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan producerSpan = spans.get(0);
+    assertThat(producerSpan.kind()).isEqualTo(PRODUCER);
     assertThat(lastHeaders(mockProducer))
       .containsEntry("tx-id", "1")
       .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
@@ -61,7 +62,8 @@ public class TracingProducerTest extends ITKafka {
       mockProducer.completeNext();
     }
 
-    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan producerSpan = spans.get(0);
+    assertThat(producerSpan.kind()).isEqualTo(PRODUCER);
     assertChildOf(producerSpan, parent);
     assertThat(lastHeaders(mockProducer))
       .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
@@ -73,7 +75,8 @@ public class TracingProducerTest extends ITKafka {
     tracingProducer.send(record);
     mockProducer.completeNext();
 
-    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan producerSpan = spans.get(0);
+    assertThat(producerSpan.kind()).isEqualTo(PRODUCER);
     assertChildOf(producerSpan, parent);
     assertThat(lastHeaders(mockProducer))
       .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
@@ -89,15 +92,18 @@ public class TracingProducerTest extends ITKafka {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
     mockProducer.completeNext();
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.PRODUCER).name())
-      .isEqualTo("send");
+    MutableSpan producerSpan = spans.get(0);
+    assertThat(producerSpan.kind()).isEqualTo(PRODUCER);
+    assertThat(producerSpan.name()).isEqualTo("send");
   }
 
   @Test public void send_should_tag_topic_and_key() {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE));
     mockProducer.completeNext();
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.PRODUCER).tags())
+    MutableSpan producerSpan = spans.get(0);
+    assertThat(producerSpan.kind()).isEqualTo(PRODUCER);
+    assertThat(producerSpan.tags())
       .containsOnly(entry("kafka.topic", TEST_TOPIC), entry("kafka.key", TEST_KEY));
   }
 
@@ -105,7 +111,9 @@ public class TracingProducerTest extends ITKafka {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, null, TEST_VALUE));
     mockProducer.completeNext();
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.PRODUCER).tags())
+    MutableSpan producerSpan = spans.get(0);
+    assertThat(producerSpan.kind()).isEqualTo(PRODUCER);
+    assertThat(producerSpan.tags())
       .containsOnly(entry("kafka.topic", TEST_TOPIC));
   }
 
@@ -113,7 +121,9 @@ public class TracingProducerTest extends ITKafka {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, new byte[1], TEST_VALUE));
     mockProducer.completeNext();
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.PRODUCER).tags())
+    MutableSpan producerSpan = spans.get(0);
+    assertThat(producerSpan.kind()).isEqualTo(PRODUCER);
+    assertThat(producerSpan.tags())
       .containsOnly(entry("kafka.topic", TEST_TOPIC));
   }
 }

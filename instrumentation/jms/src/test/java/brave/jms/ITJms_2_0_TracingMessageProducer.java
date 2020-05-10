@@ -13,6 +13,7 @@
  */
 package brave.jms;
 
+import brave.Span;
 import brave.messaging.MessagingRuleSampler;
 import brave.messaging.MessagingTracing;
 import brave.sampler.Sampler;
@@ -25,7 +26,6 @@ import javax.jms.MessageProducer;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.rules.TestName;
-import zipkin2.Span;
 
 import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -63,7 +63,7 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
       }
     });
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.PRODUCER).tags())
+    assertThat(spanHandler.takeRemoteSpan(Span.Kind.PRODUCER).tags())
       .containsKey("onCompletion");
   }
 
@@ -104,7 +104,7 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
     jms.after();
     latch.countDown();
 
-    reporter.takeRemoteSpanWithError(Span.Kind.PRODUCER, "onException");
+    spanHandler.takeRemoteSpanWithErrorTag(Span.Kind.PRODUCER, "onException");
   }
 
   @Test public void customSampler() throws JMSException {

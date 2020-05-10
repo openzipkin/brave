@@ -27,11 +27,12 @@ import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
 import org.junit.Test;
 
+import static brave.test.ITRemote.BAGGAGE_FIELD;
+import static brave.test.ITRemote.BAGGAGE_FIELD_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public class KafkaStreamsTracingTest extends ITKafkaStreams {
-
+public class KafkaStreamsTracingTest extends KafkaStreamsTest {
   @Test
   public void nextSpan_uses_current_context() {
     ProcessorContext fakeProcessorContext = processorContextSupplier.apply(new RecordHeaders());
@@ -39,7 +40,10 @@ public class KafkaStreamsTracingTest extends ITKafkaStreams {
     try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
       child = kafkaStreamsTracing.nextSpan(fakeProcessorContext);
     }
-    assertChildOf(child.context(), parent);
+    child.finish();
+
+    assertThat(child.context().parentIdString())
+        .isEqualTo(parent.spanIdString());
   }
 
   @Test
@@ -53,7 +57,7 @@ public class KafkaStreamsTracingTest extends ITKafkaStreams {
     ProcessorContext fakeProcessorContext = processorContextSupplier.apply(new RecordHeaders());
     kafkaStreamsTracing.nextSpan(fakeProcessorContext).start().finish();
 
-    assertThat(reporter.takeLocalSpan().tags())
+    assertThat(spans.get(0).tags())
       .containsOnly(
         entry("kafka.streams.application.id", TEST_APPLICATION_ID),
         entry("kafka.streams.task.id", TEST_TASK_ID));
@@ -65,7 +69,7 @@ public class KafkaStreamsTracingTest extends ITKafkaStreams {
     processor.init(processorContextSupplier.apply(new RecordHeaders()));
     processor.process(TEST_KEY, TEST_VALUE);
 
-    assertThat(reporter.takeLocalSpan().tags())
+    assertThat(spans.get(0).tags())
       .containsOnly(
         entry("kafka.streams.application.id", TEST_APPLICATION_ID),
         entry("kafka.streams.task.id", TEST_TASK_ID));
@@ -79,15 +83,13 @@ public class KafkaStreamsTracingTest extends ITKafkaStreams {
           new AbstractProcessor<String, String>() {
             @Override
             public void process(String key, String value) {
-              assertThat(BAGGAGE_FIELD.getValue()).isEqualTo("user1");
+              assertThat(BAGGAGE_FIELD.getValue(currentTraceContext.get())).isEqualTo("user1");
             }
           });
     Headers headers = new RecordHeaders().add(BAGGAGE_FIELD_KEY, "user1".getBytes());
     Processor<String, String> processor = processorSupplier.get();
     processor.init(processorContextSupplier.apply(headers));
     processor.process(TEST_KEY, TEST_VALUE);
-
-    reporter.takeLocalSpan();
   }
 
   @Test
@@ -96,7 +98,7 @@ public class KafkaStreamsTracingTest extends ITKafkaStreams {
     processor.init(processorContextSupplier.apply(new RecordHeaders()));
     processor.transform(TEST_KEY, TEST_VALUE);
 
-    assertThat(reporter.takeLocalSpan().tags())
+    assertThat(spans.get(0).tags())
       .containsOnly(
         entry("kafka.streams.application.id", TEST_APPLICATION_ID),
         entry("kafka.streams.task.id", TEST_TASK_ID));
@@ -108,7 +110,7 @@ public class KafkaStreamsTracingTest extends ITKafkaStreams {
     processor.init(processorContextSupplier.apply(new RecordHeaders()));
     processor.transform(TEST_VALUE);
 
-    assertThat(reporter.takeLocalSpan().tags())
+    assertThat(spans.get(0).tags())
       .containsOnly(
         entry("kafka.streams.application.id", TEST_APPLICATION_ID),
         entry("kafka.streams.task.id", TEST_TASK_ID));
@@ -121,7 +123,7 @@ public class KafkaStreamsTracingTest extends ITKafkaStreams {
     processor.init(processorContextSupplier.apply(new RecordHeaders()));
     processor.transform(TEST_KEY, TEST_VALUE);
 
-    assertThat(reporter.takeLocalSpan().tags())
+    assertThat(spans.get(0).tags())
       .containsOnly(
         entry("kafka.streams.application.id", TEST_APPLICATION_ID),
         entry("kafka.streams.task.id", TEST_TASK_ID));

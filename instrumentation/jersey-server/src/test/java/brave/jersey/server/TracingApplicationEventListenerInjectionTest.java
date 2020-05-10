@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,21 +15,16 @@ package brave.jersey.server;
 
 import brave.Tracing;
 import brave.http.HttpTracing;
-import brave.propagation.ThreadLocalCurrentTraceContext;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TracingApplicationEventListenerInjectionTest {
-  Tracing tracing = Tracing.newBuilder()
-    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-    .spanReporter(Reporter.NOOP)
-    .build();
+  Tracing tracing = Tracing.newBuilder().build();
 
   Injector injector = Guice.createInjector(new AbstractModule() {
     @Override protected void configure() {

@@ -34,8 +34,8 @@ import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.nio.entity.NStringEntity;
 import org.apache.http.util.EntityUtils;
 import org.junit.Test;
-import zipkin2.Span;
 
+import static brave.Span.Kind.CLIENT;
 import static org.apache.commons.codec.Charsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -87,7 +87,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    reporter.takeRemoteSpan(Span.Kind.CLIENT);
+    spanHandler.takeRemoteSpan(CLIENT);
   }
 
   @Test public void failedInterceptorRemovesScope() {
@@ -104,7 +104,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
 
     assertThat(currentTraceContext.get()).isNull();
 
-    reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, "Test");
+    spanHandler.takeRemoteSpanWithError(CLIENT, error);
   }
 
   @Override

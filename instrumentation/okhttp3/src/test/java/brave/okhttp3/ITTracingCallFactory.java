@@ -13,6 +13,7 @@
  */
 package brave.okhttp3;
 
+import brave.Span;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
@@ -33,7 +34,6 @@ import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -107,6 +107,6 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    reporter.takeRemoteSpan(Span.Kind.CLIENT);
+    spanHandler.takeRemoteSpan(Span.Kind.CLIENT);
   }
 }

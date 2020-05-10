@@ -16,8 +16,8 @@ package brave.http.features;
 import brave.Tracing;
 import brave.http.HttpTracing;
 import brave.propagation.StrictCurrentTraceContext;
+import brave.test.IntegrationTestSpanHandler;
 import java.io.IOException;
-import java.util.concurrent.ConcurrentLinkedDeque;
 import okhttp3.Call;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -31,19 +31,21 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import static brave.Span.Kind.CLIENT;
+import static brave.Span.Kind.SERVER;
 import static brave.sampler.SamplerFunctions.neverSample;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.entry;
 
 /** This is an example of http request sampling */
 public class RequestSamplingTest {
   @Rule public MockWebServer server = new MockWebServer();
+  @Rule public IntegrationTestSpanHandler spanHandler = new IntegrationTestSpanHandler();
 
-  ConcurrentLinkedDeque<zipkin2.Span> spans = new ConcurrentLinkedDeque<>();
+  StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   Tracing tracing = Tracing.newBuilder()
     .localServiceName("server")
-    .currentTraceContext(StrictCurrentTraceContext.create())
-    .spanReporter(spans::push)
+    .currentTraceContext(currentTraceContext)
+    .addSpanHandler(spanHandler)
     .build();
   HttpTracing httpTracing = HttpTracing.newBuilder(tracing)
     // server starts traces under the path /api
@@ -73,19 +75,22 @@ public class RequestSamplingTest {
 
   @After public void close() {
     tracing.close();
+    currentTraceContext.close();
   }
 
   @Test public void serverDoesntTraceFoo() throws Exception {
     callServer("/foo");
-    assertThat(spans).isEmpty();
   }
 
   @Test public void clientTracedWhenServerIs() throws Exception {
     callServer("/api");
 
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
-      .contains(entry("http.path", "/api"), entry("http.path", "/next"));
+    assertThat(spanHandler.takeRemoteSpan(SERVER).tags())
+        .containsEntry("http.path", "/next");
+    assertThat(spanHandler.takeRemoteSpan(CLIENT).tags())
+        .containsEntry("http.path", "/next");
+    assertThat(spanHandler.takeRemoteSpan(SERVER).tags())
+        .containsEntry("http.path", "/api");
   }
 
   void callServer(String path) throws IOException {

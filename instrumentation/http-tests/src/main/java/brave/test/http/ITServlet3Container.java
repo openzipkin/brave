@@ -31,8 +31,8 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.AfterClass;
 import org.junit.Test;
-import zipkin2.Span;
 
+import static brave.Span.Kind.SERVER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITServlet3Container extends ITServlet25Container {
@@ -49,13 +49,13 @@ public abstract class ITServlet3Container extends ITServlet25Container {
   @Test public void forward() throws Exception {
     get("/forward");
 
-    reporter.takeRemoteSpan(Span.Kind.SERVER);
+    spanHandler.takeRemoteSpan(SERVER);
   }
 
   @Test public void forwardAsync() throws Exception {
     get("/forwardAsync");
 
-    reporter.takeRemoteSpan(Span.Kind.SERVER);
+    spanHandler.takeRemoteSpan(SERVER);
   }
 
   static class ForwardServlet extends HttpServlet {
@@ -109,7 +109,7 @@ public abstract class ITServlet3Container extends ITServlet25Container {
 
   @Test public void errorTag_onException_asyncTimeout() throws Exception {
     Response response =
-        httpStatusCodeTagMatchesResponse("/exceptionAsyncTimeout", "Timed out after 1ms");
+        httpStatusCodeTagMatchesResponse_onUncaughtException("/exceptionAsyncTimeout", "Timed out after 1ms");
 
     assertThat(response.code())
         .isEqualTo(500); // TODO: why is this not 504?
@@ -136,7 +136,7 @@ public abstract class ITServlet3Container extends ITServlet25Container {
   }
 
   @Test public void errorTag_onException_asyncDispatch() throws Exception {
-    httpStatusCodeTagMatchesResponse("/exceptionAsyncDispatch", "not ready");
+    httpStatusCodeTagMatchesResponse_onUncaughtException("/exceptionAsyncDispatch", "not ready");
   }
 
   static class DispatchExceptionAsyncServlet extends HttpServlet {

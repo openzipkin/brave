@@ -13,10 +13,12 @@
  */
 package brave.test;
 
+import brave.Span;
 import brave.Tracing;
 import brave.baggage.BaggageField;
 import brave.baggage.BaggagePropagation;
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+import brave.handler.MutableSpan;
 import brave.internal.InternalPropagation;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
@@ -35,7 +37,6 @@ import org.junit.rules.DisableOnDebug;
 import org.junit.rules.TestName;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
-import zipkin2.Span;
 
 import static brave.internal.InternalPropagation.FLAG_LOCAL_ROOT;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,7 +48,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p><pre><ul>
  *   <li>{@link StrictCurrentTraceContext} double-checks threads don't leak contexts</li>
- *   <li>{@link TestSpanReporter} helps avoid race conditions or accidental errors</li>
+ *   <li>{@link IntegrationTestSpanHandler} helps avoid race conditions or accidental errors</li>
  * </ul></pre>
  */
 public abstract class ITRemote {
@@ -80,7 +81,7 @@ public abstract class ITRemote {
    * needed even in a an overloaded CI server or extreme garbage collection pause.
    */
   @Rule public TestRule globalTimeout = new DisableOnDebug(Timeout.seconds(20)); // max per method
-  @Rule public TestSpanReporter reporter = new TestSpanReporter();
+  @Rule public IntegrationTestSpanHandler spanHandler = new IntegrationTestSpanHandler();
   @Rule public TestName testName = new TestName();
 
   /** Returns a trace context for use in propagation tests. */
@@ -132,7 +133,7 @@ public abstract class ITRemote {
 
   protected Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
-      .spanReporter(reporter)
+      .addSpanHandler(spanHandler)
       .propagationFactory(propagationFactory)
       .currentTraceContext(currentTraceContext)
       .sampler(sampler);
@@ -172,34 +173,32 @@ public abstract class ITRemote {
    * Ensures the inputs are parent and child, the parent starts before the child, and the duration
    * of the child is inside the parent's duration.
    */
-  protected void assertSpanInInterval(Span span, long beginTimestamp, long endTimestamp) {
-    assertThat(span.timestampAsLong())
-      .withFailMessage("Expected %s to start after %s", span, beginTimestamp)
-      .isGreaterThanOrEqualTo(beginTimestamp);
+  protected void assertSpanInInterval(MutableSpan span, long startTimestamp, long finishTimestamp) {
+    assertThat(span.startTimestamp())
+      .withFailMessage("Expected %s to start after %s", span, startTimestamp)
+      .isGreaterThanOrEqualTo(startTimestamp);
 
-    assertThat(span.timestampAsLong() + span.durationAsLong())
-      .withFailMessage("Expected %s to finish after %s", span, endTimestamp)
-      .isLessThanOrEqualTo(endTimestamp);
+    assertThat(span.finishTimestamp())
+      .withFailMessage("Expected %s to finish after %s", span, finishTimestamp)
+      .isLessThanOrEqualTo(finishTimestamp);
   }
 
   /** Ensures the first finished before the other started. */
-  protected void assertSequential(Span span1, Span span2) {
+  protected void assertSequential(MutableSpan span1, MutableSpan span2) {
     assertThat(span1.id())
       .withFailMessage("Expected different span IDs: %s %s", span1, span2)
       .isNotEqualTo(span2.id());
 
-    long span1FinishTimeStamp = span1.timestampAsLong() + span1.durationAsLong();
-
-    assertThat(span1FinishTimeStamp)
+    assertThat(span1.finishTimestamp())
       .withFailMessage("Expected %s to finish before %s started", span1, span2)
-      .isLessThanOrEqualTo(span2.timestampAsLong());
+      .isLessThanOrEqualTo(span2.startTimestamp());
   }
 
   /**
    * Useful for checking {@linkplain Span.Kind#SERVER server} spans when {@link
    * Tracing.Builder#supportsJoin(boolean)}.
    */
-  protected void assertSameIds(Span span, TraceContext parent) {
+  protected void assertSameIds(MutableSpan span, TraceContext parent) {
     assertThat(span.traceId())
       .withFailMessage("Expected to have trace ID(%s): %s", parent.traceIdString(), span)
       .isEqualTo(parent.traceIdString());
@@ -214,20 +213,14 @@ public abstract class ITRemote {
   }
 
   protected void assertChildOf(TraceContext child, TraceContext parent) {
-    assertChildOf(Span.newBuilder().traceId(child.traceIdString())
-      .parentId(child.parentIdString())
-      .id(child.spanIdString())
-      .build(), parent);
+    assertChildOf(new MutableSpan(child, null), parent);
   }
 
-  protected void assertChildOf(Span child, TraceContext parent) {
-    assertChildOf(child, Span.newBuilder().traceId(parent.traceIdString())
-      .parentId(parent.parentIdString())
-      .id(parent.spanIdString())
-      .build());
+  protected void assertChildOf(MutableSpan child, TraceContext parent) {
+    assertChildOf(child, new MutableSpan(parent, null));
   }
 
-  protected void assertChildOf(Span child, Span parent) {
+  protected void assertChildOf(MutableSpan child, MutableSpan parent) {
     assertThat(child.traceId())
       .withFailMessage("Expected to have trace ID(%s): %s", parent.traceId(), child)
       .isEqualTo(parent.traceId());
@@ -235,5 +228,13 @@ public abstract class ITRemote {
     assertThat(child.parentId())
       .withFailMessage("Expected to have parent ID(%s): %s", parent.id(), child)
       .isEqualTo(parent.id());
+  }
+
+  protected void assertNoError(MutableSpan result) {
+    IntegrationTestSpanHandler.assertNoError(result);
+  }
+
+  protected void assertNoErrorTag(MutableSpan result) {
+    IntegrationTestSpanHandler.assertNoErrorTag(result);
   }
 }

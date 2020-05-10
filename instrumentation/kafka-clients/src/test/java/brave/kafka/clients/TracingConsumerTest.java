@@ -13,6 +13,7 @@
  */
 package brave.kafka.clients;
 
+import brave.handler.MutableSpan;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -23,12 +24,12 @@ import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin2.Span;
 
+import static brave.Span.Kind.CONSUMER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public class TracingConsumerTest extends ITKafka {
+public class TracingConsumerTest extends KafkaTest {
   MockConsumer<String, String> consumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
   TopicPartition topicPartition = new TopicPartition(TEST_TOPIC, 0);
 
@@ -43,14 +44,16 @@ public class TracingConsumerTest extends ITKafka {
 
   @Test
   public void should_call_wrapped_poll_and_close_spans() {
-    consumer.addRecord(fakeRecord);
+    consumer.addRecord(consumerRecord);
     Consumer<String, String> tracingConsumer = kafkaTracing.consumer(consumer);
     tracingConsumer.poll(10);
 
     // offset changed
     assertThat(consumer.position(topicPartition)).isEqualTo(2L);
 
-    Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+
+    MutableSpan consumerSpan = spans.get(0);
+    assertThat(consumerSpan.kind()).isEqualTo(CONSUMER);
     assertThat(consumerSpan.name()).isEqualTo("poll");
     assertThat(consumerSpan.tags())
       .containsOnly(entry("kafka.topic", "myTopic"));
@@ -58,14 +61,15 @@ public class TracingConsumerTest extends ITKafka {
 
   @Test
   public void should_call_wrapped_poll_and_close_spans_with_duration() {
-    consumer.addRecord(fakeRecord);
+    consumer.addRecord(consumerRecord);
     Consumer<String, String> tracingConsumer = kafkaTracing.consumer(consumer);
     tracingConsumer.poll(10);
 
     // offset changed
     assertThat(consumer.position(topicPartition)).isEqualTo(2L);
 
-    Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan consumerSpan = spans.get(0);
+    assertThat(consumerSpan.kind()).isEqualTo(CONSUMER);
     assertThat(consumerSpan.name()).isEqualTo("poll");
     assertThat(consumerSpan.tags())
       .containsOnly(entry("kafka.topic", "myTopic"));
@@ -73,24 +77,26 @@ public class TracingConsumerTest extends ITKafka {
 
   @Test
   public void should_add_new_trace_headers_if_b3_missing() {
-    consumer.addRecord(fakeRecord);
+    consumer.addRecord(consumerRecord);
 
     Consumer<String, String> tracingConsumer = kafkaTracing.consumer(consumer);
     ConsumerRecords<String, String> poll = tracingConsumer.poll(10);
 
     assertThat(poll)
       .extracting(ConsumerRecord::headers)
-      .flatExtracting(TracingConsumerTest::lastHeaders)
+      .flatExtracting(KafkaTest::lastHeaders)
       .extracting(Map.Entry::getKey)
       .containsOnly("b3");
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.CONSUMER).parentId()).isNull();
+    MutableSpan consumerSpan = spans.get(0);
+    assertThat(consumerSpan.kind()).isEqualTo(CONSUMER);
+    assertThat(consumerSpan.parentId()).isNull();
   }
 
   @Test
   public void should_createChildOfTraceHeaders() {
-    addB3MultiHeaders(fakeRecord);
-    consumer.addRecord(fakeRecord);
+    addB3MultiHeaders(parent, consumerRecord);
+    consumer.addRecord(consumerRecord);
 
     Consumer<String, String> tracingConsumer = kafkaTracing.consumer(consumer);
     ConsumerRecords<String, String> poll = tracingConsumer.poll(10);
@@ -104,7 +110,7 @@ public class TracingConsumerTest extends ITKafka {
         assertThat(e.getValue()).startsWith(parent.traceIdString());
       });
 
-    assertChildOf(reporter.takeRemoteSpan(Span.Kind.CONSUMER), parent);
+    assertChildOf(spans.get(0), parent);
   }
 
   @Test
@@ -127,7 +133,8 @@ public class TracingConsumerTest extends ITKafka {
     tracingConsumer.poll(10);
 
     // only one consumer span reported
-    Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan consumerSpan = spans.get(0);
+    assertThat(consumerSpan.kind()).isEqualTo(CONSUMER);
     assertThat(consumerSpan.name()).isEqualTo("poll");
     assertThat(consumerSpan.tags())
       .containsOnly(entry("kafka.topic", "myTopic"));
@@ -156,7 +163,8 @@ public class TracingConsumerTest extends ITKafka {
 
     // 500 consumer spans!
     for (int i = 0; i < 500; i++) {
-      Span consumerSpan = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+      MutableSpan consumerSpan = spans.get(0);
+      assertThat(consumerSpan.kind()).isEqualTo(CONSUMER);
       assertThat(consumerSpan.name()).isEqualTo("poll");
       assertThat(consumerSpan.tags())
         .containsOnly(entry("kafka.topic", "myTopic"));

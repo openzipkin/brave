@@ -27,8 +27,8 @@ import com.alibaba.dubbo.rpc.Result;
 import com.alibaba.dubbo.rpc.RpcContext;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin2.Span;
 
+import static brave.Span.Kind.SERVER;
 import static brave.rpc.RpcRequestMatchers.methodEquals;
 import static brave.rpc.RpcRequestMatchers.serviceEquals;
 import static brave.sampler.Sampler.ALWAYS_SAMPLE;
@@ -43,7 +43,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     server.service.setRef((method, parameterTypes, args) -> {
       JavaBeanDescriptor arg = (JavaBeanDescriptor) args[0];
       if (arg.getProperty("value").equals("bad")) {
-        throw new IllegalArgumentException();
+        throw new IllegalArgumentException("bad");
       }
       String value = currentTraceContext.get() != null
           ? currentTraceContext.get().traceIdString()
@@ -68,7 +68,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     RpcContext.getContext().getAttachments().put("b3", B3SingleFormat.writeB3SingleFormat(parent));
     client.get().sayHello("jorge");
 
-    assertSameIds(reporter.takeRemoteSpan(Span.Kind.SERVER), parent);
+    assertSameIds(spanHandler.takeRemoteSpan(SERVER), parent);
   }
 
   @Test public void createsChildWhenJoinDisabled() {
@@ -80,7 +80,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     RpcContext.getContext().getAttachments().put("b3", B3SingleFormat.writeB3SingleFormat(parent));
     client.get().sayHello("jorge");
 
-    assertChildOf(reporter.takeRemoteSpan(Span.Kind.SERVER), parent);
+    assertChildOf(spanHandler.takeRemoteSpan(SERVER), parent);
   }
 
   @Test public void samplingDisabled() {
@@ -96,28 +96,28 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     assertThat(client.get().sayHello("jorge"))
         .isNotEmpty();
 
-    reporter.takeRemoteSpan(Span.Kind.SERVER);
+    spanHandler.takeRemoteSpan(SERVER);
   }
 
   @Test public void reportsServerKindToZipkin() {
     client.get().sayHello("jorge");
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).kind())
-        .isEqualTo(Span.Kind.SERVER);
+    assertThat(spanHandler.takeRemoteSpan(SERVER).kind())
+        .isEqualTo(SERVER);
   }
 
   @Test public void defaultSpanNameIsMethodName() {
     client.get().sayHello("jorge");
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).name())
-        .isEqualTo("brave.dubbo.rpc.greeterservice/sayhello");
+    assertThat(spanHandler.takeRemoteSpan(SERVER).name())
+        .isEqualTo("brave.dubbo.rpc.GreeterService/sayHello");
   }
 
-  @Test public void addsErrorTagOnException() {
+  @Test public void setsErrorOnException() {
     assertThatThrownBy(() -> client.get().sayHello("bad"))
         .isInstanceOf(IllegalArgumentException.class);
 
-    reporter.takeRemoteSpanWithError(Span.Kind.SERVER, "IllegalArgumentException");
+    spanHandler.takeRemoteSpanWithErrorMessage(SERVER, "bad");
   }
 
   /* RpcTracing-specific feature tests */
@@ -135,7 +135,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     // sampled
     client.get().sayHello("jorge");
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).name()).endsWith("sayhello");
+    assertThat(spanHandler.takeRemoteSpan(SERVER).name()).endsWith("sayHello");
     // @After will also check that sayGoodbye was not sampled
   }
 
@@ -164,7 +164,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
     String javaResult = client.get().sayHello("jorge");
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags())
+    assertThat(spanHandler.takeRemoteSpan(SERVER).tags())
         .containsEntry("dubbo.result_value", javaResult);
   }
 }

@@ -13,6 +13,7 @@
  */
 package brave.jaxrs2;
 
+import brave.Span;
 import brave.servlet.TracingFilter;
 import brave.test.http.ITServletContainer;
 import brave.test.http.Jetty9ServerController;
@@ -35,7 +36,6 @@ import org.jboss.resteasy.spi.ResteasyConfiguration;
 import org.jboss.resteasy.spi.ResteasyDeployment;
 import org.junit.Ignore;
 import org.junit.Test;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -49,15 +49,15 @@ public class ITSpanCustomizingContainerFilter extends ITServletContainer {
   }
 
   @Override @Ignore("resteasy swallows the exception")
-  public void errorTag_exceptionOverridesHttpStatus() {
+  public void setsErrorAndHttpStatusOnUncaughtException() {
   }
 
   @Override @Ignore("resteasy swallows the exception")
-  public void spanHandlerSeesException() {
+  public void spanHandlerSeesError() {
   }
 
   @Override @Ignore("resteasy swallows the exception")
-  public void errorTag_exceptionOverridesHttpStatus_async() {
+  public void setsErrorAndHttpStatusOnUncaughtException_async() {
   }
 
   @Override @Ignore("resteasy swallows the exception")
@@ -67,7 +67,7 @@ public class ITSpanCustomizingContainerFilter extends ITServletContainer {
   @Test public void tagsResource() throws Exception {
     get("/foo");
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags())
+    assertThat(spanHandler.takeRemoteSpan(Span.Kind.SERVER).tags())
       .containsEntry("jaxrs.resource.class", "TestResource")
       .containsEntry("jaxrs.resource.method", "foo");
   }

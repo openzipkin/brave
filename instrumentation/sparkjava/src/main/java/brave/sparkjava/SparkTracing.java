@@ -73,6 +73,7 @@ public final class SparkTracing {
           HttpServerResponse response =
             HttpServletResponseWrapper.create(req.raw(), res.raw(), error);
           handler.handleSend(response, span);
+          req.raw().removeAttribute(Span.class.getName()); // prevent double-processing
           ((Scope) req.attribute(Scope.class.getName())).close();
         }
       }

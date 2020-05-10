@@ -33,7 +33,7 @@ public class ITSparkTracing extends ITHttpServer {
       "ignored until https://github.com/perwendel/spark/issues/208");
   }
 
-  @Override protected void init() throws IOException {
+  @Override protected void init()  {
     stop();
 
     SparkTracing spark = SparkTracing.create(httpTracing);

@@ -124,7 +124,7 @@ public interface HttpResponseParser {
       // success range. 1xx-3xx are not errors. It is endpoint-specific if client codes like 404 are
       // in fact errors. That's why this is overridable.
       if (httpStatus < 100 || httpStatus > 399) {
-        span.tag("error", statusCodeString(httpStatus));
+        span.tag(Tags.ERROR.key(), statusCodeString(httpStatus));
       }
     }
 

@@ -45,9 +45,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import zipkin2.Endpoint;
-import zipkin2.Span;
 
+import static brave.Span.Kind.CLIENT;
 import static brave.http.HttpRequestMatchers.pathStartsWith;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -85,7 +84,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     TraceContext extracted = extract(takeRequest());
     assertThat(extracted.sampled()).isTrue();
     assertThat(extracted.parentIdString()).isNull();
-    assertSameIds(reporter.takeRemoteSpan(Span.Kind.CLIENT), extracted);
+    assertSameIds(spanHandler.takeRemoteSpan(CLIENT), extracted);
   }
 
   @Test public void propagatesChildOfCurrentSpan() throws IOException {
@@ -99,7 +98,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     TraceContext extracted = extract(takeRequest());
     assertThat(extracted.sampled()).isTrue();
     assertChildOf(extracted, parent);
-    assertSameIds(reporter.takeRemoteSpan(Span.Kind.CLIENT), extracted);
+    assertSameIds(spanHandler.takeRemoteSpan(CLIENT), extracted);
   }
 
   /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
@@ -128,7 +127,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     TraceContext extracted = extract(takeRequest());
     assertThat(BAGGAGE_FIELD.getValue(extracted)).isEqualTo("joey");
 
-    reporter.takeRemoteSpan(Span.Kind.CLIENT);
+    spanHandler.takeRemoteSpan(CLIENT);
   }
 
   @Test public void propagatesBaggage_unsampled() throws IOException {
@@ -175,7 +174,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     }
     long finish = clock.currentTimeMicroseconds();
 
-    Span clientSpan = reporter.takeRemoteSpan(Span.Kind.CLIENT);
+    MutableSpan clientSpan = spanHandler.takeRemoteSpan(CLIENT);
     assertChildOf(clientSpan, parent);
     assertSpanInInterval(clientSpan, start, finish);
   }
@@ -184,7 +183,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     server.enqueue(new MockResponse());
     get(client, "/foo");
 
-    reporter.takeRemoteSpan(Span.Kind.CLIENT);
+    spanHandler.takeRemoteSpan(CLIENT);
   }
 
   @Test
@@ -192,19 +191,17 @@ public abstract class ITHttpClient<C> extends ITRemote {
     server.enqueue(new MockResponse());
     get(client, "/foo");
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).remoteEndpoint())
-      .isEqualTo(Endpoint.newBuilder()
-        .ip("127.0.0.1")
-        .port(server.getPort()).build()
-      );
+    assertThat(spanHandler.takeRemoteSpan(CLIENT))
+        .extracting(MutableSpan::remoteIp, MutableSpan::remotePort)
+        .containsExactly("127.0.0.1", server.getPort());
   }
 
   @Test public void defaultSpanNameIsMethodName() throws IOException {
     server.enqueue(new MockResponse());
     get(client, "/foo");
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).name())
-      .isEqualTo("get");
+    assertThat(spanHandler.takeRemoteSpan(CLIENT).name())
+      .isEqualTo("GET");
   }
 
   @Test public void readsRequestAtResponseTime() throws IOException {
@@ -221,7 +218,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     server.enqueue(new MockResponse());
     get(client, uri);
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).tags())
+    assertThat(spanHandler.takeRemoteSpan(CLIENT).tags())
       .containsEntry("http.url", url(uri));
   }
 
@@ -245,7 +242,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     server.enqueue(new MockResponse());
     get(client, uri);
 
-    Span span = reporter.takeRemoteSpan(Span.Kind.CLIENT);
+    MutableSpan span = spanHandler.takeRemoteSpan(CLIENT);
     assertThat(span.name())
       .isEqualTo("get /foo/bar");
 
@@ -286,7 +283,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     server.enqueue(new MockResponse());
     get(client, uri);
 
-    Span span = reporter.takeRemoteSpan(Span.Kind.CLIENT);
+    MutableSpan span = spanHandler.takeRemoteSpan(CLIENT);
     assertThat(span.name())
       .isEqualTo("get /foo/bar");
 
@@ -309,7 +306,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
       // some clients raise 400 as an exception such as HttpClientError
     }
 
-    assertThat(reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, "400").tags())
+    assertThat(spanHandler.takeRemoteSpanWithErrorTag(CLIENT, "400").tags())
       .containsEntry("http.status_code", "400");
   }
 
@@ -325,10 +322,10 @@ public abstract class ITHttpClient<C> extends ITRemote {
       // some clients raise 404 as an exception such as HttpClientError
     }
 
-    Span initial = reporter.takeRemoteSpan(Span.Kind.CLIENT);
-    Span redirected = reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, "404");
+    MutableSpan initial = spanHandler.takeRemoteSpan(CLIENT);
+    MutableSpan redirected = spanHandler.takeRemoteSpanWithErrorTag(CLIENT, "404");
 
-    for (Span child : Arrays.asList(initial, redirected)) {
+    for (MutableSpan child : Arrays.asList(initial, redirected)) {
       assertChildOf(child, parent);
     }
 
@@ -348,8 +345,8 @@ public abstract class ITHttpClient<C> extends ITRemote {
     assertThat(takeRequest().getBody().readUtf8())
       .isEqualTo(body);
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).name())
-      .isEqualTo("post");
+    assertThat(spanHandler.takeRemoteSpan(CLIENT).name())
+      .isEqualTo("POST");
   }
 
   @Test public void httpPathTagExcludesQueryParams() throws IOException {
@@ -358,15 +355,15 @@ public abstract class ITHttpClient<C> extends ITRemote {
     server.enqueue(new MockResponse());
     get(client, path);
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).tags())
+    assertThat(spanHandler.takeRemoteSpan(CLIENT).tags())
       .containsEntry("http.path", "/foo");
   }
 
-  @Test public void spanHandlerSeesException() throws IOException {
-    spanHandlerSeesException(get());
+  @Test public void spanHandlerSeesError() throws IOException {
+    spanHandlerSeesError(get());
   }
 
-  @Test public void errorTag_onTransportException() {
+  @Test public void setsError_onTransportException() {
     checkReportsSpanOnTransportException(get());
   }
 
@@ -381,7 +378,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
    * This ensures custom span handlers can see the actual exception thrown, not just the "error"
    * tag value.
    */
-  void spanHandlerSeesException(Callable<Void> get) throws IOException {
+  void spanHandlerSeesError(Callable<Void> get) throws IOException {
     AtomicReference<Throwable> caughtThrowable = new AtomicReference<>();
     closeClient(client);
     httpTracing = HttpTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE)
@@ -398,7 +395,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     assertThat(caughtThrowable.get()).isNotNull();
   }
 
-  Span checkReportsSpanOnTransportException(Callable<Void> get) {
+  MutableSpan checkReportsSpanOnTransportException(Callable<Void> get) {
     server.enqueue(new MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START));
 
     try {
@@ -408,7 +405,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     }
 
     // We don't know the transport exception
-    return reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, ".+");
+    return spanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".+");
   }
 
   protected String url(String pathIncludingQuery) {
