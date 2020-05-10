@@ -767,9 +767,9 @@ public final class MutableSpan implements Cloneable {
     h *= 1000003;
     h ^= remotePort;
     h *= 1000003;
-    h ^= Arrays.hashCode(tags);
+    h ^= entriesHashCode(tags, tagCount);
     h *= 1000003;
-    h ^= Arrays.hashCode(annotations);
+    h ^= entriesHashCode(annotations, annotationCount);
     h *= 1000003;
     h ^= error == null ? 0 : error.hashCode();
     return h;
@@ -797,8 +797,8 @@ public final class MutableSpan implements Cloneable {
         && equal(remoteServiceName, that.remoteServiceName)
         && equal(remoteIp, that.remoteIp)
         && remotePort == that.remotePort
-        && nonNullEntriesEqual(tags, tagCount, that.tags, that.tagCount)
-        && nonNullEntriesEqual(annotations, annotationCount, that.annotations, that.annotationCount)
+        && entriesEqual(tags, tagCount, that.tags, that.tagCount)
+        && entriesEqual(annotations, annotationCount, that.annotations, that.annotationCount)
         && equal(error, that.error);
   }
 
@@ -961,12 +961,21 @@ public final class MutableSpan implements Cloneable {
     return input.length > 0 ? Arrays.copyOf(input, input.length) : EMPTY_ARRAY;
   }
 
-  static boolean nonNullEntriesEqual(Object[] left, int leftCount, Object[] right, int rightCount) {
+  static boolean entriesEqual(Object[] left, int leftCount, Object[] right, int rightCount) {
     if (leftCount != rightCount) return false;
     for (int i = 0; i < leftCount * 2; i++) {
       if (!equal(left[i], right[i])) return false;
     }
     return true;
+  }
+
+  static int entriesHashCode(Object[] entries, int count) {
+    int h = 1000003; // mutable! cannot cache hashCode
+    for (int i = 0; i < count * 2; i++) {
+      h ^= entries[i] == null ? 0 : entries[i].hashCode();
+      h *= 1000003;
+    }
+    return h;
   }
 
   static boolean equal(@Nullable Object a, @Nullable Object b) {
