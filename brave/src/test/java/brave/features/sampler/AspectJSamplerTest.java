@@ -46,6 +46,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class AspectJSamplerTest {
 
   // Don't use static configuration in real life. This is only to satisfy the unit test runner
+  static StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   static TestSpanHandler spans = new TestSpanHandler();
   static AtomicReference<Tracing> tracing = new AtomicReference<>();
 
@@ -53,7 +54,7 @@ public class AspectJSamplerTest {
 
   @Before public void clear() {
     tracing.set(Tracing.newBuilder()
-      .currentTraceContext(StrictCurrentTraceContext.create())
+      .currentTraceContext(currentTraceContext)
       .addSpanHandler(spans)
       .sampler(new Sampler() {
         @Override public boolean isSampled(long traceId) {
@@ -66,6 +67,7 @@ public class AspectJSamplerTest {
   @After public void close() {
     Tracing currentTracing = tracing.get();
     if (currentTracing != null) currentTracing.close();
+    currentTraceContext.close();
   }
 
   @Test public void traced() {

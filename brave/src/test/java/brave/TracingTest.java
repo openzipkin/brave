@@ -24,6 +24,7 @@ import brave.sampler.Sampler;
 import brave.test.TestSpanHandler;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.Test;
@@ -265,5 +266,29 @@ public class TracingTest {
 
       assertThat(tracing.tracer().alwaysSampleLocal).isTrue();
     }
+  }
+
+  @Test public void spanHandlers_clearAndAdd() {
+    SpanHandler one = mock(SpanHandler.class);
+    SpanHandler two = mock(SpanHandler.class);
+    SpanHandler three = mock(SpanHandler.class);
+
+    Tracing.Builder builder = Tracing.newBuilder()
+        .addSpanHandler(one)
+        .addSpanHandler(two)
+        .addSpanHandler(three);
+
+    Set<SpanHandler> spanHandlers = builder.spanHandlers();
+
+    builder.clearSpanHandlers();
+
+    spanHandlers.forEach(builder::addSpanHandler);
+
+    assertThat(builder)
+        .usingRecursiveComparison()
+        .isEqualTo(Tracing.newBuilder()
+            .addSpanHandler(one)
+            .addSpanHandler(two)
+            .addSpanHandler(three));
   }
 }
