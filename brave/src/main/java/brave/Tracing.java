@@ -30,6 +30,7 @@ import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
 import java.io.Closeable;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -151,6 +152,30 @@ public abstract class Tracing implements Closeable {
 
     Builder() {
       defaultSpan.localServiceName("unknown");
+    }
+
+    /**
+     * Returns an immutable copy of the current {@linkplain #addSpanHandler(SpanHandler) span
+     * handlers}. This allows those who can't create the builder to reconfigure or re-order them.
+     *
+     * @see #clearSpanHandlers()
+     * @since 5.12
+     */
+    public Set<SpanHandler> spanHandlers() {
+      return Collections.unmodifiableSet(new LinkedHashSet<>(spanHandlers));
+    }
+
+    /**
+     * Clears all {@linkplain SpanHandler span handlers}. This allows those who can't create the
+     * builder to reconfigure or re-order them.
+     *
+     * @see #spanHandlers()
+     * @see TracingCustomizer
+     * @since 5.12
+     */
+    public Builder clearSpanHandlers() {
+      spanHandlers.clear();
+      return this;
     }
 
     /**
@@ -335,7 +360,7 @@ public abstract class Tracing implements Closeable {
 
     /**
      * Inputs receive {code (context, span)} pairs for every {@linkplain TraceContext#sampledLocal()
-     * locally sampled} span. The span is mutable for customization or redaction purposes and
+     * locally sampled} span. The span is mutable for customization or redaction purposes. Span
      * handlers execute in order: If any handler returns {code false}, the next will not see the
      * span.
      *
@@ -443,7 +468,7 @@ public abstract class Tracing implements Closeable {
       MutableSpan defaultSpan = new MutableSpan(builder.defaultSpan); // safe copy
 
       Set<SpanHandler> spanHandlers = new LinkedHashSet<>(builder.spanHandlers);
-      // When present, the Zipkin handler is invoked after the user-supplied span handlers.
+      // When present, the Zipkin handler is invoked after the user-supplied ones.
       if (builder.zipkinSpanReporter != null) {
         spanHandlers.add(
             ZipkinSpanHandler.newBuilder((Reporter<zipkin2.Span>) builder.zipkinSpanReporter)
@@ -454,7 +479,7 @@ public abstract class Tracing implements Closeable {
       if (spanHandlers.isEmpty()) spanHandlers.add(new LogSpanHandler());
       if (builder.trackOrphans) spanHandlers.add(new OrphanTracker(clock));
 
-      // Make sure any exceptions caused by handlers don't crash callers
+      // Make sure any exceptions caused by span handlers don't crash callers
       SpanHandler spanHandler =
         NoopAwareSpanHandler.create(spanHandlers.toArray(new SpanHandler[0]), noop);
 

@@ -32,13 +32,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public class CustomScopedClockTracingTest {
   TestSpanHandler spans = new TestSpanHandler();
+  StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   Tracing tracing = Tracing.newBuilder()
-    .currentTraceContext(StrictCurrentTraceContext.create())
-    .addSpanHandler(spans)
-    .build();
+    .addSpanHandler(spans).currentTraceContext(currentTraceContext).build();
 
   @After public void close() {
-    Tracing.current().close();
+    tracing.close();
+    currentTraceContext.close();
   }
 
   class Connection {

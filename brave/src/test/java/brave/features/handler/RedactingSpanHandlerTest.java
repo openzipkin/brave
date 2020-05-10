@@ -20,7 +20,6 @@ import brave.handler.MutableSpan;
 import brave.handler.MutableSpan.AnnotationUpdater;
 import brave.handler.MutableSpan.TagUpdater;
 import brave.handler.SpanHandler;
-import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -74,7 +73,6 @@ public class RedactingSpanHandlerTest {
   };
 
   Tracing tracing = Tracing.newBuilder()
-    .currentTraceContext(StrictCurrentTraceContext.create())
     .addSpanHandler(redacter)
     .addSpanHandler(new SpanHandler() {
       @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {

@@ -21,9 +21,10 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ThreadLocalSpanTest {
+  StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing = Tracing.newBuilder()
-    .currentTraceContext(StrictCurrentTraceContext.create())
+    .currentTraceContext(currentTraceContext)
     .addSpanHandler(spans)
     .build();
 
@@ -31,6 +32,7 @@ public class ThreadLocalSpanTest {
 
   @After public void close() {
     tracing.close();
+    currentTraceContext.close();
   }
 
   @Test public void next() {

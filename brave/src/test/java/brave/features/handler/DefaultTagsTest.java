@@ -17,7 +17,6 @@ import brave.ScopedSpan;
 import brave.Tracing;
 import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
-import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.test.TestSpanHandler;
 import org.junit.After;
@@ -33,7 +32,6 @@ import static org.assertj.core.api.Assertions.entry;
 public class DefaultTagsTest {
   TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing = Tracing.newBuilder()
-    .currentTraceContext(StrictCurrentTraceContext.create())
     .addSpanHandler(new SpanHandler() {
       @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
         if (context.isLocalRoot()) {
