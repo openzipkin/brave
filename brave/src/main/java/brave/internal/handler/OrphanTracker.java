@@ -42,7 +42,8 @@ public final class OrphanTracker extends SpanHandler {
 
   @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
     Throwable caller = spanToCaller.remove(span);
-    if (cause != Cause.ORPHANED && caller != null) {
+    if (cause != Cause.ORPHANED) return true;
+    if (caller != null) {
       String message = span.equals(new MutableSpan(context, null))
         ? "Span " + context + " was allocated but never used"
         : "Span " + context + " neither finished nor flushed before GC";
@@ -50,5 +51,9 @@ public final class OrphanTracker extends SpanHandler {
     }
     span.annotate(clock.currentTimeMicroseconds(), "brave.flush");
     return true;
+  }
+
+  @Override public String toString() {
+    return "OrphanTracker{}";
   }
 }

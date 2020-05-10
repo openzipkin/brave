@@ -19,7 +19,6 @@ import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Stream;
 
 // copy of what's in brave-tests
 public final class TestSpanHandler extends SpanHandler implements Iterable<MutableSpan> {
@@ -37,10 +36,6 @@ public final class TestSpanHandler extends SpanHandler implements Iterable<Mutab
     if (cause == Cause.ABANDONED) return true;
     spans.add(span);
     return true;
-  }
-
-  public Stream<MutableSpan> stream() {
-    return spans.stream();
   }
 
   @Override public Iterator<MutableSpan> iterator() {

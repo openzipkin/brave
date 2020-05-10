@@ -19,6 +19,8 @@ import brave.baggage.BaggagePropagation;
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
+import brave.internal.Platform;
+import brave.internal.handler.OrphanTracker;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
@@ -36,7 +38,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Test;
 import zipkin2.Endpoint;
@@ -62,6 +63,7 @@ public class TracerTest {
     .add(SingleBaggageField.remote(BAGGAGE_FIELD)).build();
   Tracer tracer = Tracing.newBuilder()
     .addSpanHandler(spans)
+    .addSpanHandler(new OrphanTracker(Platform.get().clock()))
     .propagationFactory(new Propagation.Factory() {
       @Deprecated @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
         return propagationFactory.create(keyFactory);
@@ -624,7 +626,7 @@ public class TracerTest {
     TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).sampled(true).build();
     try (SpanInScope ws = tracer.withSpanInScope(tracer.toSpan(context))) {
       assertThat(tracer.toString()).hasToString(
-        "Tracer{currentSpan=0000000000000001/000000000000000a, spanHandler=TestSpanHandler{[]}}"
+        "Tracer{currentSpan=0000000000000001/000000000000000a, spanHandler=[TestSpanHandler{[]}, OrphanTracker{}]}"
       );
     }
   }
@@ -633,7 +635,7 @@ public class TracerTest {
     Tracing.current().setNoop(true);
 
     assertThat(tracer).hasToString(
-      "Tracer{noop=true, spanHandler=TestSpanHandler{[]}}"
+      "Tracer{noop=true, spanHandler=[TestSpanHandler{[]}, OrphanTracker{}]}"
     );
   }
 
@@ -787,10 +789,9 @@ public class TracerTest {
     GarbageCollectors.blockOnGC();
     tracer.newTrace().start().abandon(); //trigger orphaned span check
     assertThat(spans).hasSize(1);
-    assertThat(spans.stream()
-      .flatMap(span -> span.annotations().stream())
-      .map(Map.Entry::getValue)
-      .collect(Collectors.toList())).doesNotContain("brave.flush");
+    assertThat(spans.get(0).annotations())
+      .extracting(Map.Entry::getValue)
+      .doesNotContain("brave.flush");
   }
 
   @Test public void useSpanAfterFinishedInOtherTracer_doesNotCauseBraveFlush() {
@@ -802,11 +803,7 @@ public class TracerTest {
     tracer.newTrace().start().abandon(); //trigger orphaned span check
 
     // We expect the span to be reported to the NOOP reporter, and nothing to be reported to "spans"
-    assertThat(spans).hasSize(0);
-    assertThat(spans.stream()
-      .flatMap(span -> span.annotations().stream())
-      .map(Map.Entry::getValue)
-      .collect(Collectors.toList())).doesNotContain("brave.flush");
+    assertThat(spans).isEmpty();
   }
 
   /**

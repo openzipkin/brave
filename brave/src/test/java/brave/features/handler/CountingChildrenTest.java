@@ -125,10 +125,10 @@ public class CountingChildrenTest {
     root1Child1.finish();
     root1.finish();
 
-    List<Tuple> nameToChildCount = spans.stream()
+    List<Tuple> nameToChildCount = spans.spans().stream()
       .map(s -> tuple(s.name(), s.tags().get("childCount")))
       .collect(Collectors.toList());
-    List<Tuple> nameToChildCountDirect = spans.stream()
+    List<Tuple> nameToChildCountDirect = spans.spans().stream()
       .map(s -> tuple(s.name(), s.tags().get("childCountDirect")))
       .collect(Collectors.toList());
 
