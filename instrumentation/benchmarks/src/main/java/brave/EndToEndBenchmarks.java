@@ -45,8 +45,6 @@ import okhttp3.Request;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
-import zipkin2.reporter.AsyncReporter;
-import zipkin2.reporter.brave.ZipkinSpanHandler;
 
 import static javax.servlet.DispatcherType.REQUEST;
 
@@ -89,7 +87,9 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
     public Unsampled() {
       super(Tracing.newBuilder()
         .sampler(Sampler.NEVER_SAMPLE)
-        .spanReporter(AsyncReporter.create(new NoopSender()))
+        .addSpanHandler(new SpanHandler() {
+          // intentionally not NOOP to ensure spans report
+        })
         .build());
     }
   }
@@ -109,8 +109,10 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
   public static class Traced extends ForwardingTracingFilter {
     public Traced() {
       super(Tracing.newBuilder()
-        .addSpanHandler(ZipkinSpanHandler.create(AsyncReporter.create(new NoopSender())))
-        .build());
+          .addSpanHandler(new SpanHandler() {
+            // intentionally not NOOP to ensure spans report
+          })
+          .build());
     }
   }
 
@@ -122,7 +124,9 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
           .addScopeDecorator(ThreadContextScopeDecorator.get())
           .addScopeDecorator(ThreadContextScopeDecorator.get())
           .build())
-        .addSpanHandler(ZipkinSpanHandler.create(AsyncReporter.create(new NoopSender())))
+        .addSpanHandler(new SpanHandler() {
+          // intentionally not NOOP to ensure spans report
+        })
         .build());
     }
   }
@@ -139,7 +143,9 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
             .addKeyName("baggage-user-id")
             .build())
           .build())
-        .addSpanHandler(ZipkinSpanHandler.create(AsyncReporter.create(new NoopSender())))
+        .addSpanHandler(new SpanHandler() {
+          // intentionally not NOOP to ensure spans report
+        })
         .build());
     }
   }
@@ -148,7 +154,9 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
     public Traced128() {
       super(Tracing.newBuilder()
         .traceId128Bit(true)
-        .addSpanHandler(ZipkinSpanHandler.create(AsyncReporter.create(new NoopSender())))
+        .addSpanHandler(new SpanHandler() {
+          // intentionally not NOOP to ensure spans report
+        })
         .build());
     }
   }

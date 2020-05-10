@@ -59,18 +59,6 @@
     </dependency>
 
     <dependency>
-      <!-- TODO: migrate benchmarks to use brave.handler.MutableSpan! -->
-      <groupId>io.zipkin.zipkin2</groupId>
-      <artifactId>zipkin</artifactId>
-      <version>${zipkin.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.zipkin.reporter2</groupId>
-      <artifactId>zipkin-reporter-brave</artifactId>
-      <version>${zipkin-reporter.version}</version>
-    </dependency>
-
-    <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-http</artifactId>
       <version>${project.version}</version>
