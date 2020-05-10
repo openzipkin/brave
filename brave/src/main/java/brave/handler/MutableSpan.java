@@ -18,9 +18,12 @@ import brave.SpanCustomizer;
 import brave.Tags;
 import brave.internal.Nullable;
 import brave.internal.codec.IpLiteral;
+import brave.internal.collect.UnsafeArrayMap;
 import brave.propagation.TraceContext;
 import java.lang.ref.WeakReference;
-import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Map;
 
 import static brave.internal.InternalPropagation.FLAG_DEBUG;
 import static brave.internal.InternalPropagation.FLAG_SHARED;
@@ -29,12 +32,22 @@ import static brave.internal.codec.JsonEscaper.jsonEscape;
 /**
  * This represents a span except for its {@link TraceContext}. It is mutable, for late adjustments.
  *
- * <p>While in-flight, the data is synchronized where necessary. When exposed to users, it can be
- * mutated without synchronization.
+ * <h3>Notes</h3>
+ * <p>Between {@link SpanHandler#begin(TraceContext, MutableSpan, TraceContext)} and
+ * {@link SpanHandler#end(TraceContext, MutableSpan, SpanHandler.Cause)}, Brave owns this reference,
+ * synchronizing where necessary as updates come from different application threads.
+ *
+ * <p>Upon end, Brave no longer makes updates. It invokes each {@link SpanHandler}, one-by-one on
+ * the same thread. This means subsequent handlers do not have to synchronize to view updates from a
+ * prior one. However, it does imply they must make mutations on the same thread.
+ *
+ * <p>In other words, this type is not thread safe. If you need to mutate this span in a different
+ * thread, use the {@linkplain #MutableSpan(MutableSpan) copy constructor}.
  *
  * @since 5.4
  */
 public final class MutableSpan implements Cloneable {
+  static final Object[] EMPTY_ARRAY = new Object[0];
   static final MutableSpan EMPTY = new MutableSpan();
 
   /** @since 5.4 */
@@ -79,12 +92,16 @@ public final class MutableSpan implements Cloneable {
   long startTimestamp, finishTimestamp;
   String name, localServiceName, localIp, remoteServiceName, remoteIp;
   int localPort, remotePort;
-
-  /** To reduce the amount of allocation use a pair-indexed list for tag (key, value). */
-  ArrayList<String> tags;
-  /** Also use pair indexing for annotations, but type object to store (startTimestamp, value). */
-  ArrayList<Object> annotations;
   Throwable error;
+
+  //
+  // The below use object arrays instead of ArrayList. The intent is not for safe sharing
+  // (copy-on-write), as this type is externally synchronized. In other words, this isn't
+  // copy-on-write. We just grow arrays as we need to similar to how ArrayList does it.
+  //
+  // tags [(key, value)] annotations [(timestamp, value)]
+  Object[] tags = EMPTY_ARRAY, annotations = EMPTY_ARRAY;
+  int tagCount, annotationCount;
 
   /** @since 5.4 */
   public MutableSpan() {
@@ -113,7 +130,7 @@ public final class MutableSpan implements Cloneable {
   /** @since 5.12 */
   public MutableSpan(MutableSpan toCopy) {
     if (toCopy == null) throw new NullPointerException("toCopy == null");
-    if (toCopy == EMPTY) return;
+    if (toCopy.equals(EMPTY)) return;
     traceId = toCopy.traceId;
     localRootId = toCopy.localRootId;
     parentId = toCopy.parentId;
@@ -129,8 +146,11 @@ public final class MutableSpan implements Cloneable {
     remoteServiceName = toCopy.remoteServiceName;
     remoteIp = toCopy.remoteIp;
     remotePort = toCopy.remotePort;
-    tags = toCopy.tags != null ? new ArrayList<>(toCopy.tags) : null;
-    annotations = toCopy.annotations != null ? new ArrayList<>(toCopy.annotations) : null;
+    // In case this is a default span, don't hold a reference to the same array!
+    tags = copy(toCopy.tags);
+    tagCount = toCopy.tagCount;
+    annotations = copy(toCopy.annotations);
+    annotationCount = toCopy.annotationCount;
     error = toCopy.error;
   }
 
@@ -297,8 +317,8 @@ public final class MutableSpan implements Cloneable {
    * the service graph} or {@code null}.
    *
    * <p><em>Note</em>: This is initialized from {@link brave.Tracing.Builder#localServiceName(String)}.
-   * {@linkplain SpanHandler handlers} that want to conditionally replace the value should
-   * compare against the same value given to the tracing component.
+   * {@linkplain SpanHandler handlers} that want to conditionally replace the value should compare
+   * against the same value given to the tracing component.
    *
    * @since 5.4
    */
@@ -323,8 +343,8 @@ public final class MutableSpan implements Cloneable {
    * with this service} or {@code null}.
    *
    * <p><em>Note</em>: This is initialized from {@link brave.Tracing.Builder#localIp(String)}.
-   * {@linkplain SpanHandler handlers} that want to conditionally replace the value should
-   * compare against the same value given to the tracing component.
+   * {@linkplain SpanHandler handlers} that want to conditionally replace the value should compare
+   * against the same value given to the tracing component.
    *
    * @since 5.4
    */
@@ -347,8 +367,8 @@ public final class MutableSpan implements Cloneable {
    * with this service} or zero.
    *
    * <p><em>Note</em>: This is initialized from {@link brave.Tracing.Builder#localPort(int)}.
-   * {@linkplain SpanHandler handlers} that want to conditionally replace the value should
-   * compare against the same value given to the tracing component.
+   * {@linkplain SpanHandler handlers} that want to conditionally replace the value should compare
+   * against the same value given to the tracing component.
    *
    * @since 5.4
    */
@@ -404,6 +424,17 @@ public final class MutableSpan implements Cloneable {
   }
 
   /**
+   * Calling this overrides any previous value, such as from {@link brave.Span#remoteIpAndPort(String,
+   * int)}.
+   *
+   * @see #remoteIpAndPort(String, int)
+   * @see 5.12
+   */
+  public void remoteIp(@Nullable String remoteIp) {
+    this.remoteIp = IpLiteral.ipOrNull(remoteIp);
+  }
+
+  /**
    * Returns the {@linkplain brave.Span#remoteIpAndPort(String, int) port of the remote service} or
    * zero.
    *
@@ -416,8 +447,21 @@ public final class MutableSpan implements Cloneable {
   }
 
   /**
-   * Calling this overrides any previous value, such as {@link brave.Span#remoteIpAndPort(String,
+   * Calling this overrides any previous value, such as from {@link brave.Span#remoteIpAndPort(String,
    * int)}.
+   *
+   * @see #remoteIpAndPort(String, int)
+   * @see 5.12
+   */
+  public void remotePort(int remotePort) {
+    if (remotePort > 0xffff) throw new IllegalArgumentException("invalid port " + remotePort);
+    if (remotePort < 0) remotePort = 0;
+    this.remotePort = remotePort;
+  }
+
+  /**
+   * When {@code remoteIp} is not {@code null}, calling this overrides any previous value, such as
+   * {@link brave.Span#remoteIpAndPort(String, int)}.
    *
    * @see #remoteServiceName()
    * @see #remoteIp()
@@ -427,9 +471,7 @@ public final class MutableSpan implements Cloneable {
     if (remoteIp == null) return false;
     this.remoteIp = IpLiteral.ipOrNull(remoteIp);
     if (this.remoteIp == null) return false;
-    if (remotePort > 0xffff) throw new IllegalArgumentException("invalid port " + remotePort);
-    if (remotePort < 0) remotePort = 0;
-    this.remotePort = remotePort;
+    remotePort(remotePort);
     return true;
   }
 
@@ -489,12 +531,23 @@ public final class MutableSpan implements Cloneable {
 
   /** @since 5.12 */
   public int annotationCount() {
-    return annotations != null ? annotations.size() / 2 : 0;
+    return annotationCount;
+  }
+
+  /**
+   * A read-only view of the current annotations as a collection of {@code (epochMicroseconds ->
+   * value)}.
+   *
+   * @see #forEachAnnotation(AnnotationConsumer, Object)
+   * @since 5.12
+   */
+  public Collection<Map.Entry<Long, String>> annotations() {
+    return UnsafeArrayMap.<Long, String>newBuilder().build(annotations).entrySet();
   }
 
   /**
    * Iterates over all {@linkplain SpanCustomizer#annotate(String) annotations} for purposes such as
-   * copying values.
+   * copying values. Unlike {@link #annotations()}, using this is allocation free.
    *
    * <p>Ex.
    * <pre>{@code
@@ -507,13 +560,13 @@ public final class MutableSpan implements Cloneable {
    * }</pre>
    *
    * @see #forEachAnnotation(AnnotationUpdater)
+   * @see #annotations()
    * @since 5.4
    */
   public <T> void forEachAnnotation(AnnotationConsumer<T> annotationConsumer, T target) {
-    if (annotations == null) return;
-    for (int i = 0, length = annotations.size(); i < length; i += 2) {
-      long timestamp = (long) annotations.get(i);
-      annotationConsumer.accept(target, timestamp, annotations.get(i + 1).toString());
+    for (int i = 0, length = annotationCount * 2; i < length; i += 2) {
+      long timestamp = (long) annotations[i];
+      annotationConsumer.accept(target, timestamp, annotations[i + 1].toString());
     }
   }
 
@@ -534,12 +587,15 @@ public final class MutableSpan implements Cloneable {
    * @since 5.4
    */
   public void forEachAnnotation(AnnotationUpdater annotationUpdater) {
-    if (annotations == null) return;
-    for (int i = 0, length = annotations.size(); i < length; i += 2) {
-      String value = annotations.get(i + 1).toString();
-      String newValue = annotationUpdater.update((long) annotations.get(i), value);
-      if (updateOrRemove(annotations, i, value, newValue)) {
+    for (int i = 0, length = annotationCount * 2; i < length; i += 2) {
+      String value = annotations[i + 1].toString();
+      String newValue = annotationUpdater.update((long) annotations[i], value);
+      if (newValue != null) {
+        update(annotations, i, newValue);
+      } else {
+        remove(annotations, i);
         length -= 2;
+        annotationCount--;
         i -= 2;
       }
     }
@@ -554,10 +610,8 @@ public final class MutableSpan implements Cloneable {
    */
   public boolean containsAnnotation(String value) {
     if (value == null) throw new NullPointerException("value == null");
-    if (annotations == null) return false;
-
-    for (int i = 0, length = annotations.size(); i < length; i += 2) {
-      if (value.equals(annotations.get(i + 1))) return true;
+    for (int i = 0, length = annotationCount * 2; i < length; i += 2) {
+      if (value.equals(annotations[i + 1])) return true;
     }
     return false;
   }
@@ -571,15 +625,25 @@ public final class MutableSpan implements Cloneable {
    */
   public void annotate(long timestamp, String value) {
     if (value == null) throw new NullPointerException("value == null");
-    if (timestamp == 0L) return;
-    if (annotations == null) annotations = new ArrayList<>();
-    annotations.add(timestamp);
-    annotations.add(value);
+    if (timestamp == 0L) return; // silently ignore data Zipkin would drop
+    annotations =
+        add(annotations, annotationCount * 2, timestamp, value); // Annotations are always add.
+    annotationCount++;
   }
 
   /** @since 5.12 */
   public int tagCount() {
-    return tags != null ? tags.size() / 2 : 0;
+    return tagCount;
+  }
+
+  /**
+   * A read-only view of the current tags a map.
+   *
+   * @see #forEachTag(TagConsumer, Object)
+   * @since 5.12
+   */
+  public Map<String, String> tags() {
+    return UnsafeArrayMap.<String, String>newBuilder().build(tags);
   }
 
   /**
@@ -591,17 +655,15 @@ public final class MutableSpan implements Cloneable {
   @Nullable public String tag(String key) {
     if (key == null) throw new NullPointerException("key == null");
     if (key.isEmpty()) throw new IllegalArgumentException("key is empty");
-    if (tags == null) return null;
-    String result = null;
-    for (int i = 0, length = tags.size(); i < length; i += 2) {
-      if (key.equals(tags.get(i))) result = tags.get(i + 1);
+    for (int i = 0, length = tagCount * 2; i < length; i += 2) {
+      if (key.equals(tags[i])) return (String) tags[i + 1];
     }
-    return result;
+    return null;
   }
 
   /**
    * Iterates over all {@linkplain SpanCustomizer#tag(String, String) tags} for purposes such as
-   * copying values.
+   * copying values. Unlike {@link #tags()}, using this is allocation free.
    *
    * <p>Ex.
    * <pre>{@code
@@ -611,12 +673,12 @@ public final class MutableSpan implements Cloneable {
    *
    * @see #forEachTag(TagUpdater)
    * @see #tag(String)
+   * @see #tags()
    * @since 5.4
    */
   public <T> void forEachTag(TagConsumer<T> tagConsumer, T target) {
-    if (tags == null) return;
-    for (int i = 0, length = tags.size(); i < length; i += 2) {
-      tagConsumer.accept(target, tags.get(i), tags.get(i + 1));
+    for (int i = 0, length = tagCount * 2; i < length; i += 2) {
+      tagConsumer.accept(target, (String) tags[i], (String) tags[i + 1]);
     }
   }
 
@@ -638,12 +700,15 @@ public final class MutableSpan implements Cloneable {
    * @since 5.4
    */
   public void forEachTag(TagUpdater tagUpdater) {
-    if (tags == null) return;
-    for (int i = 0, length = tags.size(); i < length; i += 2) {
-      String value = tags.get(i + 1);
-      String newValue = tagUpdater.update(tags.get(i), value);
-      if (updateOrRemove(tags, i, value, newValue)) {
+    for (int i = 0, length = tagCount * 2; i < length; i += 2) {
+      String value = (String) tags[i + 1];
+      String newValue = tagUpdater.update((String) tags[i], value);
+      if (newValue != null) {
+        update(tags, i, newValue);
+      } else {
+        remove(tags, i);
         length -= 2;
+        tagCount--;
         i -= 2;
       }
     }
@@ -659,75 +724,54 @@ public final class MutableSpan implements Cloneable {
     if (key == null) throw new NullPointerException("key == null");
     if (key.isEmpty()) throw new IllegalArgumentException("key is empty");
     if (value == null) throw new NullPointerException("value of " + key + " == null");
-    if (tags == null) {
-      // this will not need to grow unless there are more than 5 tags
-      tags = new ArrayList<>();
-    }
-    for (int i = 0, length = tags.size(); i < length; i += 2) {
-      if (key.equals(tags.get(i))) {
-        tags.set(i + 1, value);
+    int i = 0;
+    for (int length = tagCount * 2; i < length; i += 2) {
+      if (key.equals(tags[i])) {
+        update(tags, i, value);
         return;
       }
     }
-    tags.add(key);
-    tags.add(value);
+    tags = add(tags, i, key, value);
+    tagCount++;
   }
-
-  /** Returns true if the key/value was removed from the pair-indexed list at index {@code i} */
-  static boolean updateOrRemove(ArrayList list, int i, Object value, @Nullable Object newValue) {
-    if (newValue == null) {
-      list.remove(i);
-      list.remove(i);
-      return true;
-    } else if (!value.equals(newValue)) {
-      list.set(i + 1, newValue);
-    }
-    return false;
-  }
-
-  volatile int hashCode; // Lazily initialized and cached.
 
   @Override public int hashCode() {
-    int h = hashCode;
-    if (h == 0) {
-      h = 1000003;
-      h ^= traceId == null ? 0 : traceId.hashCode();
-      h *= 1000003;
-      h ^= localRootId == null ? 0 : localRootId.hashCode();
-      h *= 1000003;
-      h ^= parentId == null ? 0 : parentId.hashCode();
-      h *= 1000003;
-      h ^= id == null ? 0 : id.hashCode();
-      h *= 1000003;
-      h ^= kind == null ? 0 : kind.hashCode();
-      h *= 1000003;
-      h ^= flags;
-      h *= 1000003;
-      h ^= (int) ((startTimestamp >>> 32) ^ startTimestamp);
-      h *= 1000003;
-      h ^= (int) ((finishTimestamp >>> 32) ^ finishTimestamp);
-      h *= 1000003;
-      h ^= name == null ? 0 : name.hashCode();
-      h *= 1000003;
-      h ^= localServiceName == null ? 0 : localServiceName.hashCode();
-      h *= 1000003;
-      h ^= localIp == null ? 0 : localIp.hashCode();
-      h *= 1000003;
-      h ^= localPort;
-      h *= 1000003;
-      h ^= remoteServiceName == null ? 0 : remoteServiceName.hashCode();
-      h *= 1000003;
-      h ^= remoteIp == null ? 0 : remoteIp.hashCode();
-      h *= 1000003;
-      h ^= remotePort;
-      h *= 1000003;
-      h ^= tags == null ? 0 : tags.hashCode();
-      h *= 1000003;
-      h ^= annotations == null ? 0 : annotations.hashCode();
-      h *= 1000003;
-      h ^= error == null ? 0 : error.hashCode();
-      hashCode = h;
-    }
+    int h = 1000003; // mutable! cannot cache hashCode
+    h ^= traceId == null ? 0 : traceId.hashCode();
+    h *= 1000003;
+    h ^= localRootId == null ? 0 : localRootId.hashCode();
+    h *= 1000003;
+    h ^= parentId == null ? 0 : parentId.hashCode();
+    h *= 1000003;
+    h ^= id == null ? 0 : id.hashCode();
+    h *= 1000003;
+    h ^= kind == null ? 0 : kind.hashCode();
+    h *= 1000003;
+    h ^= flags;
+    h *= 1000003;
+    h ^= (int) ((startTimestamp >>> 32) ^ startTimestamp);
+    h *= 1000003;
+    h ^= (int) ((finishTimestamp >>> 32) ^ finishTimestamp);
+    h *= 1000003;
+    h ^= name == null ? 0 : name.hashCode();
+    h *= 1000003;
+    h ^= localServiceName == null ? 0 : localServiceName.hashCode();
+    h *= 1000003;
+    h ^= localIp == null ? 0 : localIp.hashCode();
+    h *= 1000003;
+    h ^= localPort;
+    h *= 1000003;
+    h ^= remoteServiceName == null ? 0 : remoteServiceName.hashCode();
+    h *= 1000003;
+    h ^= remoteIp == null ? 0 : remoteIp.hashCode();
+    h *= 1000003;
+    h ^= remotePort;
+    h *= 1000003;
+    h ^= Arrays.hashCode(tags);
+    h *= 1000003;
+    h ^= Arrays.hashCode(annotations);
+    h *= 1000003;
+    h ^= error == null ? 0 : error.hashCode();
     return h;
   }
 
@@ -739,23 +783,23 @@ public final class MutableSpan implements Cloneable {
 
     MutableSpan that = (MutableSpan) o;
     return equal(traceId, that.traceId)
-      && equal(localRootId, that.localRootId)
-      && equal(parentId, that.parentId)
-      && equal(id, that.id)
-      && kind == that.kind
-      && flags == that.flags
-      && startTimestamp == that.startTimestamp
-      && finishTimestamp == that.finishTimestamp
-      && equal(name, that.name)
-      && equal(localServiceName, that.localServiceName)
-      && equal(localIp, that.localIp)
-      && localPort == that.localPort
-      && equal(remoteServiceName, that.remoteServiceName)
-      && equal(remoteIp, that.remoteIp)
-      && remotePort == that.remotePort
-      && equal(tags, that.tags)
-      && equal(annotations, that.annotations)
-      && equal(error, that.error);
+        && equal(localRootId, that.localRootId)
+        && equal(parentId, that.parentId)
+        && equal(id, that.id)
+        && kind == that.kind
+        && flags == that.flags
+        && startTimestamp == that.startTimestamp
+        && finishTimestamp == that.finishTimestamp
+        && equal(name, that.name)
+        && equal(localServiceName, that.localServiceName)
+        && equal(localIp, that.localIp)
+        && localPort == that.localPort
+        && equal(remoteServiceName, that.remoteServiceName)
+        && equal(remoteIp, that.remoteIp)
+        && remotePort == that.remotePort
+        && nonNullEntriesEqual(tags, tagCount, that.tags, that.tagCount)
+        && nonNullEntriesEqual(annotations, annotationCount, that.annotations, that.annotationCount)
+        && equal(error, that.error);
   }
 
   /** Writes this span in Zipkin V2 format */
@@ -803,32 +847,32 @@ public final class MutableSpan implements Cloneable {
       b.append(",\"remoteEndpoint\":");
       writeEndpoint(b, remoteServiceName, remoteIp, remotePort);
     }
-    int annotationLength = annotations != null ? annotations.size() : 0;
-    if (annotationLength > 0) {
+    if (annotationCount > 0) {
       b.append(",\"annotations\":");
       b.append('[');
-      for (int i = 0; i < annotationLength; ) {
+      for (int i = 0, length = annotationCount * 2; i < length; ) {
         b.append("{\"timestamp\":");
-        b.append(annotations.get(i++));
+        b.append(annotations[i]);
         b.append(",\"value\":\"");
-        jsonEscape(annotations.get(i++).toString(), b);
+        jsonEscape(annotations[i + 1].toString(), b);
         b.append('}');
-        if (i < annotationLength) b.append(',');
+        i += 2;
+        if (i < length) b.append(',');
       }
       b.append(']');
     }
-    int tagLength = tags != null ? tags.size() : 0;
-    if (tagLength > 0 || error != null) {
+    if (tagCount > 0 || error != null) {
       b.append(",\"tags\":{");
       boolean wroteError = false;
-      for (int i = 0; i < tagLength; ) {
-        String key = tags.get(i++);
+      for (int i = 0, length = tagCount * 2; i < length; ) {
+        String key = (String) tags[i];
         if (key.equals("error")) wroteError = true;
-        writeKeyValue(b, key, tags.get(i++));
-        if (i < tagLength) b.append(',');
+        writeKeyValue(b, key, (String) tags[i + 1]);
+        i += 2;
+        if (i < length) b.append(',');
       }
       if (error != null && !wroteError) {
-        if (tagLength > 0) b.append(',');
+        if (tagCount > 0) b.append(',');
         MutableSpan errorCatcher = new MutableSpan();
         Tags.ERROR.tag(error, null, errorCatcher);
         writeKeyValue(b, "error", errorCatcher.tag("error"));
@@ -855,7 +899,7 @@ public final class MutableSpan implements Cloneable {
   }
 
   static void writeEndpoint(StringBuilder b,
-    @Nullable String serviceName, @Nullable String ip, int port) {
+      @Nullable String serviceName, @Nullable String ip, int port) {
     b.append('{');
     boolean wroteField = false;
     if (serviceName != null) {
@@ -881,6 +925,48 @@ public final class MutableSpan implements Cloneable {
       b.append(port);
     }
     b.append('}');
+  }
+
+  static Object[] add(Object[] input, int i, Object key, Object value) {
+    Object[] result;
+    if (i == input.length) {
+      result = Arrays.copyOf(input, i + 2); // grow for one more entry
+    } else {
+      result = input;
+    }
+    result[i] = key;
+    result[i + 1] = value;
+    return result;
+  }
+
+  // this is externally synchronized, so we can edit it directly
+  static void update(Object[] input, int i, Object value) {
+    if (value.equals(input[i + 1])) return;
+    input[i + 1] = value;
+  }
+
+  // This shifts and backfills nulls so that we don't thrash copying arrays
+  // when deleting. UnsafeArray will still work as it skips on first null key.
+  static void remove(Object[] input, int i) {
+    int j = i + 2;
+    for (; j < input.length; i += 2, j += 2) {
+      if (input[j] == null) break; // found null key
+      input[i] = input[j];
+      input[i + 1] = input[j + 1];
+    }
+    input[i] = input[i + 1] = null;
+  }
+
+  static Object[] copy(Object[] input) {
+    return input.length > 0 ? Arrays.copyOf(input, input.length) : EMPTY_ARRAY;
+  }
+
+  static boolean nonNullEntriesEqual(Object[] left, int leftCount, Object[] right, int rightCount) {
+    if (leftCount != rightCount) return false;
+    for (int i = 0; i < leftCount * 2; i++) {
+      if (!equal(left[i], right[i])) return false;
+    }
+    return true;
   }
 
   static boolean equal(@Nullable Object a, @Nullable Object b) {

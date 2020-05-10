@@ -17,9 +17,7 @@ import brave.Span;
 import brave.internal.InternalPropagation;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -42,8 +40,8 @@ public class MutableSpanTest {
   static final Pattern CREDIT_CARD = Pattern.compile("[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{4}");
 
   /**
-   * This shows an edge case of someone implementing a {@link SpanHandler} whose intent is
-   * only handle orphans.
+   * This shows an edge case of someone implementing a {@link SpanHandler} whose intent is only
+   * handle orphans.
    */
   @Test public void hasAnnotation_usageExplained() {
     class AbandonCounter extends SpanHandler {
@@ -121,22 +119,56 @@ public class MutableSpanTest {
       return value;
     });
 
-    assertThat(tagsToMap(span)).containsExactly(
+    assertThat(span.tags()).containsExactly(
       entry("a", "1"),
       entry("cc-suffix", "cc=xxxx-xxxx-xxxx-xxxx"),
       entry("c", "3")
     );
   }
 
-  @Test public void annotationCount() {
+  @Test public void annotations_copyOnWrite() {
+    MutableSpan span = new MutableSpan();
+    span.annotate(1L, "ws");
+
+    // this shows the copy-constructor copies internal arrays.
+    MutableSpan span2 = new MutableSpan(span);
+    assertThat(span2.annotations)
+        .isNotSameAs(span.annotations)
+        .isEqualTo(span.annotations);
+
+    span.annotate(2L, "wr");
+    assertThat(span.annotations()).containsExactly(
+        entry(1L, "ws"),
+        entry(2L, "wr")
+    );
+    assertThat(span2.annotations()).containsExactly(
+        entry(1L, "ws")
+    );
+  }
+
+  @Test public void annotations() {
     MutableSpan span = new MutableSpan();
     assertThat(span.annotationCount()).isZero();
+    assertThat(span.annotations()).isEmpty();
+
     span.annotate(1L, "1");
-    assertThat(span.annotationCount()).isEqualTo(1);
+    assertThat(span.annotationCount()).isOne();
+    assertThat(span.annotations()).containsExactly(
+        entry(1L, "1")
+    );
+
     span.annotate(2L, "2");
     assertThat(span.annotationCount()).isEqualTo(2);
+    assertThat(span.annotations()).containsExactly(
+        entry(1L, "1"),
+        entry(2L, "2")
+    );
+
     span.forEachAnnotation((t, v) -> v.equals("1") ? v : null);
-    assertThat(span.annotationCount()).isEqualTo(1);
+    assertThat(span.annotationCount()).isOne();
+    assertThat(span.annotations()).containsExactly(
+        entry(1L, "1")
+    );
   }
 
   /** See {@link #forEachTag_consumer_usageExplained()} */
@@ -182,7 +214,7 @@ public class MutableSpanTest {
       return value;
     });
 
-    assertThat(annotationsToList(span)).containsExactly(
+    assertThat(span.annotations()).containsExactly(
       entry(1L, "1"),
       entry(2L, "cc=xxxx-xxxx-xxxx-xxxx"),
       entry(3L, "3")
@@ -463,23 +495,27 @@ public class MutableSpanTest {
     for (Supplier<MutableSpan> constructor : permutations) {
       // same instance are equivalent
       MutableSpan span = constructor.get();
-      assertThat(span).isEqualTo(span);
-      assertThat(span).hasSameHashCodeAs(span);
+      assertEqualWithSameHashCode(span, span);
+      assertThat(span).usingRecursiveComparison().isEqualTo(span); // double check
 
       // same fields are equivalent
-      assertThat(span).isEqualTo(constructor.get());
-      assertThat(span).hasSameHashCodeAs(constructor.get());
+      MutableSpan sameFields = constructor.get();
+      assertEqualWithSameHashCode(sameFields, span);
+      assertThat(sameFields).usingRecursiveComparison().isEqualTo(span); // double check our impl
+
+      // copy constructor are equivalent
+      MutableSpan copy = new MutableSpan(span);
+      assertEqualWithSameHashCode(copy, span);
+      assertThat(copy).usingRecursiveComparison().isEqualTo(span); // double check our impl
 
       // This seems redundant, and mostly is, but the order of equals matters
       List<Supplier<MutableSpan>> exceptMe = new ArrayList<>(permutations);
       exceptMe.remove(constructor);
       for (Supplier<MutableSpan> otherConstructor : exceptMe) {
         MutableSpan other = otherConstructor.get();
-        assertThat(span)
-          .isNotSameAs(other) // sanity
-          .isNotEqualTo(other)
-          .extracting(MutableSpan::hashCode)
-          .isNotEqualTo(other.hashCode());
+        assertThat(span).isNotSameAs(other); // sanity
+        assertNeitherEqualNorShareHashCode(span, other);
+        assertThat(span).usingRecursiveComparison().isNotEqualTo(other); // double check our impl
       }
     }
   }
@@ -489,6 +525,28 @@ public class MutableSpanTest {
       MutableSpan span = constructor.get();
       assertThat(span).isEqualTo(new MutableSpan(span));
     }
+
+    // now check data sharing
+    MutableSpan span = new MutableSpan();
+    span.annotate(1100L, "foo");
+    span.tag("http.path", "/api");
+    span.tag("clnt/finagle.version", "6.45.0");
+
+    // this shows the copy-constructor copies internal arrays.
+    MutableSpan span2 = new MutableSpan(span);
+    assertThat(span2.annotations).isNotSameAs(span.annotations);
+    assertThat(span2.tags).isNotSameAs(span.tags);
+    assertEqualWithSameHashCode(span, span2);
+
+    span.annotate(1000L, "redacted");
+    span.tag("redacted", "/api");
+    assertThat(span.annotationCount()).isEqualTo(span2.annotationCount() + 1);
+    assertThat(span.tagCount()).isEqualTo(span2.tagCount() + 1);
+    assertNeitherEqualNorShareHashCode(span, span2);
+
+    span.forEachAnnotation((key, value) -> !value.equals("redacted") ? value : null);
+    span.forEachTag((key, value) -> !key.equals("redacted") ? value : null);
+    assertEqualWithSameHashCode(span, span2);
   }
 
   @Test public void contextConstructor() {
@@ -538,15 +596,29 @@ public class MutableSpanTest {
       .isEqualTo(new MutableSpan(context, null));
   }
 
-  @Test public void tagCount() {
+  @Test public void tags() {
     MutableSpan span = new MutableSpan();
     assertThat(span.tagCount()).isZero();
+    assertThat(span.tags()).isEmpty();
+
     span.tag("http.method", "GET");
-    assertThat(span.tagCount()).isEqualTo(1);
+    assertThat(span.tagCount()).isOne();
+    assertThat(span.tags()).containsExactly(
+        entry("http.method", "GET")
+    );
+
     span.tag("error", "500");
     assertThat(span.tagCount()).isEqualTo(2);
+    assertThat(span.tags()).containsExactly(
+        entry("http.method", "GET"),
+        entry("error", "500")
+    );
+
     span.forEachTag((t, v) -> v.equals("GET") ? v : null);
-    assertThat(span.tagCount()).isEqualTo(1);
+    assertThat(span.tagCount()).isOne();
+    assertThat(span.tags()).containsExactly(
+        entry("http.method", "GET")
+    );
   }
 
   @Test public void accessorScansTags() {
@@ -569,7 +641,7 @@ public class MutableSpanTest {
         .doesNotContain(":0");
     }
 
-    // now, test something more interesting zipkin2.TestObjects.CLIENT_SPAN
+    // now, test something more interesting .TestObjects.CLIENT_SPAN
     MutableSpan span = new MutableSpan();
     span.traceId("1");
     span.localRootId("2"); // not in zipkin format
@@ -587,6 +659,12 @@ public class MutableSpanTest {
     span.tag("http.path", "/api");
     span.tag("clnt/finagle.version", "6.45.0");
 
+    // ensure deleted stuff not in toString
+    span.annotate(1000L, "redacted");
+    span.tag("redacted", "/api");
+    span.forEachAnnotation((key, value) -> !value.equals("redacted") ? value : null);
+    span.forEachTag((key, value) -> !key.equals("redacted") ? value : null);
+
     assertThat(span).hasToString("{"
       + "\"traceId\":\"1\",\"parentId\":\"2\",\"id\":\"2\","
       + "\"kind\":\"CLIENT\",\"name\":\"get\",\"timestamp\":1000,\"duration\":200,"
@@ -597,15 +675,35 @@ public class MutableSpanTest {
       + "}");
   }
 
-  static Map<String, String> tagsToMap(MutableSpan span) {
-    Map<String, String> map = new LinkedHashMap<>();
-    span.forEachTag(Map::put, map);
-    return map;
+  @Test public void remove() {
+    // internally, remove is never called on odd number, or at or after array length
+    {
+      Object[] array = new Object[] {1, 2, 3, 4, 5, 6};
+      MutableSpan.remove(array, 0);
+      assertThat(array).containsExactly(3, 4, 5, 6, null, null);
+    }
+    {
+      Object[] array = new Object[] {1, 2, 3, 4, 5, 6};
+      MutableSpan.remove(array, 2);
+      assertThat(array).containsExactly(1, 2, 5, 6, null, null);
+    }
+    {
+      Object[] array = new Object[] {1, 2, 3, 4, 5, 6};
+      MutableSpan.remove(array, 4);
+      assertThat(array).containsExactly(1, 2, 3, 4, null, null);
+    }
   }
 
-  static List<Map.Entry<Long, String>> annotationsToList(MutableSpan span) {
-    List<Map.Entry<Long, String>> listTarget = new ArrayList<>();
-    span.forEachAnnotation((target, key, value) -> target.add(entry(key, value)), listTarget);
-    return listTarget;
+  // These are literally testing our equals comparison, so not using 'isEqualTo(that)'
+  static void assertEqualWithSameHashCode(MutableSpan span, MutableSpan span2) {
+    assertThat(span.equals(span2)).isTrue();
+    assertThat(span2.equals(span)).isTrue();
+    assertThat(span).hasSameHashCodeAs(span2);
+  }
+
+  static void assertNeitherEqualNorShareHashCode(MutableSpan span, MutableSpan span2) {
+    assertThat(span.equals(span2)).isFalse();
+    assertThat(span2.equals(span)).isFalse();
+    assertThat(span.hashCode()).isNotEqualTo(span2.hashCode());
   }
 }

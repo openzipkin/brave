@@ -263,7 +263,7 @@ public class TagTest {
 
     MutableSpan expected = new MutableSpan();
     expected.tag("key", "value");
-    assertThat(mutableSpan).isEqualToComparingFieldByField(expected);
+    assertThat(mutableSpan).isEqualTo(expected);
   }
 
   @Test public void tag_mutableSpan_nullContext() {
@@ -276,7 +276,7 @@ public class TagTest {
 
     MutableSpan expected = new MutableSpan();
     expected.tag("key", "value");
-    assertThat(mutableSpan).isEqualToComparingFieldByField(expected);
+    assertThat(mutableSpan).isEqualTo(expected);
   }
 
   @Test public void tag_mutableSpan_empty() {
@@ -289,7 +289,7 @@ public class TagTest {
 
     MutableSpan expected = new MutableSpan();
     expected.tag("key", "");
-    assertThat(mutableSpan).isEqualToComparingFieldByField(expected);
+    assertThat(mutableSpan).isEqualTo(expected);
   }
 
   @Test public void tag_mutableSpan_ignoredErrorParsing() {

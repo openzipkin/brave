@@ -28,9 +28,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.Annotation;
-import zipkin2.Span;
 
+import static java.util.Map.Entry;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
@@ -65,7 +64,7 @@ public class RedactingSpanHandlerTest {
     }
   }
 
-  BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
+  BlockingQueue<MutableSpan> spans = new LinkedBlockingQueue<>();
   SpanHandler redacter = new SpanHandler() {
     @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
       span.forEachTag(ValueRedactor.INSTANCE);
@@ -77,7 +76,12 @@ public class RedactingSpanHandlerTest {
   Tracing tracing = Tracing.newBuilder()
     .currentTraceContext(StrictCurrentTraceContext.create())
     .addSpanHandler(redacter)
-    .spanReporter(spans::add)
+    .addSpanHandler(new SpanHandler() {
+      @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
+        spans.add(span);
+        return true;
+      }
+    })
     .build();
 
   @After public void close() {
@@ -95,13 +99,13 @@ public class RedactingSpanHandlerTest {
       span.finish();
     }
 
-    Span reported = spans.take();
+    MutableSpan reported = spans.take();
     assertThat(reported.tags()).containsExactly(
       entry("a", "1"),
       // credit card tag was nuked
       entry("c", "3")
     );
-    assertThat(reported.annotations()).flatExtracting(Annotation::value).containsExactly(
+    assertThat(reported.annotations()).extracting(Entry::getValue).containsExactly(
       "cc=xxxx-xxxx-xxxx-xxxx"
     );
 
@@ -113,7 +117,7 @@ public class RedactingSpanHandlerTest {
     // GC only clears the reference to the leaked data. Normal tracer use implicitly handles orphans
     tracing.tracer().nextSpan().abandon();
 
-    Span leaked = spans.take();
+    MutableSpan leaked = spans.take();
     assertThat(leaked.tags()).containsExactly(
       // credit card tag was nuked
       entry("d", "cc=xxxx-xxxx-xxxx-xxxx")
