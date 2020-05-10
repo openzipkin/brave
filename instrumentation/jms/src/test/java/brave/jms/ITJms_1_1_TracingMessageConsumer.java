@@ -14,6 +14,7 @@
 package brave.jms;
 
 import brave.Tags;
+import brave.handler.MutableSpan;
 import brave.messaging.MessagingRuleSampler;
 import brave.messaging.MessagingTracing;
 import brave.propagation.B3SingleFormat;
@@ -41,13 +42,12 @@ import org.junit.ComparisonFailure;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
-import zipkin2.Span;
 
+import static brave.Span.Kind.CONSUMER;
 import static brave.jms.MessagePropagation.GETTER;
 import static brave.jms.MessagePropagation.SETTER;
 import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static org.assertj.core.api.Assertions.assertThat;
-import static zipkin2.Span.Kind.CONSUMER;
 
 /** When adding tests here, also add to {@link brave.jms.ITTracingJMSConsumer} */
 public class ITJms_1_1_TracingMessageConsumer extends ITJms {
@@ -137,7 +137,7 @@ public class ITJms_1_1_TracingMessageConsumer extends ITJms {
     });
     send.run();
 
-    Span consumerSpan = reporter.takeRemoteSpan(CONSUMER), listenerSpan = reporter.takeLocalSpan();
+    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(CONSUMER), listenerSpan = spanHandler.takeLocalSpan();
     assertChildOf(listenerSpan, consumerSpan);
     assertSequential(consumerSpan, listenerSpan);
   }
@@ -187,11 +187,11 @@ public class ITJms_1_1_TracingMessageConsumer extends ITJms {
     );
     send.run();
 
-    Span consumerSpan = reporter.takeRemoteSpan(CONSUMER), listenerSpan = reporter.takeLocalSpan();
+    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(CONSUMER), listenerSpan = spanHandler.takeLocalSpan();
 
     assertThat(consumerSpan.name()).isEqualTo("receive");
     assertThat(consumerSpan.parentId()).isNull(); // root span
-    assertThat(consumerSpan.tags()).isEqualTo(consumerTags);
+    assertThat(consumerSpan.tags()).containsAllEntriesOf(consumerTags);
 
     assertChildOf(listenerSpan, consumerSpan);
     assertThat(listenerSpan.name()).isEqualTo("message-listener"); // overridden name
@@ -228,7 +228,7 @@ public class ITJms_1_1_TracingMessageConsumer extends ITJms {
     TraceContext parent = resetB3PropertyWithNewSampledContext(jms);
     send.run();
 
-    Span consumerSpan = reporter.takeRemoteSpan(CONSUMER), listenerSpan = reporter.takeLocalSpan();
+    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(CONSUMER), listenerSpan = spanHandler.takeLocalSpan();
     assertChildOf(consumerSpan, parent);
     assertChildOf(listenerSpan, consumerSpan);
     assertThat(listenerSpan.tags())
@@ -266,7 +266,7 @@ public class ITJms_1_1_TracingMessageConsumer extends ITJms {
     lockMessages();
     send.run();
 
-    Span consumerSpan = reporter.takeRemoteSpan(CONSUMER), listenerSpan = reporter.takeLocalSpan();
+    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(CONSUMER), listenerSpan = spanHandler.takeLocalSpan();
     assertThat(consumerSpan.parentId()).isNull();
     assertChildOf(listenerSpan, consumerSpan);
     assertThat(listenerSpan.tags())
@@ -303,10 +303,10 @@ public class ITJms_1_1_TracingMessageConsumer extends ITJms {
 
     messageConsumer.receive();
 
-    Span consumerSpan = reporter.takeRemoteSpan(CONSUMER);
+    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(consumerSpan.name()).isEqualTo("receive");
     assertThat(consumerSpan.parentId()).isNull(); // root span
-    assertThat(consumerSpan.tags()).isEqualTo(consumerTags);
+    assertThat(consumerSpan.tags()).containsAllEntriesOf(consumerTags);
   }
 
   @Test public void receive_resumesTrace() throws JMSException {
@@ -331,7 +331,7 @@ public class ITJms_1_1_TracingMessageConsumer extends ITJms {
     send.run();
 
     Message received = messageConsumer.receive();
-    Span consumerSpan = reporter.takeRemoteSpan(CONSUMER);
+    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(CONSUMER);
     assertChildOf(consumerSpan, parent);
 
     assertThat(received.getStringProperty("b3"))

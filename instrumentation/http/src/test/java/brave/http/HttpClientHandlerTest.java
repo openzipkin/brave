@@ -15,22 +15,23 @@ package brave.http;
 
 import brave.SpanCustomizer;
 import brave.Tracing;
+import brave.handler.MutableSpan;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
-import java.util.ArrayList;
-import java.util.List;
+import brave.test.IntegrationTestSpanHandler;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import zipkin2.Span;
 
+import static brave.Span.Kind.CLIENT;
 import static brave.http.HttpHandler.NULL_SENTINEL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -43,8 +44,9 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class HttpClientHandlerTest {
+  @Rule public IntegrationTestSpanHandler spanHandler = new IntegrationTestSpanHandler();
+
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(1L).sampled(true).build();
-  List<Span> spans = new ArrayList<>();
 
   HttpTracing httpTracing;
   HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
@@ -68,7 +70,7 @@ public class HttpClientHandlerTest {
   }
 
   Tracing.Builder tracingBuilder() {
-    return Tracing.newBuilder().spanReporter(spans::add);
+    return Tracing.newBuilder().addSpanHandler(spanHandler);
   }
 
   @After public void close() {
@@ -83,7 +85,9 @@ public class HttpClientHandlerTest {
     brave.Span span = handler.handleSend(request);
     handler.handleReceive(response, span);
 
-    assertThat(spans.get(0).durationAsLong()).isEqualTo(1000L);
+    assertThat(spanHandler.takeRemoteSpan(CLIENT))
+        .extracting(MutableSpan::startTimestamp, MutableSpan::finishTimestamp)
+        .containsExactly(123000L, 124000L);
   }
 
   @Test public void handleSend_traceIdSamplerSpecialCased() {
@@ -183,7 +187,9 @@ public class HttpClientHandlerTest {
     brave.Span span = handler.handleSend(request);
     handler.handleReceive(response, null, span);
 
-    assertThat(spans.get(0).durationAsLong()).isEqualTo(1000L);
+    assertThat(spanHandler.takeRemoteSpan(CLIENT))
+        .extracting(MutableSpan::startTimestamp, MutableSpan::finishTimestamp)
+        .containsExactly(123000L, 124000L);
   }
 
   @Test public void deprecatedNextSpan_samplerSeesHttpClientRequest() {

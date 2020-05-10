@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,7 +15,6 @@ package brave.propagation;
 
 import brave.Tracing;
 import org.junit.Test;
-import zipkin2.reporter.Reporter;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 
@@ -37,7 +36,7 @@ public class ThreadLocalSpanClassLoaderTest {
 
   static class ExplicitTracerBasicUsage implements Runnable {
     @Override public void run() {
-      try (Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build()) {
+      try (Tracing tracing = Tracing.newBuilder().build()) {
         ThreadLocalSpan tlSpan = ThreadLocalSpan.create(tracing.tracer());
 
         tlSpan.next();
@@ -52,7 +51,7 @@ public class ThreadLocalSpanClassLoaderTest {
 
   static class CurrentTracerBasicUsage implements Runnable {
     @Override public void run() {
-      try (Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build()) {
+      try (Tracing tracing = Tracing.newBuilder().build()) {
         ThreadLocalSpan tlSpan = ThreadLocalSpan.CURRENT_TRACER;
 
         tlSpan.next();
@@ -71,7 +70,7 @@ public class ThreadLocalSpanClassLoaderTest {
 
   static class CurrentTracerDoesntFinishSpan implements Runnable {
     @Override public void run() {
-      try (Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build()) {
+      try (Tracing tracing = Tracing.newBuilder().build()) {
         ThreadLocalSpan.CURRENT_TRACER.next();
       }
     }

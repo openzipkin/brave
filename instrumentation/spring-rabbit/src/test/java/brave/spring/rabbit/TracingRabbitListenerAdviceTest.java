@@ -14,22 +14,22 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
-import java.util.ArrayList;
-import java.util.List;
+import brave.handler.MutableSpan;
+import brave.propagation.StrictCurrentTraceContext;
+import brave.test.TestSpanHandler;
 import org.aopalliance.intercept.MethodInvocation;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageProperties;
-import zipkin2.Span;
 
+import static brave.Span.Kind.CONSUMER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static zipkin2.Span.Kind.CONSUMER;
 
 public class TracingRabbitListenerAdviceTest {
   static String TRACE_ID = "463ac35c9f6413ad";
@@ -37,8 +37,11 @@ public class TracingRabbitListenerAdviceTest {
   static String SPAN_ID = "48485a3953bb6124";
   static String SAMPLED = "1";
 
-  List<Span> spans = new ArrayList<>();
-  Tracing tracing = Tracing.newBuilder().spanReporter(spans::add).build();
+  StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
+  TestSpanHandler spans = new TestSpanHandler();
+  Tracing tracing = Tracing.newBuilder()
+      .currentTraceContext(currentTraceContext).addSpanHandler(spans).build();
+
   TracingRabbitListenerAdvice tracingRabbitListenerAdvice = new TracingRabbitListenerAdvice(
     SpringRabbitTracing.newBuilder(tracing).remoteServiceName("my-exchange").build()
   );
@@ -46,6 +49,7 @@ public class TracingRabbitListenerAdviceTest {
 
   @After public void close() {
     tracing.close();
+    currentTraceContext.close();
   }
 
   @Test public void starts_new_trace_if_none_exists() throws Throwable {
@@ -53,7 +57,7 @@ public class TracingRabbitListenerAdviceTest {
     onMessageConsumed(message);
 
     assertThat(spans)
-      .extracting(Span::kind)
+      .extracting(MutableSpan::kind)
       .containsExactly(CONSUMER, null);
   }
 
@@ -62,7 +66,7 @@ public class TracingRabbitListenerAdviceTest {
     onMessageConsumed(message);
 
     assertThat(spans)
-      .extracting(Span::name)
+      .extracting(MutableSpan::name)
       .containsExactly("next-message", "on-message");
   }
 
@@ -71,7 +75,7 @@ public class TracingRabbitListenerAdviceTest {
     onMessageConsumed(message);
 
     assertThat(spans)
-      .extracting(Span::remoteServiceName)
+      .extracting(MutableSpan::remoteServiceName)
       .containsExactly("my-exchange", null);
   }
 
@@ -93,13 +97,13 @@ public class TracingRabbitListenerAdviceTest {
     onMessageConsumed(message);
 
     // make sure one before the other
-    assertThat(spans.get(0).timestampAsLong())
-      .isLessThan(spans.get(1).timestampAsLong());
+    assertThat(spans.get(0).startTimestamp())
+      .isLessThan(spans.get(1).startTimestamp());
 
     // make sure they finished
-    assertThat(spans.get(0).durationAsLong())
+    assertThat(spans.get(0).finishTimestamp())
       .isPositive();
-    assertThat(spans.get(1).durationAsLong())
+    assertThat(spans.get(1).finishTimestamp())
       .isPositive();
   }
 
@@ -118,7 +122,7 @@ public class TracingRabbitListenerAdviceTest {
 
     assertThat(spans)
       .filteredOn(span -> span.kind() == CONSUMER)
-      .extracting(Span::parentId)
+      .extracting(MutableSpan::parentId)
       .contains(SPAN_ID);
   }
 
@@ -134,38 +138,38 @@ public class TracingRabbitListenerAdviceTest {
 
     assertThat(spans)
       .filteredOn(span -> span.kind() == CONSUMER)
-      .extracting(Span::parentId)
+      .extracting(MutableSpan::parentId)
       .contains(SPAN_ID);
   }
 
   @Test public void reports_span_if_consume_fails() throws Throwable {
     Message message = MessageBuilder.withBody(new byte[0]).build();
-    onMessageConsumeFailed(message, new RuntimeException("expected exception"));
+    RuntimeException error = new RuntimeException("Test exception");
+    onMessageConsumeFailed(message, error);
 
     assertThat(spans)
-      .extracting(Span::kind)
+      .extracting(MutableSpan::kind)
       .containsExactly(CONSUMER, null);
 
     assertThat(spans)
       .filteredOn(span -> span.kind() == null)
-      .extracting(Span::tags)
-      .extracting(tags -> tags.get("error"))
-      .contains("expected exception");
+      .extracting(MutableSpan::error)
+      .containsExactly(error);
   }
 
   @Test public void reports_span_if_consume_fails_with_no_message() throws Throwable {
     Message message = MessageBuilder.withBody(new byte[0]).build();
-    onMessageConsumeFailed(message, new RuntimeException());
+    RuntimeException error = new RuntimeException("Test exception");
+    onMessageConsumeFailed(message, error);
 
     assertThat(spans)
-      .extracting(Span::kind)
+      .extracting(MutableSpan::kind)
       .containsExactly(CONSUMER, null);
 
     assertThat(spans)
       .filteredOn(span -> span.kind() == null)
-      .extracting(Span::tags)
-      .extracting(tags -> tags.get("error"))
-      .contains("RuntimeException");
+      .extracting(MutableSpan::error)
+      .containsExactly(error);
   }
 
   void onMessageConsumed(Message message) throws Throwable {

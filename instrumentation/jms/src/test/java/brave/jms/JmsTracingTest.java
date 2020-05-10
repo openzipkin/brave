@@ -14,6 +14,7 @@
 package brave.jms;
 
 import brave.Span;
+import brave.Span.Kind;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.Propagation;
@@ -31,7 +32,6 @@ import javax.jms.XAQueueConnection;
 import javax.jms.XATopicConnection;
 import org.apache.activemq.command.ActiveMQTextMessage;
 import org.junit.Test;
-import zipkin2.Span.Kind;
 
 import static brave.jms.MessagePropagation.SETTER;
 import static java.util.Arrays.asList;
@@ -169,15 +169,15 @@ public class JmsTracingTest extends ITJms {
     jmsTracing.messageListener(mock(MessageListener.class), false)
       .onMessage(message);
 
-    assertThat(reporter.takeLocalSpan().name()).isEqualTo("on-message");
+    assertThat(spanHandler.takeLocalSpan().name()).isEqualTo("on-message");
   }
 
   @Test public void messageListener_traces_addsConsumerSpan() {
     jmsTracing.messageListener(mock(MessageListener.class), true)
       .onMessage(message);
 
-    assertThat(asList(reporter.takeRemoteSpan(Kind.CONSUMER), reporter.takeLocalSpan()))
-      .extracting(zipkin2.Span::name)
+    assertThat(asList(spanHandler.takeRemoteSpan(Kind.CONSUMER), spanHandler.takeLocalSpan()))
+      .extracting(brave.handler.MutableSpan::name)
       .containsExactly("receive", "on-message");
   }
 
@@ -229,7 +229,7 @@ public class JmsTracingTest extends ITJms {
     message.setDestination(createDestination("foo", QUEUE_TYPE));
     jmsTracing.nextSpan(message).start().finish();
 
-    assertThat(reporter.takeLocalSpan().tags())
+    assertThat(spanHandler.takeLocalSpan().tags())
       .containsOnly(entry("jms.queue", "foo"));
   }
 
@@ -242,7 +242,7 @@ public class JmsTracingTest extends ITJms {
     message.setDestination(createDestination("foo", QUEUE_TYPE));
     jmsTracing.nextSpan(message).start().finish();
 
-    assertThat(reporter.takeLocalSpan().tags()).isEmpty();
+    assertThat(spanHandler.takeLocalSpan().tags()).isEmpty();
   }
 
   @Test public void nextSpan_should_clear_propagation_headers() {

@@ -16,59 +16,65 @@ package brave.kafka.clients;
 import brave.Span;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.SamplingFlags;
-import brave.propagation.TraceContext;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.Test;
 
+import static brave.test.ITRemote.BAGGAGE_FIELD;
+import static brave.test.ITRemote.BAGGAGE_FIELD_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public class KafkaTracingTest extends ITKafka {
+public class KafkaTracingTest extends KafkaTest {
   @Test public void nextSpan_prefers_b3_header() {
-    TraceContext incoming = newTraceContext(SamplingFlags.SAMPLED);
-    fakeRecord.headers().add("b3", B3SingleFormat.writeB3SingleFormatAsBytes(incoming));
+    consumerRecord.headers().add("b3", B3SingleFormat.writeB3SingleFormatAsBytes(incoming));
 
     Span child;
     try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
-      child = kafkaTracing.nextSpan(fakeRecord);
+      child = kafkaTracing.nextSpan(consumerRecord);
     }
-    assertChildOf(child.context(), incoming);
+    child.finish();
+
+    assertThat(spans.get(0).id()).isEqualTo(child.context().spanIdString());
+    assertChildOf(spans.get(0), incoming);
   }
+
 
   @Test public void nextSpan_uses_current_context() {
     Span child;
     try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
-      child = kafkaTracing.nextSpan(fakeRecord);
+      child = kafkaTracing.nextSpan(consumerRecord);
     }
-    assertChildOf(child.context(), parent);
+    child.finish();
+
+    assertThat(spans.get(0).id()).isEqualTo(child.context().spanIdString());
+    assertChildOf(spans.get(0), parent);
   }
 
   @Test public void nextSpan_should_create_span_if_no_headers() {
-    assertThat(kafkaTracing.nextSpan(fakeRecord)).isNotNull();
+    assertThat(kafkaTracing.nextSpan(consumerRecord)).isNotNull();
   }
 
   @Test public void nextSpan_should_create_span_with_baggage() {
-    addB3MultiHeaders(fakeRecord);
-    fakeRecord.headers().add(BAGGAGE_FIELD_KEY, "user1".getBytes());
+    addB3MultiHeaders(parent, consumerRecord);
+    consumerRecord.headers().add(BAGGAGE_FIELD_KEY, "user1".getBytes());
 
-    Span span = kafkaTracing.nextSpan(fakeRecord);
+    Span span = kafkaTracing.nextSpan(consumerRecord);
     assertThat(BAGGAGE_FIELD.getValue(span.context())).contains("user1");
   }
 
   @Test public void nextSpan_should_tag_topic_and_key_when_no_incoming_context() {
-    kafkaTracing.nextSpan(fakeRecord).start().finish();
+    kafkaTracing.nextSpan(consumerRecord).start().finish();
 
-    assertThat(reporter.takeLocalSpan().tags())
+    assertThat(spans.get(0).tags())
       .containsOnly(entry("kafka.topic", TEST_TOPIC), entry("kafka.key", TEST_KEY));
   }
 
   @Test public void nextSpan_shouldnt_tag_null_key() {
-    fakeRecord = new ConsumerRecord<>(TEST_TOPIC, 0, 1, null, TEST_VALUE);
+    consumerRecord = new ConsumerRecord<>(TEST_TOPIC, 0, 1, null, TEST_VALUE);
 
-    kafkaTracing.nextSpan(fakeRecord).start().finish();
+    kafkaTracing.nextSpan(consumerRecord).start().finish();
 
-    assertThat(reporter.takeLocalSpan().tags())
+    assertThat(spans.get(0).tags())
       .containsOnly(entry("kafka.topic", TEST_TOPIC));
   }
 
@@ -78,7 +84,7 @@ public class KafkaTracingTest extends ITKafka {
 
     kafkaTracing.nextSpan(record).start().finish();
 
-    assertThat(reporter.takeLocalSpan().tags())
+    assertThat(spans.get(0).tags())
       .containsOnly(entry("kafka.topic", TEST_TOPIC));
   }
 
@@ -87,24 +93,24 @@ public class KafkaTracingTest extends ITKafka {
    * policy now, or later when dynamic policy is added to KafkaTracing
    */
   @Test public void nextSpan_shouldnt_tag_topic_and_key_when_incoming_context() {
-    addB3MultiHeaders(fakeRecord);
-    kafkaTracing.nextSpan(fakeRecord).start().finish();
+    addB3MultiHeaders(parent, consumerRecord);
+    kafkaTracing.nextSpan(consumerRecord).start().finish();
 
-    assertThat(reporter.takeLocalSpan().tags())
+    assertThat(spans.get(0).tags())
       .isEmpty();
   }
 
   @Test public void nextSpan_should_clear_propagation_headers() {
-    addB3MultiHeaders(fakeRecord);
+    addB3MultiHeaders(parent, consumerRecord);
 
-    kafkaTracing.nextSpan(fakeRecord);
-    assertThat(fakeRecord.headers().toArray()).isEmpty();
+    kafkaTracing.nextSpan(consumerRecord);
+    assertThat(consumerRecord.headers().toArray()).isEmpty();
   }
 
   @Test public void nextSpan_should_not_clear_other_headers() {
-    fakeRecord.headers().add("foo", new byte[0]);
+    consumerRecord.headers().add("foo", new byte[0]);
 
-    kafkaTracing.nextSpan(fakeRecord);
-    assertThat(fakeRecord.headers().headers("foo")).isNotEmpty();
+    kafkaTracing.nextSpan(consumerRecord);
+    assertThat(consumerRecord.headers().headers("foo")).isNotEmpty();
   }
 }

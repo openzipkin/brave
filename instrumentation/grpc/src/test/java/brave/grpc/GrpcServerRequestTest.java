@@ -13,7 +13,6 @@
  */
 package brave.grpc;
 
-import io.grpc.CallOptions;
 import io.grpc.Metadata;
 import io.grpc.Metadata.Key;
 import io.grpc.MethodDescriptor;

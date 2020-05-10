@@ -23,8 +23,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import okhttp3.mockwebserver.MockResponse;
 import org.junit.Test;
-import zipkin2.Span;
 
+import static brave.Span.Kind.CLIENT;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
@@ -73,7 +73,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
 
     // The spans may report in a different order than the requests
     for (int i = 0; i < 2; i++) {
-      assertChildOf(reporter.takeRemoteSpan(Span.Kind.CLIENT), parent);
+      assertChildOf(spanHandler.takeRemoteSpan(CLIENT), parent);
     }
   }
 
@@ -99,7 +99,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
 
     callback.join(); // ensures listener ran
     assertThat(invocationContext.get()).isSameAs(parent);
-    assertChildOf(reporter.takeRemoteSpan(Span.Kind.CLIENT), parent);
+    assertChildOf(spanHandler.takeRemoteSpan(CLIENT), parent);
   }
 
   /** This ensures that response callbacks run when there is no invocation trace context. */
@@ -116,7 +116,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
 
     callback.join(); // ensures listener ran
     assertThat(invocationContext.get()).isNull();
-    assertThat(reporter.takeRemoteSpan(Span.Kind.CLIENT).parentId()).isNull();
+    assertThat(spanHandler.takeRemoteSpan(CLIENT).parentId()).isNull();
   }
 
   @Test public void addsStatusCodeWhenNotOk_async() {
@@ -131,7 +131,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     // Ensure the getAsync() method is implemented correctly
     callback.join();
 
-    assertThat(reporter.takeRemoteSpanWithError(Span.Kind.CLIENT, "400").tags())
+    assertThat(spanHandler.takeRemoteSpanWithErrorTag(CLIENT, "400").tags())
       .containsEntry("http.status_code", "400");
   }
 }

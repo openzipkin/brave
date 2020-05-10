@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -23,6 +23,8 @@ import com.mysql.jdbc.StatementInterceptorV2;
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.Properties;
+
+import static brave.Span.Kind.CLIENT;
 
 /**
  * A MySQL statement interceptor that will report to Zipkin how long each statement takes.
@@ -51,7 +53,7 @@ public class TracingStatementInterceptor implements StatementInterceptorV2 {
       sql = ((PreparedStatement) interceptedStatement).getPreparedSql();
     }
     int spaceIndex = sql.indexOf(' '); // Allow span names of single-word statements like COMMIT
-    span.kind(Span.Kind.CLIENT).name(spaceIndex == -1 ? sql : sql.substring(0, spaceIndex));
+    span.kind(CLIENT).name(spaceIndex == -1 ? sql : sql.substring(0, spaceIndex));
     span.tag("sql.query", sql);
     parseServerIpAndPort(connection, span);
     span.start();
@@ -66,6 +68,7 @@ public class TracingStatementInterceptor implements StatementInterceptorV2 {
     if (span == null || span.isNoop()) return null;
 
     if (statementException != null) {
+      span.error(statementException);
       span.tag("error", Integer.toString(statementException.getErrorCode()));
     }
     span.finish();

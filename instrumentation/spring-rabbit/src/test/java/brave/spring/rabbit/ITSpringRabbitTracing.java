@@ -13,35 +13,30 @@
  */
 package brave.spring.rabbit;
 
+import brave.handler.MutableSpan;
 import brave.messaging.MessagingRuleSampler;
 import brave.sampler.Sampler;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import org.junit.Test;
 import org.springframework.amqp.core.Message;
-import zipkin2.DependencyLink;
-import zipkin2.Span;
-import zipkin2.internal.DependencyLinker;
 
+import static brave.Span.Kind.CONSUMER;
+import static brave.Span.Kind.PRODUCER;
 import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static brave.messaging.MessagingRequestMatchers.operationEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
-import static org.assertj.core.groups.Tuple.tuple;
-import static zipkin2.Span.Kind.CONSUMER;
-import static zipkin2.Span.Kind.PRODUCER;
 
 public class ITSpringRabbitTracing extends ITSpringRabbit {
   @Test public void propagates_trace_info_across_amqp_from_producer() {
     produceMessage();
     awaitMessageConsumed();
 
-    Span producerSpan = producerReporter.takeRemoteSpan(PRODUCER);
+    MutableSpan producerSpan = producerSpanHandler.takeRemoteSpan(PRODUCER);
     assertThat(producerSpan.parentId()).isNull();
-    Span consumerSpan = consumerReporter.takeRemoteSpan(CONSUMER);
+    MutableSpan consumerSpan = consumerSpanHandler.takeRemoteSpan(CONSUMER);
     assertChildOf(consumerSpan, producerSpan);
-    Span listenerSpan = consumerReporter.takeLocalSpan();
+    MutableSpan listenerSpan = consumerSpanHandler.takeLocalSpan();
     assertChildOf(listenerSpan, consumerSpan);
   }
 
@@ -53,25 +48,25 @@ public class ITSpringRabbitTracing extends ITSpringRabbit {
     Map<String, Object> headers = capturedMessage.getMessageProperties().getHeaders();
     assertThat(headers.keySet()).containsExactly("not-zipkin-header");
 
-    producerReporter.takeRemoteSpan(PRODUCER);
-    consumerReporter.takeRemoteSpan(CONSUMER);
-    consumerReporter.takeLocalSpan();
+    producerSpanHandler.takeRemoteSpan(PRODUCER);
+    consumerSpanHandler.takeRemoteSpan(CONSUMER);
+    consumerSpanHandler.takeLocalSpan();
   }
 
   @Test public void tags_spans_with_exchange_and_routing_key() {
     produceMessage();
     awaitMessageConsumed();
 
-    assertThat(producerReporter.takeRemoteSpan(PRODUCER).tags())
+    assertThat(producerSpanHandler.takeRemoteSpan(PRODUCER).tags())
       .isEmpty();
 
-    assertThat(consumerReporter.takeRemoteSpan(CONSUMER).tags()).containsOnly(
+    assertThat(consumerSpanHandler.takeRemoteSpan(CONSUMER).tags()).containsOnly(
       entry("rabbit.exchange", binding.getExchange()),
       entry("rabbit.routing_key", binding.getRoutingKey()),
       entry("rabbit.queue", binding.getDestination())
     );
 
-    assertThat(consumerReporter.takeLocalSpan().tags())
+    assertThat(consumerSpanHandler.takeLocalSpan().tags())
       .isEmpty();
   }
 
@@ -80,10 +75,10 @@ public class ITSpringRabbitTracing extends ITSpringRabbit {
     produceMessage();
     awaitMessageConsumed();
 
-    Span producerSpan = producerReporter.takeRemoteSpan(PRODUCER);
-    Span consumerSpan = consumerReporter.takeRemoteSpan(CONSUMER);
+    MutableSpan producerSpan = producerSpanHandler.takeRemoteSpan(PRODUCER);
+    MutableSpan consumerSpan = consumerSpanHandler.takeRemoteSpan(CONSUMER);
     assertSequential(producerSpan, consumerSpan);
-    Span listenerSpan = consumerReporter.takeLocalSpan();
+    MutableSpan listenerSpan = consumerSpanHandler.takeLocalSpan();
     assertSequential(consumerSpan, listenerSpan);
   }
 
@@ -91,33 +86,31 @@ public class ITSpringRabbitTracing extends ITSpringRabbit {
     produceMessage();
     awaitMessageConsumed();
 
-    List<Span> allSpans = Arrays.asList(
-      producerReporter.takeRemoteSpan(PRODUCER),
-      consumerReporter.takeRemoteSpan(CONSUMER),
-      consumerReporter.takeLocalSpan()
-    );
+    MutableSpan producerSpan = producerSpanHandler.takeRemoteSpan(PRODUCER);
+    MutableSpan consumerSpan = consumerSpanHandler.takeRemoteSpan(CONSUMER);
 
-    List<DependencyLink> links = new DependencyLinker().putTrace(allSpans).link();
-    assertThat(links).extracting("parent", "child").containsExactly(
-      tuple("producer", "rabbitmq"),
-      tuple("rabbitmq", "consumer")
-    );
+    assertThat(producerSpan.localServiceName()).isEqualTo("producer");
+    assertThat(producerSpan.remoteServiceName()).isEqualTo("rabbitmq");
+    assertThat(consumerSpan.remoteServiceName()).isEqualTo("rabbitmq");
+    assertThat(consumerSpan.localServiceName()).isEqualTo("consumer");
+
+    consumerSpanHandler.takeLocalSpan();
   }
 
   @Test public void tags_spans_with_exchange_and_routing_key_from_default() {
     produceMessageFromDefault();
     awaitMessageConsumed();
 
-    assertThat(producerReporter.takeRemoteSpan(PRODUCER).tags())
+    assertThat(producerSpanHandler.takeRemoteSpan(PRODUCER).tags())
       .isEmpty();
 
-    assertThat(consumerReporter.takeRemoteSpan(CONSUMER).tags()).containsOnly(
+    assertThat(consumerSpanHandler.takeRemoteSpan(CONSUMER).tags()).containsOnly(
       entry("rabbit.exchange", binding.getExchange()),
       entry("rabbit.routing_key", binding.getRoutingKey()),
       entry("rabbit.queue", binding.getDestination())
     );
 
-    assertThat(consumerReporter.takeLocalSpan().tags())
+    assertThat(consumerSpanHandler.takeLocalSpan().tags())
       .isEmpty();
   }
 
@@ -126,13 +119,13 @@ public class ITSpringRabbitTracing extends ITSpringRabbit {
     produceMessage();
     awaitMessageConsumed();
 
-    assertThat(producerReporter.takeRemoteSpan(PRODUCER).name())
+    assertThat(producerSpanHandler.takeRemoteSpan(PRODUCER).name())
       .isEqualTo("publish");
 
-    assertThat(consumerReporter.takeRemoteSpan(CONSUMER).name())
+    assertThat(consumerSpanHandler.takeRemoteSpan(CONSUMER).name())
       .isEqualTo("next-message");
 
-    assertThat(consumerReporter.takeLocalSpan().name())
+    assertThat(consumerSpanHandler.takeLocalSpan().name())
       .isEqualTo("on-message");
   }
 

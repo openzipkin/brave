@@ -19,7 +19,7 @@ import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
 import brave.test.ITRemote;
-import brave.test.TestSpanReporter;
+import brave.test.IntegrationTestSpanHandler;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
@@ -49,7 +49,7 @@ import org.testcontainers.containers.RabbitMQContainer;
 import static org.springframework.amqp.core.BindingBuilder.bind;
 import static org.springframework.amqp.core.ExchangeBuilder.topicExchange;
 
-public abstract class ITSpringRabbit extends ITRemote {
+abstract class ITSpringRabbit extends ITRemote {
   static final String TEST_QUEUE = "test-queue";
   static final Exchange exchange = topicExchange("test-exchange").durable(true).build();
   static final Queue queue = new Queue(TEST_QUEUE);
@@ -75,22 +75,22 @@ public abstract class ITSpringRabbit extends ITRemote {
     rabbit.stop();
   }
 
-  @Rule public TestSpanReporter producerReporter = new TestSpanReporter();
-  @Rule public TestSpanReporter consumerReporter = new TestSpanReporter();
+  @Rule public IntegrationTestSpanHandler producerSpanHandler = new IntegrationTestSpanHandler();
+  @Rule public IntegrationTestSpanHandler consumerSpanHandler = new IntegrationTestSpanHandler();
 
   SamplerFunction<MessagingRequest> producerSampler = SamplerFunctions.deferDecision();
   SamplerFunction<MessagingRequest> consumerSampler = SamplerFunctions.deferDecision();
 
   SpringRabbitTracing producerTracing = SpringRabbitTracing.create(
     MessagingTracing.newBuilder(tracingBuilder(Sampler.ALWAYS_SAMPLE).localServiceName("producer")
-      .spanReporter(producerReporter).build())
+      .clearSpanHandlers().addSpanHandler(producerSpanHandler).build())
       .producerSampler(r -> producerSampler.trySample(r))
       .build()
   );
 
   SpringRabbitTracing consumerTracing = SpringRabbitTracing.create(
     MessagingTracing.newBuilder(tracingBuilder(Sampler.ALWAYS_SAMPLE).localServiceName("consumer")
-      .spanReporter(consumerReporter).build())
+      .clearSpanHandlers().addSpanHandler(consumerSpanHandler).build())
       .consumerSampler(r -> consumerSampler.trySample(r))
       .build()
   );

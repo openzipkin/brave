@@ -32,8 +32,8 @@ import okhttp3.Response;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.Test;
-import zipkin2.Span;
 
+import static brave.Span.Kind.SERVER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITServlet25Container extends ITServletContainer {
@@ -132,7 +132,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
         .isEqualTo("abcdefg");
     }
 
-    reporter.takeRemoteSpan(Span.Kind.SERVER);
+    spanHandler.takeRemoteSpan(SERVER);
   }
 
   // copies the header to the response
@@ -166,7 +166,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
           .isEqualTo("abcdefg");
     }
 
-    reporter.takeRemoteSpan(Span.Kind.SERVER);
+    spanHandler.takeRemoteSpan(SERVER);
   }
 
   // Shows how a framework can layer on "http.route" logic
@@ -194,8 +194,8 @@ public abstract class ITServlet25Container extends ITServletContainer {
 
     get("/foo");
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).name())
-      .isEqualTo("get /foo");
+    assertThat(spanHandler.takeRemoteSpan(SERVER).name())
+      .isEqualTo("GET /foo");
   }
 
   Filter customHook = new Filter() {
@@ -222,7 +222,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
 
     get("/foo");
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags())
+    assertThat(spanHandler.takeRemoteSpan(SERVER).tags())
       .containsEntry("foo", "bar");
   }
 

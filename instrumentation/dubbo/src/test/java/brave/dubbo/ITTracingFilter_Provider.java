@@ -14,6 +14,7 @@
 package brave.dubbo;
 
 import brave.Tag;
+import brave.handler.MutableSpan;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
@@ -26,8 +27,8 @@ import org.apache.dubbo.rpc.Result;
 import org.apache.dubbo.rpc.RpcContext;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin2.Span;
 
+import static brave.Span.Kind.SERVER;
 import static brave.rpc.RpcRequestMatchers.methodEquals;
 import static brave.rpc.RpcRequestMatchers.serviceEquals;
 import static brave.sampler.Sampler.ALWAYS_SAMPLE;
@@ -42,7 +43,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     server.service.setInterface(GreeterService.class);
     server.service.setRef((method, parameterTypes, args) -> {
       String arg = (String) args[0];
-      if (arg.equals("bad")) throw new IllegalArgumentException();
+      if (arg.equals("bad")) throw new IllegalArgumentException("bad");
       return currentTraceContext.get() != null
           ? currentTraceContext.get().traceIdString()
           : "";
@@ -63,7 +64,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
     // perform a warmup request to allow CI to fail quicker
     client.get().sayHello("jorge");
-    reporter.takeRemoteSpan(Span.Kind.SERVER);
+    spanHandler.takeRemoteSpan(SERVER);
   }
 
   @Test public void reusesPropagatedSpanId() {
@@ -72,7 +73,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     RpcContext.getContext().getAttachments().put("b3", B3SingleFormat.writeB3SingleFormat(parent));
     client.get().sayHello("jorge");
 
-    assertSameIds(reporter.takeRemoteSpan(Span.Kind.SERVER), parent);
+    assertSameIds(spanHandler.takeRemoteSpan(SERVER), parent);
   }
 
   @Test public void createsChildWhenJoinDisabled() {
@@ -84,7 +85,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     RpcContext.getContext().getAttachments().put("b3", B3SingleFormat.writeB3SingleFormat(parent));
     client.get().sayHello("jorge");
 
-    Span span = reporter.takeRemoteSpan(Span.Kind.SERVER);
+    MutableSpan span = spanHandler.takeRemoteSpan(SERVER);
     assertChildOf(span, parent);
     assertThat(span.id()).isNotEqualTo(parent.spanIdString());
   }
@@ -102,27 +103,27 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     assertThat(client.get().sayHello("jorge"))
         .isNotEmpty();
 
-    reporter.takeRemoteSpan(Span.Kind.SERVER);
+    spanHandler.takeRemoteSpan(SERVER);
   }
 
   @Test public void reportsServerKindToZipkin() {
     client.get().sayHello("jorge");
 
-    reporter.takeRemoteSpan(Span.Kind.SERVER);
+    spanHandler.takeRemoteSpan(SERVER);
   }
 
   @Test public void defaultSpanNameIsMethodName() {
     client.get().sayHello("jorge");
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).name())
-        .isEqualTo("brave.dubbo.greeterservice/sayhello");
+    assertThat(spanHandler.takeRemoteSpan(SERVER).name())
+        .isEqualTo("brave.dubbo.GreeterService/sayHello");
   }
 
-  @Test public void addsErrorTagOnException() {
+  @Test public void setsErrorOnException() {
     assertThatThrownBy(() -> client.get().sayHello("bad"))
         .isInstanceOf(IllegalArgumentException.class);
 
-    reporter.takeRemoteSpanWithError(Span.Kind.SERVER, "IllegalArgumentException");
+    spanHandler.takeRemoteSpanWithErrorMessage(SERVER, "bad");
   }
 
   /* RpcTracing-specific feature tests */
@@ -140,7 +141,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     // sampled
     client.get().sayHello("jorge");
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).name()).endsWith("sayhello");
+    assertThat(spanHandler.takeRemoteSpan(SERVER).name()).endsWith("sayHello");
     // @After will also check that sayGoodbye was not sampled
   }
 
@@ -164,7 +165,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
     String javaResult = client.get().sayHello("jorge");
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags())
+    assertThat(spanHandler.takeRemoteSpan(SERVER).tags())
         .containsEntry("dubbo.result_value", javaResult);
   }
 }

@@ -13,6 +13,7 @@
  */
 package brave.spring.webmvc;
 
+import brave.handler.MutableSpan;
 import brave.servlet.TracingFilter;
 import brave.test.http.ITServletContainer;
 import brave.test.http.ServletContainer.ServerController;
@@ -27,8 +28,8 @@ import org.springframework.web.servlet.DispatcherServlet;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
-import zipkin2.Span;
 
+import static brave.Span.Kind.SERVER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** This tests when you use servlet for tracing but MVC for tagging */
@@ -40,7 +41,7 @@ public abstract class BaseITSpanCustomizingHandlerInterceptor extends ITServletC
   @Test public void addsControllerTags() throws Exception {
     get("/foo");
 
-    Span span = reporter.takeRemoteSpan(Span.Kind.SERVER);
+    MutableSpan span = spanHandler.takeRemoteSpan(SERVER);
     assertThat(span.tags())
       .containsKeys("mvc.controller.class", "mvc.controller.method");
     assertThat(span.tags().get("mvc.controller.class"))

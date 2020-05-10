@@ -22,16 +22,15 @@ import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFacto
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.postprocessor.UnzipPostProcessor;
 import org.springframework.cache.interceptor.CacheInterceptor;
-import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class SpringRabbitTracingTest {
-  Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build();
+  Tracing tracing = Tracing.newBuilder().build();
   SpringRabbitTracing rabbitTracing = SpringRabbitTracing.create(tracing);
 
   @After public void close() {
-    Tracing.current().close();
+    tracing.close();
   }
 
   @Test public void decorateRabbitTemplate_adds_by_default() {

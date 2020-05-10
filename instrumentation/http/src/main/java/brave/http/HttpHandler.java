@@ -14,7 +14,6 @@
 package brave.http;
 
 import brave.Span;
-import brave.internal.Nullable;
 import brave.internal.Platform;
 
 import static brave.internal.Throwables.propagateIfFatal;

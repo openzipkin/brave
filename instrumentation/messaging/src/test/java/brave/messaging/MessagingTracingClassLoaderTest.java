@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,7 +15,6 @@ package brave.messaging;
 
 import brave.Tracing;
 import org.junit.Test;
-import zipkin2.reporter.Reporter;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +26,7 @@ public class MessagingTracingClassLoaderTest {
 
   static class ClosesMessagingTracing implements Runnable {
     @Override public void run() {
-      try (Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build();
+      try (Tracing tracing = Tracing.newBuilder().build();
            MessagingTracing messagingTracing = MessagingTracing.create(tracing)) {
       }
     }
@@ -39,7 +38,7 @@ public class MessagingTracingClassLoaderTest {
 
   static class BasicUsage implements Runnable {
     @Override public void run() {
-      try (Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build();
+      try (Tracing tracing = Tracing.newBuilder().build();
            MessagingTracing messagingTracing = MessagingTracing.create(tracing)) {
         messagingTracing.consumerSampler().trySample(null);
       }
@@ -52,7 +51,7 @@ public class MessagingTracingClassLoaderTest {
 
   static class ForgetClose implements Runnable {
     @Override public void run() {
-      try (Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build()) {
+      try (Tracing tracing = Tracing.newBuilder().build()) {
         MessagingTracing.create(tracing);
         assertThat(MessagingTracing.current()).isNotNull();
       }

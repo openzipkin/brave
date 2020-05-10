@@ -13,6 +13,7 @@
  */
 package brave.kafka.streams;
 
+import brave.handler.MutableSpan;
 import brave.kafka.clients.KafkaTracing;
 import brave.messaging.MessagingTracing;
 import brave.propagation.TraceContext;
@@ -51,11 +52,14 @@ import org.apache.kafka.streams.processor.ProcessorSupplier;
 import org.junit.After;
 import org.junit.ClassRule;
 import org.junit.Test;
-import zipkin2.Annotation;
-import zipkin2.Span;
 
+import static brave.Span.Kind.CONSUMER;
+import static brave.Span.Kind.PRODUCER;
 import static brave.kafka.streams.KafkaStreamsTags.KAFKA_STREAMS_FILTERED_TAG;
+import static brave.kafka.streams.KafkaStreamsTracingTest.TEST_KEY;
+import static brave.kafka.streams.KafkaStreamsTracingTest.TEST_VALUE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 public class ITKafkaStreamsTracing extends ITKafkaStreams {
   @ClassRule public static KafkaJunitRule kafka = new KafkaJunitRule(EphemeralKafkaBroker.create());
@@ -81,7 +85,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
     streams.close();
@@ -109,7 +113,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     waitForStreamToRun(streams);
 
     for (int i = 0; i < 3; i++) {
-      Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+      MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
       assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
     }
 
@@ -138,7 +142,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
     streams.close();
@@ -161,7 +165,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
     streams.close();
@@ -185,10 +189,10 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanOutput = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan spanOutput = spanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
     assertChildOf(spanOutput, spanInput);
 
@@ -226,10 +230,10 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
 
     streams.close();
@@ -253,16 +257,16 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
     assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "false");
 
     // the filter transformer returns true so record is not dropped
 
-    Span spanOutput = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan spanOutput = spanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
     assertChildOf(spanOutput, spanProcessor);
 
@@ -287,10 +291,10 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
     assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "true");
 
@@ -327,16 +331,16 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanTransform1 = reporter.takeLocalSpan();
+    MutableSpan spanTransform1 = spanHandler.takeLocalSpan();
     assertChildOf(spanTransform1, spanInput);
 
-    Span spanTransform2 = reporter.takeLocalSpan();
+    MutableSpan spanTransform2 = spanHandler.takeLocalSpan();
     assertChildOf(spanTransform2, spanTransform1);
 
-    Span spanOutput = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan spanOutput = spanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
     assertChildOf(spanOutput, spanTransform2);
 
@@ -361,10 +365,10 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
     assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "true");
 
@@ -391,16 +395,16 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
     assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "false");
 
     // the filter transformer returns true so record is not dropped
 
-    Span spanOutput = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan spanOutput = spanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
     assertChildOf(spanOutput, spanProcessor);
 
@@ -426,16 +430,16 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
     assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "false");
 
     // the filter transformer returns true so record is not dropped
 
-    Span spanOutput = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan spanOutput = spanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
     assertChildOf(spanOutput, spanProcessor);
 
@@ -461,10 +465,10 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
     assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "true");
 
@@ -492,10 +496,10 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
     assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "true");
 
@@ -524,16 +528,16 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
     assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "false");
 
     // the filter transformer returns true so record is not dropped
 
-    Span spanOutput = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan spanOutput = spanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
     assertChildOf(spanOutput, spanProcessor);
 
@@ -567,14 +571,14 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
-    assertThat(spanProcessor.annotations()).contains(Annotation.create(now, "test"));
+    assertThat(spanProcessor.annotations()).contains(entry(now, "test"));
 
-    Span spanOutput = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan spanOutput = spanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
     assertChildOf(spanOutput, spanProcessor);
 
@@ -599,13 +603,13 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
 
-    Span spanOutput = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan spanOutput = spanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
     assertChildOf(spanOutput, spanProcessor);
 
@@ -634,10 +638,10 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
 
     streams.close();
@@ -673,7 +677,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    assertThat(reporter.takeLocalSpan().tags())
+    assertThat(spanHandler.takeLocalSpan().tags())
       .containsOnlyKeys("kafka.streams.application.id", "kafka.streams.task.id");
 
     streams.close();
@@ -723,13 +727,13 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
 
-    Span spanOutput = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan spanOutput = spanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
     assertChildOf(spanOutput, spanProcessor);
 
@@ -775,10 +779,11 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpanWithError("illegal-argument");
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
+    assertThat(spanProcessor.error()).hasMessage("illegal-argument");
     assertChildOf(spanProcessor, spanInput);
 
     assertThat(!streams.state().isRunning());
@@ -826,10 +831,11 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpanWithError("file-not-found");
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
+    assertThat(spanProcessor.error()).hasMessage("file-not-found");
     assertChildOf(spanProcessor, spanInput);
 
     assertThat(!streams.state().isRunning());
@@ -888,16 +894,16 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
     assertThat(spanProcessor.tags())
       .containsOnlyKeys("kafka.streams.application.id", "kafka.streams.task.id");
 
     for (int i = 0; i < 2; i++) {
-      Span spanOutput = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+      MutableSpan spanOutput = spanHandler.takeRemoteSpan(PRODUCER);
       assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
       assertChildOf(spanOutput, spanProcessor);
     }
@@ -949,7 +955,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    assertThat(reporter.takeLocalSpan().tags())
+    assertThat(spanHandler.takeLocalSpan().tags())
       .containsOnlyKeys("kafka.streams.application.id", "kafka.streams.task.id");
 
     streams.close();
@@ -999,13 +1005,13 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
 
-    Span spanOutput = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan spanOutput = spanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
     assertChildOf(spanOutput, spanProcessor);
 
@@ -1037,13 +1043,13 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
 
-    Span spanOutput = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan spanOutput = spanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
     assertChildOf(spanOutput, spanProcessor);
 
@@ -1075,16 +1081,16 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
     assertThat(spanProcessor.tags())
       .containsOnlyKeys("kafka.streams.application.id", "kafka.streams.task.id");
 
     for (int i = 0; i < 2; i++) {
-      Span spanOutput = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+      MutableSpan spanOutput = spanHandler.takeRemoteSpan(PRODUCER);
       assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
       assertChildOf(spanOutput, spanProcessor);
     }
@@ -1117,13 +1123,13 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
 
-    Span spanOutput = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan spanOutput = spanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
     assertChildOf(spanOutput, spanProcessor);
 
@@ -1155,13 +1161,13 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
 
-    Span spanOutput = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan spanOutput = spanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
     assertChildOf(spanOutput, spanProcessor);
 
@@ -1212,7 +1218,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    assertThat(reporter.takeLocalSpan().tags())
+    assertThat(spanHandler.takeLocalSpan().tags())
       .containsOnlyKeys("kafka.streams.application.id", "kafka.streams.task.id");
 
     streams.close();
@@ -1262,13 +1268,13 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    Span spanInput = reporter.takeRemoteSpan(Span.Kind.CONSUMER);
+    MutableSpan spanInput = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    Span spanProcessor = reporter.takeLocalSpan();
+    MutableSpan spanProcessor = spanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
 
-    Span spanOutput = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan spanOutput = spanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
     assertChildOf(spanOutput, spanProcessor);
 
@@ -1319,7 +1325,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     waitForStreamToRun(streams);
 
-    assertThat(reporter.takeLocalSpan().tags())
+    assertThat(spanHandler.takeLocalSpan().tags())
       .containsOnlyKeys("kafka.streams.application.id", "kafka.streams.task.id");
 
     streams.close();

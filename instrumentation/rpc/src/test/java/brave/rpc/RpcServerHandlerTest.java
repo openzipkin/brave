@@ -19,8 +19,7 @@ import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
-import java.util.ArrayList;
-import java.util.List;
+import brave.test.TestSpanHandler;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,7 +38,7 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class RpcServerHandlerTest {
-  List<zipkin2.Span> spans = new ArrayList<>();
+  TestSpanHandler spans = new TestSpanHandler();
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(1L).sampled(true).build();
 
   RpcTracing httpTracing;
@@ -64,7 +63,7 @@ public class RpcServerHandlerTest {
   }
 
   Tracing.Builder tracingBuilder() {
-    return Tracing.newBuilder().spanReporter(spans::add);
+    return Tracing.newBuilder().addSpanHandler(spans);
   }
 
   @After public void close() {
@@ -110,7 +109,8 @@ public class RpcServerHandlerTest {
     Span span = handler.handleReceive(request);
     handler.handleSend(response, span);
 
-    assertThat(spans.get(0).durationAsLong()).isEqualTo(1000L);
+    assertThat(spans.get(0).startTimestamp()).isEqualTo(123000L);
+    assertThat(spans.get(0).finishTimestamp()).isEqualTo(124000L);
   }
 
   @Test public void handleSend_finishesSpanEvenIfUnwrappedNull() {

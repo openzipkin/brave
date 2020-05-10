@@ -13,6 +13,7 @@
  */
 package brave.jms;
 
+import brave.handler.MutableSpan;
 import brave.messaging.MessagingRuleSampler;
 import brave.messaging.MessagingTracing;
 import brave.propagation.CurrentTraceContext.Scope;
@@ -39,8 +40,8 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
-import zipkin2.Span;
 
+import static brave.Span.Kind.PRODUCER;
 import static brave.jms.MessagePropagation.SETTER;
 import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
@@ -126,7 +127,7 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
   }
 
   void assertHasB3SingleProperty(Message received) throws JMSException {
-    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan producerSpan = spanHandler.takeRemoteSpan(PRODUCER);
 
     assertThat(propertiesToMap(received))
       .containsAllEntriesOf(existingProperties)
@@ -141,7 +142,7 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
 
     Message received = messageConsumer.receive();
 
-    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan producerSpan = spanHandler.takeRemoteSpan(PRODUCER);
     assertChildOf(producerSpan, parent);
 
     assertThat(propertiesToMap(received))
@@ -160,7 +161,7 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
 
     Message received = messageConsumer.receive();
 
-    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan producerSpan = spanHandler.takeRemoteSpan(PRODUCER);
     assertChildOf(producerSpan, parent);
 
     assertThat(propertiesToMap(received))
@@ -183,28 +184,28 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
     should_record_properties(Collections.singletonMap("jms.topic", jms.topicName));
   }
 
-  void should_record_properties(Map<String, String> producerTags) throws JMSException {
-    Span producerSpan = reporter.takeRemoteSpan(Span.Kind.PRODUCER);
+  void should_record_properties(Map<String, String> producerTags) {
+    MutableSpan producerSpan = spanHandler.takeRemoteSpan(PRODUCER);
     assertThat(producerSpan.name()).isEqualTo("send");
-    assertThat(producerSpan.tags()).isEqualTo(producerTags);
+    assertThat(producerSpan.tags()).containsAllEntriesOf(producerTags);
   }
 
-  @Test public void should_record_error() throws JMSException {
+  @Test public void should_set_error() throws JMSException {
     tracedSession.close();
-    should_record_error(() -> messageProducer.send(jms.destination, message));
+    should_set_error(() -> messageProducer.send(jms.destination, message));
   }
 
-  @Test public void should_record_error_queue() throws JMSException {
+  @Test public void should_set_error_queue() throws JMSException {
     tracedQueueSession.close();
-    should_record_error(() -> queueSender.send(jms.queue, message));
+    should_set_error(() -> queueSender.send(jms.queue, message));
   }
 
-  @Test public void should_record_error_topic() throws JMSException {
+  @Test public void should_set_error_topic() throws JMSException {
     tracedTopicSession.close();
-    should_record_error(() -> topicPublisher.send(jms.topic, message));
+    should_set_error(() -> topicPublisher.send(jms.topic, message));
   }
 
-  void should_record_error(JMSRunnable send) throws JMSException {
+  void should_set_error(JMSRunnable send) {
     String message;
     try {
       send.run();
@@ -213,7 +214,7 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
       message = e.getMessage();
     }
 
-    reporter.takeRemoteSpanWithError(Span.Kind.PRODUCER, message);
+    spanHandler.takeRemoteSpanWithErrorMessage(PRODUCER, message);
   }
 
   @Test public void customSampler() throws JMSException {

@@ -15,7 +15,6 @@ package brave.rpc;
 
 import brave.Tracing;
 import org.junit.Test;
-import zipkin2.reporter.Reporter;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,7 +33,7 @@ public class ITRpcTracingClassLoader {
 
   static class ClosesRpcTracing implements Runnable {
     @Override public void run() {
-      try (Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build();
+      try (Tracing tracing = Tracing.newBuilder().build();
            RpcTracing rpcTracing = RpcTracing.create(tracing)) {
       }
     }
@@ -46,7 +45,7 @@ public class ITRpcTracingClassLoader {
 
   static class BasicUsage implements Runnable {
     @Override public void run() {
-      try (Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build();
+      try (Tracing tracing = Tracing.newBuilder().build();
            RpcTracing rpcTracing = RpcTracing.create(tracing)) {
         rpcTracing.serverSampler().trySample(null);
       }
@@ -59,7 +58,7 @@ public class ITRpcTracingClassLoader {
 
   static class ForgetClose implements Runnable {
     @Override public void run() {
-      try (Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build()) {
+      try (Tracing tracing = Tracing.newBuilder().build()) {
         RpcTracing.create(tracing);
         assertThat(RpcTracing.current()).isNotNull();
       }

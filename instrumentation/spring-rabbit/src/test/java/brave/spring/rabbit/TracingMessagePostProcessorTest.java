@@ -16,29 +16,33 @@ package brave.spring.rabbit;
 import brave.Tracing;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
-import java.util.ArrayList;
-import java.util.List;
+import brave.test.TestSpanHandler;
 import java.util.Map;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TracingMessagePostProcessorTest {
   TraceContext grandparent = TraceContext.newBuilder().traceId(1L).spanId(1L).sampled(true).build();
   TraceContext parent = grandparent.toBuilder().parentId(grandparent.spanId()).spanId(2L).build();
-  List<Span> spans = new ArrayList<>();
-  Tracing tracing = Tracing.newBuilder().spanReporter(spans::add).build();
+
+  StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
+  TestSpanHandler spans = new TestSpanHandler();
+  Tracing tracing = Tracing.newBuilder()
+      .currentTraceContext(currentTraceContext).addSpanHandler(spans).build();
+
   TracingMessagePostProcessor tracingMessagePostProcessor = new TracingMessagePostProcessor(
     SpringRabbitTracing.newBuilder(tracing).remoteServiceName("my-exchange").build()
   );
 
   @After public void close() {
     tracing.close();
+    currentTraceContext.close();
   }
 
   @Test public void should_attempt_to_resume_headers() {

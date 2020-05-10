@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,19 +15,19 @@ package brave.mysql;
 
 import brave.ScopedSpan;
 import brave.Tracing;
-import brave.propagation.ThreadLocalCurrentTraceContext;
-import brave.sampler.Sampler;
+import brave.handler.MutableSpan;
+import brave.propagation.StrictCurrentTraceContext;
+import brave.test.TestSpanHandler;
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin2.Span;
 
+import static brave.Span.Kind.CLIENT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.junit.Assume.assumeTrue;
@@ -35,10 +35,11 @@ import static org.junit.Assume.assumeTrue;
 public class ITTracingStatementInterceptor {
   static final String QUERY = "select 'hello world'";
 
-  /** JDBC is synchronous and we aren't using thread pools: everything happens on the main thread */
-  ArrayList<Span> spans = new ArrayList<>();
+  StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
+  TestSpanHandler spans = new TestSpanHandler();
+  Tracing tracing = Tracing.newBuilder()
+      .currentTraceContext(currentTraceContext).addSpanHandler(spans).build();
 
-  Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
   Connection connection;
 
   @Before public void init() throws SQLException {
@@ -62,8 +63,9 @@ public class ITTracingStatementInterceptor {
   }
 
   @After public void close() throws SQLException {
-    Tracing.current().close();
     if (connection != null) connection.close();
+    tracing.close();
+    currentTraceContext.close();
   }
 
   @Test
@@ -84,8 +86,8 @@ public class ITTracingStatementInterceptor {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
-      .extracting(Span::kind)
-      .containsExactly(Span.Kind.CLIENT);
+      .extracting(MutableSpan::kind)
+      .containsExactly(CLIENT);
   }
 
   @Test
@@ -93,7 +95,7 @@ public class ITTracingStatementInterceptor {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
-      .extracting(Span::name)
+      .extracting(MutableSpan::name)
       .containsExactly("select");
   }
 
@@ -104,7 +106,7 @@ public class ITTracingStatementInterceptor {
     connection.commit();
 
     assertThat(spans)
-      .extracting(Span::name)
+      .extracting(MutableSpan::name)
       .contains("commit");
   }
 
@@ -122,7 +124,7 @@ public class ITTracingStatementInterceptor {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
-      .extracting(Span::remoteServiceName)
+      .extracting(MutableSpan::remoteServiceName)
       .contains("myservice");
   }
 
@@ -134,13 +136,6 @@ public class ITTracingStatementInterceptor {
         }
       }
     }
-  }
-
-  Tracing.Builder tracingBuilder(Sampler sampler) {
-    return Tracing.newBuilder()
-      .spanReporter(spans::add)
-      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-      .sampler(sampler);
   }
 
   static int envOr(String key, int fallback) {

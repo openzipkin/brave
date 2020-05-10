@@ -17,7 +17,6 @@ import brave.Span;
 import brave.Tracing;
 import brave.http.HttpServerRequest;
 import brave.http.HttpTracing;
-import brave.propagation.CurrentTraceContext.Scope;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.util.AttributeKey;
 

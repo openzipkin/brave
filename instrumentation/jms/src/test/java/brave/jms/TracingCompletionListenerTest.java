@@ -51,18 +51,19 @@ public class TracingCompletionListenerTest extends ITJms {
       TracingCompletionListener.create(mock(CompletionListener.class), span, currentTraceContext);
     tracingCompletionListener.onCompletion(message);
 
-    reporter.takeLocalSpan();
+    spanHandler.takeLocalSpan();
   }
 
-  @Test public void on_exception_should_tag_if_exception() {
+  @Test public void on_exception_should_set_error_if_exception() {
     Message message = mock(Message.class);
     Span span = tracing.tracer().nextSpan().start();
 
+    RuntimeException error = new RuntimeException("Test exception");
     CompletionListener tracingCompletionListener =
       TracingCompletionListener.create(mock(CompletionListener.class), span, currentTraceContext);
-    tracingCompletionListener.onException(message, new Exception("Test exception"));
+    tracingCompletionListener.onException(message, error);
 
-    reporter.takeLocalSpanWithError("Test exception");
+    assertThat(spanHandler.takeLocalSpan().error()).isEqualTo(error);
   }
 
   @Test public void on_completion_should_forward_then_finish_span() {
@@ -76,7 +77,7 @@ public class TracingCompletionListenerTest extends ITJms {
 
     verify(delegate).onCompletion(message);
 
-    reporter.takeLocalSpan();
+    spanHandler.takeLocalSpan();
   }
 
   @Test public void on_completion_should_have_span_in_scope() {
@@ -95,21 +96,21 @@ public class TracingCompletionListenerTest extends ITJms {
 
     TracingCompletionListener.create(delegate, span, currentTraceContext).onCompletion(message);
 
-    reporter.takeLocalSpan();
+    spanHandler.takeLocalSpan();
   }
 
-  @Test public void on_exception_should_forward_then_tag() {
+  @Test public void on_exception_should_forward_then_set_error() {
     Message message = mock(Message.class);
     Span span = tracing.tracer().nextSpan().start();
 
     CompletionListener delegate = mock(CompletionListener.class);
     CompletionListener tracingCompletionListener =
       TracingCompletionListener.create(delegate, span, currentTraceContext);
-    Exception e = new Exception("Test exception");
-    tracingCompletionListener.onException(message, e);
+    RuntimeException error = new RuntimeException("Test exception");
+    tracingCompletionListener.onException(message, error);
 
-    verify(delegate).onException(message, e);
+    verify(delegate).onException(message, error);
 
-    reporter.takeLocalSpanWithError("Test exception");
+    assertThat(spanHandler.takeLocalSpan().error()).isEqualTo(error);
   }
 }

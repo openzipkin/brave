@@ -75,10 +75,10 @@ public class ITNettyHttpTracing extends ITHttpServer {
   }
 
   @Override @Ignore("TODO: last handler in the pipeline did not handle the exception")
-  public void errorTag_exceptionOverridesHttpStatus() {
+  public void setsErrorAndHttpStatusOnUncaughtException() {
   }
 
   @Override @Ignore("TODO: last handler in the pipeline did not handle the exception")
-  public void spanHandlerSeesException() {
+  public void spanHandlerSeesError() {
   }
 }

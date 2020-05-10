@@ -14,6 +14,7 @@
 package brave.jms;
 
 import brave.Tags;
+import brave.handler.MutableSpan;
 import brave.messaging.MessagingRuleSampler;
 import brave.messaging.MessagingTracing;
 import brave.propagation.SamplingFlags;
@@ -28,13 +29,12 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
-import zipkin2.Span;
 
+import static brave.Span.Kind.CONSUMER;
 import static brave.jms.MessagePropagation.GETTER;
 import static brave.messaging.MessagingRequestMatchers.operationEquals;
 import static javax.jms.JMSContext.AUTO_ACKNOWLEDGE;
 import static org.assertj.core.api.Assertions.assertThat;
-import static zipkin2.Span.Kind.CONSUMER;
 
 /**
  * When adding tests here, add tests not already in {@link ITJms_1_1_TracingMessageConsumer} to
@@ -72,7 +72,7 @@ public class ITTracingJMSConsumer extends ITJms {
     });
     producer.send(jms.queue, "foo");
 
-    Span consumerSpan = reporter.takeRemoteSpan(CONSUMER), listenerSpan = reporter.takeLocalSpan();
+    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(CONSUMER), listenerSpan = spanHandler.takeLocalSpan();
     assertChildOf(listenerSpan, consumerSpan);
     assertSequential(consumerSpan, listenerSpan);
   }
@@ -96,7 +96,7 @@ public class ITTracingJMSConsumer extends ITJms {
 
     send.run();
 
-    Span consumerSpan = reporter.takeRemoteSpan(CONSUMER), listenerSpan = reporter.takeLocalSpan();
+    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(CONSUMER), listenerSpan = spanHandler.takeLocalSpan();
 
     assertThat(consumerSpan.name()).isEqualTo("receive");
     assertThat(consumerSpan.tags())
@@ -129,7 +129,7 @@ public class ITTracingJMSConsumer extends ITJms {
     producer.setProperty("b3", parent.traceIdString() + "-" + parent.spanIdString() + "-1");
     send.run();
 
-    Span consumerSpan = reporter.takeRemoteSpan(CONSUMER), listenerSpan = reporter.takeLocalSpan();
+    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(CONSUMER), listenerSpan = spanHandler.takeLocalSpan();
     assertChildOf(consumerSpan, parent);
     assertChildOf(listenerSpan, consumerSpan);
 
@@ -155,7 +155,7 @@ public class ITTracingJMSConsumer extends ITJms {
     producer.setProperty(BAGGAGE_FIELD_KEY, baggage);
     send.run();
 
-    Span consumerSpan = reporter.takeRemoteSpan(CONSUMER), listenerSpan = reporter.takeLocalSpan();
+    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(CONSUMER), listenerSpan = spanHandler.takeLocalSpan();
     assertThat(consumerSpan.parentId()).isNull();
     assertChildOf(listenerSpan, consumerSpan);
     assertThat(listenerSpan.tags())
@@ -173,7 +173,7 @@ public class ITTracingJMSConsumer extends ITJms {
   void receive_startsNewTrace(Runnable send) {
     send.run();
     consumer.receive();
-    Span consumerSpan = reporter.takeRemoteSpan(CONSUMER);
+    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(CONSUMER);
     assertThat(consumerSpan.name()).isEqualTo("receive");
     assertThat(consumerSpan.tags()).containsEntry("jms.queue", jms.queueName);
   }
@@ -193,7 +193,7 @@ public class ITTracingJMSConsumer extends ITJms {
 
     Message received = consumer.receive();
 
-    Span consumerSpan = reporter.takeRemoteSpan(CONSUMER);
+    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(CONSUMER);
     assertChildOf(consumerSpan, parent);
 
     assertThat(GETTER.get(received, "b3"))

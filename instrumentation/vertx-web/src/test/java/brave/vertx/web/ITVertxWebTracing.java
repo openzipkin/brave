@@ -13,6 +13,7 @@
  */
 package brave.vertx.web;
 
+import brave.Span;
 import brave.Tracing;
 import brave.http.HttpRequestParser;
 import brave.http.HttpTags;
@@ -31,7 +32,6 @@ import java.util.concurrent.TimeUnit;
 import okhttp3.Response;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
@@ -146,7 +146,7 @@ public class ITVertxWebTracing extends ITHttpServer {
     Response response = get(path);
     assertThat(response.isSuccessful()).withFailMessage("not successful: " + response).isTrue();
 
-    assertThat(reporter.takeRemoteSpan(Span.Kind.SERVER).tags())
+    assertThat(spanHandler.takeRemoteSpan(Span.Kind.SERVER).tags())
       .containsEntry("http.path", path)
       .containsEntry("http.url", url(path));
   }

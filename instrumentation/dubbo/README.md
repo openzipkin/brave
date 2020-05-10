@@ -46,9 +46,10 @@ import brave.Tracing;
 import brave.rpc.RpcTracing;
 import brave.rpc.RpcRuleSampler;
 import org.apache.dubbo.common.extension.ExtensionFactory;
+import zipkin2.reporter.brave.ZipkinSpanHandler;
 import zipkin2.reporter.AsyncReporter;
 import zipkin2.reporter.brave.ZipkinSpanHandler;
-import zipkin2.Span;
+import brave.Span;
 
 import static brave.rpc.RpcRequestMatchers.methodEquals;
 import static brave.sampler.Matchers.and;

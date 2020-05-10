@@ -13,6 +13,7 @@
  */
 package brave.spring.web;
 
+import brave.Span;
 import brave.test.http.ITHttpAsyncClient;
 import java.net.URI;
 import java.util.Arrays;
@@ -33,7 +34,6 @@ import org.springframework.http.client.HttpComponentsAsyncClientHttpRequestFacto
 import org.springframework.util.concurrent.ListenableFutureCallback;
 import org.springframework.web.client.AsyncRestTemplate;
 import org.springframework.web.client.HttpStatusCodeException;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -112,7 +112,7 @@ public class ITTracingAsyncClientHttpRequestInterceptor
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    reporter.takeRemoteSpan(Span.Kind.CLIENT);
+    spanHandler.takeRemoteSpan(Span.Kind.CLIENT);
   }
 
   @Override @Ignore("blind to the implementation of redirects")

@@ -30,6 +30,8 @@ import java.util.Set;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 
+import static brave.Span.Kind.CLIENT;
+
 /**
  * A MongoDB command listener that will report via Brave how long each command takes and other
  * information about the commands.
@@ -68,7 +70,7 @@ final class TraceMongoCommandListener implements CommandListener {
     String collectionName = getCollectionName(command, commandName);
 
     span.name(getSpanName(commandName, collectionName))
-      .kind(Span.Kind.CLIENT)
+      .kind(CLIENT)
       .remoteServiceName("mongodb-" + databaseName)
       .tag("mongodb.command", commandName);
 
