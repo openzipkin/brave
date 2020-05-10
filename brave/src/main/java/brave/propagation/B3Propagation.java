@@ -19,11 +19,15 @@ import brave.internal.Platform;
 import brave.internal.propagation.StringPropagationAdapter;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 
+import static brave.Span.Kind.CLIENT;
+import static brave.Span.Kind.CONSUMER;
+import static brave.Span.Kind.PRODUCER;
+import static brave.Span.Kind.SERVER;
 import static brave.propagation.B3SingleFormat.parseB3SingleFormat;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormatWithoutParentId;
@@ -44,7 +48,16 @@ public abstract class B3Propagation<K> implements Propagation<K> {
     SINGLE_NO_PARENT
   }
 
-  public static final Propagation.Factory FACTORY = newFactoryBuilder().build();
+  static final EnumMap<Span.Kind, Format[]> KIND_TO_INJECT_FORMATS = new EnumMap<>(Span.Kind.class);
+
+  static {
+    KIND_TO_INJECT_FORMATS.put(CLIENT, new Format[] {Format.MULTI});
+    KIND_TO_INJECT_FORMATS.put(SERVER, new Format[] {Format.MULTI});
+    KIND_TO_INJECT_FORMATS.put(PRODUCER, new Format[] {Format.SINGLE_NO_PARENT});
+    KIND_TO_INJECT_FORMATS.put(CONSUMER, new Format[] {Format.SINGLE_NO_PARENT});
+  }
+
+  public static final Propagation.Factory FACTORY = new B3Propagation.Factory(newFactoryBuilder());
 
   static final Propagation<String> INSTANCE = FACTORY.get();
 
@@ -67,14 +80,7 @@ public abstract class B3Propagation<K> implements Propagation<K> {
    */
   public static final class FactoryBuilder {
     Format injectFormat = Format.MULTI;
-    final EnumMap<Span.Kind, Format[]> kindToInjectFormats = new EnumMap<>(Span.Kind.class);
-
-    FactoryBuilder() {
-      kindToInjectFormats.put(Span.Kind.CLIENT, new Format[] {Format.MULTI});
-      kindToInjectFormats.put(Span.Kind.SERVER, new Format[] {Format.MULTI});
-      kindToInjectFormats.put(Span.Kind.PRODUCER, new Format[] {Format.SINGLE_NO_PARENT});
-      kindToInjectFormats.put(Span.Kind.CONSUMER, new Format[] {Format.SINGLE_NO_PARENT});
-    }
+    final EnumMap<Span.Kind, Format[]> kindToInjectFormats = new EnumMap<>(KIND_TO_INJECT_FORMATS);
 
     /** Overrides the default format of {@link Format#MULTI}. */
     public FactoryBuilder injectFormat(Format format) {
@@ -110,7 +116,13 @@ public abstract class B3Propagation<K> implements Propagation<K> {
     }
 
     public Propagation.Factory build() {
+      if (kindToInjectFormats.equals(KIND_TO_INJECT_FORMATS) && injectFormat == Format.MULTI) {
+        return FACTORY;
+      }
       return new B3Propagation.Factory(this);
+    }
+
+    FactoryBuilder() {
     }
   }
 
@@ -153,8 +165,20 @@ public abstract class B3Propagation<K> implements Propagation<K> {
     @Override public void inject(TraceContext context, R request) {
       Format[] formats = factory.injectFormats;
       if (request instanceof Request) {
-        Span.Kind kind = ((Request) request).spanKind();
-        formats = factory.kindToInjectFormats.get(kind);
+        switch (((Request) request).spanKind()) {
+          case CLIENT:
+            formats = factory.clientInjectFormats;
+            break;
+          case SERVER:
+            formats = factory.serverInjectFormats;
+            break;
+          case PRODUCER:
+            formats = factory.producerInjectFormats;
+            break;
+          case CONSUMER:
+            formats = factory.consumerInjectFormats;
+            break;
+        }
       }
 
       for (Format format : formats) {
@@ -259,17 +283,23 @@ public abstract class B3Propagation<K> implements Propagation<K> {
 
   static final class Factory extends Propagation.Factory implements Propagation<String> {
     final List<String> keyNames;
-    final Format[] injectFormats;
-    final Map<Span.Kind, Format[]> kindToInjectFormats;
+    final Format[] injectFormats; // only holds one element; cached as an array as injector uses one
+    final Format[] clientInjectFormats;
+    final Format[] serverInjectFormats;
+    final Format[] producerInjectFormats;
+    final Format[] consumerInjectFormats;
 
     Factory(FactoryBuilder builder) {
-      this.injectFormats = new Format[] {builder.injectFormat};
-      this.kindToInjectFormats = new EnumMap<>(builder.kindToInjectFormats);
+      injectFormats = new Format[] {builder.injectFormat};
+      clientInjectFormats = builder.kindToInjectFormats.get(CLIENT);
+      serverInjectFormats = builder.kindToInjectFormats.get(SERVER);
+      producerInjectFormats = builder.kindToInjectFormats.get(PRODUCER);
+      consumerInjectFormats = builder.kindToInjectFormats.get(CONSUMER);
 
       // Scan for all formats in use
       boolean injectsMulti = builder.injectFormat.equals(Format.MULTI);
       boolean injectsSingle = !injectsMulti;
-      for (Format[] formats : kindToInjectFormats.values()) {
+      for (Format[] formats : builder.kindToInjectFormats.values()) {
         for (Format format : formats) {
           if (format.equals(Format.MULTI)) injectsMulti = true;
           if (!format.equals(Format.MULTI)) injectsSingle = true;
@@ -314,6 +344,32 @@ public abstract class B3Propagation<K> implements Propagation<K> {
     @Override public <R> Extractor<R> extractor(Getter<R, String> getter) {
       if (getter == null) throw new NullPointerException("getter == null");
       return new B3Extractor<>(this, getter);
+    }
+
+    @Override public int hashCode() {
+      int h = 1000003;
+      h ^= injectFormats[0].hashCode(); // always single element
+      h *= 1000003;
+      h ^= Arrays.hashCode(clientInjectFormats);
+      h *= 1000003;
+      h ^= Arrays.hashCode(serverInjectFormats);
+      h *= 1000003;
+      h ^= Arrays.hashCode(producerInjectFormats);
+      h *= 1000003;
+      h ^= Arrays.hashCode(consumerInjectFormats);
+      return h;
+    }
+
+    @Override public boolean equals(Object o) {
+      if (o == this) return true;
+      if (!(o instanceof B3Propagation.Factory)) return false;
+
+      B3Propagation.Factory that = (B3Propagation.Factory) o;
+      return injectFormats[0].equals(that.injectFormats[0])
+          && Arrays.equals(clientInjectFormats, that.clientInjectFormats)
+          && Arrays.equals(serverInjectFormats, that.serverInjectFormats)
+          && Arrays.equals(producerInjectFormats, that.producerInjectFormats)
+          && Arrays.equals(consumerInjectFormats, that.consumerInjectFormats);
     }
 
     @Override public String toString() {

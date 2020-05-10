@@ -114,7 +114,7 @@ public class B3PropagationTest {
       .injectFormat(Span.Kind.CLIENT, Format.SINGLE)
       .build();
 
-    assertThat(factory.kindToInjectFormats.get(Span.Kind.CLIENT))
+    assertThat(factory.clientInjectFormats)
       .containsExactly(Format.SINGLE);
   }
 
@@ -123,7 +123,7 @@ public class B3PropagationTest {
       .injectFormats(Span.Kind.CLIENT, Format.SINGLE, Format.MULTI)
       .build();
 
-    assertThat(factory.kindToInjectFormats.get(Span.Kind.CLIENT))
+    assertThat(factory.clientInjectFormats)
       .containsExactly(Format.SINGLE, Format.MULTI);
   }
 
@@ -332,6 +332,34 @@ public class B3PropagationTest {
       verify(platform).log("Invalid input: expected 0 or 1 for X-B3-Sampled, but found '{0}'",
         sampled, null);
     });
+  }
+
+  @Test public void build_defaultIsSingleton() {
+    assertThat(B3Propagation.newFactoryBuilder().build())
+        .isSameAs(B3Propagation.FACTORY);
+  }
+
+  @Test public void equalsAndHashCode() {
+    // same instance are equivalent
+    Propagation.Factory factory = B3Propagation.newFactoryBuilder()
+        .injectFormat(Span.Kind.CLIENT, Format.SINGLE_NO_PARENT)
+        .injectFormat(Span.Kind.SERVER, Format.SINGLE_NO_PARENT)
+        .build();
+    assertThat(factory).isEqualTo(factory);
+
+    // same formats are equivalent
+    Propagation.Factory sameFields = B3Propagation.newFactoryBuilder()
+        .injectFormat(Span.Kind.CLIENT, Format.SINGLE_NO_PARENT)
+        .injectFormat(Span.Kind.SERVER, Format.SINGLE_NO_PARENT)
+        .build();
+    assertThat(factory.equals(sameFields)).isTrue();
+    assertThat(sameFields).isEqualTo(factory);
+    assertThat(sameFields).hasSameHashCodeAs(factory);
+
+    // different formats are not equivalent
+    assertThat(factory).isNotEqualTo(B3Propagation.FACTORY);
+    assertThat(B3Propagation.FACTORY).isNotEqualTo(factory);
+    assertThat(factory.hashCode()).isNotEqualTo(B3Propagation.FACTORY.hashCode());
   }
 
   TraceContextOrSamplingFlags extract(Map<String, String> headers) {
