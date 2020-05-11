@@ -69,6 +69,9 @@ later Java 9 (conflict with apps using jax-ws). In summary, it is easiest for
 us to have no dependencies also, as we don't inherit tug-of-war between modular
 frameworks who each have a different "right" answer for even annotations!
 
+Incidentally, IntelliJ can be configured to use `brave.internal.Nullable`, now.
+Search for `Nullable` under inspections to configure this.
+
 ### Why `new NullPointerException("xxx == null")`
 For public entry points, we eagerly check null and throw `NullPointerException`
 with a message like "xxx == null". This is not a normal pre-condition, such as
