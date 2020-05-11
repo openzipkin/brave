@@ -31,7 +31,7 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 
 import static brave.Span.Kind.CONSUMER;
-import static brave.jms.MessagePropagation.GETTER;
+import static brave.jms.MessageProperties.getPropertyIfString;
 import static brave.messaging.MessagingRequestMatchers.operationEquals;
 import static javax.jms.JMSContext.AUTO_ACKNOWLEDGE;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -90,7 +90,7 @@ public class ITTracingJMSConsumer extends ITJms {
       tracing.tracer().currentSpanCustomizer().name("message-listener");
 
       // clearing headers ensures later work doesn't try to use the old parent
-      String b3 = GETTER.get(m, "b3");
+      String b3 = getPropertyIfString(m, "b3");
       tracing.tracer().currentSpanCustomizer().tag("b3", String.valueOf(b3 != null));
     });
 
@@ -121,7 +121,7 @@ public class ITTracingJMSConsumer extends ITJms {
   void messageListener_resumesTrace(Runnable send) {
     consumer.setMessageListener(m -> {
       // clearing headers ensures later work doesn't try to use the old parent
-      String b3 = GETTER.get(m, "b3");
+      String b3 = getPropertyIfString(m, "b3");
       tracing.tracer().currentSpanCustomizer().tag("b3", String.valueOf(b3 != null));
     });
 
@@ -196,7 +196,7 @@ public class ITTracingJMSConsumer extends ITJms {
     MutableSpan consumerSpan = spanHandler.takeRemoteSpan(CONSUMER);
     assertChildOf(consumerSpan, parent);
 
-    assertThat(GETTER.get(received, "b3"))
+    assertThat(getPropertyIfString(received, "b3"))
       .isEqualTo(parent.traceIdString() + "-" + consumerSpan.id() + "-1");
   }
 
@@ -209,7 +209,7 @@ public class ITTracingJMSConsumer extends ITJms {
     producer.send(jms.queue, "foo");
 
     // Check that the message headers are not sampled
-    assertThat(GETTER.get(consumer.receive(), "b3"))
+    assertThat(getPropertyIfString(consumer.receive(), "b3"))
       .endsWith("-0");
 
     // @After will also check that the consumer was not sampled

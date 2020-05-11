@@ -101,7 +101,6 @@ public final class SpringRabbitTracing {
   final Tracer tracer;
   final Extractor<MessageProducerRequest> producerExtractor;
   final Extractor<MessageConsumerRequest> consumerExtractor;
-  final Extractor<MessageProperties> processorExtractor;
   final Injector<MessageProducerRequest> producerInjector;
   final Injector<MessageConsumerRequest> consumerInjector;
   final String[] propagationKeys;
@@ -117,7 +116,6 @@ public final class SpringRabbitTracing {
     Propagation<String> propagation = tracing.propagation();
     this.producerExtractor = propagation.extractor(MessageProducerRequest.GETTER);
     this.consumerExtractor = propagation.extractor(MessageConsumerRequest.GETTER);
-    this.processorExtractor = propagation.extractor(SpringRabbitPropagation.GETTER);
     this.producerInjector = propagation.injector(MessageProducerRequest.SETTER);
     this.consumerInjector = propagation.injector(MessageConsumerRequest.SETTER);
     this.producerSampler = messagingTracing.producerSampler();

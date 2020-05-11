@@ -21,6 +21,7 @@ import brave.internal.Nullable;
 import brave.messaging.MessagingRequest;
 import brave.messaging.MessagingTracing;
 import brave.propagation.Propagation;
+import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -45,12 +46,23 @@ import javax.jms.XATopicConnection;
 
 import static brave.internal.Throwables.propagateIfFatal;
 import static brave.jms.MessageParser.destination;
-import static brave.jms.MessagePropagation.GETTER;
+import static brave.jms.MessageProperties.getPropertyIfString;
 
 /** Use this class to decorate your JMS consumer / producer and enable Tracing. */
 public final class JmsTracing {
   static final String JMS_QUEUE = "jms.queue";
   static final String JMS_TOPIC = "jms.topic";
+
+  /** Used for local message processors in {@link JmsTracing#nextSpan(Message)} */
+  static final Getter<Message, String> GETTER = new Getter<Message, String>() {
+    @Override public String get(Message message, String name) {
+      return getPropertyIfString(message, name);
+    }
+
+    @Override public String toString() {
+      return "Message::getStringProperty";
+    }
+  };
 
   // Use nested class to ensure logger isn't initialized unless it is accessed once.
   private static final class LoggerHolder {

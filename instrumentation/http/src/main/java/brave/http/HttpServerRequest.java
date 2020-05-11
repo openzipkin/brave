@@ -14,7 +14,7 @@
 package brave.http;
 
 import brave.Span;
-import brave.propagation.Propagation.Getter;
+import brave.propagation.Propagation.RemoteGetter;
 
 /**
  * Marks an interface for use in {@link HttpServerHandler#handleReceive(HttpServerRequest)}. This
@@ -24,7 +24,11 @@ import brave.propagation.Propagation.Getter;
  * @since 5.7
  */
 public abstract class HttpServerRequest extends HttpRequest {
-  static final Getter<HttpServerRequest, String> GETTER = new Getter<HttpServerRequest, String>() {
+  static final RemoteGetter<HttpServerRequest> GETTER = new RemoteGetter<HttpServerRequest>() {
+    @Override public Span.Kind spanKind() {
+      return Span.Kind.SERVER;
+    }
+
     @Override public String get(HttpServerRequest request, String key) {
       return request.header(key);
     }

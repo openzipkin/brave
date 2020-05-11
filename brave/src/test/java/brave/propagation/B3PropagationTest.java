@@ -17,9 +17,12 @@ import brave.Request;
 import brave.Span;
 import brave.internal.Platform;
 import brave.propagation.B3Propagation.Format;
+import brave.propagation.Propagation.RemoteSetter;
+import brave.propagation.TraceContext.Injector;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Stream;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -105,8 +108,8 @@ public class B3PropagationTest {
       .injectFormat(Format.SINGLE)
       .build();
 
-    assertThat(factory.injectFormats)
-      .containsExactly(Format.SINGLE);
+    assertThat(factory.injectorFactory).extracting("injectorFunction")
+      .isEqualTo(Format.SINGLE);
   }
 
   @Test public void injectKindFormat() {
@@ -114,8 +117,8 @@ public class B3PropagationTest {
       .injectFormat(Span.Kind.CLIENT, Format.SINGLE)
       .build();
 
-    assertThat(factory.clientInjectFormats)
-      .containsExactly(Format.SINGLE);
+    assertThat(factory.injectorFactory).extracting("clientInjectorFunction")
+      .isEqualTo(Format.SINGLE);
   }
 
   @Test public void injectKindFormats() {
@@ -123,7 +126,8 @@ public class B3PropagationTest {
       .injectFormats(Span.Kind.CLIENT, Format.SINGLE, Format.MULTI)
       .build();
 
-    assertThat(factory.clientInjectFormats)
+    assertThat(factory.injectorFactory).extracting("clientInjectorFunction.injectorFunctions")
+      .asInstanceOf(InstanceOfAssertFactories.ARRAY)
       .containsExactly(Format.SINGLE, Format.MULTI);
   }
 
@@ -182,9 +186,34 @@ public class B3PropagationTest {
     }
   }
 
-  @Test public void producerUsesB3SingleNoParent() {
+  @Test public void producerUsesB3SingleNoParent_deferred() {
+    // This injector won't know the type it is injecting until the call to inject()
+    Injector<ProducerRequest> injector = Propagation.B3_STRING.injector(ProducerRequest::header);
+
     ProducerRequest request = new ProducerRequest();
-    Propagation.B3_STRING.injector(ProducerRequest::header).inject(context, request);
+    injector.inject(context, request);
+
+    assertThat(request.headers)
+      .hasSize(1)
+      .containsEntry("b3", "0000000000000001-0000000000000003");
+  }
+
+  static class ProducerSetter implements RemoteSetter<ProducerRequest> {
+    @Override public Span.Kind spanKind() {
+      return Span.Kind.PRODUCER;
+    }
+
+    @Override public void put(ProducerRequest request, String fieldName, String value) {
+      request.header(fieldName, value);
+    }
+  }
+
+  @Test public void producerUsesB3SingleNoParent() {
+    // This injector needs no instanceof checks during inject()
+    Injector<ProducerRequest> injector = Propagation.B3_STRING.injector(new ProducerSetter());
+
+    ProducerRequest request = new ProducerRequest();
+    injector.inject(context, request);
 
     assertThat(request.headers)
       .hasSize(1)

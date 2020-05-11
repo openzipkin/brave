@@ -13,8 +13,8 @@
  */
 package brave.http;
 
-import brave.Span;
-import brave.propagation.Propagation.Setter;
+import brave.Span.Kind;
+import brave.propagation.Propagation.RemoteSetter;
 import brave.propagation.TraceContext;
 
 /**
@@ -25,7 +25,11 @@ import brave.propagation.TraceContext;
  * @since 5.7
  */
 public abstract class HttpClientRequest extends HttpRequest {
-  static final Setter<HttpClientRequest, String> SETTER = new Setter<HttpClientRequest, String>() {
+  static final RemoteSetter<HttpClientRequest> SETTER = new RemoteSetter<HttpClientRequest>() {
+    @Override public Kind spanKind() {
+      return Kind.CLIENT;
+    }
+
     @Override public void put(HttpClientRequest request, String key, String value) {
       request.header(key, value);
     }
@@ -35,8 +39,8 @@ public abstract class HttpClientRequest extends HttpRequest {
     }
   };
 
-  @Override public final Span.Kind spanKind() {
-    return Span.Kind.CLIENT;
+  @Override public final Kind spanKind() {
+    return Kind.CLIENT;
   }
 
   /**

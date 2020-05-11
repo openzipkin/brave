@@ -42,7 +42,7 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 
 import static brave.Span.Kind.PRODUCER;
-import static brave.jms.MessagePropagation.SETTER;
+import static brave.jms.MessageProperties.setStringProperty;
 import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -92,11 +92,11 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
 
     message = jms.newMessage("foo");
     for (Map.Entry<String, String> existingProperty : existingProperties.entrySet()) {
-      SETTER.put(message, existingProperty.getKey(), existingProperty.getValue());
+      setStringProperty(message, existingProperty.getKey(), existingProperty.getValue());
     }
     bytesMessage = jms.newBytesMessage("foo");
     for (Map.Entry<String, String> existingProperty : existingProperties.entrySet()) {
-      SETTER.put(bytesMessage, existingProperty.getKey(), existingProperty.getValue());
+      setStringProperty(bytesMessage, existingProperty.getKey(), existingProperty.getValue());
     }
   }
 
@@ -152,7 +152,7 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
 
   @Test public void should_prefer_current_to_stale_b3_header() throws JMSException {
     jms.setReadOnlyProperties(message, false);
-    SETTER.put(message, "b3", writeB3SingleFormat(newTraceContext(SamplingFlags.NOT_SAMPLED)));
+    setStringProperty(message, "b3", writeB3SingleFormat(newTraceContext(SamplingFlags.NOT_SAMPLED)));
 
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
