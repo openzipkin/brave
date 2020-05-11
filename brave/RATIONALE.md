@@ -205,6 +205,15 @@ it did, it wouldn't have knowledge of the format rules per field. That's the
 responsibility of the `Propagation` implementation. Hence, the `Injector`,
 which knows format rules, should do comma joining when valid.
 
+Some think that sending a header in comma-separated format, implies a receiver
+is allowed to split it into separate fields. This is not allowed by RFC 7230.
+Only formats known to be comma-separated are allowed to be joined as one value.
+The visa-versa is not true. For example, our [secondary sampling format](https://github.com/openzipkin-contrib/zipkin-secondary-sampling/blob/master/docs/design.md) is
+comma-separated, but it is not defined as being allowed to be encoded as
+multiple values. Any intermediate that randomly splits values of unknown
+formats, just on account of seeing a comma, is not following the RFC 7230 and
+therefore has a bug that should be fixed.
+
 ### Why does `Getter` imply joining HTTP headers on comma?
 The `Getter` API only can return a single string, so that implies when multiple
 headers are received, an HTTP implementation should join them on comma before
