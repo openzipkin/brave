@@ -8,7 +8,7 @@ When submitting code, please apply [Square Code Style](https://github.com/square
 
 You may also want to configure your IDE to perform `null` analysis using Brave's
 source retention annotation `brave.internal.Nullable`. For example, in IntelliJ,
-search for "Nullable" under "Inspections". Click "Configure Annotatione", then
+search for "Nullable" under "Inspections". Click "Configure Annotations", then
 add `brave.internal.Nullable` as a "Nullable Annotation".
 
 ## License
