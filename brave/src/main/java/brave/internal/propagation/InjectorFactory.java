@@ -14,6 +14,7 @@
 package brave.internal.propagation;
 
 import brave.Request;
+import brave.Span;
 import brave.propagation.Propagation;
 import brave.propagation.Propagation.RemoteSetter;
 import brave.propagation.Propagation.Setter;
@@ -25,6 +26,27 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * This is an internal type used to implement possibly multiple trace formats based on {@link
+ * Span.Kind}. It isn't intended to be shared widely as it may change in practice.
+ *
+ * <p>When {@link RemoteSetter} is implemented, {@link #newInjector(Setter)} will create an
+ * injector that is pre-configured for {@link RemoteSetter#spanKind()}. Otherwise, it will create an
+ * injector that defers until {@link Injector#inject(TraceContext, Object)} is called.
+ *
+ * <p>A deferred injector checks if the {@code request} parameter is an instance of {@link
+ * Request}, it considers {@link Request#spanKind()}. If so, it uses this for injection formats
+ * accordingly. If not, a {@linkplain Builder#injectorFunction(InjectorFunction...) default
+ * function} is used.
+ *
+ * <p><em>Note</em>: Instrumentation that have not been recently updated may be remote, but neither
+ * implement {@link RemoteSetter} nor {@link Request}. In other words, lack of these types do not
+ * mean the input is for a local span. However, this can be assumed for code in this repository, as
+ * it is all up-to-date.
+ *
+ * <p>In Brave 6, we might make the assumption that local injection is when the inputs neither
+ * implement {@link RemoteSetter} nor {@link Request}.
+ */
 public final class InjectorFactory {
   /** Like {@link TraceContext.Injector}, except the {@link Setter} is a parameter. */
   public interface InjectorFunction {
@@ -44,6 +66,7 @@ public final class InjectorFactory {
      */
     List<String> keyNames();
 
+    /** Like {@see TraceContext.Injector#inject} except the {@code setter} is explicit. */
     <R> void inject(Setter<R, String> setter, TraceContext context, R request);
   }
 
@@ -57,26 +80,47 @@ public final class InjectorFactory {
     InjectorFunction producerInjectorFunction = InjectorFunction.NOOP;
     InjectorFunction consumerInjectorFunction = InjectorFunction.NOOP;
 
+    /**
+     * The {@linkplain InjectorFunction injectors} to use when the {@link Setter} is not {@link
+     * RemoteSetter} and the request parameter is not a {@link Request}.
+     */
     public Builder injectorFunctions(InjectorFunction... injectorFunctions) {
       this.injectorFunction = injectorFunction(injectorFunctions);
       return this;
     }
 
+    /**
+     * The {@linkplain InjectorFunction injectors} to use for {@link Span.Kind#CLIENT} contexts,
+     * determined by either {@link RemoteSetter#spanKind()} or {@link Request#spanKind()}.
+     */
     public Builder clientInjectorFunctions(InjectorFunction... injectorFunctions) {
       this.clientInjectorFunction = injectorFunction(injectorFunctions);
       return this;
     }
 
+    /**
+     * The {@linkplain InjectorFunction injectors} to use for {@link Span.Kind#PRODUCER} contexts,
+     * determined by either {@link RemoteSetter#spanKind()} or {@link Request#spanKind()}.
+     */
     public Builder producerInjectorFunctions(InjectorFunction... injectorFunctions) {
       this.producerInjectorFunction = injectorFunction(injectorFunctions);
       return this;
     }
 
+    /**
+     * The {@linkplain InjectorFunction injectors} to use for {@link Span.Kind#CONSUMER} contexts,
+     * determined by either {@link RemoteSetter#spanKind()} or {@link Request#spanKind()}.
+     *
+     * <p>It may seem unusual at first to inject consumers, but this is how the trace context is
+     * serialized for message processors that happen on other threads, or distributed stages (like
+     * kafka-streams).
+     */
     public Builder consumerInjectorFunctions(InjectorFunction... injectorFunctions) {
       this.consumerInjectorFunction = injectorFunction(injectorFunctions);
       return this;
     }
 
+    /** @throws IllegalArgumentException if all builder methods weren't called. */
     public InjectorFactory build() {
       if (injectorFunction == InjectorFunction.NOOP) {
         throw new IllegalArgumentException("injectorFunction == NOOP");
@@ -124,7 +168,12 @@ public final class InjectorFactory {
     return keyNames;
   }
 
-  public <R> TraceContext.Injector<R> injector(Setter<R, String> setter) {
+  /**
+   * Creates a potentially composite injector if the input is an instance of {@link RemoteSetter}.
+   * Otherwise, a deferred injector is return that examples the request parameter to decide if it is
+   * remote or not.
+   */
+  public <R> TraceContext.Injector<R> newInjector(Setter<R, String> setter) {
     if (setter == null) throw new NullPointerException("setter == null");
     if (setter instanceof RemoteSetter) {
       RemoteSetter<?> remoteSetter = (RemoteSetter<?>) setter;

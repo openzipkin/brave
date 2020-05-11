@@ -232,7 +232,7 @@ public abstract class B3Propagation<K> implements Propagation<K> {
     }
 
     @Override public <R> Injector<R> injector(Setter<R, String> setter) {
-      return injectorFactory.injector(setter);
+      return injectorFactory.newInjector(setter);
     }
 
     @Override public <R> Extractor<R> extractor(Getter<R, String> getter) {
