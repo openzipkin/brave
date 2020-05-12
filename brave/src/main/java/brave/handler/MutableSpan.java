@@ -662,6 +662,32 @@ public final class MutableSpan implements Cloneable {
   }
 
   /**
+   * Removes and returns the last {@linkplain brave.SpanCustomizer#tag(String, String) tag value}
+   * associated with the key or returns {@code null} if it was never set.
+   *
+   * <p>Ex. to remove any tag named "remoteServiceName" and set it as {@link
+   * #remoteServiceName(String)} instead:
+   * <pre>{@code
+   * String remoteServiceName = span.removeTag("peer.service");
+   * if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
+   * }</pre>
+   *
+   * @since 5.12
+   */
+  @Nullable public String removeTag(String key) {
+    if (key == null) throw new NullPointerException("key == null");
+    if (key.isEmpty()) throw new IllegalArgumentException("key is empty");
+    for (int i = 0, length = tagCount * 2; i < length; i += 2) {
+      if (key.equals(tags[i])) {
+        String value = (String) tags[i + 1];
+        remove(tags, i);
+        return value;
+      }
+    }
+    return null;
+  }
+
+  /**
    * Iterates over all {@linkplain SpanCustomizer#tag(String, String) tags} for purposes such as
    * copying values. Unlike {@link #tags()}, using this is allocation free.
    *

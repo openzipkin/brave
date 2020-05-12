@@ -100,6 +100,18 @@ public class MutableSpanTest {
   }
 
   /** This is a compile test to show how the signature is intended to be used */
+  @Test public void removeTag_usageExplained() {
+    MutableSpan span = new MutableSpan();
+    span.tag("peer.service", "amazon-s3");
+
+    String remoteServiceName = span.removeTag("peer.service");
+    if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
+
+    assertThat(span.tags()).isEmpty();
+    assertThat(span.remoteServiceName()).isEqualTo("amazon-s3");
+  }
+
+  /** This is a compile test to show how the signature is intended to be used */
   @Test public void forEachTag_updater_usageExplained() {
     MutableSpan span = new MutableSpan();
     span.tag("a", "1");
