@@ -67,8 +67,6 @@ import brave.propagation.TraceContext;
 
   @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
     switch (cause) {
-      case ABANDONED:
-        return true;
       case FLUSHED:
       case FINISHED:
         return handle(context, span);

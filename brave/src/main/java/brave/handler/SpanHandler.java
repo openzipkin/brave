@@ -157,7 +157,10 @@ public abstract class SpanHandler {
   /**
    * Called when data collection complete.
    *
-   * <p><em>Note</em>: {@link Cause#ORPHANED} means the data is not intended to be recorded!
+   * <h3>Advanced Note</h3>
+   * By default, this only receives callbacks when data is intended to be recorded. If you are
+   * implementing tracking between {@link #begin} and here, you should consider overriding {@link
+   * #handlesAbandoned()} so that you have parity for all cases.
    *
    * @param context same instance as passed to {@link #begin}
    * @param span same instance as passed to {@link #begin}
@@ -170,5 +173,16 @@ public abstract class SpanHandler {
    */
   public boolean end(TraceContext context, MutableSpan span, Cause cause) {
     return true;
+  }
+
+  /**
+   * {@link Span#abandon()} means the data is not intended to be recorded. It results in an
+   * {@linkplain #end(TraceContext, MutableSpan, Cause) end callback} with {@link Cause#ABANDONED}.
+   *
+   *
+   * <p><em>Note</em>: {@link Cause#ABANDONED} means the data is not intended to be recorded!
+   */
+  public boolean handlesAbandoned() {
+    return false;
   }
 }

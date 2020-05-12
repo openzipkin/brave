@@ -21,7 +21,6 @@ import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import brave.test.TestSpanHandler;
 import com.blogspot.mydailyjava.weaklockfree.WeakConcurrentMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -40,21 +39,7 @@ import static org.assertj.core.api.Assertions.tuple;
  * you have spans that finish after their parent, you'll need a more fancy implementation.
  */
 public class CountingChildrenTest {
-  static final class TagChildCount extends ParentToChildrenHandler {
-    @Override protected void onFinish(MutableSpan parent, Iterator<MutableSpan> children) {
-      int count = 0;
-      for (; children.hasNext(); children.next()) {
-        count++;
-      }
-      parent.tag("childCount", String.valueOf(count));
-    }
-  }
-
-  /**
-   * {@link ParentToChildrenHandler} is flexible, but if all you are doing is counting children, you
-   * can implement counting directly.
-   */
-  static final class TagChildCountDirect extends SpanHandler {
+  static final class TagChildCount extends SpanHandler {
     /** This holds the children of the current parent until the former is finished or abandoned. */
     final WeakConcurrentMap<TraceContext, TraceContext> childToParent =
         new WeakConcurrentMap<>(false);
@@ -74,9 +59,14 @@ public class CountingChildrenTest {
       return true;
     }
 
+    @Override public boolean handlesAbandoned() {
+      return true; // so that we have a callback to end for every begin
+    }
+
     @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
       // Kick-out if this was not a normal finish
-      if (cause != Cause.FINISHED && !context.isLocalRoot()) { // a child
+      if ((cause != Cause.FINISHED && !context.isLocalRoot()) // a child
+          || cause == Cause.ABANDONED) {
         TraceContext parent = childToParent.remove(context);
         AtomicInteger childCount = parentToChildCount.getIfPresent(parent);
         if (childCount != null) childCount.decrementAndGet();
@@ -84,7 +74,7 @@ public class CountingChildrenTest {
       }
 
       AtomicInteger childCount = parentToChildCount.getIfPresent(context);
-      span.tag("childCountDirect", childCount != null ? childCount.toString() : "0");
+      span.tag("childCount", childCount != null ? childCount.toString() : "0");
 
       // clean up so no OutOfMemoryException!
       childToParent.remove(context);
@@ -97,7 +87,6 @@ public class CountingChildrenTest {
   TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing = Tracing.newBuilder()
     .addSpanHandler(new TagChildCount())
-    .addSpanHandler(new TagChildCountDirect())
     .addSpanHandler(spans)
     .build();
   Tracer tracer = tracing.tracer();
@@ -112,6 +101,7 @@ public class CountingChildrenTest {
     brave.Span root1Child1 = tracer.newChild(root1.context()).name("root1Child1").start();
     brave.Span root1Child1Child1 =
       tracer.newChild(root1Child1.context()).name("root1Child1Child1").start();
+    tracer.newChild(root1Child1.context()).name("root1Child1ChildAbandoned").start().abandon();
     brave.Span root2Child1 = tracer.newChild(root2.context()).name("root2Child1").start();
     brave.Span root1Child1Child2 =
       tracer.newChild(root1Child1.context()).name("root1Child1Child2").start();
@@ -128,12 +118,8 @@ public class CountingChildrenTest {
     List<Tuple> nameToChildCount = spans.spans().stream()
       .map(s -> tuple(s.name(), s.tags().get("childCount")))
       .collect(Collectors.toList());
-    List<Tuple> nameToChildCountDirect = spans.spans().stream()
-      .map(s -> tuple(s.name(), s.tags().get("childCountDirect")))
-      .collect(Collectors.toList());
 
     assertThat(nameToChildCount)
-      .isEqualTo(nameToChildCountDirect)
       .containsExactly(
         tuple("root1Child1Child2Child1", "0"),
         tuple("root2Child1", "0"),
@@ -153,6 +139,7 @@ public class CountingChildrenTest {
   @Test public void countChildren_async() {
     brave.Span root1 = tracer.newTrace().name("root1").start();
     brave.Span root1Child1 = tracer.newChild(root1.context()).name("root1Child1").start();
+    tracer.newChild(root1.context()).name("root1ChildAbandoned").start().abandon();
     brave.Span root1Child2 = tracer.newChild(root1.context()).name("root1Child2").start();
     root1.finish();
     root1Child1.finish();

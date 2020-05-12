@@ -97,7 +97,9 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
   /** @see brave.Span#abandon() */
   public void abandon(TraceContext context) {
     PendingSpan last = remove(context);
-    if (last != null) spanHandler.end(last.handlerContext, last.span, Cause.ABANDONED);
+    if (last != null && spanHandler.handlesAbandoned()) {
+      spanHandler.end(last.handlerContext, last.span, Cause.ABANDONED);
+    }
   }
 
   /** @see brave.Span#flush() */

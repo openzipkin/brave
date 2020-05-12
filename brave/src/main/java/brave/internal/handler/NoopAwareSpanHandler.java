@@ -16,19 +16,25 @@ package brave.internal.handler;
 import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
 import brave.internal.Platform;
+import brave.internal.collect.LongBitSet;
 import brave.propagation.TraceContext;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static brave.internal.Throwables.propagateIfFatal;
+import static brave.internal.collect.LongBitSet.isSet;
+import static brave.internal.collect.LongBitSet.setBit;
 
 /** This logs exceptions instead of raising an error, as the supplied collector could have bugs. */
 public final class NoopAwareSpanHandler extends SpanHandler {
   // Array ensures no iterators are created at runtime
   public static SpanHandler create(SpanHandler[] handlers,
-    AtomicBoolean noop) {
+      AtomicBoolean noop) {
     if (handlers.length == 0) return SpanHandler.NOOP;
     if (handlers.length == 1) return new NoopAwareSpanHandler(handlers[0], noop);
+    if (handlers.length > LongBitSet.MAX_SIZE) {
+      throw new IllegalArgumentException("handlers.length > " + LongBitSet.MAX_SIZE);
+    }
     return new NoopAwareSpanHandler(new CompositeSpanHandler(handlers), noop);
   }
 
@@ -62,6 +68,10 @@ public final class NoopAwareSpanHandler extends SpanHandler {
     }
   }
 
+  @Override public boolean handlesAbandoned() {
+    return delegate.handlesAbandoned();
+  }
+
   @Override public int hashCode() {
     return delegate.hashCode();
   }
@@ -75,10 +85,18 @@ public final class NoopAwareSpanHandler extends SpanHandler {
   }
 
   static final class CompositeSpanHandler extends SpanHandler {
+    final long handlesAbandonedBitset;
     final SpanHandler[] handlers;
 
     CompositeSpanHandler(SpanHandler[] handlers) {
       this.handlers = handlers;
+      long handlesAbandonedBitset = 0;
+      for (int i = 0; i < handlers.length; i++) {
+        if (handlers[i].handlesAbandoned()) {
+          handlesAbandonedBitset = setBit(handlesAbandonedBitset, i);
+        }
+      }
+      this.handlesAbandonedBitset = handlesAbandonedBitset;
     }
 
     @Override public boolean begin(TraceContext context, MutableSpan span, TraceContext parent) {
@@ -89,10 +107,23 @@ public final class NoopAwareSpanHandler extends SpanHandler {
     }
 
     @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
-      for (SpanHandler handler : handlers) {
-        if (!handler.end(context, span, cause)) return false;
+      if (cause != Cause.ABANDONED) {
+        for (SpanHandler handler : handlers) {
+          if (!handler.end(context, span, cause)) return false;
+        }
+        return true;
+      }
+
+      for (int i = 0; i < handlers.length; i++) {
+        if (isSet(handlesAbandonedBitset, i)) {
+          if (!handlers[i].end(context, span, cause)) return false;
+        }
       }
       return true;
+    }
+
+    @Override public boolean handlesAbandoned() {
+      return handlesAbandonedBitset > 0;
     }
 
     @Override public int hashCode() {
