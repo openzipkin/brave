@@ -108,16 +108,14 @@ public final class StringPropagationAdapter<K> implements Propagation<K> {
   }
 
   @Override public <R> Injector<R> injector(Setter<R, K> setter) {
-    if (setter instanceof RemoteSetter) { // then we know it is string keyed
-      return delegate.injector((RemoteSetter<R>) setter);
-    }
+    // No check if Setter is a RemoteSetter because this instance cannot have String keys while
+    // RemoteSetter must have String keys
     return delegate.injector(new SetterAdapter<>(setter, map));
   }
 
   @Override public <R> Extractor<R> extractor(Getter<R, K> getter) {
-    if (getter instanceof RemoteGetter) { // then we know it is string keyed
-      return delegate.extractor((RemoteGetter<R>) getter);
-    }
+    // No check if Setter is a RemoteGetter because this instance cannot have String keys while
+    // RemoteGetter must have String keys
     return delegate.extractor(new GetterAdapter<>(getter, map));
   }
 

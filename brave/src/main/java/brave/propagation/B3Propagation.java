@@ -103,8 +103,7 @@ public abstract class B3Propagation<K> implements Propagation<K> {
    * for messaging. Non-request spans default to {@link Format#MULTI}.
    */
   public static final class FactoryBuilder {
-    InjectorFactory.Builder injectorFactoryBuilder = InjectorFactory.newBuilder()
-        .injectorFunctions(Format.MULTI)
+    InjectorFactory.Builder injectorFactoryBuilder = InjectorFactory.newBuilder(Format.MULTI)
         .clientInjectorFunctions(Format.MULTI)
         .producerInjectorFunctions(Format.SINGLE_NO_PARENT)
         .consumerInjectorFunctions(Format.SINGLE_NO_PARENT);

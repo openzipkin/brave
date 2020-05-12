@@ -32,7 +32,7 @@ import java.util.Set;
  *
  * <p>When {@link RemoteSetter} is implemented, {@link #newInjector(Setter)} will create an
  * injector that is pre-configured for {@link RemoteSetter#spanKind()}. Otherwise, it will create an
- * injector that defers until {@link Injector#inject(TraceContext, Object)} is called.
+ * injector that defers until {@link RemoteInjector#inject(TraceContext, Object)} is called.
  *
  * <p>A deferred injector checks if the {@code request} parameter is an instance of {@link
  * Request}, it considers {@link Request#spanKind()}. If so, it uses this for injection formats
@@ -70,40 +70,55 @@ public final class InjectorFactory {
     <R> void inject(Setter<R, String> setter, TraceContext context, R request);
   }
 
-  public static Builder newBuilder() {
-    return new Builder();
+  /** Defaults all injector functions to {@code injectorFunction}. */
+  public static Builder newBuilder(InjectorFunction injectorFunction) {
+    if (injectorFunction == null) throw new NullPointerException("injectorFunction == null");
+    return new Builder(injectorFunction);
   }
 
   public static final class Builder {
-    InjectorFunction injectorFunction = InjectorFunction.NOOP;
-    InjectorFunction clientInjectorFunction = InjectorFunction.NOOP;
-    InjectorFunction producerInjectorFunction = InjectorFunction.NOOP;
-    InjectorFunction consumerInjectorFunction = InjectorFunction.NOOP;
+    InjectorFunction injectorFunction;
+    InjectorFunction clientInjectorFunction;
+    InjectorFunction producerInjectorFunction;
+    InjectorFunction consumerInjectorFunction;
+
+    Builder(InjectorFunction defaultInjectorFunction) {
+      injectorFunction = defaultInjectorFunction;
+      clientInjectorFunction = defaultInjectorFunction;
+      producerInjectorFunction = defaultInjectorFunction;
+      consumerInjectorFunction = defaultInjectorFunction;
+    }
 
     /**
      * The {@linkplain InjectorFunction injectors} to use when the {@link Setter} is not {@link
      * RemoteSetter} and the request parameter is not a {@link Request}.
+     *
+     * @param injectorFunctions ignores an empty array or {@link InjectorFunction#NOOP} elements.
      */
     public Builder injectorFunctions(InjectorFunction... injectorFunctions) {
-      this.injectorFunction = injectorFunction(injectorFunctions);
+      injectorFunction = injectorFunction(injectorFunction, injectorFunctions);
       return this;
     }
 
     /**
      * The {@linkplain InjectorFunction injectors} to use for {@link Span.Kind#CLIENT} contexts,
      * determined by either {@link RemoteSetter#spanKind()} or {@link Request#spanKind()}.
+     *
+     * @param injectorFunctions ignores an empty array or {@link InjectorFunction#NOOP} elements.
      */
     public Builder clientInjectorFunctions(InjectorFunction... injectorFunctions) {
-      this.clientInjectorFunction = injectorFunction(injectorFunctions);
+      clientInjectorFunction = injectorFunction(clientInjectorFunction, injectorFunctions);
       return this;
     }
 
     /**
      * The {@linkplain InjectorFunction injectors} to use for {@link Span.Kind#PRODUCER} contexts,
      * determined by either {@link RemoteSetter#spanKind()} or {@link Request#spanKind()}.
+     *
+     * @param injectorFunctions ignores an empty array or {@link InjectorFunction#NOOP} elements.
      */
     public Builder producerInjectorFunctions(InjectorFunction... injectorFunctions) {
-      this.producerInjectorFunction = injectorFunction(injectorFunctions);
+      this.producerInjectorFunction = injectorFunction(producerInjectorFunction, injectorFunctions);
       return this;
     }
 
@@ -114,30 +129,17 @@ public final class InjectorFactory {
      * <p>It may seem unusual at first to inject consumers, but this is how the trace context is
      * serialized for message processors that happen on other threads, or distributed stages (like
      * kafka-streams).
+     *
+     * @param injectorFunctions ignores an empty array or {@link InjectorFunction#NOOP} elements.
      */
     public Builder consumerInjectorFunctions(InjectorFunction... injectorFunctions) {
-      this.consumerInjectorFunction = injectorFunction(injectorFunctions);
+      consumerInjectorFunction = injectorFunction(consumerInjectorFunction, injectorFunctions);
       return this;
     }
 
     /** @throws IllegalArgumentException if all builder methods weren't called. */
     public InjectorFactory build() {
-      if (injectorFunction == InjectorFunction.NOOP) {
-        throw new IllegalArgumentException("injectorFunction == NOOP");
-      }
-      if (clientInjectorFunction == InjectorFunction.NOOP) {
-        throw new IllegalArgumentException("clientInjectorFunction == NOOP");
-      }
-      if (producerInjectorFunction == InjectorFunction.NOOP) {
-        throw new IllegalArgumentException("producerInjectorFunction == NOOP");
-      }
-      if (consumerInjectorFunction == InjectorFunction.NOOP) {
-        throw new IllegalArgumentException("consumerInjectorFunction == NOOP");
-      }
       return new InjectorFactory(this);
-    }
-
-    Builder() {
     }
   }
 
@@ -179,11 +181,11 @@ public final class InjectorFactory {
       RemoteSetter<?> remoteSetter = (RemoteSetter<?>) setter;
       switch (remoteSetter.spanKind()) {
         case CLIENT:
-          return new Injector<>(setter, clientInjectorFunction);
+          return new RemoteInjector<>(setter, clientInjectorFunction);
         case PRODUCER:
-          return new Injector<>(setter, producerInjectorFunction);
+          return new RemoteInjector<>(setter, producerInjectorFunction);
         case CONSUMER:
-          return new Injector<>(setter, consumerInjectorFunction);
+          return new RemoteInjector<>(setter, consumerInjectorFunction);
         default: // SERVER is nonsense as it cannot be injected
       }
     }
@@ -240,6 +242,7 @@ public final class InjectorFactory {
             return;
           case CONSUMER:
             injectorFactory.consumerInjectorFunction.inject(setter, context, request);
+            return;
           default: // SERVER is nonsense as it cannot be injected
         }
       }
@@ -266,11 +269,11 @@ public final class InjectorFactory {
     }
   }
 
-  static final class Injector<R> implements TraceContext.Injector<R> {
+  static final class RemoteInjector<R> implements TraceContext.Injector<R> {
     final InjectorFunction injectorFunction;
     final Setter<R, String> setter;
 
-    Injector(Setter<R, String> setter, InjectorFunction injectorFunction) {
+    RemoteInjector(Setter<R, String> setter, InjectorFunction injectorFunction) {
       this.injectorFunction = injectorFunction;
       this.setter = setter;
     }
@@ -289,8 +292,8 @@ public final class InjectorFactory {
 
     @Override public boolean equals(Object o) {
       if (o == this) return true;
-      if (!(o instanceof Injector)) return false;
-      Injector<?> that = (Injector<?>) o;
+      if (!(o instanceof RemoteInjector)) return false;
+      RemoteInjector<?> that = (RemoteInjector<?>) o;
       return setter.equals(that.setter) && injectorFunction.equals(that.injectorFunction);
     }
 
@@ -299,12 +302,15 @@ public final class InjectorFactory {
     }
   }
 
-  static InjectorFunction injectorFunction(InjectorFunction... injectorFunctions) {
-    if (injectorFunctions == null) throw new NullPointerException("injectorFunctions == null");
+  static InjectorFunction injectorFunction(InjectorFunction existing, InjectorFunction... update) {
+    if (update == null) throw new NullPointerException("injectorFunctions == null");
     LinkedHashSet<InjectorFunction> injectorFunctionSet =
-        new LinkedHashSet<>(Arrays.asList(injectorFunctions));
+        new LinkedHashSet<>(Arrays.asList(update));
+    if (injectorFunctionSet.contains(null)) {
+      throw new NullPointerException("injectorFunction == null");
+    }
     injectorFunctionSet.remove(InjectorFunction.NOOP);
-    if (injectorFunctionSet.isEmpty()) return InjectorFunction.NOOP;
+    if (injectorFunctionSet.isEmpty()) return existing;
     if (injectorFunctionSet.size() == 1) return injectorFunctionSet.iterator().next();
     return new CompositeInjectorFunction(injectorFunctionSet.toArray(new InjectorFunction[0]));
   }
