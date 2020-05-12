@@ -35,7 +35,11 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.servlet.UnavailableException;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -512,25 +516,34 @@ public abstract class ITHttpServer extends ITRemote {
     spanHandlerSeesError("/exceptionAsync");
   }
 
-  /**
-   * This ensures custom span handlers can see the actual exception thrown, not just the "error" tag
-   * value.
-   */
   void spanHandlerSeesError(String path) throws IOException {
-    AtomicReference<Throwable> caughtThrowable = new AtomicReference<>();
+    ConcurrentLinkedDeque<Throwable> caughtThrowables = new ConcurrentLinkedDeque<>();
     httpTracing = HttpTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE)
-      .addSpanHandler(new SpanHandler() {
-        @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
-          caughtThrowable.set(span.error());
-          return true;
-        }
-      })
-      .build());
+        .addSpanHandler(new SpanHandler() {
+          @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
+            Throwable error = span.error();
+            if (error != null) {
+              caughtThrowables.add(error);
+            } else {
+              caughtThrowables.add(new RuntimeException("Unexpected additional call to end"));
+            }
+            return true;
+          }
+        })
+        .build());
     init();
 
     httpStatusCodeTagMatchesResponse_onUncaughtException(path, ".*not ready");
 
-    assertThat(caughtThrowable.get()).isNotNull();
+    assertThat(caughtThrowables)
+        .withFailMessage("Span didn't finish")
+        .isNotEmpty();
+    if (caughtThrowables.size() > 1) {
+      for (Throwable throwable : caughtThrowables) {
+        Logger.getAnonymousLogger().log(Level.SEVERE, "multiple calls to finish", throwable);
+      }
+      assertThat(caughtThrowables).hasSize(1);
+    }
   }
 
   protected Response get(String path) throws IOException {
