@@ -63,7 +63,10 @@ public class MutableSpanTest {
     assertThat(counter.orphans).isEqualTo(2);
   }
 
-  /** This is a compile test to show how the signature is intended to be used */
+  /**
+   * This shows how the {@link MutableSpan#forEachTag(MutableSpan.TagConsumer, Object)}  is intended
+   * to be used
+   */
   @Test public void forEachTag_consumer_usageExplained() {
     MutableSpan span = new MutableSpan();
     span.tag("a", "1");
@@ -99,7 +102,19 @@ public class MutableSpanTest {
     );
   }
 
-  /** This is a compile test to show how the signature is intended to be used */
+  /** This shows how {@link MutableSpan#removeTag(String)} is intended to be used */
+  @Test public void removeTag_usageExplained() {
+    MutableSpan span = new MutableSpan();
+    span.tag("peer.service", "amazon-s3");
+
+    String remoteServiceName = span.removeTag("peer.service");
+    if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
+
+    assertThat(span.tags()).isEmpty();
+    assertThat(span.remoteServiceName()).isEqualTo("amazon-s3");
+  }
+
+  /** This shows how {@link MutableSpan#forEachTag(MutableSpan.TagUpdater)} is intended to be used */
   @Test public void forEachTag_updater_usageExplained() {
     MutableSpan span = new MutableSpan();
     span.tag("a", "1");
