@@ -41,7 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class SkeletalSpansTest {
   static class RetainSkeletalSpans extends SpanHandler {
     @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
-      if (cause == Cause.ABANDONED || span.kind() == null) return false; // skip local spans
+      if (span.kind() == null) return false; // skip local spans
 
       if (!context.isLocalRoot()) {
         span.parentId(context.localRootIdString()); // rewrite the parent ID
@@ -165,7 +165,6 @@ public class SkeletalSpansTest {
   static SpanHandler toSpanHandler(Map<String, List<MutableSpan>> spans) {
     return new SpanHandler() {
       @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
-        if (cause == Cause.ABANDONED) return true;
         spans.computeIfAbsent(span.traceId(), k -> new ArrayList<>()).add(span);
         return true;
       }

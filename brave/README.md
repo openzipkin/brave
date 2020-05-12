@@ -602,8 +602,6 @@ format. Notably, most trace systems only need data at the `end` hook.
 
 ```java
 public boolean end(TraceContext context, MutableSpan span, Cause cause) {
-  // Return when a user intentionally called Span.abandon()
-  if (cause == Cause.ABANDONED) return true;
   // Sampled means "remote sampled", e.g. to the tracing system.
   if (!Boolean.TRUE.equals(context.sampled())) return true;
 

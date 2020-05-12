@@ -19,7 +19,6 @@ import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Stream;
 
 /**
  * Simpler variant of {@link IntegrationTestSpanHandler} appropriate for single-threaded
@@ -57,7 +56,6 @@ public final class TestSpanHandler extends SpanHandler implements Iterable<Mutab
   }
 
   @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
-    if (cause == Cause.ABANDONED) return true;
     spans.add(span);
     return true;
   }

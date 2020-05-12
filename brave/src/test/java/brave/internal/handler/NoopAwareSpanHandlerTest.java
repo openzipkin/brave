@@ -40,15 +40,16 @@ public class NoopAwareSpanHandlerTest {
 
   @Mock SpanHandler one;
   @Mock SpanHandler two;
+  @Mock SpanHandler three;
 
   @Test public void create_emptyIsNoop() {
     assertThat(NoopAwareSpanHandler.create(new SpanHandler[0], noop))
-      .isEqualTo(SpanHandler.NOOP);
+        .isEqualTo(SpanHandler.NOOP);
   }
 
   @Test public void create_single() {
     NoopAwareSpanHandler handler =
-      (NoopAwareSpanHandler) NoopAwareSpanHandler.create(new SpanHandler[] {one}, noop);
+        (NoopAwareSpanHandler) NoopAwareSpanHandler.create(new SpanHandler[] {one}, noop);
 
     assertThat(handler.delegate).isSameAs(one);
 
@@ -72,8 +73,8 @@ public class NoopAwareSpanHandlerTest {
     SpanHandler handler = NoopAwareSpanHandler.create(handlers, noop);
 
     assertThat(handler).extracting("delegate.handlers")
-      .asInstanceOf(InstanceOfAssertFactories.array(SpanHandler[].class))
-      .containsExactly(one, two);
+        .asInstanceOf(InstanceOfAssertFactories.array(SpanHandler[].class))
+        .containsExactly(one, two);
   }
 
   @Test public void multiple_callInSequence() {
@@ -104,15 +105,32 @@ public class NoopAwareSpanHandlerTest {
     verify(two, never()).end(context, span, Cause.FINISHED);
   }
 
+  @Test public void multiple_abandoned() {
+    SpanHandler[] handlers = new SpanHandler[3];
+    handlers[0] = one;
+    handlers[1] = two;
+    handlers[2] = three;
+
+    when(two.handlesAbandoned()).thenReturn(true);
+
+    SpanHandler handler = NoopAwareSpanHandler.create(handlers, noop);
+    assertThat(handler.handlesAbandoned()).isTrue();
+    handler.end(context, span, Cause.ABANDONED);
+
+    verify(one, never()).end(context, span, Cause.ABANDONED);
+    verify(two).end(context, span, Cause.ABANDONED);
+    verify(three, never()).end(context, span, Cause.FINISHED);
+  }
+
   @Test public void doesntCrashOnNonFatalThrowable() {
     Throwable[] toThrow = new Throwable[1];
     SpanHandler handler =
-      NoopAwareSpanHandler.create(new SpanHandler[] {new SpanHandler() {
-        @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
-          doThrowUnsafely(toThrow[0]);
-          return true;
-        }
-      }}, noop);
+        NoopAwareSpanHandler.create(new SpanHandler[] {new SpanHandler() {
+          @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
+            doThrowUnsafely(toThrow[0]);
+            return true;
+          }
+        }}, noop);
 
     toThrow[0] = new RuntimeException();
     assertThat(handler.end(context, span, Cause.FINISHED)).isTrue();
