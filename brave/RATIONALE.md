@@ -60,6 +60,18 @@ attempting to do that would limit the applicability of Brave, which is an anti-
 goal. Instead, we choose to use nothing except floor Java version features,
 currently Java 6.
 
+Here's an example of when things that seem right aren't. We once dropped our
+internal `@Nullable` annotation (which is source retention), in favor of JSR
+305 (which is runtime retention). In doing so, we got `null` analysis from
+Intellij. However, we entered a swamp of dependency conflicts, which started
+with OSGi (making us switch to a service mix bundle for the annotations), and
+later Java 9 (conflict with apps using jax-ws). In summary, it is easiest for
+us to have no dependencies also, as we don't inherit tug-of-war between modular
+frameworks who each have a different "right" answer for even annotations!
+
+Incidentally, IntelliJ can be configured to use `brave.internal.Nullable`, now.
+Search for `Nullable` under inspections to configure this.
+
 ### Why `new NullPointerException("xxx == null")`
 For public entry points, we eagerly check null and throw `NullPointerException`
 with a message like "xxx == null". This is not a normal pre-condition, such as
@@ -169,6 +181,74 @@ context from a carrier. While naming is similar, Brave optimizes for
 direct integration with request types (such as HTTP request) vs routing
 through an intermediate (such as a map). Brave also considers propagation
 a separate api from the tracer.
+
+### Why does `Setter` not allow putting `null`?
+`Setter` cannot allow clearing values as it is not guaranteed to work. For
+example, you can't clear headers made with `URLConnection`, only replace or add
+to them.
+
+For this reason, when wrapping messages that are processed multiple times, such
+as in messaging, you must clear keys on your own.
+
+There is a problem when an abstraction hides follow-up requests, such as
+HTTP redirects or retries, as multiple requests will result in the same span.
+This implies invalid timing and a repeated upstream ID seen by potentially
+multiple servers! For this reason, always prefer sending headers (using
+`Setter`) at the lowest abstraction possible, and raise issues with frameworks
+that hide the ability to see follow-up requests.
+
+### Why does `Setter` not allow multiple values?
+First, the most common multi-map header is HTTP, `Setter` also works on
+messaging and RPC where multi-map fields are unusual.
+
+HTTP [RFC 7230](https://tools.ietf.org/html/rfc7230#section-3.2.2) allows encoding of multiple fields with the same name, but this
+only applies to fields which define themselves as comma-separated. The `Setter`
+abstraction has no knowledge of if the request is an HTTP request, and even if
+it did, it wouldn't have knowledge of the format rules per field. That's the
+responsibility of the `Propagation` implementation. Hence, the `Injector`,
+which knows format rules, should do comma joining when valid.
+
+Some think that sending a header in comma-separated format, implies a receiver
+is allowed to split it into separate fields. This is not allowed by RFC 7230.
+Only formats known to be comma-separated are allowed to be joined as one value.
+The visa-versa is not true. For example, our [secondary sampling format](https://github.com/openzipkin-contrib/zipkin-secondary-sampling/blob/master/docs/design.md) is
+comma-separated, but it is not defined as being allowed to be encoded as
+multiple values. Any intermediate that randomly splits values of unknown
+formats, just on account of seeing a comma, is not following the RFC 7230 and
+therefore has a bug that should be fixed.
+
+### Why does `Getter` imply joining HTTP headers on comma?
+The `Getter` API only can return a single string, so that implies when multiple
+headers are received, an HTTP implementation should join them on comma before
+returning.
+
+HTTP [RFC 7230](https://tools.ietf.org/html/rfc7230#section-3.2.2) allows encoding of multiple fields with the same name, but this
+only applies to fields which define themselves as comma-separated. If a header
+is not comma-separated, but was sent multiple times, that was an encoding
+mistake.
+
+One may raise the special case of `Set-Cookie` as a reason why we shouldn't
+imply joining on comma. This is not a request header, it is a response header.
+Hence, it isn't valid to discuss until such time, if ever, we handle responses.
+If we did, `Set-Cookie` is not defined as a trace context header, nor is it
+defined as baggage. Implementations could choose to special-case or blacklist
+this when implementing the `Getter` api, as `Getter` is only used for
+propagation fields.
+
+One may also think that we should join any delimited string with comma, but
+again HTTP only defines this for comma-separated lists with the Cookie special
+case. This means those using other delimiters should never expect to be able to
+send in multiple header fields. In practice, as trace propagation amplifies
+overhead, anything that starts discussing multiple header encoding is already
+questionable to apply.
+
+In practice, notably only [trace-context](https://w3c.github.io/trace-context/)
+chose to use comma-separated encoding even after it introduced parsing
+problems. They could have avoided this by simply not using a comma.
+
+For example, [X-Amzn-Trace-Id](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-request-tracing.html) uses semi-colon encoding, so implies no
+implementation toil for the same reasons mentioned above multiple times: only
+comma-separated HTTP header fields are allowed to be sent multiple times.
 
 ### Deprecation of Propagation K parameter
 
