@@ -111,8 +111,7 @@ public abstract class ITServlet3Container extends ITServlet25Container {
     Response response =
         httpStatusCodeTagMatchesResponse_onUncaughtException("/exceptionAsyncTimeout", "Timed out after 1ms");
 
-    assertThat(response.code())
-        .isEqualTo(500); // TODO: why is this not 504?
+    assertThat(response.code()).isIn(500, 504); // Jetty is inconsistent
   }
 
   static class TimeoutExceptionAsyncServlet extends HttpServlet {
