@@ -17,6 +17,7 @@ import brave.Span;
 import brave.http.HttpServerHandler;
 import brave.http.HttpServerRequest;
 import brave.http.HttpServerResponse;
+import brave.servlet.TracingFilter;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
@@ -100,7 +101,6 @@ public abstract class ServletRuntime {
     static final class TracingAsyncListener implements AsyncListener {
       final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
       final Span span;
-      final AtomicBoolean complete = new AtomicBoolean(); // multiple async events can occur
 
       TracingAsyncListener(HttpServerHandler<HttpServerRequest, HttpServerResponse> handler,
         Span span
@@ -110,16 +110,20 @@ public abstract class ServletRuntime {
       }
 
       @Override public void onComplete(AsyncEvent e) {
-        if (!complete.compareAndSet(false, true)) {
+        HttpServletRequest req = (HttpServletRequest) e.getSuppliedRequest();
+        // Use package-private attribute to check if this hook was called redundantly
+        Object sendHandled = req.getAttribute("brave.servlet.TracingFilter$SendHandled");
+        if (sendHandled instanceof AtomicBoolean
+            && ((AtomicBoolean) sendHandled).compareAndSet(false, true)) {
+          HttpServletResponse res = (HttpServletResponse) e.getSuppliedResponse();
+
+          HttpServerResponse response =
+              brave.servlet.HttpServletResponseWrapper.create(req, res, e.getThrowable());
+          handler.handleSend(response, span);
+        } else {
           // TODO: None of our tests reach this condition. Make a concrete case that re-enters the
           // onComplete hook or remove the special case
-          return;
         }
-        HttpServletRequest req = (HttpServletRequest) e.getSuppliedRequest();
-        HttpServletResponse res = (HttpServletResponse) e.getSuppliedResponse();
-        HttpServerResponse response =
-          brave.servlet.HttpServletResponseWrapper.create(req, res, e.getThrowable());
-        handler.handleSend(response, span);
       }
 
       // Per Servlet 3 section 2.3.3.3, we can't see the final HTTP status, yet. defer to onComplete

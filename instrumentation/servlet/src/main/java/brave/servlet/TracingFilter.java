@@ -25,6 +25,7 @@ import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import brave.servlet.internal.ServletRuntime;
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -76,6 +77,8 @@ public final class TracingFilter implements Filter {
     // Add attributes for explicit access to customization or span context
     request.setAttribute(SpanCustomizer.class.getName(), span.customizer());
     request.setAttribute(TraceContext.class.getName(), span.context());
+    SendHandled sendHandled = new SendHandled();
+    request.setAttribute(SendHandled.class.getName(), sendHandled);
 
     Throwable error = null;
     Scope scope = currentTraceContext.newScope(span.context());
@@ -89,12 +92,17 @@ public final class TracingFilter implements Filter {
       // When async, even if we caught an exception, we don't have the final response: defer
       if (servlet.isAsync(req)) {
         servlet.handleAsync(handler, req, res, span);
-      } else { // we have a synchronous response: finish the span
+      } else if (sendHandled.compareAndSet(false, true)){
+        // we have a synchronous response or error: finish the span
         HttpServerResponse responseWrapper = HttpServletResponseWrapper.create(req, res, error);
         handler.handleSend(responseWrapper, span);
       }
       scope.close();
     }
+  }
+
+  // Special type used to ensure handleSend is only called once
+  static final class SendHandled extends AtomicBoolean {
   }
 
   @Override public void destroy() {

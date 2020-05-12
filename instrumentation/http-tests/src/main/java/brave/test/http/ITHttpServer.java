@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.servlet.UnavailableException;
 import okhttp3.OkHttpClient;
@@ -517,10 +518,12 @@ public abstract class ITHttpServer extends ITRemote {
    * value.
    */
   void spanHandlerSeesError(String path) throws IOException {
+    AtomicInteger handleCount = new AtomicInteger();
     AtomicReference<Throwable> caughtThrowable = new AtomicReference<>();
     httpTracing = HttpTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE)
       .addSpanHandler(new SpanHandler() {
         @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
+          handleCount.incrementAndGet();
           caughtThrowable.set(span.error());
           return true;
         }
@@ -529,6 +532,10 @@ public abstract class ITHttpServer extends ITRemote {
     init();
 
     httpStatusCodeTagMatchesResponse_onUncaughtException(path, ".*not ready");
+
+    assertThat(handleCount)
+        .withFailMessage("Span finished multiple times")
+        .hasValue(1);
 
     assertThat(caughtThrowable.get()).isNotNull();
   }
