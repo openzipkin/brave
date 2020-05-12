@@ -13,7 +13,9 @@
  */
 package brave.features.opentracing;
 
+import brave.Span;
 import brave.baggage.BaggageField;
+import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import io.opentracing.SpanContext;
@@ -27,7 +29,8 @@ class BraveSpanContext implements SpanContext {
       : new BraveSpanContext.Incomplete(extractionResult);
   }
 
-  final TraceContext context;
+  @Nullable final TraceContext context;
+  volatile Span.Kind kind;
 
   BraveSpanContext(TraceContext context) {
     this.context = context;

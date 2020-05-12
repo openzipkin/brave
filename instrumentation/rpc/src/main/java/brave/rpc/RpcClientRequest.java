@@ -13,9 +13,10 @@
  */
 package brave.rpc;
 
-import brave.Span;
+import brave.Span.Kind;
 import brave.baggage.BaggagePropagation;
 import brave.propagation.Propagation;
+import brave.propagation.Propagation.RemoteSetter;
 import brave.propagation.Propagation.Setter;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Injector;
@@ -28,7 +29,11 @@ import brave.propagation.TraceContext.Injector;
  * @since 5.8
  */
 public abstract class RpcClientRequest extends RpcRequest {
-  static final Setter<RpcClientRequest, String> SETTER = new Setter<RpcClientRequest, String>() {
+  static final RemoteSetter<RpcClientRequest> SETTER = new RemoteSetter<RpcClientRequest>() {
+    @Override public Kind spanKind() {
+      return Kind.CLIENT;
+    }
+
     @Override public void put(RpcClientRequest request, String key, String value) {
       request.propagationField(key, value);
     }
@@ -38,8 +43,8 @@ public abstract class RpcClientRequest extends RpcRequest {
     }
   };
 
-  @Override public final Span.Kind spanKind() {
-    return Span.Kind.CLIENT;
+  @Override public final Kind spanKind() {
+    return Kind.CLIENT;
   }
 
   /**

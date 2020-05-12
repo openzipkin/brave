@@ -31,7 +31,7 @@ public class KafkaConsumerRequestSetterTest extends PropagationSetterTest<KafkaC
   }
 
   @Override protected Propagation.Setter<KafkaConsumerRequest, String> setter() {
-    return KafkaConsumerRequest::setHeader;
+    return KafkaConsumerRequest.SETTER;
   }
 
   @Override protected Iterable<String> read(KafkaConsumerRequest request, String key) {

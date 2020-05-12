@@ -108,10 +108,14 @@ public final class StringPropagationAdapter<K> implements Propagation<K> {
   }
 
   @Override public <R> Injector<R> injector(Setter<R, K> setter) {
+    // No check if Setter is a RemoteSetter because this instance cannot have String keys while
+    // RemoteSetter must have String keys
     return delegate.injector(new SetterAdapter<>(setter, map));
   }
 
   @Override public <R> Extractor<R> extractor(Getter<R, K> getter) {
+    // No check if Setter is a RemoteGetter because this instance cannot have String keys while
+    // RemoteGetter must have String keys
     return delegate.extractor(new GetterAdapter<>(getter, map));
   }
 
@@ -125,7 +129,7 @@ public final class StringPropagationAdapter<K> implements Propagation<K> {
 
   @Override public boolean equals(Object obj) {
     if (obj instanceof StringPropagationAdapter) {
-      return delegate.equals(((StringPropagationAdapter) obj).delegate);
+      return delegate.equals(((StringPropagationAdapter<?>) obj).delegate);
     } else if (obj instanceof Propagation) {
       return delegate.equals(obj);
     }
@@ -158,7 +162,7 @@ public final class StringPropagationAdapter<K> implements Propagation<K> {
 
     @Override public boolean equals(Object obj) {
       if (obj instanceof GetterAdapter) {
-        return getter.equals(((GetterAdapter) obj).getter);
+        return getter.equals(((GetterAdapter<?, ?>) obj).getter);
       } else if (obj instanceof Getter) {
         return getter.equals(obj);
       }
@@ -192,7 +196,7 @@ public final class StringPropagationAdapter<K> implements Propagation<K> {
 
     @Override public boolean equals(Object obj) {
       if (obj instanceof SetterAdapter) {
-        return setter.equals(((SetterAdapter) obj).setter);
+        return setter.equals(((SetterAdapter<?, ?>) obj).setter);
       } else if (obj instanceof Setter) {
         return setter.equals(obj);
       }

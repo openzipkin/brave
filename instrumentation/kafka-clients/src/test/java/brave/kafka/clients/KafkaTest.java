@@ -88,7 +88,8 @@ public class KafkaTest {
   }
 
   static <K, V> void addB3MultiHeaders(TraceContext parent, ConsumerRecord<K, V> record) {
-    Propagation.B3_STRING.injector(KafkaPropagation.SETTER).inject(parent, record.headers());
+    Propagation.B3_STRING.injector(KafkaConsumerRequest.SETTER)
+        .inject(parent, new KafkaConsumerRequest(record));
   }
 
   static Set<Entry<String, String>> lastHeaders(Headers headers) {

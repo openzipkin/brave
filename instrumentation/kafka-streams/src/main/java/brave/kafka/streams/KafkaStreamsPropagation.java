@@ -15,21 +15,33 @@ package brave.kafka.streams;
 
 import brave.propagation.Propagation.Getter;
 import brave.propagation.Propagation.Setter;
-import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
+import org.apache.kafka.streams.processor.ProcessorContext;
 
 final class KafkaStreamsPropagation {
-  static final Getter<Headers, String> GETTER = (headers, key) -> {
-    Header header = headers.lastHeader(key);
-    if (header == null) return null;
-    return new String(header.value(), UTF_8);
+  /**
+   * Used by {@link KafkaStreamsTracing#nextSpan(ProcessorContext)} to extract a trace context from
+   * a prior stage.
+   */
+  static final Getter<Headers, String> GETTER = new Getter<Headers, String>() {
+    @Override public String get(Headers headers, String key) {
+      return KafkaHeaders.lastStringHeader(headers, key);
+    }
+
+    @Override public String toString() {
+      return "Headers::lastHeader";
+    }
   };
 
-  static final Setter<Headers, String> SETTER = (headers, key, value) -> {
-    headers.remove(key);
-    headers.add(key, value.getBytes(UTF_8));
+  /** Used to inject the trace context between stages. */
+  static final Setter<Headers, String> SETTER = new Setter<Headers, String>() {
+    @Override public void put(Headers headers, String key, String value) {
+      KafkaHeaders.replaceHeader(headers, key, value);
+    }
+
+    @Override public String toString() {
+      return "Headers::replaceHeader";
+    }
   };
 
   KafkaStreamsPropagation() {

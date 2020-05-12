@@ -44,8 +44,8 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 
 import static brave.Span.Kind.CONSUMER;
-import static brave.jms.MessagePropagation.GETTER;
-import static brave.jms.MessagePropagation.SETTER;
+import static brave.jms.MessageProperties.getPropertyIfString;
+import static brave.jms.MessageProperties.setStringProperty;
 import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -107,8 +107,8 @@ public class ITJms_1_1_TracingMessageConsumer extends ITJms {
     message = jms.newMessage("foo");
     bytesMessage = jms.newBytesMessage("foo");
     String b3 = B3SingleFormat.writeB3SingleFormatWithoutParentId(parent);
-    SETTER.put(message, "b3", b3);
-    SETTER.put(bytesMessage, "b3", b3);
+    setStringProperty(message, "b3", b3);
+    setStringProperty(bytesMessage, "b3", b3);
     lockMessages();
     return parent;
   }
@@ -181,7 +181,7 @@ public class ITJms_1_1_TracingMessageConsumer extends ITJms {
         tracing.tracer().currentSpanCustomizer().name("message-listener");
 
         // clearing headers ensures later work doesn't try to use the old parent
-        String b3 = GETTER.get(m, "b3");
+        String b3 = getPropertyIfString(m, "b3");
         tracing.tracer().currentSpanCustomizer().tag("b3", String.valueOf(b3 != null));
       }
     );
@@ -220,7 +220,7 @@ public class ITJms_1_1_TracingMessageConsumer extends ITJms {
     throws JMSException {
     messageConsumer.setMessageListener(m -> {
         // clearing headers ensures later work doesn't try to use the old parent
-        String b3 = GETTER.get(m, "b3");
+        String b3 = getPropertyIfString(m, "b3");
         tracing.tracer().currentSpanCustomizer().tag("b3", String.valueOf(b3 != null));
       }
     );
@@ -261,8 +261,8 @@ public class ITJms_1_1_TracingMessageConsumer extends ITJms {
     message = jms.newMessage("baggage");
     bytesMessage = jms.newBytesMessage("baggage");
     String baggage = "joey";
-    SETTER.put(message, BAGGAGE_FIELD_KEY, baggage);
-    SETTER.put(bytesMessage, BAGGAGE_FIELD_KEY, baggage);
+    setStringProperty(message, BAGGAGE_FIELD_KEY, baggage);
+    setStringProperty(bytesMessage, BAGGAGE_FIELD_KEY, baggage);
     lockMessages();
     send.run();
 

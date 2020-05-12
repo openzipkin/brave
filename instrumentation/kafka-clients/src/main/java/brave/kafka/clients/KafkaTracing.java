@@ -22,6 +22,7 @@ import brave.messaging.MessagingRequest;
 import brave.messaging.MessagingTracing;
 import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
+import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -35,8 +36,21 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 
+import static brave.kafka.clients.KafkaHeaders.lastStringHeader;
+
 /** Use this class to decorate your Kafka consumer / producer and enable Tracing. */
 public final class KafkaTracing {
+  /** Used for local message processors in {@link KafkaTracing#nextSpan(ConsumerRecord)}. */
+  static final Getter<Headers, String> GETTER = new Getter<Headers, String>() {
+    @Override public String get(Headers request, String key) {
+      return lastStringHeader(request, key);
+    }
+
+    @Override public String toString() {
+      return "Headers::lastHeader";
+    }
+  };
+
   public static KafkaTracing create(Tracing tracing) {
     return newBuilder(tracing).build();
   }
@@ -129,11 +143,11 @@ public final class KafkaTracing {
     this.messagingTracing = builder.messagingTracing;
     this.tracer = builder.messagingTracing.tracing().tracer();
     Propagation<String> propagation = messagingTracing.tracing().propagation();
-    this.producerExtractor = propagation.extractor(KafkaProducerRequest::getHeader);
-    this.consumerExtractor = propagation.extractor(KafkaConsumerRequest::getHeader);
-    this.processorExtractor = propagation.extractor(KafkaPropagation.GETTER);
-    this.producerInjector = propagation.injector(KafkaProducerRequest::setHeader);
-    this.consumerInjector = propagation.injector(KafkaConsumerRequest::setHeader);
+    this.producerExtractor = propagation.extractor(KafkaProducerRequest.GETTER);
+    this.consumerExtractor = propagation.extractor(KafkaConsumerRequest.GETTER);
+    this.processorExtractor = propagation.extractor(GETTER);
+    this.producerInjector = propagation.injector(KafkaProducerRequest.SETTER);
+    this.consumerInjector = propagation.injector(KafkaConsumerRequest.SETTER);
     this.producerSampler = messagingTracing.producerSampler();
     this.consumerSampler = messagingTracing.consumerSampler();
     this.remoteServiceName = builder.remoteServiceName;

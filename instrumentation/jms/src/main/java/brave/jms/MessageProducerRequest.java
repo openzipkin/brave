@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,37 +13,48 @@
  */
 package brave.jms;
 
-import brave.Span;
+import brave.Span.Kind;
 import brave.internal.Nullable;
 import brave.messaging.ProducerRequest;
-import brave.propagation.Propagation.Getter;
-import brave.propagation.Propagation.Setter;
+import brave.propagation.Propagation.RemoteGetter;
+import brave.propagation.Propagation.RemoteSetter;
 import javax.jms.Destination;
 import javax.jms.Message;
 
+import static brave.jms.MessageProperties.getPropertyIfString;
+import static brave.jms.MessageProperties.setStringProperty;
+
 // intentionally not yet public until we add tag parsing functionality
 final class MessageProducerRequest extends ProducerRequest {
-  static final Getter<MessageProducerRequest, String> GETTER =
-    new Getter<MessageProducerRequest, String>() {
-      @Override public String get(MessageProducerRequest request, String name) {
-        return request.getProperty(name);
-      }
+  static final RemoteGetter<MessageProducerRequest> GETTER =
+      new RemoteGetter<MessageProducerRequest>() {
+        @Override public Kind spanKind() {
+          return Kind.PRODUCER;
+        }
 
-      @Override public String toString() {
-        return "MessageProducerRequest::getProperty";
-      }
-    };
+        @Override public String get(MessageProducerRequest request, String name) {
+          return getPropertyIfString(request.delegate, name);
+        }
 
-  static final Setter<MessageProducerRequest, String> SETTER =
-    new Setter<MessageProducerRequest, String>() {
-      @Override public void put(MessageProducerRequest request, String name, String value) {
-        request.setProperty(name, value);
-      }
+        @Override public String toString() {
+          return "Message::getStringProperty";
+        }
+      };
 
-      @Override public String toString() {
-        return "MessageProducerRequest::setProperty";
-      }
-    };
+  static final RemoteSetter<MessageProducerRequest> SETTER =
+      new RemoteSetter<MessageProducerRequest>() {
+        @Override public Kind spanKind() {
+          return Kind.PRODUCER;
+        }
+
+        @Override public void put(MessageProducerRequest request, String name, String value) {
+          setStringProperty(request.delegate, name, value);
+        }
+
+        @Override public String toString() {
+          return "Message::setStringProperty";
+        }
+      };
 
   final Message delegate;
   @Nullable final Destination destination;
@@ -54,8 +65,8 @@ final class MessageProducerRequest extends ProducerRequest {
     this.destination = destination;
   }
 
-  @Override public Span.Kind spanKind() {
-    return Span.Kind.PRODUCER;
+  @Override public Kind spanKind() {
+    return Kind.PRODUCER;
   }
 
   @Override public Object unwrap() {
@@ -72,13 +83,5 @@ final class MessageProducerRequest extends ProducerRequest {
 
   @Override public String channelName() {
     return MessageParser.channelName(destination);
-  }
-
-  @Nullable String getProperty(String name) {
-    return MessagePropagation.GETTER.get(delegate, name);
-  }
-
-  void setProperty(String name, String value) {
-    MessagePropagation.SETTER.put(delegate, name, value);
   }
 }

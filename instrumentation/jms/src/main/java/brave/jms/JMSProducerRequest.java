@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,8 +16,8 @@ package brave.jms;
 import brave.Span;
 import brave.internal.Nullable;
 import brave.messaging.ProducerRequest;
-import brave.propagation.Propagation.Getter;
-import brave.propagation.Propagation.Setter;
+import brave.propagation.Propagation.RemoteGetter;
+import brave.propagation.Propagation.RemoteSetter;
 import javax.jms.Destination;
 import javax.jms.JMSProducer;
 
@@ -26,27 +26,33 @@ import static brave.jms.JmsTracing.log;
 
 // intentionally not yet public until we add tag parsing functionality
 final class JMSProducerRequest extends ProducerRequest {
-  static final Getter<JMSProducerRequest, String> GETTER =
-    new Getter<JMSProducerRequest, String>() {
-      @Override public String get(JMSProducerRequest request, String name) {
-        return request.getProperty(name);
-      }
+  static final RemoteGetter<JMSProducerRequest> GETTER = new RemoteGetter<JMSProducerRequest>() {
+    @Override public Span.Kind spanKind() {
+      return Span.Kind.PRODUCER;
+    }
 
-      @Override public String toString() {
-        return "JMSProducerProducerRequest::getProperty";
-      }
-    };
+    @Override public String get(JMSProducerRequest request, String name) {
+      return request.getStringProperty(name);
+    }
 
-  static final Setter<JMSProducerRequest, String> SETTER =
-    new Setter<JMSProducerRequest, String>() {
-      @Override public void put(JMSProducerRequest request, String name, String value) {
-        request.setProperty(name, value);
-      }
+    @Override public String toString() {
+      return "JMSProducer::getStringProperty";
+    }
+  };
 
-      @Override public String toString() {
-        return "JMSProducerProducerRequest::setProperty";
-      }
-    };
+  static final RemoteSetter<JMSProducerRequest> SETTER = new RemoteSetter<JMSProducerRequest>() {
+    @Override public Span.Kind spanKind() {
+      return Span.Kind.PRODUCER;
+    }
+
+    @Override public void put(JMSProducerRequest request, String name, String value) {
+      request.setProperty(name, value);
+    }
+
+    @Override public String toString() {
+      return "JMSProducer::setProperty";
+    }
+  };
 
   final JMSProducer delegate;
   @Nullable final Destination destination;
@@ -77,7 +83,7 @@ final class JMSProducerRequest extends ProducerRequest {
     return MessageParser.channelName(destination);
   }
 
-  @Nullable String getProperty(String name) {
+  @Nullable String getStringProperty(String name) {
     try {
       return delegate.getStringProperty(name);
     } catch (Throwable t) {

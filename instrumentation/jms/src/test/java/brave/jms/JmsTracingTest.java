@@ -33,7 +33,7 @@ import javax.jms.XATopicConnection;
 import org.apache.activemq.command.ActiveMQTextMessage;
 import org.junit.Test;
 
-import static brave.jms.MessagePropagation.SETTER;
+import static brave.jms.MessageProperties.setStringProperty;
 import static java.util.Arrays.asList;
 import static org.apache.activemq.command.ActiveMQDestination.QUEUE_TYPE;
 import static org.apache.activemq.command.ActiveMQDestination.createDestination;
@@ -194,7 +194,7 @@ public class JmsTracingTest extends ITJms {
 
   @Test public void nextSpan_prefers_b3_header() {
     TraceContext incoming = newTraceContext(SamplingFlags.NOT_SAMPLED);
-    SETTER.put(message, "b3", B3SingleFormat.writeB3SingleFormat(incoming));
+    setStringProperty(message, "b3", B3SingleFormat.writeB3SingleFormat(incoming));
 
     Span child;
     try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
@@ -213,7 +213,7 @@ public class JmsTracingTest extends ITJms {
   }
 
   @Test public void nextSpan_should_use_span_from_headers_as_parent() {
-    SETTER.put(message, "b3", "0000000000000001-0000000000000002-1");
+    setStringProperty(message, "b3", "0000000000000001-0000000000000002-1");
     Span span = jmsTracing.nextSpan(message);
 
     assertThat(span.context().parentId()).isEqualTo(2L);
@@ -238,7 +238,7 @@ public class JmsTracingTest extends ITJms {
    * now, or later when dynamic policy is added to JmsTracing
    */
   @Test public void nextSpan_shouldnt_tag_queue_when_incoming_context() {
-    SETTER.put(message, "b3", "0000000000000001-0000000000000002-1");
+    setStringProperty(message, "b3", "0000000000000001-0000000000000002-1");
     message.setDestination(createDestination("foo", QUEUE_TYPE));
     jmsTracing.nextSpan(message).start().finish();
 

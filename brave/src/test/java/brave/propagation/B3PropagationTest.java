@@ -17,9 +17,12 @@ import brave.Request;
 import brave.Span;
 import brave.internal.Platform;
 import brave.propagation.B3Propagation.Format;
+import brave.propagation.Propagation.RemoteSetter;
+import brave.propagation.TraceContext.Injector;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Stream;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -105,8 +108,8 @@ public class B3PropagationTest {
       .injectFormat(Format.SINGLE)
       .build();
 
-    assertThat(factory.injectFormats)
-      .containsExactly(Format.SINGLE);
+    assertThat(factory.injectorFactory).extracting("injectorFunction")
+      .isEqualTo(Format.SINGLE);
   }
 
   @Test public void injectKindFormat() {
@@ -114,8 +117,8 @@ public class B3PropagationTest {
       .injectFormat(Span.Kind.CLIENT, Format.SINGLE)
       .build();
 
-    assertThat(factory.kindToInjectFormats.get(Span.Kind.CLIENT))
-      .containsExactly(Format.SINGLE);
+    assertThat(factory.injectorFactory).extracting("clientInjectorFunction")
+      .isEqualTo(Format.SINGLE);
   }
 
   @Test public void injectKindFormats() {
@@ -123,7 +126,8 @@ public class B3PropagationTest {
       .injectFormats(Span.Kind.CLIENT, Format.SINGLE, Format.MULTI)
       .build();
 
-    assertThat(factory.kindToInjectFormats.get(Span.Kind.CLIENT))
+    assertThat(factory.injectorFactory).extracting("clientInjectorFunction.injectorFunctions")
+      .asInstanceOf(InstanceOfAssertFactories.ARRAY)
       .containsExactly(Format.SINGLE, Format.MULTI);
   }
 
@@ -182,9 +186,34 @@ public class B3PropagationTest {
     }
   }
 
-  @Test public void producerUsesB3SingleNoParent() {
+  @Test public void producerUsesB3SingleNoParent_deferred() {
+    // This injector won't know the type it is injecting until the call to inject()
+    Injector<ProducerRequest> injector = Propagation.B3_STRING.injector(ProducerRequest::header);
+
     ProducerRequest request = new ProducerRequest();
-    Propagation.B3_STRING.injector(ProducerRequest::header).inject(context, request);
+    injector.inject(context, request);
+
+    assertThat(request.headers)
+      .hasSize(1)
+      .containsEntry("b3", "0000000000000001-0000000000000003");
+  }
+
+  static class ProducerSetter implements RemoteSetter<ProducerRequest> {
+    @Override public Span.Kind spanKind() {
+      return Span.Kind.PRODUCER;
+    }
+
+    @Override public void put(ProducerRequest request, String fieldName, String value) {
+      request.header(fieldName, value);
+    }
+  }
+
+  @Test public void producerUsesB3SingleNoParent() {
+    // This injector needs no instanceof checks during inject()
+    Injector<ProducerRequest> injector = Propagation.B3_STRING.injector(new ProducerSetter());
+
+    ProducerRequest request = new ProducerRequest();
+    injector.inject(context, request);
 
     assertThat(request.headers)
       .hasSize(1)
@@ -332,6 +361,34 @@ public class B3PropagationTest {
       verify(platform).log("Invalid input: expected 0 or 1 for X-B3-Sampled, but found '{0}'",
         sampled, null);
     });
+  }
+
+  @Test public void build_defaultIsSingleton() {
+    assertThat(B3Propagation.newFactoryBuilder().build())
+        .isSameAs(B3Propagation.FACTORY);
+  }
+
+  @Test public void equalsAndHashCode() {
+    // same instance are equivalent
+    Propagation.Factory factory = B3Propagation.newFactoryBuilder()
+        .injectFormat(Span.Kind.CLIENT, Format.SINGLE_NO_PARENT)
+        .injectFormat(Span.Kind.SERVER, Format.SINGLE_NO_PARENT)
+        .build();
+    assertThat(factory).isEqualTo(factory);
+
+    // same formats are equivalent
+    Propagation.Factory sameFields = B3Propagation.newFactoryBuilder()
+        .injectFormat(Span.Kind.CLIENT, Format.SINGLE_NO_PARENT)
+        .injectFormat(Span.Kind.SERVER, Format.SINGLE_NO_PARENT)
+        .build();
+    assertThat(factory.equals(sameFields)).isTrue();
+    assertThat(sameFields).isEqualTo(factory);
+    assertThat(sameFields).hasSameHashCodeAs(factory);
+
+    // different formats are not equivalent
+    assertThat(factory).isNotEqualTo(B3Propagation.FACTORY);
+    assertThat(B3Propagation.FACTORY).isNotEqualTo(factory);
+    assertThat(factory.hashCode()).isNotEqualTo(B3Propagation.FACTORY.hashCode());
   }
 
   TraceContextOrSamplingFlags extract(Map<String, String> headers) {

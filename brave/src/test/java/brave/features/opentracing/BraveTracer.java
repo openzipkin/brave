@@ -13,13 +13,12 @@
  */
 package brave.features.opentracing;
 
+import brave.Span.Kind;
 import brave.Tracing;
 import brave.baggage.BaggagePropagation;
-import brave.propagation.Propagation;
-import brave.propagation.Propagation.Getter;
-import brave.propagation.Propagation.Setter;
-import brave.propagation.TraceContext;
+import brave.features.opentracing.TextMapPropagation.TextMapExtractor;
 import brave.propagation.TraceContext.Extractor;
+import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import io.opentracing.Scope;
 import io.opentracing.ScopeManager;
@@ -27,12 +26,10 @@ import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format;
-import io.opentracing.propagation.TextMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
+import io.opentracing.propagation.TextMapExtract;
+import io.opentracing.propagation.TextMapInject;
 import java.util.LinkedHashSet;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 
 final class BraveTracer implements Tracer {
@@ -43,18 +40,23 @@ final class BraveTracer implements Tracer {
 
   final Tracing tracing;
   final brave.Tracer tracer;
-  final TraceContext.Injector<TextMap> injector;
-  final Extractor<TextMap> extractor;
+  final Injector<TextMapInject> injector, clientInjector, producerInjector, consumerInjector;
+  // In OpenTracing we can't tell from the format or the carrier, which span kind the extract is for
+  final Extractor<TextMapExtract> extractor;
 
   BraveTracer(brave.Tracing tracing) {
     this.tracing = tracing;
     tracer = tracing.tracer();
-    injector = tracing.propagation().injector(TEXT_MAP_SETTER);
     Set<String> lcPropagationKeys = new LinkedHashSet<>();
     for (String keyName : BaggagePropagation.allKeyNames(tracing.propagation())) {
       lcPropagationKeys.add(keyName.toLowerCase(Locale.ROOT));
     }
-    extractor = new TextMapExtractorAdaptor(tracing.propagation(), lcPropagationKeys);
+    injector = tracing.propagation().injector(TextMapPropagation.SETTER);
+    clientInjector = tracing.propagation().injector(TextMapPropagation.REMOTE_SETTER.CLIENT);
+    producerInjector = tracing.propagation().injector(TextMapPropagation.REMOTE_SETTER.PRODUCER);
+    consumerInjector = tracing.propagation().injector(TextMapPropagation.REMOTE_SETTER.CONSUMER);
+    extractor =
+      new TextMapExtractor(tracing.propagation(), lcPropagationKeys, TextMapPropagation.GETTER);
   }
 
   @Override public ScopeManager scopeManager() {
@@ -73,72 +75,34 @@ final class BraveTracer implements Tracer {
     return new BraveSpanBuilder(tracer, operationName);
   }
 
-  @Override public <R> void inject(SpanContext spanContext, Format<R> format, R request) {
-    if (format != Format.Builtin.HTTP_HEADERS) {
-      throw new UnsupportedOperationException(format + " != Format.Builtin.HTTP_HEADERS");
+  @Override public <C> void inject(SpanContext spanContext, Format<C> format, C carrier) {
+    if (!(carrier instanceof TextMapInject)) {
+      throw new UnsupportedOperationException(carrier + " not instanceof TextMapInject");
     }
-    TraceContext traceContext = ((BraveSpanContext) spanContext).context;
-    injector.inject(traceContext, (TextMap) request);
+    BraveSpanContext braveContext = ((BraveSpanContext) spanContext);
+    Kind kind = braveContext.kind;
+    Injector<TextMapInject> injector;
+    if (Kind.CLIENT.equals(kind)) {
+      injector = clientInjector;
+    } else if (Kind.PRODUCER.equals(kind)) {
+      injector = producerInjector;
+    } else if (Kind.CONSUMER.equals(kind)) {
+      injector = consumerInjector;
+    } else {
+      injector = this.injector;
+    }
+    injector.inject(braveContext.context, (TextMapInject) carrier);
   }
 
-  @Override public <R> BraveSpanContext extract(Format<R> format, R request) {
-    if (format != Format.Builtin.HTTP_HEADERS) {
-      throw new UnsupportedOperationException(format.toString());
+  @Override public <C> BraveSpanContext extract(Format<C> format, C carrier) {
+    if (!(carrier instanceof TextMapExtract)) {
+      throw new UnsupportedOperationException(carrier + " not instanceof TextMapExtract");
     }
-    TraceContextOrSamplingFlags extractionResult = extractor.extract((TextMap) request);
+    TraceContextOrSamplingFlags extractionResult = extractor.extract((TextMapExtract) carrier);
     return BraveSpanContext.create(extractionResult);
   }
 
   @Override public void close() {
     tracing.close();
-  }
-
-  static final Setter<TextMap, String> TEXT_MAP_SETTER = new Setter<TextMap, String>() {
-    @Override public void put(TextMap request, String key, String value) {
-      request.put(key, value);
-    }
-
-    @Override public String toString() {
-      return "TextMap::put";
-    }
-  };
-
-  static final Getter<Map<String, String>, String> LC_MAP_GETTER =
-    new Getter<Map<String, String>, String>() {
-      @Override public String get(Map<String, String> request, String key) {
-        return request.get(key.toLowerCase(Locale.ROOT));
-      }
-
-      @Override public String toString() {
-        return "Map::getLowerCase";
-      }
-    };
-
-  /**
-   * Eventhough TextMap is named like Map, it doesn't have a retrieve-by-key method.
-   *
-   * <p>See https://github.com/opentracing/opentracing-java/issues/305
-   */
-  static final class TextMapExtractorAdaptor implements Extractor<TextMap> {
-    final Set<String> lcPropagationKeys;
-    final Extractor<Map<String, String>> delegate;
-
-    TextMapExtractorAdaptor(Propagation<String> propagation, Set<String> lcPropagationKeys) {
-      this.lcPropagationKeys = lcPropagationKeys;
-      this.delegate = propagation.extractor(LC_MAP_GETTER);
-    }
-
-    /** Performs case-insensitive lookup */
-    @Override public TraceContextOrSamplingFlags extract(TextMap entries) {
-      Map<String, String> cache = new LinkedHashMap<>(); // Cache only the headers we would lookup
-      for (Iterator<Map.Entry<String, String>> it = entries.iterator(); it.hasNext(); ) {
-        Map.Entry<String, String> next = it.next();
-        String inputKey = next.getKey().toLowerCase(Locale.ROOT);
-        if (lcPropagationKeys.contains(inputKey)) {
-          cache.put(inputKey, next.getValue());
-        }
-      }
-      return delegate.extract(cache);
-    }
   }
 }

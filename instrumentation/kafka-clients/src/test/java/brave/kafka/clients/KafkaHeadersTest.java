@@ -18,16 +18,32 @@ import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class KafkaConsumerRequestTest {
+public class KafkaHeadersTest {
   ConsumerRecord<String, String> record = new ConsumerRecord<>("top", 0, 1, "key", "value");
-  KafkaConsumerRequest request = new KafkaConsumerRequest(record);
 
-  @Test public void operation() {
-    assertThat(request.operation()).isEqualTo("receive");
+  @Test public void lastStringHeader() {
+    record.headers().add("b3", new byte[] {'1'});
+
+    assertThat(KafkaHeaders.lastStringHeader(record.headers(), "b3"))
+        .isEqualTo("1");
   }
 
-  @Test public void topic() {
-    assertThat(request.channelKind()).isEqualTo("topic");
-    assertThat(request.channelName()).isEqualTo(record.topic());
+  @Test public void lastStringHeader_null() {
+    assertThat(KafkaHeaders.lastStringHeader(record.headers(), "b3")).isNull();
+  }
+
+  @Test public void replaceHeader() {
+    KafkaHeaders.replaceHeader(record.headers(), "b3", "1");
+
+    assertThat(record.headers().lastHeader("b3").value())
+        .containsExactly('1');
+  }
+
+  @Test public void replaceHeader_replace() {
+    record.headers().add("b3", new byte[0]);
+    KafkaHeaders.replaceHeader(record.headers(), "b3", "1");
+
+    assertThat(record.headers().lastHeader("b3").value())
+        .containsExactly('1');
   }
 }

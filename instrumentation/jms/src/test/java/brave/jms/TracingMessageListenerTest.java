@@ -27,7 +27,7 @@ import org.junit.After;
 import org.junit.Test;
 
 import static brave.Span.Kind.CONSUMER;
-import static brave.jms.MessagePropagation.SETTER;
+import static brave.jms.MessageProperties.setStringProperty;
 import static org.apache.activemq.command.ActiveMQDestination.QUEUE_TYPE;
 import static org.apache.activemq.command.ActiveMQDestination.createDestination;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -116,7 +116,7 @@ public class TracingMessageListenerTest extends ITJms {
       new TracingMessageListener(delegate, jmsTracing, false);
 
     ActiveMQTextMessage message = new ActiveMQTextMessage();
-    SETTER.put(message, "b3", B3SingleFormat.writeB3SingleFormatWithoutParentId(parent));
+    setStringProperty(message, "b3", B3SingleFormat.writeB3SingleFormatWithoutParentId(parent));
     message.setDestination(createDestination("foo", QUEUE_TYPE));
     onMessageConsumed(message);
 
@@ -175,7 +175,7 @@ public class TracingMessageListenerTest extends ITJms {
 
   @Test public void continues_parent_trace_single_header() {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
-    SETTER.put(message, "b3", B3SingleFormat.writeB3SingleFormatWithoutParentId(parent));
+    setStringProperty(message, "b3", B3SingleFormat.writeB3SingleFormatWithoutParentId(parent));
 
     onMessageConsumed(message);
 
@@ -193,7 +193,7 @@ public class TracingMessageListenerTest extends ITJms {
       new TracingMessageListener(delegate, jmsTracing, false);
 
     ActiveMQTextMessage message = new ActiveMQTextMessage();
-    SETTER.put(message, "b3", B3SingleFormat.writeB3SingleFormatWithoutParentId(parent));
+    setStringProperty(message, "b3", B3SingleFormat.writeB3SingleFormatWithoutParentId(parent));
 
     onMessageConsumed(message);
 

@@ -14,15 +14,15 @@
 package brave.propagation;
 
 import brave.Request;
-import brave.Span;
+import brave.Span.Kind;
 import brave.internal.Platform;
+import brave.internal.propagation.InjectorFactory;
+import brave.internal.propagation.InjectorFactory.InjectorFunction;
 import brave.internal.propagation.StringPropagationAdapter;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 
 import static brave.propagation.B3SingleFormat.parseB3SingleFormat;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
@@ -35,16 +35,53 @@ import static java.util.Arrays.asList;
 // This type was never returned, but we keep the signature for historical reasons
 public abstract class B3Propagation<K> implements Propagation<K> {
   /** Describes the formats used to inject headers. */
-  public enum Format {
+  public enum Format implements InjectorFunction {
     /** The trace context is encoded with a several fields prefixed with "x-b3-". */
-    MULTI,
+    MULTI() {
+      @Override public List<String> keyNames() {
+        return MULTI_KEY_NAMES;
+      }
+
+      @Override public <R> void inject(Setter<R, String> setter, TraceContext context, R request) {
+        setter.put(request, TRACE_ID, context.traceIdString());
+        setter.put(request, SPAN_ID, context.spanIdString());
+        String parentId = context.parentIdString();
+        if (parentId != null) setter.put(request, PARENT_SPAN_ID, parentId);
+        if (context.debug()) {
+          setter.put(request, FLAGS, "1");
+        } else if (context.sampled() != null) {
+          setter.put(request, SAMPLED, context.sampled() ? "1" : "0");
+        }
+      }
+    },
     /** The trace context is encoded with {@link B3SingleFormat#writeB3SingleFormat(TraceContext)}. */
-    SINGLE,
+    SINGLE() {
+      @Override public List<String> keyNames() {
+        return SINGLE_KEY_NAMES;
+      }
+
+      @Override public <R> void inject(Setter<R, String> setter, TraceContext context, R request) {
+        setter.put(request, B3, writeB3SingleFormat(context));
+      }
+    },
     /** The trace context is encoded with {@link B3SingleFormat#writeB3SingleFormatWithoutParentId(TraceContext)}. */
-    SINGLE_NO_PARENT
+    SINGLE_NO_PARENT() {
+      @Override public List<String> keyNames() {
+        return SINGLE_KEY_NAMES;
+      }
+
+      @Override public <R> void inject(Setter<R, String> setter, TraceContext context, R request) {
+        setter.put(request, B3, writeB3SingleFormatWithoutParentId(context));
+      }
+    };
+
+    static final List<String> SINGLE_KEY_NAMES = Collections.singletonList(B3);
+    static final List<String> MULTI_KEY_NAMES = Collections.unmodifiableList(
+        asList(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, SAMPLED, FLAGS)
+    );
   }
 
-  public static final Propagation.Factory FACTORY = newFactoryBuilder().build();
+  public static final Propagation.Factory FACTORY = new B3Propagation.Factory(newFactoryBuilder());
 
   static final Propagation<String> INSTANCE = FACTORY.get();
 
@@ -66,38 +103,51 @@ public abstract class B3Propagation<K> implements Propagation<K> {
    * for messaging. Non-request spans default to {@link Format#MULTI}.
    */
   public static final class FactoryBuilder {
-    Format injectFormat = Format.MULTI;
-    final EnumMap<Span.Kind, Format[]> kindToInjectFormats = new EnumMap<>(Span.Kind.class);
+    InjectorFactory.Builder injectorFactoryBuilder = InjectorFactory.newBuilder(Format.MULTI)
+        .clientInjectorFunctions(Format.MULTI)
+        .producerInjectorFunctions(Format.SINGLE_NO_PARENT)
+        .consumerInjectorFunctions(Format.SINGLE_NO_PARENT);
 
-    FactoryBuilder() {
-      kindToInjectFormats.put(Span.Kind.CLIENT, new Format[] {Format.MULTI});
-      kindToInjectFormats.put(Span.Kind.SERVER, new Format[] {Format.MULTI});
-      kindToInjectFormats.put(Span.Kind.PRODUCER, new Format[] {Format.SINGLE_NO_PARENT});
-      kindToInjectFormats.put(Span.Kind.CONSUMER, new Format[] {Format.SINGLE_NO_PARENT});
-    }
-
-    /** Overrides the default format of {@link Format#MULTI}. */
+    /**
+     * Overrides the injection format for non-remote requests, such as message processors. Defaults
+     * to {@link Format#MULTI}.
+     */
     public FactoryBuilder injectFormat(Format format) {
       if (format == null) throw new NullPointerException("format == null");
-      injectFormat = format;
+      injectorFactoryBuilder.injectorFunctions(format);
       return this;
     }
 
-    /** Overrides the injection format used for the indicated {@link Request#spanKind() span kind}. */
-    public FactoryBuilder injectFormat(Span.Kind kind, Format format) {
+    /**
+     * Overrides the injection format used for the indicated {@link Request#spanKind() span kind}.
+     *
+     * <p><em>Note</em>: {@link Kind#SERVER} is not a valid inject format, and will be ignored.
+     */
+    public FactoryBuilder injectFormat(Kind kind, Format format) {
       if (kind == null) throw new NullPointerException("kind == null");
       if (format == null) throw new NullPointerException("format == null");
-      kindToInjectFormats.put(kind, new Format[] {format});
+      switch (kind) { // handle injectable formats
+        case CLIENT:
+          injectorFactoryBuilder.clientInjectorFunctions(format);
+          break;
+        case PRODUCER:
+          injectorFactoryBuilder.producerInjectorFunctions(format);
+          break;
+        case CONSUMER:
+          injectorFactoryBuilder.consumerInjectorFunctions(format);
+          break;
+        default: // SERVER is nonsense as it cannot be injected
+      }
       return this;
     }
 
     /**
      * Like {@link #injectFormat}, but writes two formats.
      *
-     * For example, you can set {@link Span.Kind#CLIENT} spans to inject both {@link Format#MULTI}
-     * and {@link Format#SINGLE}, for transition use cases.
+     * For example, you can set {@link Kind#CLIENT} spans to inject both {@link Format#MULTI} and
+     * {@link Format#SINGLE}, for transition use cases.
      */
-    public FactoryBuilder injectFormats(Span.Kind kind, Format format1, Format format2) {
+    public FactoryBuilder injectFormats(Kind kind, Format format1, Format format2) {
       if (kind == null) throw new NullPointerException("kind == null");
       if (format1 == null) throw new NullPointerException("format1 == null");
       if (format2 == null) throw new NullPointerException("format2 == null");
@@ -105,12 +155,28 @@ public abstract class B3Propagation<K> implements Propagation<K> {
       if (!format1.equals(Format.MULTI) && !format2.equals(Format.MULTI)) {
         throw new IllegalArgumentException("One argument must be Format.MULTI");
       }
-      kindToInjectFormats.put(kind, new Format[] {format1, format2});
+      switch (kind) { // handle injectable formats
+        case CLIENT:
+          injectorFactoryBuilder.clientInjectorFunctions(format1, format2);
+          break;
+        case PRODUCER:
+          injectorFactoryBuilder.producerInjectorFunctions(format1, format2);
+          break;
+        case CONSUMER:
+          injectorFactoryBuilder.consumerInjectorFunctions(format1, format2);
+          break;
+        default: // SERVER is nonsense as it cannot be injected
+      }
       return this;
     }
 
     public Propagation.Factory build() {
-      return new B3Propagation.Factory(this);
+      Factory result = new Factory(this);
+      if (result.equals(FACTORY)) return FACTORY;
+      return result;
+    }
+
+    FactoryBuilder() {
     }
   }
 
@@ -141,47 +207,52 @@ public abstract class B3Propagation<K> implements Propagation<K> {
    */
   static final String FLAGS = "X-B3-Flags";
 
-  static final class B3Injector<R> implements Injector<R> {
-    final Factory factory;
-    final Setter<R, String> setter;
+  static final class Factory extends Propagation.Factory implements Propagation<String> {
+    final InjectorFactory injectorFactory;
 
-    B3Injector(Factory factory, Setter<R, String> setter) {
-      this.factory = factory;
-      this.setter = setter;
+    Factory(FactoryBuilder builder) {
+      injectorFactory = builder.injectorFactoryBuilder.build();
     }
 
-    @Override public void inject(TraceContext context, R request) {
-      Format[] formats = factory.injectFormats;
-      if (request instanceof Request) {
-        Span.Kind kind = ((Request) request).spanKind();
-        formats = factory.kindToInjectFormats.get(kind);
-      }
-
-      for (Format format : formats) {
-        switch (format) {
-          case SINGLE:
-            setter.put(request, B3, writeB3SingleFormat(context));
-            break;
-          case SINGLE_NO_PARENT:
-            setter.put(request, B3, writeB3SingleFormatWithoutParentId(context));
-            break;
-          case MULTI:
-            injectMulti(context, request);
-            break;
-        }
-      }
+    @Override public List<String> keys() {
+      return injectorFactory.keyNames();
     }
 
-    void injectMulti(TraceContext context, R request) {
-      setter.put(request, TRACE_ID, context.traceIdString());
-      setter.put(request, SPAN_ID, context.spanIdString());
-      String parentId = context.parentIdString();
-      if (parentId != null) setter.put(request, PARENT_SPAN_ID, parentId);
-      if (context.debug()) {
-        setter.put(request, FLAGS, "1");
-      } else if (context.sampled() != null) {
-        setter.put(request, SAMPLED, context.sampled() ? "1" : "0");
-      }
+    @Override public Propagation<String> get() {
+      return this;
+    }
+
+    @Override public <K1> Propagation<K1> create(KeyFactory<K1> keyFactory) {
+      return StringPropagationAdapter.create(this, keyFactory);
+    }
+
+    @Override public boolean supportsJoin() {
+      return true;
+    }
+
+    @Override public <R> Injector<R> injector(Setter<R, String> setter) {
+      return injectorFactory.newInjector(setter);
+    }
+
+    @Override public <R> Extractor<R> extractor(Getter<R, String> getter) {
+      if (getter == null) throw new NullPointerException("getter == null");
+      return new B3Extractor<>(this, getter);
+    }
+
+    @Override public int hashCode() {
+      return injectorFactory.hashCode();
+    }
+
+    @Override public boolean equals(Object o) {
+      if (o == this) return true;
+      if (!(o instanceof B3Propagation.Factory)) return false;
+
+      B3Propagation.Factory that = (B3Propagation.Factory) o;
+      return injectorFactory.equals(that.injectorFactory);
+    }
+
+    @Override public String toString() {
+      return "B3Propagation";
     }
   }
 
@@ -254,70 +325,6 @@ public abstract class B3Propagation<K> implements Propagation<K> {
         return TraceContextOrSamplingFlags.create(result.build());
       }
       return TraceContextOrSamplingFlags.EMPTY; // trace context is malformed so return empty
-    }
-  }
-
-  static final class Factory extends Propagation.Factory implements Propagation<String> {
-    final List<String> keyNames;
-    final Format[] injectFormats;
-    final Map<Span.Kind, Format[]> kindToInjectFormats;
-
-    Factory(FactoryBuilder builder) {
-      this.injectFormats = new Format[] {builder.injectFormat};
-      this.kindToInjectFormats = new EnumMap<>(builder.kindToInjectFormats);
-
-      // Scan for all formats in use
-      boolean injectsMulti = builder.injectFormat.equals(Format.MULTI);
-      boolean injectsSingle = !injectsMulti;
-      for (Format[] formats : kindToInjectFormats.values()) {
-        for (Format format : formats) {
-          if (format.equals(Format.MULTI)) injectsMulti = true;
-          if (!format.equals(Format.MULTI)) injectsSingle = true;
-        }
-      }
-
-      // Convert the formats into a list of possible fields
-      if (injectsMulti && injectsSingle) {
-        this.keyNames = Collections.unmodifiableList(
-            asList(B3, TRACE_ID, SPAN_ID, PARENT_SPAN_ID, SAMPLED, FLAGS)
-        );
-      } else if (injectsMulti) {
-        this.keyNames = Collections.unmodifiableList(
-            asList(TRACE_ID, SPAN_ID, PARENT_SPAN_ID, SAMPLED, FLAGS)
-        );
-      } else {
-        this.keyNames = Collections.singletonList(B3);
-      }
-    }
-
-    @Override public List<String> keys() {
-      return keyNames;
-    }
-
-    @Override public Propagation<String> get() {
-      return this;
-    }
-
-    @Override public <K1> Propagation<K1> create(KeyFactory<K1> keyFactory) {
-      return StringPropagationAdapter.create(this, keyFactory);
-    }
-
-    @Override public boolean supportsJoin() {
-      return true;
-    }
-
-    @Override public <R> Injector<R> injector(Setter<R, String> setter) {
-      if (setter == null) throw new NullPointerException("setter == null");
-      return new B3Injector<>(this, setter);
-    }
-
-    @Override public <R> Extractor<R> extractor(Getter<R, String> getter) {
-      if (getter == null) throw new NullPointerException("getter == null");
-      return new B3Extractor<>(this, getter);
-    }
-
-    @Override public String toString() {
-      return "B3Propagation";
     }
   }
 

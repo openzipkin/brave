@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -66,7 +66,7 @@ final class BraveSpanBuilder implements Tracer.SpanBuilder {
     return withTag(key, value.toString());
   }
 
-  @Override public <T> Tracer.SpanBuilder withTag(Tag<T> tag, T t) {
+  @Override public <T> BraveSpanBuilder withTag(Tag<T> tag, T t) {
     if (t instanceof String) return withTag(tag.getKey(), (String) t);
     if (t instanceof Number) return withTag(tag.getKey(), (Number) t);
     if (t instanceof Boolean) return withTag(tag.getKey(), (Boolean) t);
@@ -79,22 +79,29 @@ final class BraveSpanBuilder implements Tracer.SpanBuilder {
   }
 
   @Override public BraveSpan start() {
-    brave.Span result;
+    brave.Span braveSpan;
     if (reference == null) {
-      result = tracer.nextSpan();
+      braveSpan = tracer.nextSpan();
     } else if (reference.context != null) {
-      result = tracer.newChild(reference.context);
+      braveSpan = tracer.newChild(reference.context);
     } else {
-      result = tracer.nextSpan(((BraveSpanContext.Incomplete) reference).extractionResult);
+      braveSpan = tracer.nextSpan(((BraveSpanContext.Incomplete) reference).extractionResult);
     }
 
-    if (operationName != null) result.name(operationName);
-    for (Map.Entry<String, String> tag : tags.entrySet()) {
-      result.tag(tag.getKey(), tag.getValue());
-    }
+    if (operationName != null) braveSpan.name(operationName);
+
     if (timestamp != 0) {
-      return new BraveSpan(result.start(timestamp));
+      braveSpan.start(timestamp);
+    } else {
+      braveSpan.start();
     }
-    return new BraveSpan(result.start());
+
+    BraveSpan opentracingSpan = new BraveSpan(braveSpan);
+
+    // Process tags late as they could have semantic mappings to Span fields
+    for (Map.Entry<String, String> tag : tags.entrySet()) {
+      opentracingSpan.setTag(tag.getKey(), tag.getValue());
+    }
+    return opentracingSpan;
   }
 }
