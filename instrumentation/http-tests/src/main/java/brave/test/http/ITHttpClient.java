@@ -35,9 +35,10 @@ import brave.test.ITRemote;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -380,14 +381,17 @@ public abstract class ITHttpClient<C> extends ITRemote {
    * tag value.
    */
   void spanHandlerSeesError(Callable<Void> get) throws IOException {
-    AtomicInteger handleCount = new AtomicInteger();
-    AtomicReference<Throwable> caughtThrowable = new AtomicReference<>();
+    ConcurrentLinkedDeque<Throwable> caughtThrowables = new ConcurrentLinkedDeque<>();
     closeClient(client);
     httpTracing = HttpTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE)
       .addSpanHandler(new SpanHandler() {
         @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
-          handleCount.incrementAndGet();
-          caughtThrowable.set(span.error());
+          Throwable error = span.error();
+          if (error != null) {
+            caughtThrowables.add(error);
+          } else {
+            caughtThrowables.add(new RuntimeException("Unexpected additional call to end"));
+          }
           return true;
         }
       })
@@ -396,10 +400,15 @@ public abstract class ITHttpClient<C> extends ITRemote {
 
     checkReportsSpanOnTransportException(get);
 
-    assertThat(handleCount)
-        .withFailMessage("Span finished multiple times")
-        .hasValue(1);
-    assertThat(caughtThrowable.get()).isNotNull();
+    assertThat(caughtThrowables)
+        .withFailMessage("Span didn't finish")
+        .isNotEmpty();
+    if (caughtThrowables.size() > 1) {
+      for (Throwable throwable : caughtThrowables) {
+        Logger.getAnonymousLogger().log(Level.SEVERE, "multiple calls to finish", throwable);
+      }
+      assertThat(caughtThrowables).hasSize(1);
+    }
   }
 
   MutableSpan checkReportsSpanOnTransportException(Callable<Void> get) {
