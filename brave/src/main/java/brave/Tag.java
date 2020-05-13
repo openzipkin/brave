@@ -13,8 +13,8 @@
  */
 package brave;
 
-import brave.handler.SpanHandler;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.internal.Nullable;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
@@ -49,11 +49,27 @@ public abstract class Tag<I> {
    * Override to change what data from the input are parsed into the span modeling it. Any
    * exceptions will be logged and ignored.
    *
+   * <p><em>Note</em>: Overrides of {@link Tags#ERROR} must return a valid value when
+   * {@param context} is {@code null}, even if that value is "" (empty string). Otherwise, error
+   * spans will not be marked as such.
+   *
    * @return The result to add as a span tag. {@code null} means no tag will be added. Note: empty
    * string is a valid tag value!
    * @since 5.11
    */
   @Nullable protected abstract String parseValue(I input, @Nullable TraceContext context);
+
+  /**
+   * Returns the value that would be tagged to the span or {@code null}.
+   *
+   * @see #key()
+   * @see #parseValue(Object, TraceContext)
+   * @since 5.12
+   */
+  @Nullable public String value(@Nullable I input, @Nullable TraceContext context) {
+    if (input == null) return null;
+    return parseValue(input, context);
+  }
 
   /** Overrides the tag key based on the input */
   protected String key(I input) {

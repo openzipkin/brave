@@ -23,10 +23,8 @@ Here are some example beans using the factories in this module:
   </bean>
 
   <!-- Configuration for how to buffer spans into messages for Zipkin -->
-  <bean id="spanReporter" class="zipkin2.reporter.beans.AsyncReporterFactoryBean">
+  <bean id="zipkinSpanHandler" class="zipkin2.reporter.beans.AsyncZipkinSpanHandlerFactoryBean">
     <property name="sender" ref="sender"/>
-    <!-- wait up to half a second for any in-flight spans on close -->
-    <property name="closeTimeout" value="500"/>
   </bean>
 
   <!-- Allows log patterns to use %{traceId} and %{spanId} -->
@@ -39,11 +37,7 @@ Here are some example beans using the factories in this module:
   <!-- Controls aspects of tracing such as the service name that shows up in the UI -->
   <bean id="tracing" class="brave.spring.beans.TracingFactoryBean">
     <property name="localServiceName" value="brave-webmvc-example"/>
-    <property name="spanHandlers">
-      <bean class="zipkin2.reporter.beans.ZipkinSpanHandlerFactoryBean">
-        <property name="spanReporter" ref="spanReporter"/>
-      </bean>
-    </property>
+    <property name="spanHandlers" ref="zipkinSpanHandler"/>
     <property name="currentTraceContext">
       <bean class="brave.spring.beans.CurrentTraceContextFactoryBean">
         <property name="scopeDecorators" ref="correlationScopeDecorator"/>

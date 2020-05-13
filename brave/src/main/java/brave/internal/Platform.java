@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -67,6 +67,12 @@ public abstract class Platform {
       log("error reading nics", e);
     }
     return null;
+  }
+
+  public AssertionError assertionError(String message, Throwable cause) {
+    AssertionError error = new AssertionError(message);
+    error.initCause(cause);
+    throw error;
   }
 
   public static Platform get() {
@@ -183,6 +189,11 @@ public abstract class Platform {
 
     @IgnoreJRERequirement @Override public long nextTraceIdHigh() {
       return nextTraceIdHigh(java.util.concurrent.ThreadLocalRandom.current().nextInt());
+    }
+
+    @IgnoreJRERequirement @Override
+    public AssertionError assertionError(String message, Throwable cause) {
+      return new AssertionError(message, cause);
     }
 
     @Override public String toString() {

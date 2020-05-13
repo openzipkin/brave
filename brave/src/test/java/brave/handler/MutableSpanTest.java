@@ -27,9 +27,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.Test;
 
+import static brave.handler.MutableSpan.normalizeIdField;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 
 public class MutableSpanTest {
@@ -63,6 +65,44 @@ public class MutableSpanTest {
     assertThat(counter.orphans).isEqualTo(2);
   }
 
+  // Similar to micrometer metrics tags
+  class Tag {
+    final String name, value;
+
+    Tag(String name, String value) {
+      this.name = name;
+      this.value = value;
+    }
+
+    @Override public boolean equals(Object o) {
+      if (!(o instanceof Tag)) return false;
+      Tag that = (Tag) o;
+      return name.equals(that.name) && value.equals(that.value);
+    }
+  }
+
+  /**
+   * This shows how {@link MutableSpan#tagKeyAt(int)} and {@link MutableSpan#tagValueAt(int)} are
+   * intended to be used
+   */
+  @Test public void tagValueAt_usageExplained() {
+    MutableSpan span = new MutableSpan();
+    span.tag("a", "1");
+    span.tag("b", "2");
+    span.tag("c", "3");
+
+    List<Tag> list = new ArrayList<>(span.tagCount());
+    for (int i = 0; i < span.tagCount(); i++) {
+      list.add(new Tag(span.tagKeyAt(i), span.tagValueAt(i)));
+    }
+
+    assertThat(list).containsExactly(
+        new Tag("a", "1"),
+        new Tag("b", "2"),
+        new Tag("c", "3")
+    );
+  }
+
   /**
    * This shows how the {@link MutableSpan#forEachTag(MutableSpan.TagConsumer, Object)}  is intended
    * to be used
@@ -72,22 +112,6 @@ public class MutableSpanTest {
     span.tag("a", "1");
     span.tag("b", "2");
     span.tag("c", "3");
-
-    // Similar to micrometer metrics tags
-    class Tag {
-      final String name, value;
-
-      Tag(String name, String value) {
-        this.name = name;
-        this.value = value;
-      }
-
-      @Override public boolean equals(Object o) {
-        if (!(o instanceof Tag)) return false;
-        Tag that = (Tag) o;
-        return name.equals(that.name) && value.equals(that.value);
-      }
-    }
 
     // When exporting into a list, a lambda would usually need to close over the list, which results
     // in a new instance per invocation. Since there's a target type parameter, the lambda for this
@@ -186,6 +210,29 @@ public class MutableSpanTest {
     );
   }
 
+  /** See {@link #tagValueAt_usageExplained()} */
+  @Test public void annotationValueAt_usageExplained() {
+    TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
+
+    MutableSpan span = new MutableSpan();
+    span.annotate(1L, "1");
+    span.annotate(2L, "2");
+    span.annotate(2L, "2-1");
+    span.annotate(3L, "3");
+
+    // Some may want to export data to their logging system under a trace ID/Timestamp
+    // While the syntax here isn't precise, it is similar to what one can do with a firehose
+    // handler which receives (context, span) inputs.
+    Logger logger = Logger.getLogger(getClass().getName());
+    for (int i = 0; i < span.annotationCount(); i++) {
+      LogRecord record = new LogRecord(Level.FINE, span.annotationValueAt(i));
+      record.setParameters(
+          new Object[] {context.traceIdString(), context.spanIdString()});
+      record.setMillis(span.annotationTimestampAt(i) / 1000L);
+      logger.log(record);
+    }
+  }
+
   /** See {@link #forEachTag_consumer_usageExplained()} */
   @Test public void forEachAnnotation_consumer_usageExplained() {
     TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
@@ -265,10 +312,10 @@ public class MutableSpanTest {
   }
 
   @Test public void isEmpty() {
-    assertThat(permutations.get(0).get().isEmpty()).isTrue();
+    assertThat(PERMUTATIONS.get(0).get().isEmpty()).isTrue();
 
-    for (int i = 1, length = permutations.size(); i < length; i++) {
-      assertThat(permutations.get(i).get().isEmpty()).isFalse();
+    for (int i = 1, length = PERMUTATIONS.size(); i < length; i++) {
+      assertThat(PERMUTATIONS.get(i).get().isEmpty()).isFalse();
     }
   }
 
@@ -322,46 +369,46 @@ public class MutableSpanTest {
   }
 
   // Not as good as property testing, but easier to see changes later when fields are added!
-  List<Supplier<MutableSpan>> permutations = asList(
+  public static List<Supplier<MutableSpan>> PERMUTATIONS = asList(
     MutableSpan::new,
     () -> {
       MutableSpan span = new MutableSpan();
-      span.traceId("a");
+      span.traceId("000000000000000a");
       return span;
     },
     () -> {
       MutableSpan span = new MutableSpan();
-      span.traceId("b");
+      span.traceId("000000000000000b");
       return span;
     },
     () -> {
       MutableSpan span = new MutableSpan();
-      span.localRootId("a");
+      span.localRootId("000000000000000a");
       return span;
     },
     () -> {
       MutableSpan span = new MutableSpan();
-      span.localRootId("b");
+      span.localRootId("000000000000000b");
       return span;
     },
     () -> {
       MutableSpan span = new MutableSpan();
-      span.parentId("a");
+      span.parentId("000000000000000a");
       return span;
     },
     () -> {
       MutableSpan span = new MutableSpan();
-      span.parentId("b");
+      span.parentId("000000000000000b");
       return span;
     },
     () -> {
       MutableSpan span = new MutableSpan();
-      span.id("a");
+      span.id("000000000000000a");
       return span;
     },
     () -> {
       MutableSpan span = new MutableSpan();
-      span.id("b");
+      span.id("000000000000000b");
       return span;
     },
     () -> {
@@ -507,7 +554,7 @@ public class MutableSpanTest {
   );
 
   @Test public void equalsAndHashCode() {
-    for (Supplier<MutableSpan> constructor : permutations) {
+    for (Supplier<MutableSpan> constructor : PERMUTATIONS) {
       // same instance are equivalent
       MutableSpan span = constructor.get();
       assertEqualWithSameHashCode(span, span);
@@ -524,7 +571,7 @@ public class MutableSpanTest {
       assertThat(copy).usingRecursiveComparison().isEqualTo(span); // double check our impl
 
       // This seems redundant, and mostly is, but the order of equals matters
-      List<Supplier<MutableSpan>> exceptMe = new ArrayList<>(permutations);
+      List<Supplier<MutableSpan>> exceptMe = new ArrayList<>(PERMUTATIONS);
       exceptMe.remove(constructor);
       for (Supplier<MutableSpan> otherConstructor : exceptMe) {
         MutableSpan other = otherConstructor.get();
@@ -536,7 +583,7 @@ public class MutableSpanTest {
   }
 
   @Test public void copyConstructor() {
-    for (Supplier<MutableSpan> constructor : permutations) {
+    for (Supplier<MutableSpan> constructor : PERMUTATIONS) {
       MutableSpan span = constructor.get();
       assertThat(span).isEqualTo(new MutableSpan(span));
     }
@@ -647,11 +694,11 @@ public class MutableSpanTest {
   }
 
   @Test public void toString_testCases() {
-    assertThat(permutations.get(0).get()).hasToString("{}");
+    assertThat(PERMUTATIONS.get(0).get()).hasToString("{}");
 
     // check for simple bugs
-    for (int i = 1, length = permutations.size(); i < length; i++) {
-      assertThat(permutations.get(i).get().toString())
+    for (int i = 1, length = PERMUTATIONS.size(); i < length; i++) {
+      assertThat(PERMUTATIONS.get(i).get().toString())
         .doesNotContain("null")
         .doesNotContain(":0");
     }
@@ -661,7 +708,7 @@ public class MutableSpanTest {
     span.traceId("1");
     span.localRootId("2"); // not in zipkin format
     span.parentId("2");
-    span.id("2");
+    span.id("3");
     span.name("get");
     span.kind(Span.Kind.CLIENT);
     span.localServiceName("frontend");
@@ -680,14 +727,14 @@ public class MutableSpanTest {
     span.forEachAnnotation((key, value) -> !value.equals("redacted") ? value : null);
     span.forEachTag((key, value) -> !key.equals("redacted") ? value : null);
 
-    assertThat(span).hasToString("{"
-      + "\"traceId\":\"1\",\"parentId\":\"2\",\"id\":\"2\","
+    assertThat(span.toString()).isEqualTo(("{"
+      + "\"traceId\":\"0000000000000001\",\"parentId\":\"0000000000000002\",\"id\":\"0000000000000003\","
       + "\"kind\":\"CLIENT\",\"name\":\"get\",\"timestamp\":1000,\"duration\":200,"
       + "\"localEndpoint\":{\"serviceName\":\"frontend\",\"ipv4\":\"127.0.0.1\"},"
       + "\"remoteEndpoint\":{\"serviceName\":\"backend\",\"ipv4\":\"192.168.99.101\",\"port\":9000},"
-      + "\"annotations\":[{\"timestamp\":1100,\"value\":\"foo}],"
+      + "\"annotations\":[{\"timestamp\":1100,\"value\":\"foo\"}],"
       + "\"tags\":{\"http.path\":\"/api\",\"clnt/finagle.version\":\"6.45.0\"}"
-      + "}");
+      + "}"));
   }
 
   @Test public void remove() {
@@ -720,5 +767,59 @@ public class MutableSpanTest {
     assertThat(span.equals(span2)).isFalse();
     assertThat(span2.equals(span)).isFalse();
     assertThat(span.hashCode()).isNotEqualTo(span2.hashCode());
+  }
+
+  /** Some tools like rsocket redundantly pass high bits as zero. */
+  @Test public void normalizeIdField_truncates64BitZeroPrefix() {
+    assertThat(normalizeIdField("traceId", "0000000000000000000000000000162e", false))
+        .isEqualTo("000000000000162e");
+  }
+
+  @Test public void normalizeIdField_padsTo64() {
+    assertThat(normalizeIdField("spanId", "162e", false))
+        .isEqualTo("000000000000162e");
+  }
+
+  @Test public void normalizeIdField_padsTo128() {
+    assertThat(normalizeIdField("traceId", "4d2000000000000162e", false))
+        .isEqualTo("00000000000004d2000000000000162e");
+  }
+
+  @Test public void normalizeIdField_badCharacters() {
+    assertThatThrownBy(() -> normalizeIdField("traceId", "000-0000000004d20000000ss000162e", false))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("traceId should be lower-hex encoded with no prefix");
+  }
+
+  @Test public void ids_nullable() {
+    MutableSpan span = new MutableSpan();
+    assertThatThrownBy(() -> span.traceId(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("traceId == null");
+    assertThatThrownBy(() -> span.traceId(""))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("traceId is empty");
+
+    assertThatThrownBy(() -> span.localRootId(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("localRootId == null");
+    assertThatThrownBy(() -> span.localRootId(""))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("localRootId is empty");
+
+    span.parentId("a");
+    span.parentId(null);
+    assertThat(span.parentId()).isNull();
+
+    span.parentId("a");
+    span.parentId("");
+    assertThat(span.parentId()).isNull();
+
+    assertThatThrownBy(() -> span.id(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("id == null");
+    assertThatThrownBy(() -> span.id(""))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("id is empty");
   }
 }

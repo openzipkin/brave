@@ -18,12 +18,15 @@ leak unfinished asynchronous spans.
 Here's an example Servlet 3+ listener
 ```java
 public class TracingServletContextListener implements ServletContextListener {
+  // Configure an async span handler, which controls how often spans are sent
+  //   (this dependency is io.zipkin.reporter2:zipkin-sender-okhttp3)
   Sender sender = OkHttpSender.create("http://127.0.0.1:9411/api/v2/spans");
-  AsyncReporter<Span> spanReporter = AsyncReporter.create(sender);
+  //   (this dependency is io.zipkin.reporter2:zipkin-reporter-brave)
+  ZipkinSpanHandler zipkinSpanHandler = AsyncZipkinSpanHandler.create(sender);
   Tracing tracing = Tracing.newBuilder()
-        .localServiceName("my-service-name")
-        .addSpanHandler(ZipkinSpanHandler.create(spanReporter))
-        .build();
+                   .localServiceName("my-service")
+                   .addSpanHandler(zipkinSpanHandler)
+                   .build();
 
   @Override
   public void contextInitialized(ServletContextEvent servletContextEvent) {
@@ -37,7 +40,7 @@ public class TracingServletContextListener implements ServletContextListener {
   public void contextDestroyed(ServletContextEvent servletContextEvent) {
     try {
       tracing.close(); // disables Tracing.current()
-      spanReporter.close(); // stops reporting thread and flushes data
+      zipkinSpanHandler.close(); // stops reporting thread and flushes data
       sender.close(); // closes any transport resources
     } catch (IOException e) {
       // do something real
@@ -66,11 +69,14 @@ that configures tracing, and add that to your web.xml.
 Here's an example implementation:
 ```java
 public class DelegatingTracingFilter implements Filter {
+  // Configure an async span handler, which controls how often spans are sent
+  //   (this dependency is io.zipkin.reporter2:zipkin-sender-okhttp3)
   Sender sender = OkHttpSender.create("http://127.0.0.1:9411/api/v2/spans");
-  AsyncReporter<Span> spanReporter = AsyncReporter.create(sender);
+  //   (this dependency is io.zipkin.reporter2:zipkin-reporter-brave)
+  ZipkinSpanHandler zipkinSpanHandler = AsyncZipkinSpanHandler.create(sender);
   Tracing tracing = Tracing.newBuilder()
         .localServiceName("my-service-name")
-        .addSpanHandler(ZipkinSpanHandler.create(spanReporter))
+        .addSpanHandler(zipkinSpanHandler)
         .build();
   Filter delegate = TracingFilter.create(tracing);
 
@@ -83,7 +89,7 @@ public class DelegatingTracingFilter implements Filter {
   @Override public void destroy() {
     try {
       tracing.close(); // disables Tracing.current()
-      spanReporter.close(); // stops reporting thread and flushes data
+      zipkinSpanHandler.close(); // stops reporting thread and flushes data
       sender.close(); // closes any transport resources
     } catch (IOException e) {
       // do something real

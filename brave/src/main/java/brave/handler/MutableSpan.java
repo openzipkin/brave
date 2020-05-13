@@ -16,6 +16,7 @@ package brave.handler;
 import brave.Span.Kind;
 import brave.SpanCustomizer;
 import brave.Tags;
+import brave.handler.MutableSpanBytesEncoder.ZipkinJsonV2;
 import brave.internal.Nullable;
 import brave.internal.codec.IpLiteral;
 import brave.internal.collect.UnsafeArrayMap;
@@ -24,10 +25,11 @@ import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
+import zipkin2.internal.Platform;
 
 import static brave.internal.InternalPropagation.FLAG_DEBUG;
 import static brave.internal.InternalPropagation.FLAG_SHARED;
-import static brave.internal.codec.JsonEscaper.jsonEscape;
+import static brave.internal.codec.JsonWriter.UTF_8;
 
 /**
  * This represents a span except for its {@link TraceContext}. It is mutable, for late adjustments.
@@ -52,7 +54,7 @@ public final class MutableSpan implements Cloneable {
 
   /** @since 5.4 */
   public interface TagConsumer<T> {
-    /** @see brave.Span#tag(String, String) */
+    /** @see brave.SpanCustomizer#tag(String, String) */
     void accept(T target, String key, String value);
   }
 
@@ -67,7 +69,7 @@ public final class MutableSpan implements Cloneable {
     /**
      * Returns the same value, an updated one, or null to drop the tag.
      *
-     * @see brave.Span#tag(String, String)
+     * @see brave.SpanCustomizer#tag(String, String)
      */
     @Nullable String update(String key, String value);
   }
@@ -118,10 +120,11 @@ public final class MutableSpan implements Cloneable {
   public MutableSpan(TraceContext context, @Nullable MutableSpan defaults) {
     this(defaults != null ? defaults : EMPTY);
     if (context == null) throw new NullPointerException("context == null");
-    traceId(context.traceIdString());
-    localRootId(context.localRootIdString());
-    parentId(context.parentIdString());
-    id(context.spanIdString());
+    // We don't call the setters as context.*IdString are well formed
+    this.traceId = context.traceIdString();
+    this.localRootId = context.localRootIdString();
+    this.parentId = context.parentIdString();
+    this.id = context.spanIdString();
     flags = 0; // don't inherit flags from the span
     if (context.debug()) setDebug();
     if (context.shared()) setShared();
@@ -177,9 +180,7 @@ public final class MutableSpan implements Cloneable {
    * @see #traceId()
    */
   public void traceId(String traceId) {
-    if (traceId == null) throw new NullPointerException("traceId == null");
-    if (traceId.isEmpty()) throw new NullPointerException("traceId is empty");
-    this.traceId = traceId;
+    this.traceId = normalizeIdField("traceId", traceId, false);
   }
 
   /**
@@ -196,8 +197,8 @@ public final class MutableSpan implements Cloneable {
    *
    * @see #localRootId()
    */
-  public void localRootId(@Nullable String localRootId) {
-    this.localRootId = localRootId == null || localRootId.isEmpty() ? null : localRootId;
+  public void localRootId(String localRootId) {
+    this.localRootId = normalizeIdField("localRootId", localRootId, false);
   }
 
   /**
@@ -215,7 +216,7 @@ public final class MutableSpan implements Cloneable {
    * @see #parentId()
    */
   public void parentId(@Nullable String parentId) {
-    this.parentId = parentId == null || parentId.isEmpty() ? null : parentId;
+    this.parentId = normalizeIdField("parentId", parentId, true);
   }
 
   /**
@@ -233,9 +234,7 @@ public final class MutableSpan implements Cloneable {
    * @see #id()
    */
   public void id(String id) {
-    if (id == null) throw new NullPointerException("id == null");
-    if (id.isEmpty()) throw new NullPointerException("id is empty");
-    this.id = id;
+    this.id = normalizeIdField("id", id, false);
   }
 
   /**
@@ -529,9 +528,43 @@ public final class MutableSpan implements Cloneable {
     flags |= FLAG_SHARED;
   }
 
-  /** @since 5.12 */
+  /**
+   * @see #annotationTimestampAt(int)
+   * @see #annotationValueAt(int)
+   * @since 5.12
+   */
   public int annotationCount() {
     return annotationCount;
+  }
+
+  /**
+   * Returns the epoch microseconds of the annotation at the given {@code index} or throws {@link
+   * IndexOutOfBoundsException} if the index is invalid.
+   *
+   * @see #annotationCount()
+   * @see #annotationValueAt(int)
+   * @see brave.Span#annotate(long, String)
+   */
+  public long annotationTimestampAt(int i) {
+    // IndexOutOfBoundsException(i) is Java 9+
+    if (i < 0) throw new IndexOutOfBoundsException("i < 0");
+    if (i >= annotationCount) throw new IndexOutOfBoundsException("i >= annotationCount");
+    return (long) annotations[i * 2];
+  }
+
+  /**
+   * Returns the possibly empty value of the annotation at the given {@code index} or throws {@link
+   * IndexOutOfBoundsException} if the index is invalid.
+   *
+   * @see #annotationCount()
+   * @see #annotationTimestampAt(int)
+   * @see brave.Span#annotate(long, String)
+   */
+  public String annotationValueAt(int i) {
+    // IndexOutOfBoundsException(i) is Java 9+
+    if (i < 0) throw new IndexOutOfBoundsException("i < 0");
+    if (i >= annotationCount) throw new IndexOutOfBoundsException("i >= annotationCount");
+    return (String) annotations[i * 2 + 1];
   }
 
   /**
@@ -631,9 +664,43 @@ public final class MutableSpan implements Cloneable {
     annotationCount++;
   }
 
-  /** @since 5.12 */
+  /**
+   * @see #tagKeyAt(int)
+   * @see #tagValueAt(int)
+   * @since 5.12
+   */
   public int tagCount() {
     return tagCount;
+  }
+
+  /**
+   * Returns the tag key at the given {@code index} or throws {@link IndexOutOfBoundsException} if
+   * the index is invalid.
+   *
+   * @see #tagCount()
+   * @see #tagValueAt(int)
+   * @see brave.SpanCustomizer#tag(String, String)
+   */
+  public String tagKeyAt(int i) {
+    // IndexOutOfBoundsException(i) is Java 9+
+    if (i < 0) throw new IndexOutOfBoundsException("i < 0");
+    if (i >= tagCount) throw new IndexOutOfBoundsException("i >= tagCount");
+    return (String) tags[i * 2];
+  }
+
+  /**
+   * Returns the possibly empty value at the given {@code index} or throws {@link
+   * IndexOutOfBoundsException} if the index is invalid.
+   *
+   * @see #tagCount()
+   * @see #tagKeyAt(int)
+   * @see brave.SpanCustomizer#tag(String, String)
+   */
+  public String tagValueAt(int i) {
+    // IndexOutOfBoundsException(i) is Java 9+
+    if (i < 0) throw new IndexOutOfBoundsException("i < 0");
+    if (i >= tagCount) throw new IndexOutOfBoundsException("i >= tagCount");
+    return (String) tags[i * 2 + 1];
   }
 
   /**
@@ -761,6 +828,12 @@ public final class MutableSpan implements Cloneable {
     tagCount++;
   }
 
+  static final ZipkinJsonV2 JSON_ENCODER = new ZipkinJsonV2(Tags.ERROR);
+
+  @Override public String toString() {
+    return new String(JSON_ENCODER.encode(this), UTF_8);
+  }
+
   @Override public int hashCode() {
     int h = 1000003; // mutable! cannot cache hashCode
     h ^= traceId == null ? 0 : traceId.hashCode();
@@ -828,131 +901,6 @@ public final class MutableSpan implements Cloneable {
         && equal(error, that.error);
   }
 
-  /** Writes this span in Zipkin V2 format */
-  // Ported from zipkin2.internal.V2SpanWriter and may eventually move to a separate codec type
-  @Override public String toString() {
-    StringBuilder b = new StringBuilder();
-    if (traceId != null) {
-      b.append("\"traceId\":\"");
-      b.append(traceId);
-      b.append('"');
-    }
-    if (parentId != null) {
-      b.append(",\"parentId\":\"");
-      b.append(parentId);
-      b.append('"');
-    }
-    if (id != null) {
-      b.append(",\"id\":\"");
-      b.append(id);
-      b.append('"');
-    }
-    if (kind != null) {
-      b.append(",\"kind\":\"");
-      b.append(kind.toString());
-      b.append('"');
-    }
-    if (name != null) {
-      b.append(",\"name\":\"");
-      jsonEscape(name, b);
-      b.append('"');
-    }
-    if (startTimestamp != 0L) {
-      b.append(",\"timestamp\":");
-      b.append(startTimestamp);
-      if (finishTimestamp != 0L) {
-        b.append(",\"duration\":");
-        b.append(finishTimestamp - startTimestamp);
-      }
-    }
-    if (localServiceName != null || localIp != null) {
-      b.append(",\"localEndpoint\":");
-      writeEndpoint(b, localServiceName, localIp, localPort);
-    }
-    if (remoteServiceName != null || remoteIp != null) {
-      b.append(",\"remoteEndpoint\":");
-      writeEndpoint(b, remoteServiceName, remoteIp, remotePort);
-    }
-    if (annotationCount > 0) {
-      b.append(",\"annotations\":");
-      b.append('[');
-      for (int i = 0, length = annotationCount * 2; i < length; ) {
-        b.append("{\"timestamp\":");
-        b.append(annotations[i]);
-        b.append(",\"value\":\"");
-        jsonEscape(annotations[i + 1].toString(), b);
-        b.append('}');
-        i += 2;
-        if (i < length) b.append(',');
-      }
-      b.append(']');
-    }
-    if (tagCount > 0 || error != null) {
-      b.append(",\"tags\":{");
-      boolean wroteError = false;
-      for (int i = 0, length = tagCount * 2; i < length; ) {
-        String key = (String) tags[i];
-        if (key.equals("error")) wroteError = true;
-        writeKeyValue(b, key, (String) tags[i + 1]);
-        i += 2;
-        if (i < length) b.append(',');
-      }
-      if (error != null && !wroteError) {
-        if (tagCount > 0) b.append(',');
-        MutableSpan errorCatcher = new MutableSpan();
-        Tags.ERROR.tag(error, null, errorCatcher);
-        writeKeyValue(b, "error", errorCatcher.tag("error"));
-      }
-      b.append('}');
-    }
-    if (debug()) b.append(",\"debug\":true");
-    if (shared()) b.append(",\"shared\":true");
-    b.append('}');
-    if (b.charAt(0) == ',') {
-      b.setCharAt(0, '{');
-    } else {
-      b.insert(0, '{');
-    }
-    return b.toString();
-  }
-
-  void writeKeyValue(StringBuilder b, String key, String value) {
-    b.append('"');
-    jsonEscape(key, b);
-    b.append("\":\"");
-    jsonEscape(value, b);
-    b.append('"');
-  }
-
-  static void writeEndpoint(StringBuilder b,
-      @Nullable String serviceName, @Nullable String ip, int port) {
-    b.append('{');
-    boolean wroteField = false;
-    if (serviceName != null) {
-      b.append("\"serviceName\":\"");
-      jsonEscape(serviceName, b);
-      b.append('"');
-      wroteField = true;
-    }
-    if (ip != null) {
-      if (wroteField) b.append(',');
-      if (IpLiteral.detectFamily(ip) == IpLiteral.IpFamily.IPv4) {
-        b.append("\"ipv4\":\"");
-      } else {
-        b.append("\"ipv6\":\"");
-      }
-      b.append(ip);
-      b.append('"');
-      wroteField = true;
-    }
-    if (port != 0) {
-      if (wroteField) b.append(',');
-      b.append("\"port\":");
-      b.append(port);
-    }
-    b.append('}');
-  }
-
   static Object[] add(Object[] input, int i, Object key, Object value) {
     Object[] result;
     if (i == input.length) {
@@ -971,7 +919,7 @@ public final class MutableSpan implements Cloneable {
     input[i + 1] = value;
   }
 
-  // This shifts and backfills nulls so that we don't thrash copying arrays
+  // This shifts and back-fills nulls so that we don't thrash copying arrays
   // when deleting. UnsafeArray will still work as it skips on first null key.
   static void remove(Object[] input, int i) {
     int j = i + 2;
@@ -1002,6 +950,64 @@ public final class MutableSpan implements Cloneable {
       h *= 1000003;
     }
     return h;
+  }
+
+  @Nullable static String normalizeIdField(String field, @Nullable String id, boolean isNullable) {
+    if (id == null) {
+      if (isNullable) return null;
+      throw new NullPointerException(field + " == null");
+    }
+    int length = id.length();
+    if (length == 0) {
+      if (isNullable) return null;
+      throw new IllegalArgumentException(field + " is empty");
+    }
+    int desiredLength = field.equals("traceId") && length > 16 ? 32 : 16;
+    int existingPadding = validateHexAndReturnPadding(field, id, desiredLength);
+    if (desiredLength == 32 && existingPadding >= 16) { // overly padded traceId
+      return id.substring(16);
+    }
+    return length == desiredLength ? id : padLeft(id, desiredLength, existingPadding);
+  }
+
+  static int validateHexAndReturnPadding(String field, String value, int desiredLength) {
+    int length = value.length(), zeroPrefix = 0;
+    if (length > desiredLength) {
+      throw new IllegalArgumentException(field + ".length > " + desiredLength);
+    }
+    boolean inZeroPrefix = value.charAt(0) == '0';
+    for (int i = 0; i < length; i++) {
+      char c = value.charAt(i);
+      if ((c < '0' || c > '9') && (c < 'a' || c > 'f')) {
+        throw new IllegalArgumentException(field + " should be lower-hex encoded with no prefix");
+      }
+      if (c != '0') {
+        inZeroPrefix = false;
+      } else if (inZeroPrefix) {
+        zeroPrefix++;
+      }
+    }
+    if (zeroPrefix == length) throw new IllegalArgumentException(field + " is all zeros");
+    return zeroPrefix;
+  }
+
+  static final String THIRTY_TWO_ZEROS;
+
+  static {
+    char[] zeros = new char[32];
+    Arrays.fill(zeros, '0');
+    THIRTY_TWO_ZEROS = new String(zeros);
+  }
+
+  static String padLeft(String id, int desiredLength, int existingPadding) {
+    int length = id.length();
+    int remainingPadding = desiredLength < length ? 0 : desiredLength - length - existingPadding;
+
+    char[] data = Platform.shortStringBuffer();
+    THIRTY_TWO_ZEROS.getChars(0, desiredLength, data, 0);
+    id.getChars(existingPadding, length - existingPadding, data, remainingPadding);
+
+    return new String(data, 0, desiredLength);
   }
 
   static boolean equal(@Nullable Object a, @Nullable Object b) {
