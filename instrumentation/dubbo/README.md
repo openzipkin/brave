@@ -46,7 +46,6 @@ import brave.Tracing;
 import brave.rpc.RpcTracing;
 import brave.rpc.RpcRuleSampler;
 import org.apache.dubbo.common.extension.ExtensionFactory;
-import zipkin2.reporter.brave.ZipkinSpanHandler;
 import zipkin2.reporter.AsyncReporter;
 import zipkin2.reporter.brave.ZipkinSpanHandler;
 import brave.Span;
@@ -73,12 +72,14 @@ public class TracingExtensionFactory implements ExtensionFactory {
   Tracing tracing() {
     return Tracing.newBuilder()
                   .localServiceName("my-service")
-                  .addSpanHandler(ZipkinSpanHandler.create(spanReporter()))
+                  .addSpanHandler(spanHandler())
                   .build();
   }
 
-  // NOTE: The reporter should be closed with a shutdown hook
-  AsyncReporter<Span> spanReporter() {
+  // NOTE: When async, the spanHandler should be closed with a shutdown hook
+  ZipkinSpanHandler spanHandler() {
+    //   (this dependency is io.zipkin.reporter2:zipkin-reporter-brave)
+    return ZipkinSpanHandler.create(AsyncReporter.builder(sender()));
 --snip--
 ```
 

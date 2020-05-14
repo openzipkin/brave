@@ -21,14 +21,13 @@ HTTP (as opposed to Kafka).
 // Configure a reporter, which controls how often spans are sent
 //   (this dependency is io.zipkin.reporter2:zipkin-sender-okhttp3)
 sender = OkHttpSender.create("http://127.0.0.1:9411/api/v2/spans");
-spanReporter = AsyncReporter.create(sender);
 //   (this dependency is io.zipkin.reporter2:zipkin-reporter-brave)
-zipkinHandler = ZipkinSpanHandler.create(reporter)
+zipkinSpanHandler = AsyncZipkinSpanHandler.create(sender);
 
 // Create a tracing component with the service name you want to see in Zipkin.
 tracing = Tracing.newBuilder()
                  .localServiceName("my-service")
-                 .addSpanHandler(ZipkinSpanHandler.create(reporter))
+                 .addSpanHandler(zipkinSpanHandler)
                  .build();
 
 // Tracing exposes objects you might need, most importantly the tracer
@@ -38,7 +37,7 @@ tracer = tracing.tracer();
 // longer needed, close the components you made in reverse order. This might be
 // a shutdown hook for some users.
 tracing.close();
-spanReporter.close();
+zipkinSpanHandler.close();
 sender.close();
 ```
 
@@ -49,8 +48,8 @@ Zipkin v1 format. See [zipkin-reporter](https://github.com/openzipkin/zipkin-rep
 ```java
 sender = URLConnectionSender.create("http://localhost:9411/api/v1/spans");
 reporter = AsyncReporter.builder(sender)
-                        .build(SpanBytesEncoder.JSON_V1);
-zipkinHandler = ZipkinSpanHandler.create(reporter)
+                        .build(SpanBytesEncoder.JSON_V1); // don't forget to close!
+zipkinSpanHandler = ZipkinSpanHandler.create(reporter)
 ```
 
 ## Tracing

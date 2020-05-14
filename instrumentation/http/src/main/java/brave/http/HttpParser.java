@@ -15,6 +15,7 @@ package brave.http;
 
 import brave.ErrorParser;
 import brave.SpanCustomizer;
+import brave.Tag;
 import brave.internal.Nullable;
 
 import static brave.http.HttpResponseParser.Default.catchAllName;
@@ -25,7 +26,7 @@ import static brave.http.HttpResponseParser.Default.catchAllName;
 
   /**
    * @deprecated This is only used in Zipkin reporting. Since 5.12, use {@link
-   * zipkin2.reporter.brave.ZipkinSpanHandler.Builder#errorParser(ErrorParser)}
+   * zipkin2.reporter.brave.ZipkinSpanHandler.Builder#errorTag(Tag)}
    */
   protected ErrorParser errorParser() {
     return ERROR_PARSER;

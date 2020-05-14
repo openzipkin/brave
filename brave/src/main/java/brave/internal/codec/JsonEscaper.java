@@ -15,7 +15,25 @@ package brave.internal.codec;
 
 // Initially, a copy of zipkin2.internal.JsonEscaper
 public final class JsonEscaper {
-  public static void jsonEscape(CharSequence in, StringBuilder out) {
+  public static int jsonEscapedSizeInBytes(CharSequence v) {
+    boolean ascii = true;
+    int escapingOverhead = 0;
+    for (int i = 0, length = v.length(); i < length; i++) {
+      char c = v.charAt(i);
+      if (c == '\u2028' || c == '\u2029') {
+        escapingOverhead += 5;
+      } else if (c >= 0x80) {
+        ascii = false;
+      } else {
+        String maybeReplacement = REPLACEMENT_CHARS[c];
+        if (maybeReplacement != null) escapingOverhead += maybeReplacement.length() - 1;
+      }
+    }
+    if (ascii) return v.length() + escapingOverhead;
+    return WriteBuffer.utf8SizeInBytes(v) + escapingOverhead;
+  }
+
+  public static void jsonEscape(CharSequence in, WriteBuffer out) {
     int length = in.length();
     if (length == 0) return;
 
@@ -34,14 +52,14 @@ public final class JsonEscaper {
         continue;
       }
       if (afterReplacement < i) { // write characters between the last replacement and now
-        out.append(in, afterReplacement, i);
+        out.writeUtf8(in, afterReplacement, i);
       }
-      out.append(replacement);
+      out.writeUtf8(replacement, 0, replacement.length());
       afterReplacement = i + 1;
     }
 
     if (afterReplacement < length) {
-      out.append(in, afterReplacement, length);
+      out.writeUtf8(in, afterReplacement, length);
     }
   }
 

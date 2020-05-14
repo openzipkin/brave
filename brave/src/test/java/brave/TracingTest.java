@@ -36,6 +36,9 @@ import static org.mockito.Mockito.when;
 
 public class TracingTest {
   TestSpanHandler spans = new TestSpanHandler();
+  @Test public void test(){
+    System.err.println("\u2029".getBytes().length);
+  }
 
   /**
    * This behavior could be problematic as downstream services may report spans based on propagated

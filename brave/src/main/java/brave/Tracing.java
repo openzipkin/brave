@@ -245,8 +245,17 @@ public abstract class Tracing implements Closeable {
      *
      * <p>For example, here's how to batch send spans via HTTP to a Zipkin-compatible endpoint:
      * <pre>{@code
-     * spanReporter = AsyncReporter.create(URLConnectionSender.create("http://localhost:9411/api/v2/spans"));
-     * tracingBuilder.addSpanHandler(ZipkinSpanHandler.create(spanReporter));
+     * // Configure a reporter, which controls how often spans are sent
+     * //   (this dependency is io.zipkin.reporter2:zipkin-sender-okhttp3)
+     * sender = OkHttpSender.create("http://127.0.0.1:9411/api/v2/spans");
+     * //   (this dependency is io.zipkin.reporter2:zipkin-reporter-brave)
+     * zipkinSpanHandler = AsyncZipkinSpanHandler.create(sender); // don't forget to close!
+     *
+     * // Create a tracing component with the service name you want to see in Zipkin.
+     * tracing = Tracing.newBuilder()
+     *                  .localServiceName("my-service")
+     *                  .addSpanHandler(zipkinSpanHandler)
+     *                  .build();
      * }</pre>
      *
      * @see #addSpanHandler(SpanHandler)

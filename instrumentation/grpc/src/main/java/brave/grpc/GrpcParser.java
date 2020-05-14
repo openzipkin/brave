@@ -16,6 +16,7 @@ package brave.grpc;
 import brave.ErrorParser;
 import brave.Span;
 import brave.SpanCustomizer;
+import brave.Tag;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import brave.rpc.RpcResponse;
@@ -49,7 +50,7 @@ public class GrpcParser extends MessageProcessor implements RpcResponseParser {
 
   /**
    * @deprecated This is only used in Zipkin reporting. Since 5.12, use {@link
-   * zipkin2.reporter.brave.ZipkinSpanHandler.Builder#errorParser(ErrorParser)}
+   * zipkin2.reporter.brave.ZipkinSpanHandler.Builder#errorTag(Tag)}
    */
   @Deprecated protected ErrorParser errorParser() {
     return ERROR_PARSER;
