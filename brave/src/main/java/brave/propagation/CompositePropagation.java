@@ -123,12 +123,53 @@ public class CompositePropagation<K> implements Propagation<K> {
       injectAll = builder.injectAll;
     }
 
+    @Override
+    public boolean supportsJoin() {
+      for (Propagation.Factory factory : propagationFactories) {
+        if (!factory.supportsJoin()) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    @Override
+    public boolean requires128BitTraceId() {
+      for (Propagation.Factory factory : propagationFactories) {
+        if (factory.requires128BitTraceId()) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    /**
+     * @deprecated Since 5.12, use {@link #get()}
+     */
+    @Deprecated
     @Override public <K> Propagation<K> create(KeyFactory<K> keyFactory) {
       List<Propagation<K>> propagations = new ArrayList<>();
       for (Propagation.Factory factory : propagationFactories) {
         propagations.add(factory.create(keyFactory));
       }
       return new CompositePropagation<>(propagations, injectAll);
+    }
+
+    @Override
+    public Propagation<String> get() {
+      List<Propagation<String>> propagations = new ArrayList<>();
+      for (Propagation.Factory factory : propagationFactories) {
+        propagations.add(factory.get());
+      }
+      return new CompositePropagation<>(propagations, injectAll);
+    }
+
+    @Override
+    public TraceContext decorate(TraceContext context) {
+      for (Propagation.Factory factory : propagationFactories) {
+        context = factory.decorate(context);
+      }
+      return context;
     }
 
     @Override public String toString() {

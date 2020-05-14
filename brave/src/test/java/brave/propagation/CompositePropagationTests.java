@@ -41,12 +41,48 @@ public class CompositePropagationTests {
     FIELDS2.put("c", "4");
   }
 
+  @Test public void testFactorySupportsJoin() {
+    Propagation.Factory factory = CompositePropagation.newFactoryBuilder()
+      .addPropagationFactory(new MockFactory() {
+        @Override
+        public boolean supportsJoin() {
+          return false;
+        }
+      })
+      .addPropagationFactory(new MockFactory() {
+        @Override
+        public boolean supportsJoin() {
+          return true;
+        }
+      })
+      .build();
+    assertThat(factory.supportsJoin()).isFalse(); // should be logical and
+  }
+
+  @Test public void testFactoryRequires128BitTraceId() {
+    Propagation.Factory factory = CompositePropagation.newFactoryBuilder()
+      .addPropagationFactory(new MockFactory() {
+        @Override
+        public boolean requires128BitTraceId() {
+          return false;
+        }
+      })
+      .addPropagationFactory(new MockFactory() {
+        @Override
+        public boolean requires128BitTraceId() {
+          return true;
+        }
+      })
+      .build();
+    assertThat(factory.requires128BitTraceId()).isTrue(); // should be logical or
+  }
+
   @Test public void testKeys() {
     Propagation<String> propagation = CompositePropagation.newFactoryBuilder()
       .addPropagationFactory(MapInjectingPropagation.newFactory(FIELDS1))
       .addPropagationFactory(MapInjectingPropagation.newFactory(FIELDS2))
       .build()
-      .create(Propagation.KeyFactory.STRING);
+      .get();
     assertThat(propagation.keys()).containsExactly("a", "b", "c");
   }
 
@@ -55,7 +91,7 @@ public class CompositePropagationTests {
       .addPropagationFactory(MapInjectingPropagation.newFactory(FIELDS1))
       .addPropagationFactory(MapInjectingPropagation.newFactory(FIELDS2))
       .build()
-      .create(Propagation.KeyFactory.STRING);
+      .get();
     Map<String, String> carrier = new HashMap<>();
     propagation.injector(SETTER).inject(TRACE_CONTEXT, carrier);
     assertThat(carrier).contains(
@@ -71,7 +107,7 @@ public class CompositePropagationTests {
       .addPropagationFactory(MapInjectingPropagation.newFactory(FIELDS2))
       .injectAll(false)
       .build()
-      .create(Propagation.KeyFactory.STRING);
+      .get();
     Map<String, String> carrier = new HashMap<>();
     propagation.injector(SETTER).inject(TRACE_CONTEXT, carrier);
     assertThat(carrier).contains(
@@ -85,13 +121,13 @@ public class CompositePropagationTests {
       .addPropagationFactory(FieldExtractingPropagation.newFactory("a"))
       .addPropagationFactory(FieldExtractingPropagation.newFactory("b"))
       .build()
-      .create(Propagation.KeyFactory.STRING)
+      .get()
       .extractor(GETTER);
     TraceContext.Extractor<Map<String, String>> extractor2 = CompositePropagation.newFactoryBuilder()
       .addPropagationFactory(FieldExtractingPropagation.newFactory("b"))
       .addPropagationFactory(FieldExtractingPropagation.newFactory("a"))
       .build()
-      .create(Propagation.KeyFactory.STRING)
+      .get()
       .extractor(GETTER);
 
     Map<String, String> carrier = new HashMap<>();
@@ -119,10 +155,16 @@ class MapInjectingPropagation implements Propagation<String> {
 
   static Factory newFactory(Map<String, String> fields) {
     return new Factory() {
+      @Deprecated
       @Override
       public <K> Propagation<K> create(KeyFactory<K> keyFactory) {
         // noinspection unchecked
-        return (Propagation<K>) new MapInjectingPropagation(fields);
+        return (Propagation<K>) get();
+      }
+
+      @Override
+      public Propagation<String> get() {
+        return new MapInjectingPropagation(fields);
       }
     };
   }
@@ -149,10 +191,16 @@ class FieldExtractingPropagation implements Propagation<String> {
 
   static Factory newFactory(String key) {
     return new Factory() {
+      @Deprecated
       @Override
       public <K> Propagation<K> create(KeyFactory<K> keyFactory) {
         // noinspection unchecked
-        return (Propagation<K>) new FieldExtractingPropagation(key);
+        return (Propagation<K>) get();
+      }
+
+      @Override
+      public Propagation<String> get() {
+        return new FieldExtractingPropagation(key);
       }
     };
   }
@@ -177,5 +225,18 @@ class FieldExtractingPropagation implements Propagation<String> {
               .spanId(value)
               .build());
     };
+  }
+}
+
+class MockFactory extends Propagation.Factory {
+  @Deprecated
+  @Override
+  public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
+    return null;
+  }
+
+  @Override
+  public Propagation<String> get() {
+    return null;
   }
 }
