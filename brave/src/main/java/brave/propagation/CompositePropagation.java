@@ -40,13 +40,13 @@ public class CompositePropagation<K> implements Propagation<K> {
     boolean injectAll = true;
     final List<Propagation.Factory> propagationFactories = new ArrayList<>();
 
-    public FactoryBuilder addPropagationFactory(final Propagation.Factory propagationFactory) {
+    public FactoryBuilder addPropagationFactory(Propagation.Factory propagationFactory) {
       if (propagationFactory == null) throw new NullPointerException("propagationFactory == null");
       propagationFactories.add(propagationFactory);
       return this;
     }
 
-    public FactoryBuilder addAllPropagationFactories(final Collection<Propagation.Factory> propagationFactories) {
+    public FactoryBuilder addAllPropagationFactories(Collection<Propagation.Factory> propagationFactories) {
       if (propagationFactories == null) throw new NullPointerException("propagationFactories == null");
       this.propagationFactories.addAll(propagationFactories);
       return this;
@@ -57,7 +57,7 @@ public class CompositePropagation<K> implements Propagation<K> {
       return this;
     }
 
-    public FactoryBuilder injectAll(final boolean injectAll) {
+    public FactoryBuilder injectAll(boolean injectAll) {
       this.injectAll = injectAll;
       return this;
     }
@@ -67,15 +67,15 @@ public class CompositePropagation<K> implements Propagation<K> {
     }
   }
 
-  private final List<Propagation<K>> propagations;
-  private final List<K> keys;
-  private final boolean injectAll;
+  final List<Propagation<K>> propagations;
+  final List<K> keys;
+  final boolean injectAll;
 
-  CompositePropagation(final List<Propagation<K>> propagations, final boolean injectAll) {
+  CompositePropagation(List<Propagation<K>> propagations, boolean injectAll) {
     this.propagations = propagations;
     this.injectAll = injectAll;
-    final Set<K> keySet = new LinkedHashSet<>();
-    for (final Propagation<K> propagation : propagations) {
+    Set<K> keySet = new LinkedHashSet<>();
+    for (Propagation<K> propagation : propagations) {
       keySet.addAll(propagation.keys());
     }
     keys = new ArrayList<>(keySet);
@@ -85,11 +85,11 @@ public class CompositePropagation<K> implements Propagation<K> {
     return keys;
   }
 
-  @Override public <C> TraceContext.Injector<C> injector(final Setter<C, K> setter) {
+  @Override public <C> TraceContext.Injector<C> injector(Setter<C, K> setter) {
     return new TraceContext.Injector<C>() {
       @Override
-      public void inject(final TraceContext traceContext, final C carrier) {
-        for (final Propagation<K> propagation : propagations) {
+      public void inject(TraceContext traceContext, C carrier) {
+        for (Propagation<K> propagation : propagations) {
           propagation.injector(setter).inject(traceContext, carrier);
           if (!injectAll) {
             break;
@@ -99,12 +99,12 @@ public class CompositePropagation<K> implements Propagation<K> {
     };
   }
 
-  @Override public <C> TraceContext.Extractor<C> extractor(final Getter<C, K> getter) {
+  @Override public <C> TraceContext.Extractor<C> extractor(Getter<C, K> getter) {
     return new TraceContext.Extractor<C>() {
       @Override
-      public TraceContextOrSamplingFlags extract(final C carrier) {
-        for (final Propagation<K> propagation : propagations) {
-          final TraceContextOrSamplingFlags result = propagation.extractor(getter).extract(carrier);
+      public TraceContextOrSamplingFlags extract(C carrier) {
+        for (Propagation<K> propagation : propagations) {
+          TraceContextOrSamplingFlags result = propagation.extractor(getter).extract(carrier);
           if (SamplingFlags.EMPTY != result.samplingFlags()) {
             return result;
           }
@@ -115,24 +115,24 @@ public class CompositePropagation<K> implements Propagation<K> {
   }
 
   static final class Factory extends Propagation.Factory {
-    private final List<Propagation.Factory> propagationFactories;
-    private final boolean injectAll;
+    final List<Propagation.Factory> propagationFactories;
+    final boolean injectAll;
 
-    Factory(final FactoryBuilder builder) {
+    Factory(FactoryBuilder builder) {
       propagationFactories = new ArrayList<>(builder.propagationFactories);
       injectAll = builder.injectAll;
     }
 
-    @Override public <K> Propagation<K> create(final KeyFactory<K> keyFactory) {
-      final List<Propagation<K>> propagations = new ArrayList<>();
-      for (final Propagation.Factory factory : propagationFactories) {
+    @Override public <K> Propagation<K> create(KeyFactory<K> keyFactory) {
+      List<Propagation<K>> propagations = new ArrayList<>();
+      for (Propagation.Factory factory : propagationFactories) {
         propagations.add(factory.create(keyFactory));
       }
       return new CompositePropagation<>(propagations, injectAll);
     }
 
     @Override public String toString() {
-      final StringBuilder stringBuilder = new StringBuilder("CompositePropagationFactory{inject");
+      StringBuilder stringBuilder = new StringBuilder("CompositePropagationFactory{inject");
       stringBuilder.append(injectAll ? "All" : "First").append(':');
       for (int i = 0; i < propagationFactories.size(); ++i) {
         stringBuilder.append(propagationFactories.get(i));
