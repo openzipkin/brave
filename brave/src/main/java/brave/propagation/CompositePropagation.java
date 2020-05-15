@@ -105,7 +105,10 @@ public class CompositePropagation<K> implements Propagation<K> {
       public TraceContextOrSamplingFlags extract(C carrier) {
         for (Propagation<K> propagation : propagations) {
           TraceContextOrSamplingFlags result = propagation.extractor(getter).extract(carrier);
-          if (SamplingFlags.EMPTY != result.samplingFlags()) {
+          SamplingFlags samplingFlags = result.context();
+          if (samplingFlags == null) samplingFlags = result.traceIdContext();
+          if (samplingFlags == null) samplingFlags = result.samplingFlags();
+          if (SamplingFlags.EMPTY != samplingFlags) {
             return result;
           }
         }
