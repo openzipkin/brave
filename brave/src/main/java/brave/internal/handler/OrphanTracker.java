@@ -26,9 +26,11 @@ import brave.propagation.TraceContext;
 public final class OrphanTracker extends SpanHandler {
   final Clock clock; // only used when a span is orphaned
   final WeakConcurrentMap<MutableSpan, Throwable> spanToCaller = new WeakConcurrentMap<>();
+  final boolean shouldThrow;
 
-  public OrphanTracker(Clock clock) {
+  public OrphanTracker(Clock clock, boolean shouldThrow) {
     this.clock = clock;
+    this.shouldThrow = shouldThrow;
   }
 
   @Override
@@ -45,9 +47,9 @@ public final class OrphanTracker extends SpanHandler {
     if (cause != Cause.ORPHANED) return true;
     if (caller != null) {
       String message = span.equals(new MutableSpan(context, null))
-        ? "Span " + context + " was allocated but never used"
-        : "Span " + context + " neither finished nor flushed before GC";
-      Platform.get().log(message, caller);
+          ? "Span " + context + " was allocated but never used"
+          : "Span " + context + " neither finished nor flushed before GC";
+      logOrThrow(message, caller, shouldThrow);
     }
     span.annotate(clock.currentTimeMicroseconds(), "brave.flush");
     return true;
@@ -55,5 +57,11 @@ public final class OrphanTracker extends SpanHandler {
 
   @Override public String toString() {
     return "OrphanTracker{}";
+  }
+
+  static boolean logOrThrow(String msg, Throwable caller, boolean shouldThrow) {
+    if (shouldThrow) throw Platform.get().assertionError(msg, caller);
+    Platform.get().log(msg, caller);
+    return false;
   }
 }

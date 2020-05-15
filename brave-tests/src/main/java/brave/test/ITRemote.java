@@ -20,6 +20,8 @@ import brave.baggage.BaggagePropagation;
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.handler.MutableSpan;
 import brave.internal.InternalPropagation;
+import brave.internal.Platform;
+import brave.internal.handler.OrphanTracker;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
@@ -134,6 +136,8 @@ public abstract class ITRemote {
   protected Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
       .localServiceName(getClass().getSimpleName())
+      // Throw an exception if anything leaked!
+      .addSpanHandler(new OrphanTracker(Platform.get().clock(), true))
       .addSpanHandler(spanHandler)
       .propagationFactory(propagationFactory)
       .currentTraceContext(currentTraceContext)
