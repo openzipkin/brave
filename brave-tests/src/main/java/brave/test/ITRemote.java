@@ -133,6 +133,7 @@ public abstract class ITRemote {
 
   protected Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
+      .localServiceName(getClass().getSimpleName())
       .addSpanHandler(spanHandler)
       .propagationFactory(propagationFactory)
       .currentTraceContext(currentTraceContext)

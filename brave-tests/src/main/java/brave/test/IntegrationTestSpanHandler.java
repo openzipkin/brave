@@ -280,7 +280,7 @@ public final class IntegrationTestSpanHandler extends SpanHandler implements Tes
     } else if (errorMessage != null) {
       assertThat(result.error())
           .withFailMessage(
-              "Expected %s to have an error message matching %s, but there was no error", result,
+              "Expected %s to have an error message matching [%s], but there was no error", result,
               errorMessage)
           .isNotNull();
 
@@ -288,8 +288,8 @@ public final class IntegrationTestSpanHandler extends SpanHandler implements Tes
       Pattern regex = Pattern.compile(errorMessage, Pattern.DOTALL);
       String actual = result.error().getMessage();
       assertThat(actual)
-          .withFailMessage("Expected %s to have an error message matching %s, but was %s", result,
-              errorMessage, actual)
+          .withFailMessage("Expected %s to have an error message matching [%s], but was [%s]",
+              result, errorMessage, actual)
           .matches(regex);
       assertNoErrorTag(result);
     } else if (errorTag != null) {

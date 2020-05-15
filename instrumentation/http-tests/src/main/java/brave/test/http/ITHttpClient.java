@@ -421,7 +421,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     }
 
     // We don't know the transport exception
-    return spanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".+");
+    return spanHandler.takeRemoteSpanWithError(CLIENT);
   }
 
   protected String url(String pathIncludingQuery) {
