@@ -36,8 +36,8 @@ import java.util.Set;
  *
  * <p>A deferred injector checks if the {@code request} parameter is an instance of {@link
  * Request}, it considers {@link Request#spanKind()}. If so, it uses this for injection formats
- * accordingly. If not, a {@linkplain Builder#injectorFunction(InjectorFunction...) default
- * function} is used.
+ * accordingly. If not, a {@linkplain Builder#injectorFunction(InjectorFunction,
+ * InjectorFunction...) default function} is used.
  *
  * <p><em>Note</em>: Instrumentation that have not been recently updated may be remote, but neither
  * implement {@link RemoteSetter} nor {@link Request}. In other words, lack of these types do not
