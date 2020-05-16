@@ -13,6 +13,7 @@
  */
 package brave.internal.recorder;
 
+import brave.Clock;
 import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
 import brave.internal.InternalPropagation;
@@ -68,8 +69,12 @@ public class PendingSpansClassLoaderTest {
 
   static class OrphanedContext implements Runnable {
     @Override public void run() {
-      PendingSpans pendingSpans = new PendingSpans(new MutableSpan(),
-        Platform.get().clock(), new OrphanTracker(Platform.get().clock()), new AtomicBoolean());
+      MutableSpan defaultSpan = new MutableSpan();
+      Clock clock = Platform.get().clock();
+      SpanHandler orphanTracker =
+          OrphanTracker.newBuilder().clock(clock).defaultSpan(defaultSpan).build();
+      PendingSpans pendingSpans =
+          new PendingSpans(defaultSpan, clock, orphanTracker, new AtomicBoolean());
 
       TraceContext context = CONTEXT.toBuilder().build(); // intentionally make a copy
       pendingSpans.getOrCreate(null, context, true);

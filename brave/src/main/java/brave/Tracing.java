@@ -486,7 +486,9 @@ public abstract class Tracing implements Closeable {
                 .build());
       }
       if (spanHandlers.isEmpty()) spanHandlers.add(new LogSpanHandler());
-      if (builder.trackOrphans) spanHandlers.add(new OrphanTracker(clock));
+      if (builder.trackOrphans) {
+        spanHandlers.add(OrphanTracker.newBuilder().defaultSpan(defaultSpan).clock(clock).build());
+      }
 
       // Make sure any exceptions caused by span handlers don't crash callers
       SpanHandler spanHandler =
