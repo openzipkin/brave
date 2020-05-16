@@ -63,7 +63,7 @@ public class TracerTest {
     .add(SingleBaggageField.remote(BAGGAGE_FIELD)).build();
   Tracer tracer = Tracing.newBuilder()
     .addSpanHandler(spans)
-    .addSpanHandler(new OrphanTracker(Platform.get().clock()))
+    .trackOrphans()
     .propagationFactory(new Propagation.Factory() {
       @Deprecated @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
         return propagationFactory.create(keyFactory);

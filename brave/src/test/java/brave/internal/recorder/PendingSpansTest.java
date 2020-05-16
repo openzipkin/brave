@@ -13,15 +13,19 @@
  */
 package brave.internal.recorder;
 
+import brave.Clock;
 import brave.GarbageCollectors;
 import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
 import brave.internal.InternalPropagation;
+import brave.internal.Nullable;
 import brave.internal.handler.OrphanTracker;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.test.TestSpanHandler;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Before;
@@ -38,6 +42,7 @@ public class PendingSpansTest {
     SamplingFlags.NOT_SAMPLED.toString(); // ensure InternalPropagation is wired for tests
   }
 
+  List<TraceContext> contexts = new ArrayList<>();
   TestSpanHandler spans = new TestSpanHandler();
   // PendingSpans should always be passed a trace context instantiated by the Tracer. This fakes
   // a local root span, so that we don't have to depend on the Tracer to run these tests.
@@ -52,24 +57,27 @@ public class PendingSpansTest {
   );
   AtomicInteger clock = new AtomicInteger();
   PendingSpans pendingSpans;
-  OrphanTracker orphanTracker = new OrphanTracker(clock::getAndIncrement);
 
   @Before public void init() {
-    init(new SpanHandler() {
+    MutableSpan defaultSpan = new MutableSpan();
+    defaultSpan.localServiceName("favistar");
+    defaultSpan.localIp("1.2.3.4");
+    Clock clock = () -> this.clock.incrementAndGet() * 1000L;
+    SpanHandler orphanTracker =
+        OrphanTracker.newBuilder().defaultSpan(defaultSpan).clock(clock).build();
+    pendingSpans = new PendingSpans(defaultSpan, clock, new SpanHandler() {
+      @Override
+      public boolean begin(TraceContext ctx, MutableSpan span, @Nullable TraceContext parent) {
+        contexts.add(ctx);
+        return orphanTracker.begin(ctx, span, parent);
+      }
+
       @Override public boolean end(TraceContext ctx, MutableSpan span, Cause cause) {
         orphanTracker.end(ctx, span, cause);
         spans.end(ctx, span, cause);
         return true;
       }
-    });
-  }
-
-  void init(SpanHandler handler) {
-    MutableSpan defaultSpan = new MutableSpan();
-    defaultSpan.localServiceName("favistar");
-    defaultSpan.localIp("1.2.3.4");
-    pendingSpans = new PendingSpans(defaultSpan, () -> clock.incrementAndGet() * 1000L, handler,
-      new AtomicBoolean());
+    }, new AtomicBoolean());
   }
 
   @Test
@@ -158,12 +166,12 @@ public class PendingSpansTest {
     assertThat(spans).hasSize(2);
     // orphaned without data
     assertThat(spans.get(0).id()).isEqualTo("0000000000000002");
-    assertThat(spans.get(0).containsAnnotation("brave.flush")).isTrue();
+    assertThat(spans.get(0).containsAnnotation("brave.flush")).isFalse();
 
     // orphaned with data
     assertThat(spans.get(1).id()).isEqualTo("0000000000000001");
     assertThat(spans.get(1).tags()).hasSize(2); // data was flushed
-    assertThat(spans.get(0).containsAnnotation("brave.flush")).isTrue();
+    assertThat(spans.get(1).containsAnnotation("brave.flush")).isTrue();
   }
 
   @Test
@@ -196,15 +204,6 @@ public class PendingSpansTest {
   @Test
   public void orphanContext_dropsExtra() {
     TraceContext context1 = context.toBuilder().extra(asList(1, true)).build();
-
-    TraceContext[] handledContext = {null};
-    init(new SpanHandler() {
-      @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
-        handledContext[0] = context;
-        return true;
-      }
-    });
-
     TraceContext context = this.context.toBuilder().build();
     pendingSpans.getOrCreate(null, context, false).state().tag("foo", "bar");
     // We drop the reference to the context, which means the next GC should attempt to flush it
@@ -213,23 +212,15 @@ public class PendingSpansTest {
     GarbageCollectors.blockOnGC();
     pendingSpans.expungeStaleEntries();
 
-    assertThat(handledContext[0]).isEqualTo(context1); // ID comparision is the same
-    assertThat(handledContext[0].extra()).isEmpty(); // No context decorations are retained
+    assertThat(contexts).hasSize(1);
+    assertThat(contexts.get(0)).isEqualTo(context1); // ID comparision is the same
+    assertThat(contexts.get(0).extra()).isEmpty(); // No context decorations are retained
   }
 
   @Test
   public void orphanContext_includesAllFlags() {
     TraceContext context1 =
       context.toBuilder().sampled(null).sampledLocal(true).shared(true).build();
-
-    TraceContext[] handledContext = {null};
-    init(new SpanHandler() {
-      @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
-        handledContext[0] = context;
-        return true;
-      }
-    });
-
     TraceContext context = context1.toBuilder().build();
     pendingSpans.getOrCreate(null, context, false).state().tag("foo", "bar");
     // We drop the reference to the context, which means the next GC should attempt to flush it
@@ -238,7 +229,8 @@ public class PendingSpansTest {
     GarbageCollectors.blockOnGC();
     pendingSpans.expungeStaleEntries();
 
-    assertThat(InternalPropagation.instance.flags(handledContext[0]))
+    assertThat(contexts).hasSize(1);
+    assertThat(InternalPropagation.instance.flags(contexts.get(0)))
       .isEqualTo(InternalPropagation.instance.flags(context1)); // no flags lost
   }
 }

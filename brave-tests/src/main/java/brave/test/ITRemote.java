@@ -33,6 +33,7 @@ import brave.sampler.Sampler;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.logging.Level;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.rules.DisableOnDebug;
@@ -108,6 +109,7 @@ public abstract class ITRemote {
   protected final Propagation.Factory propagationFactory;
   protected Tracing tracing; // mutable for test-specific configuration!
 
+  final MutableSpan defaultSpan;
   final Closeable checkForLeakedScopes; // internal to this type
 
   /** Subclass to override the builder. The result will have {@link StrictScopeDecorator} added */
@@ -130,14 +132,21 @@ public abstract class ITRemote {
       .add(SingleBaggageField.newBuilder(BAGGAGE_FIELD)
         .addKeyName(BAGGAGE_FIELD_KEY)
         .build()).build();
+    defaultSpan = new MutableSpan();
+    defaultSpan.localServiceName(getClass().getSimpleName());
+    defaultSpan.localIp("127.0.0.1"); // Prevent implicit lookups
     tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE).build();
   }
 
   protected Tracing.Builder tracingBuilder(Sampler sampler) {
     return Tracing.newBuilder()
-      .localServiceName(getClass().getSimpleName())
-      // Throw an exception if anything leaked!
-      .addSpanHandler(new OrphanTracker(Platform.get().clock(), true))
+      .localServiceName(defaultSpan.localServiceName())
+      .localIp(defaultSpan.localIp())
+      .addSpanHandler(OrphanTracker.newBuilder()
+        .defaultSpan(defaultSpan)
+        .clock(Platform.get().clock())
+        .logLevel(Level.WARNING) // Default is FINE: invisible in CI.
+        .build())
       .addSpanHandler(spanHandler)
       .propagationFactory(propagationFactory)
       .currentTraceContext(currentTraceContext)
