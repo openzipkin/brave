@@ -37,7 +37,7 @@ import java.util.Map;
  * }
  *
  * @Deprecated public <K> Propagation<K> create(KeyFactory<K> keyFactory) {
- *   return StringPropagationAdapter.create(get(), keyFactory)
+ *   return StringPropagationAdapter.create(get(), keyFactory);
  * }
  * }</pre>
  *

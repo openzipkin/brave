@@ -135,6 +135,7 @@ public class MutableSpanTest {
     if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
 
     assertThat(span.tags()).isEmpty();
+    assertThat(span.tagCount()).isZero();
     assertThat(span.remoteServiceName()).isEqualTo("amazon-s3");
   }
 
@@ -821,5 +822,25 @@ public class MutableSpanTest {
     assertThatThrownBy(() -> span.id(""))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("id is empty");
+  }
+
+  @Test public void shared() {
+    MutableSpan span = new MutableSpan();
+    span.setShared();
+    assertThat(span.shared()).isTrue();
+
+    span.unsetShared();
+    assertThat(span.shared()).isFalse();
+    assertThat(span.flags).isZero();
+  }
+
+  @Test public void debug() {
+    MutableSpan span = new MutableSpan();
+    span.setDebug();
+    assertThat(span.debug()).isTrue();
+
+    span.unsetDebug();
+    assertThat(span.debug()).isFalse();
+    assertThat(span.flags).isZero();
   }
 }
