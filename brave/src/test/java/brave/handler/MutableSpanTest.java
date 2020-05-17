@@ -135,6 +135,7 @@ public class MutableSpanTest {
     if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
 
     assertThat(span.tags()).isEmpty();
+    assertThat(span.tagCount()).isZero();
     assertThat(span.remoteServiceName()).isEqualTo("amazon-s3");
   }
 

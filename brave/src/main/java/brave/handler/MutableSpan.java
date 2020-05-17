@@ -768,6 +768,7 @@ public final class MutableSpan implements Cloneable {
       if (key.equals(tags[i])) {
         String value = (String) tags[i + 1];
         remove(tags, i);
+        tagCount--;
         return value;
       }
     }
