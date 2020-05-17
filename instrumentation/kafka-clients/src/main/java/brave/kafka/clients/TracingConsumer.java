@@ -28,13 +28,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
-import org.apache.kafka.clients.consumer.OffsetCommitCallback;
+
+import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
@@ -305,6 +300,11 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions,
     Duration timeout) {
     return delegate.endOffsets(partitions, timeout);
+  }
+
+  // Do not use @Override annotation to avoid compatibility issue version < 2.5
+  public ConsumerGroupMetadata groupMetadata() {
+    return delegate.groupMetadata();
   }
 
   @Override public void close() {
