@@ -147,7 +147,7 @@ public final class IntegrationTestSpanHandler extends SpanHandler implements Tes
     MutableSpan result;
     try {
       // Same rationale as ITRemote: tests should never take 5s in normal circumstances.
-      // In practice, @SpringBootTest tests overrun 3-5 seconds in CI.
+      // However, @SpringBootTest with web environment and a lot in the classpath can take >3s
       result = spans.poll(20, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
