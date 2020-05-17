@@ -148,7 +148,7 @@ public final class IntegrationTestSpanHandler extends SpanHandler implements Tes
     try {
       // Same rationale as ITRemote: tests should never take 5s in normal circumstances.
       // However, @SpringBootTest with web environment and a lot in the classpath can take >3s
-      result = spans.poll(20, TimeUnit.SECONDS);
+      result = spans.poll(10, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new AssertionError(e);
