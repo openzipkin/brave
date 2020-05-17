@@ -505,9 +505,19 @@ public final class MutableSpan implements Cloneable {
    * Calling this is unexpected as it should only be initialized by {@link TraceContext#debug()}.
    *
    * @see #debug()
+   * @see #unsetDebug()
+   * @since 5.4
    */
   public void setDebug() {
     flags |= FLAG_DEBUG;
+  }
+
+  /**
+   * @see #setDebug()
+   * @since 5.12
+   */
+  public void unsetDebug() {
+    flags &= ~FLAG_DEBUG;
   }
 
   /**
@@ -523,9 +533,19 @@ public final class MutableSpan implements Cloneable {
    * Calling this is unexpected as it should only be initialized by {@link TraceContext#shared()}.
    *
    * @see #shared()
+   * @see #unsetShared()
+   * @since 5.4
    */
   public void setShared() {
     flags |= FLAG_SHARED;
+  }
+
+  /**
+   * @see #setShared()
+   * @since 5.12
+   */
+  public void unsetShared() {
+    flags &= ~FLAG_SHARED;
   }
 
   /**

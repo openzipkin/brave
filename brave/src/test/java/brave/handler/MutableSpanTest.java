@@ -822,4 +822,24 @@ public class MutableSpanTest {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("id is empty");
   }
+
+  @Test public void shared() {
+    MutableSpan span = new MutableSpan();
+    span.setShared();
+    assertThat(span.shared()).isTrue();
+
+    span.unsetShared();
+    assertThat(span.shared()).isFalse();
+    assertThat(span.flags).isZero();
+  }
+
+  @Test public void debug() {
+    MutableSpan span = new MutableSpan();
+    span.setDebug();
+    assertThat(span.debug()).isTrue();
+
+    span.unsetDebug();
+    assertThat(span.debug()).isFalse();
+    assertThat(span.flags).isZero();
+  }
 }
