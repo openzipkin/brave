@@ -786,7 +786,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     assertThat(spanProcessor.error()).hasMessage("illegal-argument");
     assertChildOf(spanProcessor, spanInput);
 
-    assertThat(!streams.state().isRunning());
+    assertThat(!streams.state().isRunningOrRebalancing());
 
     streams.close();
     streams.cleanUp();
@@ -838,7 +838,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     assertThat(spanProcessor.error()).hasMessage("file-not-found");
     assertChildOf(spanProcessor, spanInput);
 
-    assertThat(!streams.state().isRunning());
+    assertThat(!streams.state().isRunningOrRebalancing());
 
     streams.close();
     streams.cleanUp();
@@ -1342,7 +1342,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
         Thread.currentThread().interrupt();
         throw new AssertionError(e);
       }
-    } while (!streams.state().isRunning());
+    } while (!streams.state().isRunningOrRebalancing());
   }
 
   KafkaStreams buildKafkaStreams(Topology topology) {

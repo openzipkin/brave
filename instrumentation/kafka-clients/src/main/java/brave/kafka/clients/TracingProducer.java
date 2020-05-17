@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
@@ -37,6 +38,7 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.ProducerFencedException;
 
 final class TracingProducer<K, V> implements Producer<K, V> {
   final Producer<K, V> delegate;
@@ -165,5 +167,11 @@ final class TracingProducer<K, V> implements Producer<K, V> {
   public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
     String consumerGroupId) {
     delegate.sendOffsetsToTransaction(offsets, consumerGroupId);
+  }
+
+  // Do not use @Override annotation to avoid compatibility issue version < 2.5
+  public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
+    ConsumerGroupMetadata groupMetadata) throws ProducerFencedException {
+    delegate.sendOffsetsToTransaction(offsets, groupMetadata);
   }
 }
