@@ -231,4 +231,12 @@ public abstract class ITRemote {
       .withFailMessage("Expected to have parent ID(%s): %s", parent.id(), child)
       .isEqualTo(parent.id());
   }
+
+  protected void assertNoError(MutableSpan result) {
+    IntegrationTestSpanHandler.assertNoError(result);
+  }
+
+  protected void assertNoErrorTag(MutableSpan result) {
+    IntegrationTestSpanHandler.assertNoErrorTag(result);
+  }
 }
