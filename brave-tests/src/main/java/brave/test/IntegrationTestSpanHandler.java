@@ -134,7 +134,7 @@ public final class IntegrationTestSpanHandler extends SpanHandler implements Tes
     intentionallyWrongDefaultSpan.tag("not", "me");
     orphanTracker = OrphanTracker.newBuilder()
         .defaultSpan(intentionallyWrongDefaultSpan)
-        // This will not be exactly the right timestamp Tracing.Builder.clock is overridden.
+        // This will not be exactly the right timestamp when Tracing.Builder.clock is overridden.
         // However, it is rare to override this in an integration test and complex to pass it.
         .clock(Platform.get().clock())
         // Make sure CI can see when things leak: Intentional leak tests shouldn't use this handler.
