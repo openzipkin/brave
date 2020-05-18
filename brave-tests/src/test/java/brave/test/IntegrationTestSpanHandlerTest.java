@@ -30,7 +30,7 @@ public class IntegrationTestSpanHandlerTest {
   MutableSpan span = new MutableSpan(context, null);
 
   @Test public void goodMessageForUnstartedSpan() {
-    spanHandler.end(context, span, FINISHED); // NOT ABANDONED!
+    spanHandler.end(context, span, FINISHED); // NOT ORPHANED!
 
     assertThatThrownBy(spanHandler::takeLocalSpan)
         .hasMessage(
