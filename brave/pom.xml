@@ -18,7 +18,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-parent</artifactId>
-    <version>5.12.2-SNAPSHOT</version>
+    <version>5.12.2</version>
   </parent>
 
   <artifactId>brave</artifactId>
