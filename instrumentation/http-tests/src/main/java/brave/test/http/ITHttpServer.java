@@ -529,6 +529,7 @@ public abstract class ITHttpServer extends ITRemote {
             return true;
           }
         })
+        // The blocking span handler goes after the error catcher, so we can assert on the errors.
         .addSpanHandler(testSpanHandler)
         .build());
     init();

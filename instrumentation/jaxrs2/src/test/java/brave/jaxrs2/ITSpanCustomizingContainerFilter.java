@@ -61,7 +61,7 @@ public class ITSpanCustomizingContainerFilter extends ITServletContainer {
   }
 
   @Override @Ignore("resteasy swallows the exception")
-  public void spanHandlerSeesException_async() {
+  public void spanHandlerSeesError_async() {
   }
 
   @Test public void tagsResource() throws Exception {
