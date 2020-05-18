@@ -36,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * This is a special span reporter for remote integration tests.
  *
- * <p>Ex.
+ * <p>Ex. The following is similar to our base test class {@link ITRemote}:
  * <pre>{@code
  * @Rule public IntegrationTestSpanHandler testSpanHandler = new IntegrationTestSpanHandler();
  *
@@ -46,11 +46,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   tracing.close();
  * }
  *
- * @Test public void test() {
- *   tracing.tracer().startScopedSpan("foo").finish();
+ * @Test public void onTransportException_setError() {
+ *   server.stop();
  *
- *   assertThat(takeLocalSpan().name())
- *     .isEqualTo("foo");
+ *   assertThatThrownBy(() -> client.get().sayHello("jorge"))
+ *       .isInstanceOf(RpcException.class);
+ *
+ *   spanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*RemotingException.*");
  * }
  * }</pre>
  *
