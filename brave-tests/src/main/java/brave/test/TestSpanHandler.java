@@ -13,12 +13,14 @@
  */
 package brave.test;
 
+import brave.Span;
 import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import org.junit.rules.TestRule;
 
 /**
  * Simpler variant of {@link IntegrationTestSpanHandler} appropriate for single-threaded
@@ -40,6 +42,24 @@ import java.util.List;
  *     .isEqualTo("foo");
  * }
  * }</pre>
+ *
+ * <h3>Comparison with {@link IntegrationTestSpanHandler}</h3>
+ * It is possible to use this type in multi-threaded tests, but there are usually problems that
+ * arise better solved by {@link IntegrationTestSpanHandler}. Here's a few examples.
+ *
+ * <p>Multi-threaded tests typically end up with timing issues which can lead to broken builds (aka
+ * "flakey tests"). These are sometimes mitigated by polling assertions such as <a
+ * href="https://github.com/awaitility/awaitility">Awaitility</a>.
+ *
+ * <p>Even with polling assertions, multi-threaded tests have more error cases. Historically, we
+ * found tests passing even in error because people only checked the name. {@link
+ * IntegrationTestSpanHandler} prevents silent errors from passing.
+ *
+ * <p>Usually, multi-threaded tests involve remote spans. {@link IntegrationTestSpanHandler} has
+ * utilities made for remote spans, such as {@link IntegrationTestSpanHandler#takeRemoteSpan(Span.Kind)}.
+ *
+ * <p>It is a common instrumentation bug to accidentally create redundant spans. {@link
+ * IntegrationTestSpanHandler} is a {@link TestRule}, which verifies all spans are accounted for.
  *
  * @see IntegrationTestSpanHandler
  * @since 5.12
