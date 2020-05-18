@@ -39,13 +39,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 /** This is an example of http request sampling */
 public class RequestSamplingTest {
   @Rule public MockWebServer server = new MockWebServer();
-  @Rule public IntegrationTestSpanHandler spanHandler = new IntegrationTestSpanHandler();
+  @Rule public IntegrationTestSpanHandler testSpanHandler = new IntegrationTestSpanHandler();
 
   StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   Tracing tracing = Tracing.newBuilder()
     .localServiceName("server")
     .currentTraceContext(currentTraceContext)
-    .addSpanHandler(spanHandler)
+    .addSpanHandler(testSpanHandler)
     .build();
   HttpTracing httpTracing = HttpTracing.newBuilder(tracing)
     // server starts traces under the path /api
@@ -85,11 +85,11 @@ public class RequestSamplingTest {
   @Test public void clientTracedWhenServerIs() throws Exception {
     callServer("/api");
 
-    assertThat(spanHandler.takeRemoteSpan(SERVER).tags())
+    assertThat(testSpanHandler.takeRemoteSpan(SERVER).tags())
         .containsEntry("http.path", "/next");
-    assertThat(spanHandler.takeRemoteSpan(CLIENT).tags())
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).tags())
         .containsEntry("http.path", "/next");
-    assertThat(spanHandler.takeRemoteSpan(SERVER).tags())
+    assertThat(testSpanHandler.takeRemoteSpan(SERVER).tags())
         .containsEntry("http.path", "/api");
   }
 

@@ -51,7 +51,7 @@ public class TracingCompletionListenerTest extends ITJms {
       TracingCompletionListener.create(mock(CompletionListener.class), span, currentTraceContext);
     tracingCompletionListener.onCompletion(message);
 
-    spanHandler.takeLocalSpan();
+    testSpanHandler.takeLocalSpan();
   }
 
   @Test public void on_exception_should_set_error_if_exception() {
@@ -63,7 +63,7 @@ public class TracingCompletionListenerTest extends ITJms {
       TracingCompletionListener.create(mock(CompletionListener.class), span, currentTraceContext);
     tracingCompletionListener.onException(message, error);
 
-    assertThat(spanHandler.takeLocalSpan().error()).isEqualTo(error);
+    assertThat(testSpanHandler.takeLocalSpan().error()).isEqualTo(error);
   }
 
   @Test public void on_completion_should_forward_then_finish_span() {
@@ -77,7 +77,7 @@ public class TracingCompletionListenerTest extends ITJms {
 
     verify(delegate).onCompletion(message);
 
-    spanHandler.takeLocalSpan();
+    testSpanHandler.takeLocalSpan();
   }
 
   @Test public void on_completion_should_have_span_in_scope() {
@@ -96,7 +96,7 @@ public class TracingCompletionListenerTest extends ITJms {
 
     TracingCompletionListener.create(delegate, span, currentTraceContext).onCompletion(message);
 
-    spanHandler.takeLocalSpan();
+    testSpanHandler.takeLocalSpan();
   }
 
   @Test public void on_exception_should_forward_then_set_error() {
@@ -111,6 +111,6 @@ public class TracingCompletionListenerTest extends ITJms {
 
     verify(delegate).onException(message, error);
 
-    assertThat(spanHandler.takeLocalSpan().error()).isEqualTo(error);
+    assertThat(testSpanHandler.takeLocalSpan().error()).isEqualTo(error);
   }
 }

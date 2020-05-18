@@ -26,7 +26,7 @@ public class ITRemoteTest {
     ITRemoteDummy itRemote = new ITRemoteDummy();
     itRemote.tracing.tracer().newTrace().start(1L).finish(1L);
 
-    MutableSpan span = itRemote.spanHandler.takeLocalSpan();
+    MutableSpan span = itRemote.testSpanHandler.takeLocalSpan();
     assertThat(span.localServiceName())
         .isEqualTo("ITRemoteDummy"); // much better than "unknown"
   }

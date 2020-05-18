@@ -50,8 +50,8 @@ public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilde
 
     assertThat(server.getRequestCount()).isEqualTo(1);
 
-    MutableSpan real = spanHandler.takeRemoteSpan(CLIENT);
-    MutableSpan cached = spanHandler.takeLocalSpan();
+    MutableSpan real = testSpanHandler.takeRemoteSpan(CLIENT);
+    MutableSpan cached = testSpanHandler.takeLocalSpan();
     assertThat(cached.tags()).containsKey("http.cache_hit");
 
     for (MutableSpan child : Arrays.asList(real, cached)) {

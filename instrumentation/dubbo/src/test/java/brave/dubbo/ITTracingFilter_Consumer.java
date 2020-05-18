@@ -71,7 +71,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     // perform a warmup request to allow CI to fail quicker
     client.get().sayHello("jorge");
     server.takeRequest();
-    spanHandler.takeRemoteSpan(CLIENT);
+    testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
   @After public void stop() {
@@ -85,7 +85,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     TraceContext extracted = server.takeRequest().context();
     assertThat(extracted.sampled()).isTrue();
     assertThat(extracted.parentIdString()).isNull();
-    assertSameIds(spanHandler.takeRemoteSpan(CLIENT), extracted);
+    assertSameIds(testSpanHandler.takeRemoteSpan(CLIENT), extracted);
   }
 
   @Test public void propagatesChildOfCurrentSpan() {
@@ -97,7 +97,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     TraceContext extracted = server.takeRequest().context();
     assertThat(extracted.sampled()).isTrue();
     assertChildOf(extracted, parent);
-    assertSameIds(spanHandler.takeRemoteSpan(CLIENT), extracted);
+    assertSameIds(testSpanHandler.takeRemoteSpan(CLIENT), extracted);
   }
 
   /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
@@ -122,7 +122,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     TraceContext extracted = server.takeRequest().context();
     assertThat(BAGGAGE_FIELD.getValue(extracted)).isEqualTo("joey");
 
-    spanHandler.takeRemoteSpan(CLIENT);
+    testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
   @Test public void propagatesBaggage_unsampled() {
@@ -147,7 +147,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     }
     long finish = clock.currentTimeMicroseconds();
 
-    MutableSpan clientSpan = spanHandler.takeRemoteSpan(CLIENT);
+    MutableSpan clientSpan = testSpanHandler.takeRemoteSpan(CLIENT);
     assertChildOf(clientSpan, parent);
     assertSpanInInterval(clientSpan, start, finish);
   }
@@ -181,20 +181,20 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
 
     // The spans may report in a different order than the requests
     for (int i = 0; i < 2; i++) {
-      assertChildOf(spanHandler.takeRemoteSpan(CLIENT), parent);
+      assertChildOf(testSpanHandler.takeRemoteSpan(CLIENT), parent);
     }
   }
 
   @Test public void reportsClientKindToZipkin() {
     client.get().sayHello("jorge");
 
-    spanHandler.takeRemoteSpan(CLIENT);
+    testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
   @Test public void defaultSpanNameIsMethodName() {
     client.get().sayHello("jorge");
 
-    assertThat(spanHandler.takeRemoteSpan(CLIENT).name())
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).name())
         .isEqualTo("brave.dubbo.GreeterService/sayHello");
   }
 
@@ -204,7 +204,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     assertThatThrownBy(() -> client.get().sayHello("jorge"))
         .isInstanceOf(RpcException.class);
 
-    spanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*RemotingException.*");
+    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*RemotingException.*");
   }
 
   @Test public void onTransportException_setError_async() {
@@ -212,7 +212,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
 
     RpcContext.getContext().asyncCall(() -> client.get().sayHello("romeo"));
 
-    spanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*RemotingException.*");
+    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*RemotingException.*");
   }
 
   @Test public void finishesOneWaySpan() {
@@ -220,7 +220,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
       client.get().sayHello("romeo");
     });
 
-    spanHandler.takeRemoteSpan(CLIENT);
+    testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
   @Test public void setError_onUnimplemented() {
@@ -228,7 +228,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
         .isInstanceOf(RpcException.class);
 
     MutableSpan span =
-        spanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Not found exported service.*");
+        testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Not found exported service.*");
     assertThat(span.tags())
         .containsEntry("dubbo.error_code", "1");
   }
@@ -246,7 +246,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
         .isInstanceOf(RpcException.class);
 
     MutableSpan span =
-        spanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Not found exported service.*");
+        testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Not found exported service.*");
     assertThat(span.tags())
         .containsEntry("dubbo.error_code", "1");
   }
@@ -266,7 +266,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     // sampled
     client.get().sayHello("jorge");
 
-    assertThat(spanHandler.takeRemoteSpan(CLIENT).name()).endsWith("sayHello");
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).name()).endsWith("sayHello");
     // @After will also check that sayGoodbye was not sampled
   }
 
@@ -290,7 +290,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
 
     String javaResult = client.get().sayHello("jorge");
 
-    assertThat(spanHandler.takeRemoteSpan(CLIENT).tags())
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).tags())
         .containsEntry("dubbo.result_value", javaResult);
   }
 }

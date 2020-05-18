@@ -61,13 +61,13 @@ public class ITSpanCustomizingContainerFilter extends ITServletContainer {
   }
 
   @Override @Ignore("resteasy swallows the exception")
-  public void spanHandlerSeesException_async() {
+  public void spanHandlerSeesError_async() {
   }
 
   @Test public void tagsResource() throws Exception {
     get("/foo");
 
-    assertThat(spanHandler.takeRemoteSpan(Span.Kind.SERVER).tags())
+    assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER).tags())
       .containsEntry("jaxrs.resource.class", "TestResource")
       .containsEntry("jaxrs.resource.method", "foo");
   }

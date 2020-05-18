@@ -41,7 +41,7 @@ public abstract class BaseITSpanCustomizingHandlerInterceptor extends ITServletC
   @Test public void addsControllerTags() throws Exception {
     get("/foo");
 
-    MutableSpan span = spanHandler.takeRemoteSpan(SERVER);
+    MutableSpan span = testSpanHandler.takeRemoteSpan(SERVER);
     assertThat(span.tags())
       .containsKeys("mvc.controller.class", "mvc.controller.method");
     assertThat(span.tags().get("mvc.controller.class"))

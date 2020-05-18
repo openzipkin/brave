@@ -74,7 +74,7 @@ public class ITTracingJMSProducer extends ITJms {
     producer.send(jms.queue, "foo");
 
     Message received = consumer.receive();
-    MutableSpan producerSpan = spanHandler.takeRemoteSpan(PRODUCER);
+    MutableSpan producerSpan = testSpanHandler.takeRemoteSpan(PRODUCER);
 
     assertThat(propertiesToMap(received))
       .containsAllEntriesOf(existingProperties)
@@ -89,7 +89,7 @@ public class ITTracingJMSProducer extends ITJms {
 
     Message received = consumer.receive();
 
-    MutableSpan producerSpan = spanHandler.takeRemoteSpan(PRODUCER);
+    MutableSpan producerSpan = testSpanHandler.takeRemoteSpan(PRODUCER);
     assertChildOf(producerSpan, parent);
 
     assertThat(propertiesToMap(received))
@@ -107,7 +107,7 @@ public class ITTracingJMSProducer extends ITJms {
 
     Message received = consumer.receive();
 
-    MutableSpan producerSpan = spanHandler.takeRemoteSpan(PRODUCER);
+    MutableSpan producerSpan = testSpanHandler.takeRemoteSpan(PRODUCER);
     assertChildOf(producerSpan, parent);
 
     assertThat(propertiesToMap(received))
@@ -120,7 +120,7 @@ public class ITTracingJMSProducer extends ITJms {
 
     consumer.receive();
 
-    MutableSpan producerSpan = spanHandler.takeRemoteSpan(PRODUCER);
+    MutableSpan producerSpan = testSpanHandler.takeRemoteSpan(PRODUCER);
     assertThat(producerSpan.name()).isEqualTo("send");
     assertThat(producerSpan.tags()).containsEntry("jms.queue", jms.queueName);
   }
@@ -136,7 +136,7 @@ public class ITTracingJMSProducer extends ITJms {
       message = e.getMessage();
     }
 
-    spanHandler.takeRemoteSpanWithErrorMessage(PRODUCER, message);
+    testSpanHandler.takeRemoteSpanWithErrorMessage(PRODUCER, message);
   }
 
   @Test public void should_complete_on_callback() {
@@ -151,7 +151,7 @@ public class ITTracingJMSProducer extends ITJms {
     });
     producer.send(jms.queue, "foo");
 
-    assertThat(spanHandler.takeRemoteSpan(PRODUCER).tags())
+    assertThat(testSpanHandler.takeRemoteSpan(PRODUCER).tags())
       .containsKeys("onCompletion");
   }
 

@@ -127,7 +127,7 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
   }
 
   void assertHasB3SingleProperty(Message received) throws JMSException {
-    MutableSpan producerSpan = spanHandler.takeRemoteSpan(PRODUCER);
+    MutableSpan producerSpan = testSpanHandler.takeRemoteSpan(PRODUCER);
 
     assertThat(propertiesToMap(received))
       .containsAllEntriesOf(existingProperties)
@@ -142,7 +142,7 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
 
     Message received = messageConsumer.receive();
 
-    MutableSpan producerSpan = spanHandler.takeRemoteSpan(PRODUCER);
+    MutableSpan producerSpan = testSpanHandler.takeRemoteSpan(PRODUCER);
     assertChildOf(producerSpan, parent);
 
     assertThat(propertiesToMap(received))
@@ -161,7 +161,7 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
 
     Message received = messageConsumer.receive();
 
-    MutableSpan producerSpan = spanHandler.takeRemoteSpan(PRODUCER);
+    MutableSpan producerSpan = testSpanHandler.takeRemoteSpan(PRODUCER);
     assertChildOf(producerSpan, parent);
 
     assertThat(propertiesToMap(received))
@@ -185,7 +185,7 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
   }
 
   void should_record_properties(Map<String, String> producerTags) {
-    MutableSpan producerSpan = spanHandler.takeRemoteSpan(PRODUCER);
+    MutableSpan producerSpan = testSpanHandler.takeRemoteSpan(PRODUCER);
     assertThat(producerSpan.name()).isEqualTo("send");
     assertThat(producerSpan.tags()).containsAllEntriesOf(producerTags);
   }
@@ -214,7 +214,7 @@ public class ITJms_1_1_TracingMessageProducer extends ITJms {
       message = e.getMessage();
     }
 
-    spanHandler.takeRemoteSpanWithErrorMessage(PRODUCER, message);
+    testSpanHandler.takeRemoteSpanWithErrorMessage(PRODUCER, message);
   }
 
   @Test public void customSampler() throws JMSException {

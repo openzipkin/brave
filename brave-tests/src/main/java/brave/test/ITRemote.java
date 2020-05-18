@@ -81,7 +81,7 @@ public abstract class ITRemote {
    * needed even in a an overloaded CI server or extreme garbage collection pause.
    */
   @Rule public TestRule globalTimeout = new DisableOnDebug(Timeout.seconds(20)); // max per method
-  @Rule public IntegrationTestSpanHandler spanHandler = new IntegrationTestSpanHandler();
+  @Rule public IntegrationTestSpanHandler testSpanHandler = new IntegrationTestSpanHandler();
   @Rule public TestName testName = new TestName();
 
   /** Returns a trace context for use in propagation tests. */
@@ -135,7 +135,7 @@ public abstract class ITRemote {
     return Tracing.newBuilder()
       .localServiceName(getClass().getSimpleName())
       .localIp("127.0.0.1") // Prevent implicit lookups
-      .addSpanHandler(spanHandler)
+      .addSpanHandler(testSpanHandler)
       .propagationFactory(propagationFactory)
       .currentTraceContext(currentTraceContext)
       .sampler(sampler);

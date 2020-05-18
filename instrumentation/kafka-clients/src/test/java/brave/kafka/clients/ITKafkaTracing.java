@@ -186,7 +186,7 @@ public class ITKafkaTracing extends ITKafka {
       processor.start().name("processor").finish();
 
       // The processor doesn't taint the consumer span which has already finished
-      MutableSpan processorSpan = spanHandler.takeLocalSpan();
+      MutableSpan processorSpan = testSpanHandler.takeLocalSpan();
       assertThat(processorSpan.id())
         .isNotEqualTo(consumerSpan.id());
     }

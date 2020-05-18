@@ -51,8 +51,8 @@ public class TracingMessageListenerTest extends ITJms {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
-    spanHandler.takeRemoteSpan(CONSUMER);
-    spanHandler.takeLocalSpan();
+    testSpanHandler.takeRemoteSpan(CONSUMER);
+    testSpanHandler.takeLocalSpan();
   }
 
   @Test public void starts_new_trace_if_none_exists_noConsumer() {
@@ -62,15 +62,15 @@ public class TracingMessageListenerTest extends ITJms {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
-    spanHandler.takeLocalSpan();
+    testSpanHandler.takeLocalSpan();
   }
 
   @Test public void consumer_and_listener_have_names() {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
-    assertThat(spanHandler.takeRemoteSpan(CONSUMER).name()).isEqualTo("receive");
-    assertThat(spanHandler.takeLocalSpan().name()).isEqualTo("on-message");
+    assertThat(testSpanHandler.takeRemoteSpan(CONSUMER).name()).isEqualTo("receive");
+    assertThat(testSpanHandler.takeLocalSpan().name()).isEqualTo("on-message");
   }
 
   @Test public void listener_has_name() {
@@ -80,16 +80,16 @@ public class TracingMessageListenerTest extends ITJms {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
-    assertThat(spanHandler.takeLocalSpan().name()).isEqualTo("on-message");
+    assertThat(testSpanHandler.takeLocalSpan().name()).isEqualTo("on-message");
   }
 
   @Test public void consumer_has_remote_service_name() {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
-    assertThat(spanHandler.takeRemoteSpan(CONSUMER).remoteServiceName())
+    assertThat(testSpanHandler.takeRemoteSpan(CONSUMER).remoteServiceName())
       .isEqualTo(jmsTracing.remoteServiceName);
-    spanHandler.takeLocalSpan();
+    testSpanHandler.takeLocalSpan();
   }
 
   @Test public void listener_has_no_remote_service_name() {
@@ -99,7 +99,7 @@ public class TracingMessageListenerTest extends ITJms {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
-    spanHandler.takeLocalSpan();
+    testSpanHandler.takeLocalSpan();
   }
 
   @Test public void tags_consumer_span_but_not_listener() {
@@ -107,8 +107,8 @@ public class TracingMessageListenerTest extends ITJms {
     message.setDestination(createDestination("foo", QUEUE_TYPE));
     onMessageConsumed(message);
 
-    assertThat(spanHandler.takeRemoteSpan(CONSUMER).tags()).containsEntry("jms.queue", "foo");
-    assertThat(spanHandler.takeLocalSpan().tags()).isEmpty();
+    assertThat(testSpanHandler.takeRemoteSpan(CONSUMER).tags()).containsEntry("jms.queue", "foo");
+    assertThat(testSpanHandler.takeLocalSpan().tags()).isEmpty();
   }
 
   @Test public void listener_has_no_tags_when_header_present() {
@@ -120,15 +120,16 @@ public class TracingMessageListenerTest extends ITJms {
     message.setDestination(createDestination("foo", QUEUE_TYPE));
     onMessageConsumed(message);
 
-    assertThat(spanHandler.takeLocalSpan().tags()).isEmpty();
+    assertThat(testSpanHandler.takeLocalSpan().tags()).isEmpty();
   }
 
   @Test public void consumer_span_starts_before_listener() {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
-    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan =
-      spanHandler.takeLocalSpan();
+    MutableSpan consumerSpan = testSpanHandler.takeRemoteSpan(CONSUMER);
+    MutableSpan listenerSpan = testSpanHandler.takeLocalSpan();
+
     assertChildOf(listenerSpan, consumerSpan);
     assertSequential(consumerSpan, listenerSpan);
   }
@@ -140,7 +141,7 @@ public class TracingMessageListenerTest extends ITJms {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     onMessageConsumed(message);
 
-    spanHandler.takeLocalSpan(); // implicitly checked
+    testSpanHandler.takeLocalSpan(); // implicitly checked
   }
 
   @Test public void continues_parent_trace() {
@@ -152,8 +153,9 @@ public class TracingMessageListenerTest extends ITJms {
     // clearing headers ensures later work doesn't try to use the old parent
     assertNoProperties(message);
 
-    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan =
-      spanHandler.takeLocalSpan();
+    MutableSpan consumerSpan = testSpanHandler.takeRemoteSpan(CONSUMER);
+    MutableSpan listenerSpan = testSpanHandler.takeLocalSpan();
+
     assertChildOf(consumerSpan, parent);
     assertChildOf(listenerSpan, consumerSpan);
   }
@@ -170,7 +172,7 @@ public class TracingMessageListenerTest extends ITJms {
     // clearing headers ensures later work doesn't try to use the old parent
     assertNoProperties(message);
 
-    assertChildOf(spanHandler.takeLocalSpan(), parent);
+    assertChildOf(testSpanHandler.takeLocalSpan(), parent);
   }
 
   @Test public void continues_parent_trace_single_header() {
@@ -182,8 +184,9 @@ public class TracingMessageListenerTest extends ITJms {
     // clearing headers ensures later work doesn't try to use the old parent
     assertNoProperties(message);
 
-    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(Span.Kind.CONSUMER), listenerSpan =
-      spanHandler.takeLocalSpan();
+    MutableSpan consumerSpan = testSpanHandler.takeRemoteSpan(CONSUMER);
+    MutableSpan listenerSpan = testSpanHandler.takeLocalSpan();
+
     assertChildOf(consumerSpan, parent);
     assertChildOf(listenerSpan, consumerSpan);
   }
@@ -200,7 +203,7 @@ public class TracingMessageListenerTest extends ITJms {
     // clearing headers ensures later work doesn't try to use the old parent
     assertNoProperties(message);
 
-    assertChildOf(spanHandler.takeLocalSpan(), parent);
+    assertChildOf(testSpanHandler.takeLocalSpan(), parent);
   }
 
   @Test public void reports_span_if_consume_fails() {
@@ -211,7 +214,7 @@ public class TracingMessageListenerTest extends ITJms {
     RuntimeException error = new RuntimeException("Test exception");
     onMessageConsumeFailed(message, error);
 
-    assertThat(spanHandler.takeLocalSpan().error()).isEqualTo(error);
+    assertThat(testSpanHandler.takeLocalSpan().error()).isEqualTo(error);
   }
 
   @Test public void listener_reports_span_if_fails() {
@@ -219,8 +222,8 @@ public class TracingMessageListenerTest extends ITJms {
     RuntimeException error = new RuntimeException("Test exception");
     onMessageConsumeFailed(message, error);
 
-    spanHandler.takeRemoteSpan(CONSUMER);
-    assertThat(spanHandler.takeLocalSpan().error()).isEqualTo(error);
+    testSpanHandler.takeRemoteSpan(CONSUMER);
+    assertThat(testSpanHandler.takeLocalSpan().error()).isEqualTo(error);
   }
 
   @Test public void reports_span_if_consume_fails_with_no_message() {
@@ -228,8 +231,8 @@ public class TracingMessageListenerTest extends ITJms {
     RuntimeException error = new RuntimeException("Test exception");
     onMessageConsumeFailed(message, error);
 
-    spanHandler.takeRemoteSpan(CONSUMER);
-    assertThat(spanHandler.takeLocalSpan().error()).isEqualTo(error);
+    testSpanHandler.takeRemoteSpan(CONSUMER);
+    assertThat(testSpanHandler.takeLocalSpan().error()).isEqualTo(error);
   }
 
   @Test public void null_listener_if_delegate_is_null() {

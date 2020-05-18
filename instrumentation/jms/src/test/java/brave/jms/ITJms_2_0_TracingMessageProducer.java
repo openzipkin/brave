@@ -63,7 +63,7 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
       }
     });
 
-    assertThat(spanHandler.takeRemoteSpan(Span.Kind.PRODUCER).tags())
+    assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.PRODUCER).tags())
       .containsKey("onCompletion");
   }
 
@@ -104,7 +104,7 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
     jms.after();
     latch.countDown();
 
-    spanHandler.takeRemoteSpanWithErrorTag(Span.Kind.PRODUCER, "onException");
+    testSpanHandler.takeRemoteSpanWithErrorTag(Span.Kind.PRODUCER, "onException");
   }
 
   @Test public void customSampler() throws JMSException {
