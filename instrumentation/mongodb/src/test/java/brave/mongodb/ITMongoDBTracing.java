@@ -69,14 +69,14 @@ public class ITMongoDBTracing extends ITMongoDB {
       executeFind(COLLECTION_NAME);
     }
 
-    MutableSpan clientSpan = spanHandler.takeRemoteSpan(CLIENT);
+    MutableSpan clientSpan = testSpanHandler.takeRemoteSpan(CLIENT);
     assertChildOf(clientSpan, parent);
   }
 
   @Test public void reportsClientKind() {
     executeFind(COLLECTION_NAME);
 
-    spanHandler.takeRemoteSpan(CLIENT);
+    testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
   @Test public void defaultSpanNameIsCommandNameAndCollectionName() {
@@ -89,11 +89,11 @@ public class ITMongoDBTracing extends ITMongoDB {
     mongoCursor.next();
 
     // Name extracted from {"find": "myCollection"}
-    assertThat(spanHandler.takeRemoteSpan(CLIENT).name())
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).name())
       .isEqualTo("find " + COLLECTION_NAME);
 
     // Name extracted from {"getMore": <cursorId>, "collection": "myCollection"}
-    assertThat(spanHandler.takeRemoteSpan(CLIENT).name())
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).name())
       .isEqualTo("getMore " + COLLECTION_NAME);
   }
 
@@ -104,7 +104,7 @@ public class ITMongoDBTracing extends ITMongoDB {
   @Test public void defaultSpanNameIsCommandName_notStringArgument() {
     database.listCollections().first();
 
-    assertThat(spanHandler.takeRemoteSpan(CLIENT).name())
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).name())
       .isEqualTo("listCollections");
   }
 
@@ -115,7 +115,7 @@ public class ITMongoDBTracing extends ITMongoDB {
       // Expected, we are trying to drop a user that doesn't exist
       failBecauseExceptionWasNotThrown(MongoCommandException.class);
     } catch (MongoCommandException e) {
-      MutableSpan span = spanHandler.takeRemoteSpanWithError(CLIENT, e);
+      MutableSpan span = testSpanHandler.takeRemoteSpanWithError(CLIENT, e);
 
       // "testUser" should not be mistaken as a collection name
       assertThat(span.name()).isEqualTo("dropUser");
@@ -125,7 +125,7 @@ public class ITMongoDBTracing extends ITMongoDB {
   @Test public void addsTags() {
     executeFind(COLLECTION_NAME);
 
-    assertThat(spanHandler.takeRemoteSpan(CLIENT).tags()).containsOnly(
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).tags()).containsOnly(
       entry("mongodb.collection", COLLECTION_NAME),
       entry("mongodb.command", "find"),
       entry("mongodb.cluster_id", clusterId)
@@ -139,7 +139,7 @@ public class ITMongoDBTracing extends ITMongoDB {
     }
     database.getCollection("largeCollection").insertOne(largeDocument);
 
-    assertThat(spanHandler.takeRemoteSpan(CLIENT).tags()).containsOnly(
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).tags()).containsOnly(
       entry("mongodb.collection", "largeCollection"),
       entry("mongodb.command", "insert"),
       entry("mongodb.cluster_id", clusterId)
@@ -149,7 +149,7 @@ public class ITMongoDBTracing extends ITMongoDB {
   @Test public void reportsServerAddress() {
     executeFind(COLLECTION_NAME);
 
-    assertThat(spanHandler.takeRemoteSpan(CLIENT).remoteServiceName())
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).remoteServiceName())
       .isEqualTo("mongodb-" + DATABASE_NAME);
   }
 
@@ -158,7 +158,7 @@ public class ITMongoDBTracing extends ITMongoDB {
         .isInstanceOf(MongoQueryException.class);
 
     // the error the interceptor receives is a MongoCommandException!
-    spanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*InvalidNamespace.*");
+    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*InvalidNamespace.*");
   }
 
   void executeFind(String collectionName) {

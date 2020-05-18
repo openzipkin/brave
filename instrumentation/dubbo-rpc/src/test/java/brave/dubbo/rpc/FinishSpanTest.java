@@ -40,7 +40,7 @@ public class FinishSpanTest extends ITTracingFilter {
 
     FinishSpan.finish(filter, clientRequest, null, null, span);
 
-    spanHandler.takeRemoteSpan(Kind.CLIENT);
+    testSpanHandler.takeRemoteSpan(Kind.CLIENT);
   }
 
   @Test public void finish_null_result_and_error_DubboServerRequest() {
@@ -48,7 +48,7 @@ public class FinishSpanTest extends ITTracingFilter {
 
     FinishSpan.finish(filter, serverRequest, null, null, span);
 
-    spanHandler.takeRemoteSpan(Kind.SERVER);
+    testSpanHandler.takeRemoteSpan(Kind.SERVER);
   }
 
   @Test public void finish_result_but_null_error_DubboClientRequest() {
@@ -56,7 +56,7 @@ public class FinishSpanTest extends ITTracingFilter {
 
     FinishSpan.finish(filter, clientRequest, mock(Result.class), null, span);
 
-    spanHandler.takeRemoteSpan(Kind.CLIENT);
+    testSpanHandler.takeRemoteSpan(Kind.CLIENT);
   }
 
   @Test public void finish_result_but_null_error_DubboServerRequest() {
@@ -64,7 +64,7 @@ public class FinishSpanTest extends ITTracingFilter {
 
     FinishSpan.finish(filter, serverRequest, mock(Result.class), null, span);
 
-    spanHandler.takeRemoteSpan(Kind.SERVER);
+    testSpanHandler.takeRemoteSpan(Kind.SERVER);
   }
 
   @Test public void finish_error_but_null_result_DubboClientRequest() {
@@ -73,7 +73,7 @@ public class FinishSpanTest extends ITTracingFilter {
     Throwable error = new RuntimeException("melted");
     FinishSpan.finish(filter, clientRequest, null, error, span);
 
-    spanHandler.takeRemoteSpanWithError(Kind.CLIENT, error);
+    testSpanHandler.takeRemoteSpanWithError(Kind.CLIENT, error);
   }
 
   @Test public void finish_error_but_null_result_DubboServerRequest() {
@@ -82,7 +82,7 @@ public class FinishSpanTest extends ITTracingFilter {
     Throwable error = new RuntimeException("melted");
     FinishSpan.finish(filter, serverRequest, null, error, span);
 
-    spanHandler.takeRemoteSpanWithError(Kind.SERVER, error);
+    testSpanHandler.takeRemoteSpanWithError(Kind.SERVER, error);
   }
 
   @Test public void create_null_result_value_and_error_DubboClientRequest() {
@@ -91,7 +91,7 @@ public class FinishSpanTest extends ITTracingFilter {
     FinishSpan.create(filter, clientRequest, mock(Result.class), span)
         .accept(null, null);
 
-    spanHandler.takeRemoteSpan(Kind.CLIENT);
+    testSpanHandler.takeRemoteSpan(Kind.CLIENT);
   }
 
   @Test public void create_null_result_value_and_error_DubboServerRequest() {
@@ -100,7 +100,7 @@ public class FinishSpanTest extends ITTracingFilter {
     FinishSpan.create(filter, serverRequest, mock(Result.class), span)
         .accept(null, null);
 
-    spanHandler.takeRemoteSpan(Kind.SERVER);
+    testSpanHandler.takeRemoteSpan(Kind.SERVER);
   }
 
   @Test public void create_result_value_but_null_error_DubboClientRequest() {
@@ -109,7 +109,7 @@ public class FinishSpanTest extends ITTracingFilter {
     FinishSpan.create(filter, clientRequest, mock(Result.class), span)
         .accept(new Object(), null);
 
-    spanHandler.takeRemoteSpan(Kind.CLIENT);
+    testSpanHandler.takeRemoteSpan(Kind.CLIENT);
   }
 
   @Test public void create_result_value_but_null_error_DubboServerRequest() {
@@ -118,7 +118,7 @@ public class FinishSpanTest extends ITTracingFilter {
     FinishSpan.create(filter, serverRequest, mock(Result.class), span)
         .accept(new Object(), null);
 
-    spanHandler.takeRemoteSpan(Kind.SERVER);
+    testSpanHandler.takeRemoteSpan(Kind.SERVER);
   }
 
   @Test public void create_error_but_null_result_value_DubboClientRequest() {
@@ -128,7 +128,7 @@ public class FinishSpanTest extends ITTracingFilter {
     FinishSpan.create(filter, clientRequest, mock(Result.class), span)
         .accept(null, error);
 
-    spanHandler.takeRemoteSpanWithError(Kind.CLIENT, error);
+    testSpanHandler.takeRemoteSpanWithError(Kind.CLIENT, error);
   }
 
   @Test public void create_error_but_null_result_value_DubboServerRequest() {
@@ -138,6 +138,6 @@ public class FinishSpanTest extends ITTracingFilter {
     FinishSpan.create(filter, serverRequest, mock(Result.class), span)
         .accept(null, error);
 
-    spanHandler.takeRemoteSpanWithError(Kind.SERVER, error);
+    testSpanHandler.takeRemoteSpanWithError(Kind.SERVER, error);
   }
 }

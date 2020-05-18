@@ -169,14 +169,14 @@ public class JmsTracingTest extends ITJms {
     jmsTracing.messageListener(mock(MessageListener.class), false)
       .onMessage(message);
 
-    assertThat(spanHandler.takeLocalSpan().name()).isEqualTo("on-message");
+    assertThat(testSpanHandler.takeLocalSpan().name()).isEqualTo("on-message");
   }
 
   @Test public void messageListener_traces_addsConsumerSpan() {
     jmsTracing.messageListener(mock(MessageListener.class), true)
       .onMessage(message);
 
-    assertThat(asList(spanHandler.takeRemoteSpan(Kind.CONSUMER), spanHandler.takeLocalSpan()))
+    assertThat(asList(testSpanHandler.takeRemoteSpan(Kind.CONSUMER), testSpanHandler.takeLocalSpan()))
       .extracting(brave.handler.MutableSpan::name)
       .containsExactly("receive", "on-message");
   }
@@ -229,7 +229,7 @@ public class JmsTracingTest extends ITJms {
     message.setDestination(createDestination("foo", QUEUE_TYPE));
     jmsTracing.nextSpan(message).start().finish();
 
-    assertThat(spanHandler.takeLocalSpan().tags())
+    assertThat(testSpanHandler.takeLocalSpan().tags())
       .containsOnly(entry("jms.queue", "foo"));
   }
 
@@ -242,7 +242,7 @@ public class JmsTracingTest extends ITJms {
     message.setDestination(createDestination("foo", QUEUE_TYPE));
     jmsTracing.nextSpan(message).start().finish();
 
-    assertThat(spanHandler.takeLocalSpan().tags()).isEmpty();
+    assertThat(testSpanHandler.takeLocalSpan().tags()).isEmpty();
   }
 
   @Test public void nextSpan_should_clear_propagation_headers() {

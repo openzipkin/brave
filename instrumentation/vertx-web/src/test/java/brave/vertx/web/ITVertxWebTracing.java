@@ -146,7 +146,7 @@ public class ITVertxWebTracing extends ITHttpServer {
     Response response = get(path);
     assertThat(response.isSuccessful()).withFailMessage("not successful: " + response).isTrue();
 
-    assertThat(spanHandler.takeRemoteSpan(Span.Kind.SERVER).tags())
+    assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER).tags())
       .containsEntry("http.path", path)
       .containsEntry("http.url", url(path));
   }

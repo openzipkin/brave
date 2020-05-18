@@ -137,7 +137,8 @@ public class ITJms_1_1_TracingMessageConsumer extends ITJms {
     });
     send.run();
 
-    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(CONSUMER), listenerSpan = spanHandler.takeLocalSpan();
+    MutableSpan consumerSpan = testSpanHandler.takeRemoteSpan(CONSUMER);
+    MutableSpan listenerSpan = testSpanHandler.takeLocalSpan();
     assertChildOf(listenerSpan, consumerSpan);
     assertSequential(consumerSpan, listenerSpan);
   }
@@ -187,7 +188,8 @@ public class ITJms_1_1_TracingMessageConsumer extends ITJms {
     );
     send.run();
 
-    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(CONSUMER), listenerSpan = spanHandler.takeLocalSpan();
+    MutableSpan consumerSpan = testSpanHandler.takeRemoteSpan(CONSUMER);
+    MutableSpan listenerSpan = testSpanHandler.takeLocalSpan();
 
     assertThat(consumerSpan.name()).isEqualTo("receive");
     assertThat(consumerSpan.parentId()).isNull(); // root span
@@ -228,7 +230,9 @@ public class ITJms_1_1_TracingMessageConsumer extends ITJms {
     TraceContext parent = resetB3PropertyWithNewSampledContext(jms);
     send.run();
 
-    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(CONSUMER), listenerSpan = spanHandler.takeLocalSpan();
+    MutableSpan consumerSpan = testSpanHandler.takeRemoteSpan(CONSUMER);
+    MutableSpan listenerSpan = testSpanHandler.takeLocalSpan();
+
     assertChildOf(consumerSpan, parent);
     assertChildOf(listenerSpan, consumerSpan);
     assertThat(listenerSpan.tags())
@@ -266,7 +270,9 @@ public class ITJms_1_1_TracingMessageConsumer extends ITJms {
     lockMessages();
     send.run();
 
-    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(CONSUMER), listenerSpan = spanHandler.takeLocalSpan();
+    MutableSpan consumerSpan = testSpanHandler.takeRemoteSpan(CONSUMER);
+    MutableSpan listenerSpan = testSpanHandler.takeLocalSpan();
+
     assertThat(consumerSpan.parentId()).isNull();
     assertChildOf(listenerSpan, consumerSpan);
     assertThat(listenerSpan.tags())
@@ -303,7 +309,7 @@ public class ITJms_1_1_TracingMessageConsumer extends ITJms {
 
     messageConsumer.receive();
 
-    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(CONSUMER);
+    MutableSpan consumerSpan = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(consumerSpan.name()).isEqualTo("receive");
     assertThat(consumerSpan.parentId()).isNull(); // root span
     assertThat(consumerSpan.tags()).containsAllEntriesOf(consumerTags);
@@ -331,7 +337,7 @@ public class ITJms_1_1_TracingMessageConsumer extends ITJms {
     send.run();
 
     Message received = messageConsumer.receive();
-    MutableSpan consumerSpan = spanHandler.takeRemoteSpan(CONSUMER);
+    MutableSpan consumerSpan = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertChildOf(consumerSpan, parent);
 
     assertThat(received.getStringProperty("b3"))

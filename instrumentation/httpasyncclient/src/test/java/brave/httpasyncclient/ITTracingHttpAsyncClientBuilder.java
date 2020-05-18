@@ -87,7 +87,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    spanHandler.takeRemoteSpan(CLIENT);
+    testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
   @Test public void failedInterceptorRemovesScope() {
@@ -104,7 +104,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
 
     assertThat(currentTraceContext.get()).isNull();
 
-    spanHandler.takeRemoteSpanWithError(CLIENT, error);
+    testSpanHandler.takeRemoteSpanWithError(CLIENT, error);
   }
 
   @Override

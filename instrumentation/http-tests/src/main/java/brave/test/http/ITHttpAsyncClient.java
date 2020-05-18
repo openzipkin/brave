@@ -73,7 +73,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
 
     // The spans may report in a different order than the requests
     for (int i = 0; i < 2; i++) {
-      assertChildOf(spanHandler.takeRemoteSpan(CLIENT), parent);
+      assertChildOf(testSpanHandler.takeRemoteSpan(CLIENT), parent);
     }
   }
 
@@ -99,7 +99,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
 
     callback.join(); // ensures listener ran
     assertThat(invocationContext.get()).isSameAs(parent);
-    assertChildOf(spanHandler.takeRemoteSpan(CLIENT), parent);
+    assertChildOf(testSpanHandler.takeRemoteSpan(CLIENT), parent);
   }
 
   /** This ensures that response callbacks run when there is no invocation trace context. */
@@ -116,7 +116,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
 
     callback.join(); // ensures listener ran
     assertThat(invocationContext.get()).isNull();
-    assertThat(spanHandler.takeRemoteSpan(CLIENT).parentId()).isNull();
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).parentId()).isNull();
   }
 
   @Test public void addsStatusCodeWhenNotOk_async() {
@@ -131,7 +131,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     // Ensure the getAsync() method is implemented correctly
     callback.join();
 
-    assertThat(spanHandler.takeRemoteSpanWithErrorTag(CLIENT, "400").tags())
+    assertThat(testSpanHandler.takeRemoteSpanWithErrorTag(CLIENT, "400").tags())
       .containsEntry("http.status_code", "400");
   }
 }

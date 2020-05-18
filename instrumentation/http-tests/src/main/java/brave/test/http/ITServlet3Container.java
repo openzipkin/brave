@@ -49,13 +49,13 @@ public abstract class ITServlet3Container extends ITServlet25Container {
   @Test public void forward() throws Exception {
     get("/forward");
 
-    spanHandler.takeRemoteSpan(SERVER);
+    testSpanHandler.takeRemoteSpan(SERVER);
   }
 
   @Test public void forwardAsync() throws Exception {
     get("/forwardAsync");
 
-    spanHandler.takeRemoteSpan(SERVER);
+    testSpanHandler.takeRemoteSpan(SERVER);
   }
 
   static class ForwardServlet extends HttpServlet {

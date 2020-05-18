@@ -64,7 +64,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
     // perform a warmup request to allow CI to fail quicker
     client.get().sayHello("jorge");
-    spanHandler.takeRemoteSpan(SERVER);
+    testSpanHandler.takeRemoteSpan(SERVER);
   }
 
   @Test public void reusesPropagatedSpanId() {
@@ -73,7 +73,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     RpcContext.getContext().getAttachments().put("b3", B3SingleFormat.writeB3SingleFormat(parent));
     client.get().sayHello("jorge");
 
-    assertSameIds(spanHandler.takeRemoteSpan(SERVER), parent);
+    assertSameIds(testSpanHandler.takeRemoteSpan(SERVER), parent);
   }
 
   @Test public void createsChildWhenJoinDisabled() {
@@ -85,7 +85,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     RpcContext.getContext().getAttachments().put("b3", B3SingleFormat.writeB3SingleFormat(parent));
     client.get().sayHello("jorge");
 
-    MutableSpan span = spanHandler.takeRemoteSpan(SERVER);
+    MutableSpan span = testSpanHandler.takeRemoteSpan(SERVER);
     assertChildOf(span, parent);
     assertThat(span.id()).isNotEqualTo(parent.spanIdString());
   }
@@ -103,19 +103,19 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     assertThat(client.get().sayHello("jorge"))
         .isNotEmpty();
 
-    spanHandler.takeRemoteSpan(SERVER);
+    testSpanHandler.takeRemoteSpan(SERVER);
   }
 
   @Test public void reportsServerKindToZipkin() {
     client.get().sayHello("jorge");
 
-    spanHandler.takeRemoteSpan(SERVER);
+    testSpanHandler.takeRemoteSpan(SERVER);
   }
 
   @Test public void defaultSpanNameIsMethodName() {
     client.get().sayHello("jorge");
 
-    assertThat(spanHandler.takeRemoteSpan(SERVER).name())
+    assertThat(testSpanHandler.takeRemoteSpan(SERVER).name())
         .isEqualTo("brave.dubbo.GreeterService/sayHello");
   }
 
@@ -123,7 +123,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     assertThatThrownBy(() -> client.get().sayHello("bad"))
         .isInstanceOf(IllegalArgumentException.class);
 
-    spanHandler.takeRemoteSpanWithErrorMessage(SERVER, "bad");
+    testSpanHandler.takeRemoteSpanWithErrorMessage(SERVER, "bad");
   }
 
   /* RpcTracing-specific feature tests */
@@ -141,7 +141,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     // sampled
     client.get().sayHello("jorge");
 
-    assertThat(spanHandler.takeRemoteSpan(SERVER).name()).endsWith("sayHello");
+    assertThat(testSpanHandler.takeRemoteSpan(SERVER).name()).endsWith("sayHello");
     // @After will also check that sayGoodbye was not sampled
   }
 
@@ -165,7 +165,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
     String javaResult = client.get().sayHello("jorge");
 
-    assertThat(spanHandler.takeRemoteSpan(SERVER).tags())
+    assertThat(testSpanHandler.takeRemoteSpan(SERVER).tags())
         .containsEntry("dubbo.result_value", javaResult);
   }
 }

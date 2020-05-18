@@ -124,7 +124,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
     Channel channel = clientWithB3SingleHeader(parent);
     GreeterGrpc.newBlockingStub(channel).sayHello(HELLO_REQUEST);
 
-    assertSameIds(spanHandler.takeRemoteSpan(Span.Kind.SERVER), parent);
+    assertSameIds(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER), parent);
   }
 
   @Test public void createsChildWhenJoinDisabled() throws IOException {
@@ -136,7 +136,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
     Channel channel = clientWithB3SingleHeader(parent);
     GreeterGrpc.newBlockingStub(channel).sayHello(HELLO_REQUEST);
 
-    assertChildOf(spanHandler.takeRemoteSpan(Span.Kind.SERVER), parent);
+    assertChildOf(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER), parent);
   }
 
   @Test public void samplingDisabled() throws IOException {
@@ -170,19 +170,19 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
     assertThat(fromUserInterceptor.get())
         .isNotNull();
 
-    spanHandler.takeRemoteSpan(Span.Kind.SERVER);
+    testSpanHandler.takeRemoteSpan(Span.Kind.SERVER);
   }
 
   @Test public void reportsServerKindToZipkin() {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    spanHandler.takeRemoteSpan(Span.Kind.SERVER);
+    testSpanHandler.takeRemoteSpan(Span.Kind.SERVER);
   }
 
   @Test public void defaultSpanNameIsMethodName() {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(spanHandler.takeRemoteSpan(Span.Kind.SERVER).name())
+    assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER).name())
         .isEqualTo("helloworld.Greeter/SayHello");
   }
 
@@ -191,7 +191,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
     assertThatThrownBy(() -> GreeterGrpc.newBlockingStub(client)
         .sayHello(HelloRequest.newBuilder().setName("bad").build()));
 
-    MutableSpan span = spanHandler.takeRemoteSpanWithErrorMessage(Span.Kind.SERVER, "bad");
+    MutableSpan span = testSpanHandler.takeRemoteSpanWithErrorMessage(Span.Kind.SERVER, "bad");
     assertThat(span.tags()).containsEntry("grpc.status_code", "UNKNOWN");
   }
 
@@ -200,7 +200,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
         .sayHello(HelloRequest.newBuilder().setName("testerror").build()))
         .isInstanceOf(StatusRuntimeException.class);
 
-    MutableSpan span = spanHandler.takeRemoteSpanWithErrorMessage(Span.Kind.SERVER, "testerror");
+    MutableSpan span = testSpanHandler.takeRemoteSpanWithErrorMessage(Span.Kind.SERVER, "testerror");
     assertThat(span.tags().get("grpc.status_code")).isNull();
   }
 
@@ -230,7 +230,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    MutableSpan span = spanHandler.takeRemoteSpan(Span.Kind.SERVER);
+    MutableSpan span = testSpanHandler.takeRemoteSpan(Span.Kind.SERVER);
     assertThat(span.name()).isEqualTo("UNARY");
     assertThat(span.tags().keySet()).containsExactlyInAnyOrder(
         "grpc.message_received", "grpc.message_sent",
@@ -252,7 +252,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
         .sayHelloWithManyReplies(HELLO_REQUEST);
     assertThat(replies).toIterable().hasSize(10);
     // all response messages are tagged to the same span
-    assertThat(spanHandler.takeRemoteSpan(Span.Kind.SERVER).tags()).hasSize(10);
+    assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER).tags()).hasSize(10);
   }
 
   // Make sure we work well with bad user interceptors.
@@ -267,7 +267,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
 
     assertThatThrownBy(() -> GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST))
         .isInstanceOf(StatusRuntimeException.class);
-    spanHandler.takeRemoteSpanWithErrorMessage(Span.Kind.SERVER, "I'm a bad interceptor.");
+    testSpanHandler.takeRemoteSpanWithErrorMessage(Span.Kind.SERVER, "I'm a bad interceptor.");
   }
 
   @Test public void userInterceptor_throwsOnSendMessage() throws IOException {
@@ -284,7 +284,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
 
     assertThatThrownBy(() -> GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST))
         .isInstanceOf(StatusRuntimeException.class);
-    spanHandler.takeRemoteSpanWithErrorMessage(Span.Kind.SERVER, "I'm a bad interceptor.");
+    testSpanHandler.takeRemoteSpanWithErrorMessage(Span.Kind.SERVER, "I'm a bad interceptor.");
   }
 
   @Test public void userInterceptor_throwsOnClose() throws IOException {
@@ -301,7 +301,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
 
     assertThatThrownBy(() -> GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST))
         .isInstanceOf(StatusRuntimeException.class);
-    spanHandler.takeRemoteSpanWithErrorMessage(Span.Kind.SERVER, "I'm a bad interceptor.");
+    testSpanHandler.takeRemoteSpanWithErrorMessage(Span.Kind.SERVER, "I'm a bad interceptor.");
   }
 
   @Test public void userInterceptor_throwsOnOnHalfClose() throws IOException {
@@ -318,7 +318,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
 
     assertThatThrownBy(() -> GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST))
         .isInstanceOf(StatusRuntimeException.class);
-    spanHandler.takeRemoteSpanWithErrorMessage(Span.Kind.SERVER, "I'm a bad interceptor.");
+    testSpanHandler.takeRemoteSpanWithErrorMessage(Span.Kind.SERVER, "I'm a bad interceptor.");
   }
 
   /**
@@ -351,7 +351,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(spanHandler.takeRemoteSpan(Span.Kind.SERVER).tags()).containsKeys(
+    assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER).tags()).containsKeys(
         "grpc.message_recv.0", "grpc.message_send.0"
     );
 
@@ -360,7 +360,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
     assertThat(replies).toIterable().hasSize(10);
 
     // Intentionally verbose here to show that only one recv and 10 replies
-    assertThat(spanHandler.takeRemoteSpan(Span.Kind.SERVER).tags()).containsKeys(
+    assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER).tags()).containsKeys(
         "grpc.message_recv.1",
         "grpc.message_send.1",
         "grpc.message_send.2",
@@ -392,7 +392,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
     // sampled
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(spanHandler.takeRemoteSpan(Span.Kind.SERVER).name())
+    assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER).name())
         .isEqualTo("helloworld.Greeter/SayHello");
 
     // @After will also check that sayHelloWithManyReplies was not sampled
@@ -424,7 +424,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(spanHandler.takeRemoteSpan(Span.Kind.SERVER).tags())
+    assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER).tags())
         .containsEntry("grpc.method_type", "UNARY")
         .containsEntry("grpc.response_encoding", "identity");
   }

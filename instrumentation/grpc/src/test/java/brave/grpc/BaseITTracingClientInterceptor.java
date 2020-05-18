@@ -99,7 +99,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     TraceContext extracted = server.takeRequest().context();
     assertThat(extracted.sampled()).isTrue();
     assertThat(extracted.parentIdString()).isNull();
-    assertSameIds(spanHandler.takeRemoteSpan(CLIENT), extracted);
+    assertSameIds(testSpanHandler.takeRemoteSpan(CLIENT), extracted);
   }
 
   @Test public void propagatesChildOfCurrentSpan() {
@@ -111,7 +111,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     TraceContext extracted = server.takeRequest().context();
     assertThat(extracted.sampled()).isTrue();
     assertChildOf(extracted, parent);
-    assertSameIds(spanHandler.takeRemoteSpan(CLIENT), extracted);
+    assertSameIds(testSpanHandler.takeRemoteSpan(CLIENT), extracted);
   }
 
   /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
@@ -136,7 +136,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     TraceContext extracted = server.takeRequest().context();
     assertThat(BAGGAGE_FIELD.getValue(extracted)).isEqualTo("joey");
 
-    spanHandler.takeRemoteSpan(CLIENT);
+    testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
   @Test public void propagatesBaggage_unsampled() {
@@ -161,7 +161,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     }
     long finish = clock.currentTimeMicroseconds();
 
-    MutableSpan clientSpan = spanHandler.takeRemoteSpan(CLIENT);
+    MutableSpan clientSpan = testSpanHandler.takeRemoteSpan(CLIENT);
     assertChildOf(clientSpan, parent);
     assertSpanInInterval(clientSpan, start, finish);
   }
@@ -189,20 +189,20 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
 
     // The spans may report in a different order than the requests
     for (int i = 0; i < 2; i++) {
-      assertChildOf(spanHandler.takeRemoteSpan(CLIENT), parent);
+      assertChildOf(testSpanHandler.takeRemoteSpan(CLIENT), parent);
     }
   }
 
   @Test public void reportsClientKindToZipkin() {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    spanHandler.takeRemoteSpan(CLIENT);
+    testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
   @Test public void defaultSpanNameIsMethodName() {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(spanHandler.takeRemoteSpan(CLIENT).name())
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).name())
         .isEqualTo("helloworld.Greeter/SayHello");
   }
 
@@ -213,7 +213,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
         .isInstanceOf(StatusRuntimeException.class);
 
     // The error format of the exception message can differ from the span's "error" tag in CI
-    MutableSpan span = spanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Connection refused.*");
+    MutableSpan span = testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Connection refused.*");
     assertThat(span.tags()).containsEntry("grpc.status_code", "UNAVAILABLE");
   }
 
@@ -221,7 +221,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     assertThatThrownBy(() -> GraterGrpc.newBlockingStub(client).seyHallo(HELLO_REQUEST))
         .isInstanceOf(StatusRuntimeException.class);
 
-    MutableSpan span = spanHandler.takeRemoteSpanWithErrorTag(CLIENT, "UNIMPLEMENTED");
+    MutableSpan span = testSpanHandler.takeRemoteSpanWithErrorTag(CLIENT, "UNIMPLEMENTED");
     assertThat(span.tags().get("grpc.status_code")).isEqualTo("UNIMPLEMENTED");
   }
 
@@ -231,7 +231,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     ListenableFuture<HelloReply> resp = GreeterGrpc.newFutureStub(client).sayHello(HELLO_REQUEST);
     assumeTrue("lost race on cancel", resp.cancel(true));
 
-    MutableSpan span = spanHandler.takeRemoteSpanWithErrorTag(CLIENT, "CANCELLED");
+    MutableSpan span = testSpanHandler.takeRemoteSpanWithErrorTag(CLIENT, "CANCELLED");
     assertThat(span.tags().get("grpc.status_code")).isEqualTo("CANCELLED");
   }
 
@@ -266,7 +266,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(spanHandler.takeRemoteSpan(CLIENT).annotations())
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).annotations())
         .extracting(Entry::getValue)
         .containsOnly("start", "sendMessage");
   }
@@ -302,13 +302,13 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
       parent.finish();
     }
 
-    MutableSpan span = spanHandler.takeRemoteSpan(CLIENT);
+    MutableSpan span = testSpanHandler.takeRemoteSpan(CLIENT);
     assertThat(span.name()).isEqualTo("UNARY");
     assertThat(span.tags()).containsKeys(
         "grpc.message_received", "grpc.message_sent",
         "grpc.message_received.visible", "grpc.message_sent.visible"
     );
-    spanHandler.takeLocalSpan();
+    testSpanHandler.takeLocalSpan();
   }
 
   @Test public void deprecated_clientParserTestStreamingResponse() {
@@ -327,7 +327,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     assertThat(replies).toIterable().hasSize(10);
 
     // all response messages are tagged to the same span
-    assertThat(spanHandler.takeRemoteSpan(CLIENT).tags()).hasSize(10);
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).tags()).hasSize(10);
   }
 
   // Make sure we work well with bad user interceptors.
@@ -349,7 +349,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
 
     assertThatThrownBy(() -> GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST))
         .isInstanceOf(IllegalStateException.class);
-    spanHandler.takeRemoteSpanWithErrorMessage(CLIENT, "I'm a bad interceptor.");
+    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, "I'm a bad interceptor.");
   }
 
   @Test public void userInterceptor_throwsOnHalfClose() {
@@ -369,7 +369,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
 
     assertThatThrownBy(() -> GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST))
         .isInstanceOf(IllegalStateException.class);
-    spanHandler.takeRemoteSpanWithErrorMessage(CLIENT, "I'm a bad interceptor.");
+    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, "I'm a bad interceptor.");
   }
 
   /**
@@ -386,11 +386,11 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
       span.finish();
     }
 
-    assertThat(spanHandler.takeRemoteSpan(CLIENT).tags())
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).tags())
         .containsKey("grpc.message_send.1");
 
     // Response processing happens on the invocation (parent) trace context
-    assertThat(spanHandler.takeLocalSpan().tags())
+    assertThat(testSpanHandler.takeLocalSpan().tags())
         .containsKey("grpc.message_recv.1");
   }
 
@@ -406,12 +406,12 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
       span.finish();
     }
 
-    assertThat(spanHandler.takeRemoteSpan(CLIENT).tags())
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).tags())
         .containsKey("grpc.message_send.1");
 
     // Response processing happens on the invocation (parent) trace context
     // Intentionally verbose here to show 10 replies
-    assertThat(spanHandler.takeLocalSpan().tags()).containsKeys(
+    assertThat(testSpanHandler.takeLocalSpan().tags()).containsKeys(
         "grpc.message_recv.1",
         "grpc.message_recv.2",
         "grpc.message_recv.3",
@@ -475,7 +475,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
 
     callback.join(); // ensures listener ran
     assertThat(invocationContext.get()).isSameAs(parent);
-    assertChildOf(spanHandler.takeRemoteSpan(CLIENT), parent);
+    assertChildOf(testSpanHandler.takeRemoteSpan(CLIENT), parent);
   }
 
   /** This ensures that response callbacks run when there is no invocation trace context. */
@@ -490,7 +490,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
 
     callback.join(); // ensures listener ran
     assertThat(invocationContext.get()).isNull();
-    assertThat(spanHandler.takeRemoteSpan(CLIENT).parentId()).isNull();
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).parentId()).isNull();
   }
 
   /* RpcTracing-specific feature tests */
@@ -513,7 +513,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     // sampled
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(spanHandler.takeRemoteSpan(CLIENT).name())
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).name())
         .isEqualTo("helloworld.Greeter/SayHello");
     // @After will also check that sayHelloWithManyReplies was not sampled
   }
@@ -547,7 +547,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
 
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
-    assertThat(spanHandler.takeRemoteSpan(CLIENT).tags())
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).tags())
         .containsEntry("grpc.method_type", "UNARY")
         .containsEntry("grpc.response_encoding", "identity");
   }
