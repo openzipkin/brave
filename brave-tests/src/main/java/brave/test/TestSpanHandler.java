@@ -45,7 +45,7 @@ import org.junit.rules.TestRule;
  *
  * <h3>Comparison with {@link IntegrationTestSpanHandler}</h3>
  * It is possible to use this type in multi-threaded tests, but there are usually problems that
- * arise better solved by {@link IntegrationTestSpanHandler}. Here's a few examples.
+ * arise better solved by {@link IntegrationTestSpanHandler}. Here are a few examples.
  *
  * <p>Multi-threaded tests typically end up with timing issues which can lead to broken builds (aka
  * "flakey tests"). These are sometimes mitigated by polling assertions such as <a
