@@ -20,6 +20,7 @@ import org.junit.Test;
 
 import static brave.Span.Kind.CLIENT;
 import static brave.handler.SpanHandler.Cause.FINISHED;
+import static brave.handler.SpanHandler.Cause.ORPHANED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -27,6 +28,25 @@ public class IntegrationTestSpanHandlerTest {
   IntegrationTestSpanHandler spanHandler = new IntegrationTestSpanHandler();
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
   MutableSpan span = new MutableSpan(context, null);
+
+  @Test public void goodMessageForUnstartedSpan() {
+    spanHandler.end(context, span, FINISHED); // NOT ORPHANED!
+
+    assertThatThrownBy(spanHandler::takeLocalSpan)
+        .hasMessage(
+            "Expected a startTimestamp: {\"traceId\":\"0000000000000001\",\"id\":\"0000000000000002\"}\n"
+                + "Look for code missing span.start().");
+  }
+
+  @Test public void goodMessageForOrphanedSpan() {
+    spanHandler.begin(context, span, null);
+    spanHandler.end(context, span, ORPHANED);
+
+    assertThatThrownBy(spanHandler::takeLocalSpan)
+        .hasMessageStartingWith("Orphaned span found")
+        .hasMessageContaining("brave.flush")
+        .hasMessageEndingWith("Look for code missing span.flush() or span.finish().");
+  }
 
   @Test public void toString_includesSpans() {
     spanHandler.end(context, span, FINISHED);

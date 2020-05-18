@@ -17,10 +17,13 @@ import brave.Span.Kind;
 import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
 import brave.internal.Nullable;
+import brave.internal.Platform;
+import brave.internal.handler.OrphanTracker;
 import brave.propagation.TraceContext;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.regex.Pattern;
 import org.junit.After;
 import org.junit.AssumptionViolatedException;
@@ -31,12 +34,35 @@ import org.junit.runners.model.Statement;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * This is a special span reporter for remote integration tests. It has a few features to ensure
- * tests cover common instrumentation bugs. Most of this optimizes for instrumentation occurring on
- * a different thread than main (which does the assertions).
+ * This is a special span reporter for remote integration tests.
+ *
+ * <p>Ex. The following is similar to our base test class {@link ITRemote}:
+ * <pre>{@code
+ * @Rule public IntegrationTestSpanHandler testSpanHandler = new IntegrationTestSpanHandler();
+ *
+ * Tracing tracing = Tracing.newBuilder().addSpanHandler(testSpanHandler).build();
+ *
+ * @After public void close() {
+ *   tracing.close();
+ * }
+ *
+ * @Test public void onTransportException_setError() {
+ *   server.stop();
+ *
+ *   assertThatThrownBy(() -> client.get().sayHello("jorge"))
+ *       .isInstanceOf(RpcException.class);
+ *
+ *   spanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*RemotingException.*");
+ * }
+ * }</pre>
+ *
+ * <p>This type has a few features not in {@link TestSpanHandler}, that cover common
+ * instrumentation bugs. Most of this optimizes for instrumentation occurring on a different thread
+ * than main (which does the assertions).
  *
  * <p><pre><ul>
  *   <li>Spans report into a concurrent blocking queue to prevent assertions race conditions</li>
+ *   <li>Spans orphaned by garbage collected result in log warnings and assertion failures</li>
  *   <li>After tests complete, the queue is strictly checked to catch redundant span reporting</li>
  * </ul></pre>
  *
@@ -90,13 +116,30 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public final class IntegrationTestSpanHandler extends SpanHandler implements TestRule {
   static final String ANY_STRING = ".+";
+
   /**
    * When testing servers or asynchronous clients, spans are finished on a worker thread. In order
    * to read them on the main thread, we use a concurrent queue. As some implementations report
    * after a response is sent, we use a blocking queue to prevent race conditions in tests.
    */
-  BlockingQueue<MutableSpan> spans = new LinkedBlockingQueue<>();
+  final BlockingQueue<MutableSpan> spans = new LinkedBlockingQueue<>();
+  final SpanHandler orphanTracker;
   boolean ignoreAnySpans;
+
+  public IntegrationTestSpanHandler() {
+    // OrphanTracker detects to see if it should add "brave.flushed" or not, as it is used in
+    // production some times and avoiding this could be helpful. This forces a failed match,
+    // so that we can detect orphans even when no data was added.
+    MutableSpan intentionallyWrongDefaultSpan = new MutableSpan();
+    intentionallyWrongDefaultSpan.tag("not", "me");
+    orphanTracker = OrphanTracker.newBuilder()
+        .defaultSpan(intentionallyWrongDefaultSpan)
+        // This will not be exactly the right timestamp when Tracing.Builder.clock is overridden.
+        // However, it is rare to override this in an integration test and complex to pass it.
+        .clock(Platform.get().clock())
+        // Make sure CI can see when things leak: Intentional leak tests shouldn't use this handler.
+        .logLevel(Level.WARNING).build();
+  }
 
   /**
    * Call this before throwing an {@link AssumptionViolatedException}, when there's a chance a span
@@ -158,8 +201,14 @@ public final class IntegrationTestSpanHandler extends SpanHandler implements Tes
         .withFailMessage("Timeout waiting for span")
         .isNotNull();
 
+    assertThat(result.containsAnnotation("brave.flush"))
+        .withFailMessage("Orphaned span found: %s\n"
+            + "Look for code missing span.flush() or span.finish().", result)
+        .isFalse();
+
     assertThat(result.startTimestamp())
-        .withFailMessage("Expected a startTimestamp: %s", result)
+        .withFailMessage("Expected a startTimestamp: %s\n"
+            + "Look for code missing span.start().", result)
         .isNotZero();
 
     if (flushed) {
@@ -322,7 +371,17 @@ public final class IntegrationTestSpanHandler extends SpanHandler implements Tes
         .isNull();
   }
 
+  @Override
+  public boolean begin(TraceContext context, MutableSpan span, @Nullable TraceContext parent) {
+    return orphanTracker.begin(context, span, parent);
+  }
+
+  @Override public boolean handlesAbandoned() {
+    return orphanTracker.handlesAbandoned();
+  }
+
   @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
+    orphanTracker.end(context, span, cause);
     spans.add(span);
     return true;
   }
