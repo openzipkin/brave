@@ -17,6 +17,7 @@ import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -45,30 +46,40 @@ import java.util.List;
  * @since 5.12
  */
 public final class TestSpanHandler extends SpanHandler implements Iterable<MutableSpan> {
-  final List<MutableSpan> spans = new ArrayList<>();
+  // Synchronized not to discourage IntegrationTestSpanHandler when it should be used.
+  // Rather, this allows iterative conversion of test code from custom Zipkin reporters to Brave.
+  final List<MutableSpan> spans = new ArrayList<>(); // guarded by itself
 
   public MutableSpan get(int i) {
-    return spans.get(i);
+    synchronized (spans) {
+      return spans.get(i);
+    }
   }
 
   public List<MutableSpan> spans() {
-    return spans;
+    synchronized (spans) { // avoid Iterator pitfalls noted in Collections.synchronizedList
+      return new ArrayList<>(spans);
+    }
   }
 
   @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
-    spans.add(span);
+    synchronized (spans) {
+      spans.add(span);
+    }
     return true;
   }
 
   @Override public Iterator<MutableSpan> iterator() {
-    return spans.iterator();
+    return spans().iterator();
   }
 
   public void clear() {
-    spans.clear();
+    synchronized (spans) {
+      spans.clear();
+    }
   }
 
   @Override public String toString() {
-    return "TestSpanHandler{" + spans + "}";
+    return "TestSpanHandler{" + spans() + "}";
   }
 }
