@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"brave.jaxrs2","l":"ContainerParser"},{"p":"brave.jaxrs2","l":"SpanCustomizingContainerFilter"},{"p":"brave.jaxrs2","l":"TracingClientFilter"}]
