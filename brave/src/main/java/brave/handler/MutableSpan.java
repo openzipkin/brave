@@ -46,7 +46,7 @@ import static brave.internal.codec.JsonWriter.UTF_8;
  * <p>In other words, this type is not thread safe. If you need to mutate this span in a different
  * thread, use the {@linkplain #MutableSpan(MutableSpan) copy constructor}.
  *
- * <h3>MutableSpan.error() vs MutableSpan.tag("error)</h3>
+ * <h3>MutableSpan.error() vs MutableSpan.tag("error")</h3>
  * If {@link #tag(String)} returns a result for "error", it was from a layered api, instrumentation or the user.
  * {@link #error()} is usually an uncaught exception and does not imply there's a tag "error".
  *
