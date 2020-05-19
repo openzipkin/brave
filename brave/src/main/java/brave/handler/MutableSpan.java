@@ -77,7 +77,7 @@ import static brave.internal.codec.JsonWriter.UTF_8;
  * implementations that process errors:
  * <ul>
  *   <li>{@code MutableSpan.tag("error", "")} to redact the error message from Zipkin</li>
- *   <li>{@code MutableSpan.error() -> MutableSpan.tags["exception"]} to match metrics dimension</li>
+ *   <li>{@code MutableSpan.error() -> MutableSpan.tag("exception", normalized)} to match metrics dimension</li>
  *   <li>{@code MutableSpan.error() -> CustomFormat.stackTrace} for sophisticated trace formats</li>
  * </ul>
  *
