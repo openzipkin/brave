@@ -84,12 +84,12 @@ SONATYPE_PASSWORD=your_sonatype_password
 VERSION=xx-version-to-release-xx
 
 # now from latest master, prepare the release. We are intentionally deferring pushing commits
-./mvnw -s .settings.xml -Prelease -nsu -DreleaseVersion=$VERSION -Darguments="-DskipTests -Dlicense.skip=true" release:prepare  -DpushChanges=false
+./mvnw --batch-mode -s .settings.xml -Prelease -nsu -DreleaseVersion=$VERSION -Darguments="-DskipTests -Dlicense.skip=true" release:prepare  -DpushChanges=false
 
 # once this works, deploy and synchronize to maven central
 git checkout $VERSION
-./mvnw -s .settings.xml -Prelease -nsu -DskipTests deploy
-./mvnw -s .settings.xml -nsu -N io.zipkin.centralsync-maven-plugin:centralsync-maven-plugin:sync
+./mvnw --batch-mode -s .settings.xml -Prelease -nsu -DskipTests deploy
+./mvnw --batch-mode -s .settings.xml -nsu -N io.zipkin.centralsync-maven-plugin:centralsync-maven-plugin:sync
 
 # If Bintray is down, or having permissions problems, the above won't work, manually release
 # Note: you'll need GPG setup with your key, similar to Apache process
