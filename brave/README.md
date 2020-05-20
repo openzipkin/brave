@@ -593,7 +593,6 @@ customizer.customize(tracingBuilder);
 A span metrics example is [here](src/test/java/brave/features/handler/SpanMetricsCustomizer.java)
 
 ### Non-Zipkin Span Reporting example
-<h3>Non-Zipkin Span Reporting example</h3>
 When reporting to a Zipkin compatible collector, use [io.zipkin.reporter2:zipkin-reporter-brave](https://github.com/openzipkin/zipkin-reporter-java).
 
 The below example highlights notes for those sending data into a different
