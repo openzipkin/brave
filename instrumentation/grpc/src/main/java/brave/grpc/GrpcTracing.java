@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,13 +13,17 @@
  */
 package brave.grpc;
 
-import brave.ErrorParser;
 import brave.Tracing;
 import brave.propagation.Propagation;
+import brave.rpc.RpcRequestParser;
+import brave.rpc.RpcResponseParser;
 import brave.rpc.RpcTracing;
 import io.grpc.ClientInterceptor;
 import io.grpc.Metadata;
 import io.grpc.ServerInterceptor;
+import java.util.Map;
+
+import static brave.grpc.GrpcParser.LEGACY_RESPONSE_PARSER;
 
 public final class GrpcTracing {
   public static GrpcTracing create(Tracing tracing) {
@@ -31,7 +35,10 @@ public final class GrpcTracing {
   }
 
   public static Builder newBuilder(Tracing tracing) {
-    return newBuilder(RpcTracing.create(tracing));
+    return newBuilder(RpcTracing.newBuilder(tracing)
+      .clientResponseParser(LEGACY_RESPONSE_PARSER)
+      .serverResponseParser(LEGACY_RESPONSE_PARSER)
+      .build());
   }
 
   public static Builder newBuilder(RpcTracing rpcTracing) {
@@ -39,37 +46,53 @@ public final class GrpcTracing {
   }
 
   public static final class Builder {
-    final RpcTracing rpcTracing;
-    GrpcClientParser clientParser;
-    GrpcServerParser serverParser;
+    RpcTracing rpcTracing;
     boolean grpcPropagationFormatEnabled = false;
+
+    // for interop with old parsers
+    MessageProcessor clientMessageProcessor = MessageProcessor.NOOP;
+    MessageProcessor serverMessageProcessor = MessageProcessor.NOOP;
 
     Builder(RpcTracing rpcTracing) {
       if (rpcTracing == null) throw new NullPointerException("rpcTracing == null");
       this.rpcTracing = rpcTracing;
-      // override to re-use any custom error parser from the tracing component
-      ErrorParser errorParser = rpcTracing.tracing().errorParser();
-      clientParser = new GrpcClientParser() {
-        @Override protected ErrorParser errorParser() {
-          return errorParser;
-        }
-      };
-      serverParser = new GrpcServerParser() {
-        @Override protected ErrorParser errorParser() {
-          return errorParser;
-        }
-      };
     }
 
+    Builder(GrpcTracing grpcTracing) {
+      rpcTracing = grpcTracing.rpcTracing;
+      clientMessageProcessor = grpcTracing.clientMessageProcessor;
+      serverMessageProcessor = grpcTracing.serverMessageProcessor;
+    }
+
+    /**
+     * @see GrpcClientRequest
+     * @see GrpcClientResponse
+     * @deprecated Since 5.12 use {@link RpcTracing.Builder#clientRequestParser(RpcRequestParser)}
+     * or {@link RpcTracing.Builder#clientResponseParser(RpcResponseParser)}.
+     */
+    @Deprecated
     public Builder clientParser(GrpcClientParser clientParser) {
       if (clientParser == null) throw new NullPointerException("clientParser == null");
-      this.clientParser = clientParser;
+      clientMessageProcessor = clientParser;
+      rpcTracing = rpcTracing.toBuilder()
+        .clientRequestParser(clientParser)
+        .clientResponseParser(clientParser).build();
       return this;
     }
 
+    /**
+     * @see GrpcServerRequest
+     * @see GrpcServerResponse
+     * @deprecated Since 5.12 use {@link RpcTracing.Builder#serverRequestParser(RpcRequestParser)}
+     * or {@link RpcTracing.Builder#serverResponseParser(RpcResponseParser)}.
+     */
+    @Deprecated
     public Builder serverParser(GrpcServerParser serverParser) {
       if (serverParser == null) throw new NullPointerException("serverParser == null");
-      this.serverParser = serverParser;
+      serverMessageProcessor = serverParser;
+      rpcTracing = rpcTracing.toBuilder()
+        .serverRequestParser(serverParser)
+        .serverResponseParser(serverParser).build();
       return this;
     }
 
@@ -79,12 +102,12 @@ public final class GrpcTracing {
      * Default is false.
      *
      * <p>This wraps an existing propagation implementation, but prefers extracting
-     * "grpc-trace-bin" and "grpc-tags-bin" when parsing gRPC metadata. The incoming service method
-     * is propagated to outgoing client requests and written in the tags context as the key named
-     * "method". Regardless of whether "grpc-trace-bin" was parsed, it is speculatively written on
-     * outgoing requests.
+     * "grpc-trace-bin" when parsing gRPC metadata. Regardless of whether "grpc-trace-bin" was
+     * parsed, it is speculatively written on outgoing requests.
      *
-     * <p>Warning: the format of both "grpc-trace-bin" and "grpc-tags-bin" are version 0. As such,
+     * <p>When present, "grpc-tags-bin" is propagated pass-through. We do not alter it.
+     *
+     * <p>Warning: the format of both "grpc-trace-bin" is version 0. As such,
      * consider this feature experimental.
      */
     public Builder grpcPropagationFormatEnabled(boolean grpcPropagationFormatEnabled) {
@@ -98,27 +121,28 @@ public final class GrpcTracing {
   }
 
   final RpcTracing rpcTracing;
-  final Propagation<Metadata.Key<String>> propagation;
-  final GrpcClientParser clientParser;
-  final GrpcServerParser serverParser;
+  final Propagation<String> propagation;
+  final Map<String, Metadata.Key<String>> nameToKey;
   final boolean grpcPropagationFormatEnabled;
+
+  // for toBuilder()
+  final MessageProcessor clientMessageProcessor, serverMessageProcessor;
 
   GrpcTracing(Builder builder) { // intentionally hidden constructor
     rpcTracing = builder.rpcTracing;
     grpcPropagationFormatEnabled = builder.grpcPropagationFormatEnabled;
-    Propagation.Factory propagationFactory = rpcTracing.tracing().propagationFactory();
     if (grpcPropagationFormatEnabled) {
-      propagationFactory = GrpcPropagation.newFactory(propagationFactory);
+      propagation = GrpcPropagation.create(rpcTracing.tracing().propagation());
+    } else {
+      propagation = rpcTracing.tracing().propagation();
     }
-    propagation = propagationFactory.create(AsciiMetadataKeyFactory.INSTANCE);
-    clientParser = builder.clientParser;
-    serverParser = builder.serverParser;
+    nameToKey = GrpcPropagation.nameToKey(propagation);
+    clientMessageProcessor = builder.clientMessageProcessor;
+    serverMessageProcessor = builder.serverMessageProcessor;
   }
 
   public Builder toBuilder() {
-    return new Builder(rpcTracing)
-      .clientParser(clientParser)
-      .serverParser(serverParser);
+    return new Builder(this);
   }
 
   /** This interceptor traces outbound calls */

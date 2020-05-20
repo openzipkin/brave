@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -25,7 +25,7 @@ import brave.sampler.SamplerFunction;
  * component}.
  *
  * <p>This also allows one object to customize both {@link Tracing}, via {@link TracingCustomizer},
- * and the rpc layer {@link RpcTracing}, by implementing both customizer interfaces.
+ * and the RPC layer {@link RpcTracing}, by implementing both customizer interfaces.
  *
  * <h3>Integration examples</h3>
  *
@@ -40,9 +40,14 @@ import brave.sampler.SamplerFunction;
  *   <li><a href="https://docs.spring.io/spring/docs/current/spring-framework-reference/core.html#beans-autowired-annotation">Spring Autowired Collections</a></li>
  * </ul></pre>
  *
+ * <p><em>Note</em>: This type is safe to implement as a lambda, or use as a method reference as it
+ * is effectively a {@code FunctionalInterface}. It isn't annotated as such because the project has
+ * a minimum Java language level 6.
+ *
  * @see TracingCustomizer
  * @since 5.8
  */
+// @FunctionalInterface, except Java language level 6. Do not add methods as it will break API!
 public interface RpcTracingCustomizer {
   /** Use to avoid comparing against null references */
   RpcTracingCustomizer NOOP = new RpcTracingCustomizer() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,26 +14,25 @@
 package brave.propagation;
 
 import brave.Tracing;
-import java.util.ArrayList;
-import java.util.List;
+import brave.test.TestSpanHandler;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ThreadLocalSpanTest {
-
-  List<Span> spans = new ArrayList<>();
+  StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
+  TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing = Tracing.newBuilder()
-    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-    .spanReporter(spans::add)
+    .currentTraceContext(currentTraceContext)
+    .addSpanHandler(spans)
     .build();
 
   ThreadLocalSpan threadLocalSpan = ThreadLocalSpan.create(tracing.tracer());
 
   @After public void close() {
     tracing.close();
+    currentTraceContext.close();
   }
 
   @Test public void next() {

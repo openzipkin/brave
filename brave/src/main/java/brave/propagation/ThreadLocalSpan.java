@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -117,7 +117,7 @@ public class ThreadLocalSpan {
     Tracer tracer = tracer();
     if (tracer == null) return null;
     Span next = tracer.nextSpan(extracted);
-    Object[] spanAndScope = {next, tracer.withSpanInScope(next)};
+    SpanAndScope spanAndScope = new SpanAndScope(next, tracer.withSpanInScope(next));
     getCurrentSpanInScopeStack().addFirst(spanAndScope);
     return next;
   }
@@ -130,9 +130,19 @@ public class ThreadLocalSpan {
     Tracer tracer = tracer();
     if (tracer == null) return null;
     Span next = tracer.nextSpan();
-    Object[] spanAndScope = {next, tracer.withSpanInScope(next)};
+    SpanAndScope spanAndScope = new SpanAndScope(next, tracer.withSpanInScope(next));
     getCurrentSpanInScopeStack().addFirst(spanAndScope);
     return next;
+  }
+
+  static final class SpanAndScope {
+    final Span span;
+    final SpanInScope spanInScope;
+
+    SpanAndScope(Span span, SpanInScope spanInScope) {
+      this.span = span;
+      this.spanInScope = spanInScope;
+    }
   }
 
   /**
@@ -146,11 +156,11 @@ public class ThreadLocalSpan {
   @Nullable public Span remove() {
     Tracer tracer = tracer();
     Span currentSpan = tracer != null ? tracer.currentSpan() : null;
-    Object[] spanAndScope = getCurrentSpanInScopeStack().pollFirst();
+    SpanAndScope spanAndScope = getCurrentSpanInScopeStack().pollFirst();
     if (spanAndScope == null) return currentSpan;
 
-    Span span = (Span) spanAndScope[0];
-    ((SpanInScope) spanAndScope[1]).close();
+    Span span = spanAndScope.span;
+    spanAndScope.spanInScope.close();
     assert span.equals(currentSpan) :
       "Misalignment: scoped span " + span + " !=  current span " + currentSpan;
     return currentSpan;
@@ -161,10 +171,10 @@ public class ThreadLocalSpan {
    * not possible because there is no api to place an arbitrary span in scope using this api.
    */
   @SuppressWarnings("ThreadLocalUsage") // intentional: to support multiple Tracer instances
-  final ThreadLocal<ArrayDeque<Object[]>> currentSpanInScopeStack = new ThreadLocal<>();
+  final ThreadLocal<ArrayDeque<SpanAndScope>> currentSpanInScopeStack = new ThreadLocal<>();
 
-  ArrayDeque<Object[]> getCurrentSpanInScopeStack() {
-    ArrayDeque<Object[]> stack = currentSpanInScopeStack.get();
+  ArrayDeque<SpanAndScope> getCurrentSpanInScopeStack() {
+    ArrayDeque<SpanAndScope> stack = currentSpanInScopeStack.get();
     if (stack == null) {
       stack = new ArrayDeque<>();
       currentSpanInScopeStack.set(stack);

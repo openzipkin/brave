@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,6 +16,7 @@ package brave.spring.rabbit;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracing;
+import brave.baggage.BaggagePropagation;
 import brave.messaging.MessagingRequest;
 import brave.messaging.MessagingTracing;
 import brave.propagation.B3Propagation;
@@ -100,11 +101,11 @@ public final class SpringRabbitTracing {
   final Tracer tracer;
   final Extractor<MessageProducerRequest> producerExtractor;
   final Extractor<MessageConsumerRequest> consumerExtractor;
-  final Extractor<MessageProperties> processorExtractor;
   final Injector<MessageProducerRequest> producerInjector;
   final Injector<MessageConsumerRequest> consumerInjector;
-  final SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
   final String[] propagationKeys;
+  final TraceContextOrSamplingFlags emptyExtraction;
+  final SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
   final String remoteServiceName;
   final Field beforePublishPostProcessorsField;
 
@@ -115,13 +116,19 @@ public final class SpringRabbitTracing {
     Propagation<String> propagation = tracing.propagation();
     this.producerExtractor = propagation.extractor(MessageProducerRequest.GETTER);
     this.consumerExtractor = propagation.extractor(MessageConsumerRequest.GETTER);
-    this.processorExtractor = propagation.extractor(SpringRabbitPropagation.GETTER);
     this.producerInjector = propagation.injector(MessageProducerRequest.SETTER);
     this.consumerInjector = propagation.injector(MessageConsumerRequest.SETTER);
     this.producerSampler = messagingTracing.producerSampler();
     this.consumerSampler = messagingTracing.consumerSampler();
-    this.propagationKeys = propagation.keys().toArray(new String[0]);
     this.remoteServiceName = builder.remoteServiceName;
+
+    List<String> propagationKeys = new ArrayList<>(propagation.keys());
+    propagationKeys.addAll(BaggagePropagation.allKeyNames(propagation));
+    this.propagationKeys = propagationKeys.toArray(new String[0]);
+
+    // When baggage or similar is in use, the result != TraceContextOrSamplingFlags.EMPTY
+    this.emptyExtraction = propagation.extractor((c, k) -> null).extract(Boolean.TRUE);
+
     Field beforePublishPostProcessorsField = null;
     try {
       beforePublishPostProcessorsField =
@@ -207,8 +214,8 @@ public final class SpringRabbitTracing {
 
     // Otherwise, add ours and return
     Advice[] newChain = new Advice[chain.length + 1];
-    System.arraycopy(chain, 0, newChain, 0, chain.length);
-    newChain[chain.length] = tracingAdvice;
+    newChain[0] = tracingAdvice;
+    System.arraycopy(chain, 0, newChain, 1, chain.length);
     factory.setAdviceChain(newChain);
     return factory;
   }
@@ -218,7 +225,7 @@ public final class SpringRabbitTracing {
   ) {
     TraceContextOrSamplingFlags extracted = extractor.extract(request);
     // Clear any propagation keys present in the headers
-    if (!extracted.equals(TraceContextOrSamplingFlags.EMPTY)) {
+    if (!extracted.equals(emptyExtraction)) {
       MessageProperties properties = message.getMessageProperties();
       if (properties != null) clearHeaders(properties.getHeaders());
     }

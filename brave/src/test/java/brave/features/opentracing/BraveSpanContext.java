@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,9 @@
  */
 package brave.features.opentracing;
 
-import brave.propagation.ExtraFieldPropagation;
+import brave.Span;
+import brave.baggage.BaggageField;
+import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import io.opentracing.SpanContext;
@@ -27,7 +29,8 @@ class BraveSpanContext implements SpanContext {
       : new BraveSpanContext.Incomplete(extractionResult);
   }
 
-  final TraceContext context;
+  @Nullable final TraceContext context;
+  volatile Span.Kind kind;
 
   BraveSpanContext(TraceContext context) {
     this.context = context;
@@ -43,7 +46,7 @@ class BraveSpanContext implements SpanContext {
 
   @Override public Iterable<Map.Entry<String, String>> baggageItems() {
     if (context == null) return Collections.emptyList();
-    return ExtraFieldPropagation.getAll(context).entrySet();
+    return BaggageField.getAllValues(context).entrySet();
   }
 
   static final class Incomplete extends BraveSpanContext {

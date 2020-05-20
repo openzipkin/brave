@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -41,6 +41,7 @@ import static brave.jms.MessageParser.destination;
 final class TracingMessageListener implements MessageListener {
   /** Creates a message listener which also adds a consumer span. */
   static MessageListener create(MessageListener delegate, JmsTracing jmsTracing) {
+    if (delegate == null) return null;
     if (delegate instanceof TracingMessageListener) return delegate;
     return new TracingMessageListener(delegate, jmsTracing, true);
   }

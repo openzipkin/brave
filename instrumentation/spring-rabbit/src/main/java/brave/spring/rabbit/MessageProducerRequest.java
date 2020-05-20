@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,37 +13,44 @@
  */
 package brave.spring.rabbit;
 
-import brave.Span;
-import brave.internal.Nullable;
+import brave.Span.Kind;
 import brave.messaging.ProducerRequest;
-import brave.propagation.Propagation.Getter;
-import brave.propagation.Propagation.Setter;
+import brave.propagation.Propagation.RemoteGetter;
+import brave.propagation.Propagation.RemoteSetter;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 
 // intentionally not yet public until we add tag parsing functionality
 final class MessageProducerRequest extends ProducerRequest {
-  static final Getter<MessageProducerRequest, String> GETTER =
-    new Getter<MessageProducerRequest, String>() {
-      @Override public String get(MessageProducerRequest request, String name) {
-        return request.getHeader(name);
-      }
+  static final RemoteGetter<MessageProducerRequest> GETTER =
+      new RemoteGetter<MessageProducerRequest>() {
+        @Override public Kind spanKind() {
+          return Kind.PRODUCER;
+        }
 
-      @Override public String toString() {
-        return "MessageProducerRequest::getHeader";
-      }
-    };
+        @Override public String get(MessageProducerRequest request, String name) {
+          return MessageHeaders.getHeaderIfString(request.delegate, name);
+        }
 
-  static final Setter<MessageProducerRequest, String> SETTER =
-    new Setter<MessageProducerRequest, String>() {
-      @Override public void put(MessageProducerRequest request, String name, String value) {
-        request.setHeader(name, value);
-      }
+        @Override public String toString() {
+          return "MessageProperties::getHeader";
+        }
+      };
 
-      @Override public String toString() {
-        return "MessageProducerRequest::setHeader";
-      }
-    };
+  static final RemoteSetter<MessageProducerRequest> SETTER =
+      new RemoteSetter<MessageProducerRequest>() {
+        @Override public Kind spanKind() {
+          return Kind.PRODUCER;
+        }
+
+        @Override public void put(MessageProducerRequest request, String name, String value) {
+          MessageHeaders.setHeader(request.delegate, name, value);
+        }
+
+        @Override public String toString() {
+          return "MessageProperties::setHeader";
+        }
+      };
 
   final Message delegate;
 
@@ -52,8 +59,8 @@ final class MessageProducerRequest extends ProducerRequest {
     this.delegate = delegate;
   }
 
-  @Override public Span.Kind spanKind() {
-    return Span.Kind.PRODUCER;
+  @Override public Kind spanKind() {
+    return Kind.PRODUCER;
   }
 
   @Override public Object unwrap() {
@@ -71,16 +78,5 @@ final class MessageProducerRequest extends ProducerRequest {
   @Override public String channelName() {
     MessageProperties properties = delegate.getMessageProperties();
     return properties != null ? properties.getConsumerQueue() : null;
-  }
-
-  @Nullable String getHeader(String name) {
-    MessageProperties properties = delegate.getMessageProperties();
-    return properties != null ? SpringRabbitPropagation.GETTER.get(properties, name) : null;
-  }
-
-  void setHeader(String name, String value) {
-    MessageProperties properties = delegate.getMessageProperties();
-    if (properties == null) return;
-    SpringRabbitPropagation.SETTER.put(properties, name, value);
   }
 }

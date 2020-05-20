@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,6 +15,7 @@ package brave.jms;
 
 import brave.internal.Nullable;
 import javax.jms.Destination;
+import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.Queue;
 import javax.jms.Topic;
@@ -36,16 +37,49 @@ final class MessageParser {
   }
 
   @Nullable static String channelKind(@Nullable Destination destination) {
-    if (destination instanceof Queue) return "queue";
-    if (destination instanceof Topic) return "topic";
-    return null;
+    if (destination == null) return null;
+    return isQueue(destination) ? "queue" : "topic";
   }
 
+  /**
+   * Handles special case of a destination being both a Queue and a Topic by checking if the
+   * {@linkplain Queue#getQueueName() queue name} is readable and not {@code null}.
+   */
+  static boolean isQueue(@Nullable Destination destination) {
+    boolean isQueue = destination instanceof Queue;
+    boolean isTopic = destination instanceof Topic;
+    if (isQueue && isTopic) {
+      try {
+        // The JMS 1.1 specification does not define the result of queue name or topic name,
+        // including whether it is null or not. In practice, at least one implementation of both
+        // Queue and Topic conditionally returns non-null on getQueueName() or getTopicName()
+        // at runtime to indicate if it is a Queue or Topic. See issue #1098.
+        isQueue = ((Queue) destination).getQueueName() != null;
+      } catch (Throwable t) {
+        propagateIfFatal(t);
+        log(t, "error getting destination name from {0}", destination, null);
+      }
+    }
+    return isQueue;
+  }
+
+  /**
+   * Similar to other properties, {@code null} should be expected even if it seems unintuitive.
+   *
+   * <p>The JMS 1.1 specification 4.2.1 suggests destination details are provider specific.
+   * Further, JavaDoc on {@link Queue#getQueueName()} and {@link Topic#getTopicName()} say "Clients
+   * that depend upon the name are not portable." Next, such operations can raise {@link
+   * JMSException} messages which this code can coerce to null. Finally, destinations are not
+   * constrained to implement only one of {@link Queue} or {@link Destination}. This implies one
+   * could return null while the other doesn't, such as was the case in issue #1098.
+   */
   @Nullable static String channelName(@Nullable Destination destination) {
+    if (destination == null) return null;
+    boolean isQueue = isQueue(destination);
     try {
-      if (destination instanceof Queue) {
+      if (isQueue) {
         return ((Queue) destination).getQueueName();
-      } else if (destination instanceof Topic) {
+      } else {
         return ((Topic) destination).getTopicName();
       }
     } catch (Throwable t) {

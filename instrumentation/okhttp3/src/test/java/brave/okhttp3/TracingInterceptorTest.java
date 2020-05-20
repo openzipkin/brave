@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,14 +15,12 @@ package brave.okhttp3;
 
 import brave.Span;
 import brave.Tracing;
-import brave.propagation.ThreadLocalCurrentTraceContext;
 import okhttp3.Interceptor;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import zipkin2.reporter.Reporter;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -30,10 +28,7 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class TracingInterceptorTest {
-  Tracing tracing = Tracing.newBuilder()
-    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-    .spanReporter(Reporter.NOOP)
-    .build();
+  Tracing tracing = Tracing.newBuilder().build();
   @Mock Interceptor.Chain chain;
   @Mock Span span;
 

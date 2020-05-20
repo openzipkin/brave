@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,14 +17,10 @@ import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpTracing;
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
-import java.io.IOException;
 import okhttp3.Call;
-import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
-import okhttp3.Response;
 
 /**
  * This internally adds an interceptor which ensures whatever current span exists is available via
@@ -33,6 +29,12 @@ import okhttp3.Response;
 // NOTE: this is not an interceptor because the current span can get lost when there's a backlog.
 // This will be completely different after https://github.com/square/okhttp/issues/270
 public final class TracingCallFactory implements Call.Factory {
+  /**
+   * To save overhead, we use a null sentinel when there's no parent. This helps avoid looking at
+   * the current trace context when there was no span in scope at invocation time.
+   */
+  static final TraceContext NULL_SENTINEL = TraceContext.newBuilder()
+    .traceId(1L).spanId(1L).build();
 
   public static Call.Factory create(Tracing tracing, OkHttpClient ok) {
     return create(HttpTracing.create(tracing), ok);
@@ -55,26 +57,10 @@ public final class TracingCallFactory implements Call.Factory {
   }
 
   @Override public Call newCall(Request request) {
-    TraceContext currentSpan = currentTraceContext.get();
-    OkHttpClient.Builder b = ok.newBuilder();
-    if (currentSpan != null) b.interceptors().add(0, new SetParentSpanInScope(currentSpan));
-    // TODO: This can hide errors at the beginning of call.execute, such as invalid host!
-    return b.build().newCall(request);
-  }
-
-  /** In case a request is deferred due to a backlog, we re-apply the span that was in scope */
-  class SetParentSpanInScope implements Interceptor {
-    final TraceContext previous;
-
-    SetParentSpanInScope(TraceContext previous) {
-      this.previous = previous;
-    }
-
-    @Override public Response intercept(Chain chain) throws IOException {
-      // using maybeScope as when there's no backlog situation the span may already be in scope
-      try (Scope ws = currentTraceContext.maybeScope(previous)) {
-        return chain.proceed(chain.request());
-      }
-    }
+    TraceContext invocationContext = currentTraceContext.get();
+    Call call = ok.newCall(request.newBuilder()
+      .tag(TraceContext.class, invocationContext != null ? invocationContext : NULL_SENTINEL)
+      .build());
+    return new TraceContextCall(call, currentTraceContext, invocationContext);
   }
 }

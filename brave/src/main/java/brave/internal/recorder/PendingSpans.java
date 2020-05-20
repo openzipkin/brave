@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,17 +15,13 @@ package brave.internal.recorder;
 
 import brave.Clock;
 import brave.Tracer;
-import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
-import brave.internal.InternalPropagation;
+import brave.handler.SpanHandler;
+import brave.handler.SpanHandler.Cause;
 import brave.internal.Nullable;
-import brave.internal.Platform;
+import brave.internal.collect.WeakConcurrentMap;
 import brave.propagation.TraceContext;
-import java.lang.ref.ReferenceQueue;
-import java.lang.ref.WeakReference;
-import java.util.Collections;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.lang.ref.Reference;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -37,216 +33,104 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>Spans are weakly referenced by their owning context. When the keys are collected, they are
  * transferred to a queue, waiting to be reported. A call to modify any span will implicitly flush
  * orphans to Zipkin. Spans in this state will have a "brave.flush" annotation added to them.
- *
- * <p>The internal implementation is derived from WeakConcurrentMap by Rafael Winterhalter. See
- * https://github.com/raphw/weak-lock-free/blob/master/src/main/java/com/blogspot/mydailyjava/weaklockfree/WeakConcurrentMap.java
  */
-public final class PendingSpans extends ReferenceQueue<TraceContext> {
-  // Even though we only put by RealKey, we allow get and remove by LookupKey
-  final ConcurrentMap<Object, PendingSpan> delegate = new ConcurrentHashMap<>(64);
+public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingSpan> {
+  final MutableSpan defaultSpan;
   final Clock clock;
-  final FinishedSpanHandler orphanedSpanHandler;
-  final boolean trackOrphans;
+  final SpanHandler spanHandler;
   final AtomicBoolean noop;
 
-  public PendingSpans(Clock clock, FinishedSpanHandler orphanedSpanHandler, boolean trackOrphans,
+  public PendingSpans(MutableSpan defaultSpan, Clock clock, SpanHandler spanHandler,
     AtomicBoolean noop) {
+    this.defaultSpan = defaultSpan;
     this.clock = clock;
-    this.orphanedSpanHandler = orphanedSpanHandler;
-    this.trackOrphans = trackOrphans;
+    this.spanHandler = spanHandler;
     this.noop = noop;
   }
 
-  public PendingSpan getOrCreate(TraceContext context, boolean start) {
-    if (context == null) throw new NullPointerException("context == null");
-    reportOrphanedSpans();
-    PendingSpan result = delegate.get(context);
+  /**
+   * Gets a pending span, or returns {@code null} if there is none.
+   *
+   * <p>This saves processing time and ensures reference consistency by looking for an existing,
+   * decorated context first. This ensures an externalized, but existing context is not mistaken for
+   * a new local root.
+   */
+  @Nullable public PendingSpan get(TraceContext context) {
+    return getIfPresent(context);
+  }
+
+  public PendingSpan getOrCreate(
+    @Nullable TraceContext parent, TraceContext context, boolean start) {
+    PendingSpan result = get(context);
     if (result != null) return result;
 
-    MutableSpan data = new MutableSpan();
-    if (context.shared()) data.setShared();
+    MutableSpan span = new MutableSpan(context, defaultSpan);
+    PendingSpan parentSpan = parent != null ? get(parent) : null;
 
     // save overhead calculating time if the parent is in-progress (usually is)
-    TickClock clock = getClockFromParent(context);
-    if (clock == null) {
-      clock = new TickClock(this.clock.currentTimeMicroseconds(), System.nanoTime());
-      if (start) data.startTimestamp(clock.baseEpochMicros);
-    } else if (start) {
-      data.startTimestamp(clock.currentTimeMicroseconds());
+    TickClock clock;
+    if (parentSpan != null) {
+      TraceContext parentContext = parentSpan.context();
+      if (parentContext != null) parent = parentContext;
+      clock = parentSpan.clock;
+      if (start) span.startTimestamp(clock.currentTimeMicroseconds());
+    } else {
+      long currentTimeMicroseconds = this.clock.currentTimeMicroseconds();
+      clock = new TickClock(currentTimeMicroseconds, System.nanoTime());
+      if (start) span.startTimestamp(currentTimeMicroseconds);
     }
-    PendingSpan newSpan = new PendingSpan(data, clock);
-    PendingSpan previousSpan = delegate.putIfAbsent(new RealKey(context, this), newSpan);
+
+    PendingSpan newSpan = new PendingSpan(context, span, clock);
+    // Probably absent because we already checked with get() at the entrance of this method
+    PendingSpan previousSpan = putIfProbablyAbsent(context, newSpan);
     if (previousSpan != null) return previousSpan; // lost race
 
-    if (trackOrphans) {
-      newSpan.caller =
-        new Throwable("Thread " + Thread.currentThread().getName() + " allocated span here");
-    }
+    // We've now allocated a new trace context.
+    assert parent != null || context.isLocalRoot() :
+      "Bug (or unexpected call to internal code): parent can only be null in a local root!";
+
+    spanHandler.begin(newSpan.handlerContext, newSpan.span, parentSpan != null
+      ? parentSpan.handlerContext : null);
     return newSpan;
   }
 
-  /** Trace contexts are equal only on trace ID and span ID. try to get the parent's clock */
-  @Nullable TickClock getClockFromParent(TraceContext context) {
-    long parentId = context.parentIdAsLong();
-    // NOTE: we still look for lookup key even on root span, as a client span can be root, and a
-    // server can share the same ID. Essentially, a shared span is similar to a child.
-    PendingSpan parent = null;
-    if (context.shared() || parentId != 0L) {
-      long spanId = parentId != 0L ? parentId : context.spanId();
-      parent = delegate.get(InternalPropagation.instance.newTraceContext(
-        0,
-        context.traceIdHigh(),
-        context.traceId(),
-        0,
-        0,
-        spanId,
-        Collections.emptyList()
-      ));
+  /** @see brave.Span#abandon() */
+  public void abandon(TraceContext context) {
+    PendingSpan last = remove(context);
+    if (last != null && spanHandler.handlesAbandoned()) {
+      spanHandler.end(last.handlerContext, last.span, Cause.ABANDONED);
     }
-    return parent != null ? parent.clock : null;
   }
 
-  /** @see brave.Span#abandon() */
-  public boolean remove(TraceContext context) {
-    if (context == null) throw new NullPointerException("context == null");
-    PendingSpan last = delegate.remove(context);
-    reportOrphanedSpans(); // also clears the reference relating to the recent remove
-    return last != null;
+  /** @see brave.Span#flush() */
+  public void flush(TraceContext context) {
+    PendingSpan last = remove(context);
+    if (last != null) spanHandler.end(last.handlerContext, last.span, Cause.FLUSHED);
+  }
+
+  /**
+   * Completes the span associated with this context, if it hasn't already been finished.
+   *
+   * @param timestamp zero means use the current time
+   * @see brave.Span#finish()
+   */
+  // zero here allows us to skip overhead of using the clock when the span already finished!
+  public void finish(TraceContext context, long timestamp) {
+    PendingSpan last = remove(context);
+    if (last == null) return;
+    last.span.finishTimestamp(timestamp != 0L ? timestamp : last.clock.currentTimeMicroseconds());
+    spanHandler.end(last.handlerContext, last.span, Cause.FINISHED);
   }
 
   /** Reports spans orphaned by garbage collection. */
-  void reportOrphanedSpans() {
-    RealKey contextKey;
-    // This is called on critical path of unrelated traced operations. If we have orphaned spans, be
-    // careful to not penalize the performance of the caller. It is better to cache time when
-    // flushing a span than hurt performance of unrelated operations by calling
-    // currentTimeMicroseconds N times
-    long flushTime = 0L;
-    boolean noop = orphanedSpanHandler == FinishedSpanHandler.NOOP || this.noop.get();
-    while ((contextKey = (RealKey) poll()) != null) {
-      PendingSpan value = delegate.remove(contextKey);
+  @Override protected void expungeStaleEntries() {
+    Reference<?> reference;
+    boolean noop = this.noop.get();
+    while ((reference = poll()) != null) {
+      PendingSpan value = removeStaleEntry(reference);
       if (noop || value == null) continue;
-      if (flushTime == 0L) flushTime = clock.currentTimeMicroseconds();
-
-      boolean isEmpty = value.state.isEmpty();
-      Throwable caller = value.caller;
-
-      TraceContext context = InternalPropagation.instance.newTraceContext(
-        contextKey.flags,
-        contextKey.traceIdHigh, contextKey.traceId,
-        contextKey.localRootId, 0L, contextKey.spanId,
-        Collections.emptyList()
-      );
-
-      if (caller != null) {
-        String message = isEmpty
-          ? "Span " + context + " was allocated but never used"
-          : "Span " + context + " neither finished nor flushed before GC";
-        Platform.get().log(message, caller);
-      }
-      if (isEmpty) continue;
-
-      value.state.annotate(flushTime, "brave.flush");
-      orphanedSpanHandler.handle(context, value.state);
+      assert value.context() == null : "unexpected for the weak referent to be present after GC!";
+      spanHandler.end(value.handlerContext, value.span, Cause.ORPHANED);
     }
-  }
-
-  /**
-   * Real keys contain a reference to the real context associated with a span. This is a weak
-   * reference, so that we get notified on GC pressure.
-   *
-   * <p>Since {@linkplain TraceContext}'s hash code is final, it is used directly both here and in
-   * lookup keys.
-   */
-  static final class RealKey extends WeakReference<TraceContext> {
-    final int hashCode;
-
-    // Copy the identity fields from the trace context, so we can use them when the reference clears
-    final long traceIdHigh, traceId, localRootId, spanId;
-    final int flags;
-
-    RealKey(TraceContext context, ReferenceQueue<TraceContext> queue) {
-      super(context, queue);
-      hashCode = context.hashCode();
-      traceIdHigh = context.traceIdHigh();
-      traceId = context.traceId();
-      localRootId = context.localRootId();
-      spanId = context.spanId();
-      flags = InternalPropagation.instance.flags(context);
-    }
-
-    @Override public String toString() {
-      TraceContext context = get();
-      return context != null ? "WeakReference(" + context + ")" : "ClearedReference()";
-    }
-
-    @Override public int hashCode() {
-      return this.hashCode;
-    }
-
-    /** Resolves hash code collisions */
-    @Override public boolean equals(Object other) {
-      TraceContext thisContext = get(), thatContext = ((RealKey) other).get();
-      if (thisContext == null) {
-        return thatContext == null;
-      } else {
-        return thisContext.equals(thatContext);
-      }
-    }
-  }
-
-  /**
-   * Lookup keys are cheaper than real keys as reference tracking is not involved. We cannot use
-   * {@linkplain TraceContext} directly as a lookup key, as eventhough it has the same hash code as
-   * the real key, it would fail in equals comparison.
-   */
-  static final class LookupKey {
-    long traceIdHigh, traceId, spanId;
-    boolean shared;
-    int hashCode;
-
-    void set(TraceContext context) {
-      set(context.traceIdHigh(), context.traceId(), context.spanId(), context.shared());
-    }
-
-    void set(long traceIdHigh, long traceId, long spanId, boolean shared) {
-      this.traceIdHigh = traceIdHigh;
-      this.traceId = traceId;
-      this.spanId = spanId;
-      this.shared = shared;
-      hashCode = generateHashCode(traceIdHigh, traceId, spanId, shared);
-    }
-
-    @Override public int hashCode() {
-      return hashCode;
-    }
-
-    static int generateHashCode(long traceIdHigh, long traceId, long spanId, boolean shared) {
-      int h = 1;
-      h *= 1000003;
-      h ^= (int) ((traceIdHigh >>> 32) ^ traceIdHigh);
-      h *= 1000003;
-      h ^= (int) ((traceId >>> 32) ^ traceId);
-      h *= 1000003;
-      h ^= (int) ((spanId >>> 32) ^ spanId);
-      h *= 1000003;
-      h ^= shared ? InternalPropagation.FLAG_SHARED : 0; // to match TraceContext.hashCode
-      return h;
-    }
-
-    /** Resolves hash code collisions */
-    @Override public boolean equals(Object other) {
-      RealKey that = (RealKey) other;
-      TraceContext thatContext = that.get();
-      if (thatContext == null) return false;
-      return traceIdHigh == thatContext.traceIdHigh()
-        && traceId == thatContext.traceId()
-        && spanId == thatContext.spanId()
-        && shared == thatContext.shared();
-    }
-  }
-
-  @Override public String toString() {
-    return "PendingSpans" + delegate.keySet();
   }
 }

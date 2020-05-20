@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,19 +14,19 @@
 package brave.p6spy;
 
 import brave.ScopedSpan;
+import brave.Span.Kind;
 import brave.Tracing;
-import brave.propagation.ThreadLocalCurrentTraceContext;
-import brave.sampler.Sampler;
+import brave.handler.MutableSpan;
+import brave.propagation.StrictCurrentTraceContext;
+import brave.test.TestSpanHandler;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -41,9 +41,10 @@ public class ITTracingP6Factory {
   }
 
   /** JDBC is synchronous and we aren't using thread pools: everything happens on the main thread */
-  ArrayList<Span> spans = new ArrayList<>();
-
-  Tracing tracing = tracingBuilder(Sampler.ALWAYS_SAMPLE, spans).build();
+  StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
+  TestSpanHandler spans = new TestSpanHandler();
+  Tracing tracing = Tracing.newBuilder()
+      .currentTraceContext(currentTraceContext).addSpanHandler(spans).build();
   Connection connection;
 
   @Before
@@ -54,8 +55,9 @@ public class ITTracingP6Factory {
 
   @After
   public void close() throws Exception {
-    Tracing.current().close();
     if (connection != null) connection.close();
+    tracing.close();
+    currentTraceContext.close();
   }
 
   @Test
@@ -76,8 +78,8 @@ public class ITTracingP6Factory {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
-      .flatExtracting(Span::kind)
-      .containsExactly(Span.Kind.CLIENT);
+      .extracting(MutableSpan::kind)
+      .containsExactly(Kind.CLIENT);
   }
 
   @Test
@@ -85,8 +87,8 @@ public class ITTracingP6Factory {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
-      .extracting(Span::name)
-      .containsExactly("select");
+      .extracting(MutableSpan::name)
+      .containsExactly("SELECT");
   }
 
   @Test
@@ -103,7 +105,7 @@ public class ITTracingP6Factory {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
-      .flatExtracting(Span::remoteServiceName)
+      .extracting(MutableSpan::remoteServiceName)
       .containsExactly("myservice");
   }
 
@@ -115,12 +117,5 @@ public class ITTracingP6Factory {
         }
       }
     }
-  }
-
-  static Tracing.Builder tracingBuilder(Sampler sampler, ArrayList<Span> spans) {
-    return Tracing.newBuilder()
-      .spanReporter(spans::add)
-      .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-      .sampler(sampler);
   }
 }

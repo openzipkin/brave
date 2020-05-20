@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,13 +19,15 @@ import brave.http.HttpClientHandler;
 import brave.http.HttpClientRequest;
 import brave.http.HttpClientResponse;
 import brave.http.HttpTracing;
+import brave.httpclient.TracingProtocolExec.HttpRequestWrapper;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import java.io.IOException;
+import java.net.InetAddress;
 import org.apache.http.HttpException;
+import org.apache.http.HttpHost;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpExecutionAware;
-import org.apache.http.client.methods.HttpRequestWrapper;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.impl.execchain.ClientExecChain;
@@ -50,18 +52,21 @@ class TracingMainExec implements ClientExecChain { // not final for subclassing
     this.mainExec = mainExec;
   }
 
-  @Override public CloseableHttpResponse execute(HttpRoute route, HttpRequestWrapper request,
+  @Override public CloseableHttpResponse execute(HttpRoute route,
+    org.apache.http.client.methods.HttpRequestWrapper request,
     HttpClientContext context, HttpExecutionAware execAware)
     throws IOException, HttpException {
-    Span span = tracer.currentSpan();
+    Span span = (Span) context.removeAttribute(Span.class.getName());
+
     if (span != null) {
-      handler.handleSend(new TracingProtocolExec.HttpClientRequest(request), span);
+      handler.handleSend(new HttpRequestWrapper(request, route.getTargetHost()), span);
     }
+
     CloseableHttpResponse response = mainExec.execute(route, request, context, execAware);
     if (span != null) {
       if (isRemote(context, span)) {
         if (serverName != null) span.remoteServiceName(serverName);
-        HttpAdapter.parseTargetAddress(request, span);
+        parseTargetAddress(route.getTargetHost(), span);
       } else {
         span.kind(null); // clear as cache hit
       }
@@ -71,5 +76,14 @@ class TracingMainExec implements ClientExecChain { // not final for subclassing
 
   boolean isRemote(HttpContext context, Span span) {
     return true;
+  }
+
+  static void parseTargetAddress(HttpHost target, Span span) {
+    if (target == null) return;
+    InetAddress address = target.getAddress();
+    if (address != null) {
+      if (span.remoteIpAndPort(address.getHostAddress(), target.getPort())) return;
+    }
+    span.remoteIpAndPort(target.getHostName(), target.getPort());
   }
 }

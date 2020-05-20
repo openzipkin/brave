@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,17 +13,16 @@
  */
 package brave;
 
-import brave.handler.FinishedSpanHandler;
+import brave.baggage.BaggagePropagationCustomizer;
+import brave.handler.SpanHandler;
 import brave.propagation.CurrentTraceContextCustomizer;
-import brave.propagation.ExtraFieldCustomizer;
-import zipkin2.reporter.Reporter;
 
 /**
  * This allows configuration plugins to collaborate on building an instance of {@link Tracing}.
  *
- * <p>For example a customizer can configure {@link Tracing.Builder#addFinishedSpanHandler(FinishedSpanHandler)
- * finished span handlers} without having to also configure {@link Tracing.Builder#spanReporter(Reporter)
- * span reporting}.
+ * <p>For example a customizer can configure {@linkplain Tracing.Builder#addSpanHandler(SpanHandler)
+ * span handlers} without having to also configure the {@linkplain Tracing.Builder#localServiceName(String)
+ * local service name}.
  *
  * <h3>Integration examples</h3>
  *
@@ -38,10 +37,15 @@ import zipkin2.reporter.Reporter;
  *   <li><a href="https://docs.spring.io/spring/docs/current/spring-framework-reference/core.html#beans-autowired-annotation">Spring Autowired Collections</a></li>
  * </ul></pre>
  *
+ * <p><em>Note</em>: This type is safe to implement as a lambda, or use as a method reference as it
+ * is effectively a {@code FunctionalInterface}. It isn't annotated as such because the project has
+ * a minimum Java language level 6.
+ *
+ * @see BaggagePropagationCustomizer
  * @see CurrentTraceContextCustomizer
- * @see ExtraFieldCustomizer
  * @since 5.7
  */
+// @FunctionalInterface, except Java language level 6. Do not add methods as it will break API!
 public interface TracingCustomizer {
   /** Use to avoid comparing against null references */
   TracingCustomizer NOOP = new TracingCustomizer() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,7 +20,7 @@ import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
 
 /**
- * Assigns sample rates to rpc requests.
+ * Assigns sample rates to RPC requests.
  *
  * <p>Ex. Here's a sampler that traces 100 "Report" requests per second. This doesn't start new
  * traces for requests to the scribe service. Other requests will use a global rate provided by the

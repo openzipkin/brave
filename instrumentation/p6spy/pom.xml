@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!--
 
-    Copyright 2013-2019 The OpenZipkin Authors
+    Copyright 2013-2020 The OpenZipkin Authors
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
     in compliance with the License. You may obtain a copy of the License at
@@ -18,7 +18,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
-    <version>5.9.1-SNAPSHOT</version>
+    <version>5.12.4-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -33,8 +33,8 @@
     <main.java.version>1.6</main.java.version>
     <main.signature.artifact>java16</main.signature.artifact>
 
-    <p6spy.version>3.8.6</p6spy.version>
-    <derby.version>10.15.1.3</derby.version>
+    <p6spy.version>3.9.0</p6spy.version>
+    <derby.version>10.15.2.0</derby.version>
   </properties>
 
   <dependencies>
@@ -63,6 +63,11 @@
       <groupId>org.apache.derby</groupId>
       <artifactId>derbyshared</artifactId>
       <version>${derby.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-tests</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

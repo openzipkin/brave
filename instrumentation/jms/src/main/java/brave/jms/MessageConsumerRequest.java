@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,35 +13,46 @@
  */
 package brave.jms;
 
-import brave.Span;
+import brave.Span.Kind;
 import brave.internal.Nullable;
 import brave.messaging.ConsumerRequest;
-import brave.propagation.Propagation.Getter;
-import brave.propagation.Propagation.Setter;
+import brave.propagation.Propagation.RemoteGetter;
+import brave.propagation.Propagation.RemoteSetter;
 import javax.jms.Destination;
 import javax.jms.Message;
 
+import static brave.jms.MessageProperties.getPropertyIfString;
+import static brave.jms.MessageProperties.setStringProperty;
+
 // intentionally not yet public until we add tag parsing functionality
 final class MessageConsumerRequest extends ConsumerRequest {
-  static final Getter<MessageConsumerRequest, String> GETTER =
-    new Getter<MessageConsumerRequest, String>() {
+  static final RemoteGetter<MessageConsumerRequest> GETTER =
+    new RemoteGetter<MessageConsumerRequest>() {
+      @Override public Kind spanKind() {
+        return Kind.CONSUMER;
+      }
+
       @Override public String get(MessageConsumerRequest request, String name) {
-        return request.getProperty(name);
+        return getPropertyIfString(request.delegate, name);
       }
 
       @Override public String toString() {
-        return "MessageConsumerRequest::getProperty";
+        return "Message::getStringProperty";
       }
     };
 
-  static final Setter<MessageConsumerRequest, String> SETTER =
-    new Setter<MessageConsumerRequest, String>() {
+  static final RemoteSetter<MessageConsumerRequest> SETTER =
+    new RemoteSetter<MessageConsumerRequest>() {
+      @Override public Kind spanKind() {
+        return Kind.CONSUMER;
+      }
+
       @Override public void put(MessageConsumerRequest request, String name, String value) {
-        request.setProperty(name, value);
+        setStringProperty(request.delegate, name, value);
       }
 
       @Override public String toString() {
-        return "MessageConsumerRequest::setProperty";
+        return "Message::setStringProperty";
       }
     };
 
@@ -54,8 +65,8 @@ final class MessageConsumerRequest extends ConsumerRequest {
     this.destination = destination;
   }
 
-  @Override public Span.Kind spanKind() {
-    return Span.Kind.CONSUMER;
+  @Override public Kind spanKind() {
+    return Kind.CONSUMER;
   }
 
   @Override public Object unwrap() {
@@ -72,13 +83,5 @@ final class MessageConsumerRequest extends ConsumerRequest {
 
   @Override public String channelName() {
     return MessageParser.channelName(destination);
-  }
-
-  @Nullable String getProperty(String name) {
-    return MessagePropagation.GETTER.get(delegate, name);
-  }
-
-  void setProperty(String name, String value) {
-    MessagePropagation.SETTER.put(delegate, name, value);
   }
 }

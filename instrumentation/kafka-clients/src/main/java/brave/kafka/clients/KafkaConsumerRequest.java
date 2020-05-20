@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,16 +13,46 @@
  */
 package brave.kafka.clients;
 
-import brave.Span;
-import brave.internal.Nullable;
+import brave.Span.Kind;
 import brave.messaging.ConsumerRequest;
+import brave.propagation.Propagation.RemoteGetter;
+import brave.propagation.Propagation.RemoteSetter;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import static brave.kafka.clients.KafkaPropagation.GETTER;
-import static brave.kafka.clients.KafkaPropagation.SETTER;
+import static brave.kafka.clients.KafkaHeaders.lastStringHeader;
 
 // intentionally not yet public until we add tag parsing functionality
 final class KafkaConsumerRequest extends ConsumerRequest {
+  static final RemoteGetter<KafkaConsumerRequest> GETTER =
+      new RemoteGetter<KafkaConsumerRequest>() {
+        @Override public Kind spanKind() {
+          return Kind.CONSUMER;
+        }
+
+        @Override public String get(KafkaConsumerRequest request, String name) {
+          return lastStringHeader(request.delegate.headers(), name);
+        }
+
+        @Override public String toString() {
+          return "Headers::lastHeader";
+        }
+      };
+
+  static final RemoteSetter<KafkaConsumerRequest> SETTER =
+      new RemoteSetter<KafkaConsumerRequest>() {
+        @Override public Kind spanKind() {
+          return Kind.CONSUMER;
+        }
+
+        @Override public void put(KafkaConsumerRequest request, String name, String value) {
+          KafkaHeaders.replaceHeader(request.delegate.headers(), name, value);
+        }
+
+        @Override public String toString() {
+          return "Headers::replace";
+        }
+      };
+
   final ConsumerRecord<?, ?> delegate;
 
   KafkaConsumerRequest(ConsumerRecord<?, ?> delegate) {
@@ -30,8 +60,8 @@ final class KafkaConsumerRequest extends ConsumerRequest {
     this.delegate = delegate;
   }
 
-  @Override public Span.Kind spanKind() {
-    return Span.Kind.CONSUMER;
+  @Override public Kind spanKind() {
+    return Kind.CONSUMER;
   }
 
   @Override public Object unwrap() {
@@ -48,13 +78,5 @@ final class KafkaConsumerRequest extends ConsumerRequest {
 
   @Override public String channelName() {
     return delegate.topic();
-  }
-
-  @Nullable String getHeader(String key) {
-    return GETTER.get(delegate.headers(), key);
-  }
-
-  void setHeader(String key, String value) {
-    SETTER.put(delegate.headers(), key, value);
   }
 }

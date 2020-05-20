@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,13 +13,12 @@
  */
 package brave.spring.beans;
 
+import brave.baggage.BaggagePropagation;
 import brave.propagation.B3Propagation;
 import brave.propagation.B3SinglePropagation;
 import brave.propagation.ExtraFieldCustomizer;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
-import org.assertj.core.api.InstanceOfAssertFactories;
-import org.assertj.core.api.InstanceOfAssertFactory;
 import org.junit.After;
 import org.junit.Test;
 
@@ -73,9 +72,13 @@ public class ExtraFieldPropagationFactoryBeanTest {
       + "</bean>"
     );
 
-    assertThat(context.getBean("propagationFactory", Propagation.Factory.class))
-      .extracting("keyNames").asInstanceOf(InstanceOfAssertFactories.ARRAY)
-      .containsExactly("customer-id", "x-vcap-request-id");
+    Propagation<String> propagation =
+      context.getBean("propagationFactory", Propagation.Factory.class).get();
+
+    assertThat(BaggagePropagation.allKeyNames(propagation)).endsWith(
+      "customer-id",
+      "x-vcap-request-id"
+    );
   }
 
   public static final ExtraFieldCustomizer CUSTOMIZER_ONE = mock(ExtraFieldCustomizer.class);

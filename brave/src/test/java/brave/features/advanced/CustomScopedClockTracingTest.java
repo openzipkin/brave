@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,13 +15,11 @@ package brave.features.advanced;
 
 import brave.Clock;
 import brave.Tracing;
-import brave.propagation.ThreadLocalCurrentTraceContext;
-import java.util.ArrayList;
-import java.util.List;
+import brave.propagation.StrictCurrentTraceContext;
+import brave.test.TestSpanHandler;
 import java.util.UUID;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -30,17 +28,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  * span if a query occurred on it. By default, spans have a clock pinned to the trace. To use a
  * clock pinned to a connection, you have to control timestamps manually.
  *
- * <p>See https://github.com/apache/incubator-zipkin-brave/issues/564
+ * <p>See https://github.com/openzipkin/brave/issues/564
  */
 public class CustomScopedClockTracingTest {
-  List<Span> spans = new ArrayList<>();
+  TestSpanHandler spans = new TestSpanHandler();
+  StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   Tracing tracing = Tracing.newBuilder()
-    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-    .spanReporter(spans::add)
-    .build();
+    .addSpanHandler(spans).currentTraceContext(currentTraceContext).build();
 
   @After public void close() {
-    Tracing.current().close();
+    tracing.close();
+    currentTraceContext.close();
   }
 
   class Connection {

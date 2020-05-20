@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,6 +16,8 @@ package brave.httpasyncclient;
 import brave.Span;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
+import brave.http.HttpClientRequest;
+import brave.http.HttpClientResponse;
 import brave.http.HttpTracing;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
@@ -57,7 +59,7 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
   }
 
   final CurrentTraceContext currentTraceContext;
-  final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
+  final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
 
   TracingHttpAsyncClientBuilder(HttpTracing httpTracing) { // intentionally hidden
     if (httpTracing == null) throw new NullPointerException("httpTracing == null");
@@ -74,15 +76,11 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
 
   final class HandleSend implements HttpRequestInterceptor {
     @Override public void process(HttpRequest request, HttpContext context) {
-      HttpHost host = HttpClientContext.adapt(context).getTargetHost();
-      HttpClientRequest wrapped = new HttpClientRequest(host, request);
-
       TraceContext parent = (TraceContext) context.getAttribute(TraceContext.class.getName());
-      Span span;
-      try (Scope scope = currentTraceContext.maybeScope(parent)) {
-        span = handler.handleSend(wrapped);
-      }
-      parseTargetAddress(host, span);
+
+      HttpRequestWrapper wrapper = new HttpRequestWrapper(request, context);
+      Span span = handler.handleSendWithParent(wrapper, parent);
+      parseTargetAddress(wrapper.target, span);
 
       context.setAttribute(Span.class.getName(), span);
       context.setAttribute(Scope.class.getName(), currentTraceContext.newScope(span.context()));
@@ -91,18 +89,22 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
 
   static final class RemoveScope implements HttpRequestInterceptor {
     @Override public void process(HttpRequest request, HttpContext context) {
-      Scope scope = (Scope) context.getAttribute(Scope.class.getName());
-      if (scope == null) return;
-      context.removeAttribute(Scope.class.getName());
-      scope.close();
+      removeScope(context);
     }
+  }
+
+  static void removeScope(HttpContext context) {
+    Scope scope = (Scope) context.removeAttribute(Scope.class.getName());
+    if (scope == null) return;
+    context.removeAttribute(Scope.class.getName());
+    scope.close();
   }
 
   final class HandleReceive implements HttpResponseInterceptor {
     @Override public void process(HttpResponse response, HttpContext context) {
-      Span span = (Span) context.getAttribute(Span.class.getName());
+      Span span = (Span) context.removeAttribute(Span.class.getName());
       if (span == null) return;
-      handler.handleReceive(new HttpClientResponse(response), null, span);
+      handler.handleReceive(new HttpResponseWrapper(response, context, null), span);
     }
   }
 
@@ -124,14 +126,21 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     }
 
     @Override public <T> Future<T> execute(HttpAsyncRequestProducer requestProducer,
-      HttpAsyncResponseConsumer<T> responseConsumer, HttpContext context,
+      HttpAsyncResponseConsumer<T> responseConsumer, HttpContext httpContext,
       FutureCallback<T> callback) {
-      context.setAttribute(TraceContext.class.getName(), currentTraceContext.get());
+
+      TraceContext invocationContext = currentTraceContext.get();
+      if (invocationContext != null) {
+        httpContext.setAttribute(TraceContext.class.getName(), invocationContext);
+      }
+
       return delegate.execute(
-        new TracingAsyncRequestProducer(requestProducer, context),
-        new TracingAsyncResponseConsumer<>(responseConsumer, context),
-        context,
-        callback
+        new TracingAsyncRequestProducer(requestProducer, httpContext),
+        new TracingAsyncResponseConsumer<>(responseConsumer, httpContext),
+        httpContext,
+        callback != null && invocationContext != null
+          ? new TraceContextFutureCallback<>(callback, currentTraceContext, invocationContext)
+          : callback
       );
     }
 
@@ -145,6 +154,45 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
 
     @Override public void start() {
       delegate.start();
+    }
+
+    @Override public String toString() {
+      return delegate.toString();
+    }
+  }
+
+  static final class TraceContextFutureCallback<T> implements FutureCallback<T> {
+    final FutureCallback<T> delegate;
+    final CurrentTraceContext currentTraceContext;
+    final TraceContext invocationContext;
+
+    TraceContextFutureCallback(FutureCallback<T> delegate,
+      CurrentTraceContext currentTraceContext, TraceContext invocationContext) {
+      this.delegate = delegate;
+      this.currentTraceContext = currentTraceContext;
+      this.invocationContext = invocationContext;
+    }
+
+    @Override public void completed(T t) {
+      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
+        delegate.completed(t);
+      }
+    }
+
+    @Override public void failed(Exception e) {
+      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
+        delegate.failed(e);
+      }
+    }
+
+    @Override public void cancelled() {
+      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
+        delegate.cancelled();
+      }
+    }
+
+    @Override public String toString() {
+      return delegate.toString();
     }
   }
 
@@ -178,10 +226,10 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     }
 
     @Override public void failed(Exception ex) {
-      Span currentSpan = (Span) context.getAttribute(Span.class.getName());
+      removeScope(context);
+      Span currentSpan = (Span) context.removeAttribute(Span.class.getName());
       if (currentSpan != null) {
-        context.removeAttribute(Span.class.getName());
-        handler.handleReceive(null, ex, currentSpan);
+        handler.handleReceive(new HttpResponseWrapper(null, context, ex), currentSpan);
       }
       requestProducer.failed(ex);
     }
@@ -220,10 +268,10 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     }
 
     @Override public void failed(Exception ex) {
-      Span currentSpan = (Span) context.getAttribute(Span.class.getName());
+      removeScope(context);
+      Span currentSpan = (Span) context.removeAttribute(Span.class.getName());
       if (currentSpan != null) {
-        context.removeAttribute(Span.class.getName());
-        handler.handleReceive(null, ex, currentSpan);
+        handler.handleReceive(new HttpResponseWrapper(null, context, ex), currentSpan);
       }
       responseConsumer.failed(ex);
     }
@@ -249,13 +297,13 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     }
   }
 
-  static final class HttpClientRequest extends brave.http.HttpClientRequest {
-    @Nullable final HttpHost target;
+  static final class HttpRequestWrapper extends HttpClientRequest {
     final HttpRequest request;
+    @Nullable final HttpHost target;
 
-    HttpClientRequest(HttpHost target, HttpRequest request) {
-      this.target = target;
+    HttpRequestWrapper(HttpRequest request, HttpContext context) {
       this.request = request;
+      this.target = HttpClientContext.adapt(context).getTargetHost();
     }
 
     @Override public Object unwrap() {
@@ -287,19 +335,38 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     }
   }
 
-  static final class HttpClientResponse extends brave.http.HttpClientResponse {
-    final HttpResponse delegate;
+  static final class HttpResponseWrapper extends HttpClientResponse {
+    @Nullable final HttpRequestWrapper request;
+    @Nullable final HttpResponse response;
+    @Nullable final Throwable error;
 
-    HttpClientResponse(HttpResponse delegate) {
-      this.delegate = delegate;
+    HttpResponseWrapper(
+      @Nullable HttpResponse response,
+      HttpContext context,
+      @Nullable Throwable error
+    ) {
+      if (context == null) throw new NullPointerException("context == null");
+      HttpRequest request = HttpClientContext.adapt(context).getRequest();
+      this.request = request != null ? new HttpRequestWrapper(request, context) : null;
+      this.response = response;
+      this.error = error;
     }
 
     @Override public Object unwrap() {
-      return delegate;
+      return response;
+    }
+
+    @Override @Nullable public HttpRequestWrapper request() {
+      return request;
+    }
+
+    @Override public Throwable error() {
+      return error;
     }
 
     @Override public int statusCode() {
-      StatusLine statusLine = delegate.getStatusLine();
+      if (response == null) return 0;
+      StatusLine statusLine = response.getStatusLine();
       return statusLine != null ? statusLine.getStatusCode() : 0;
     }
   }

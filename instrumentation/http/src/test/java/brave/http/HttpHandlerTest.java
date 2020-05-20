@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,8 +15,7 @@ package brave.http;
 
 import brave.Span;
 import brave.SpanCustomizer;
-import brave.propagation.CurrentTraceContext;
-import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.handler.SpanHandler;
 import brave.propagation.TraceContext;
 import org.junit.Before;
 import org.junit.Test;
@@ -24,29 +23,24 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class HttpHandlerTest {
-  CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.create();
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).build();
-  TraceContext context2 = TraceContext.newBuilder().traceId(1L).spanId(11L).build();
-  @Mock HttpAdapter<Object, Object> adapter;
-  @Mock brave.Span span;
+  @Mock Span span;
   @Mock SpanCustomizer spanCustomizer;
-  Object request = new Object(), response = new Object();
+  @Mock HttpRequest request;
+  @Mock HttpResponse response;
+  @Mock HttpRequestParser requestParser;
+  @Mock HttpResponseParser responseParser;
   HttpHandler handler;
 
   @Before public void init() {
-    handler = new HttpHandler(currentTraceContext, new HttpParser()) {
-      @Override <Req> void parseRequest(HttpAdapter<Req, ?> adapter, Req request, Span span) {
-      }
+    handler = new HttpHandler(requestParser, responseParser) {
     };
     when(span.context()).thenReturn(context);
     when(span.customizer()).thenReturn(spanCustomizer);
@@ -55,94 +49,72 @@ public class HttpHandlerTest {
   @Test public void handleStart_nothingOnNoop_success() {
     when(span.isNoop()).thenReturn(true);
 
-    handler.handleStart(adapter, request, span);
+    handler.handleStart(request, span);
 
     verify(span, never()).start();
   }
 
-  @Test public void handleStart_parsesTagsInScope() {
-    handler = new HttpHandler(currentTraceContext, new HttpParser()) {
-      @Override <Req> void parseRequest(HttpAdapter<Req, ?> adapter, Req request, Span span) {
-        assertThat(currentTraceContext.get()).isNotNull();
-      }
-    };
+  @Test public void handleStart_parsesTagsWithCustomizer() {
+    when(span.isNoop()).thenReturn(false);
+    when(request.spanKind()).thenReturn(Span.Kind.SERVER);
 
-    handler.handleStart(adapter, request, span);
+    handler.handleStart(request, span);
+
+    verify(requestParser).parse(request, context, spanCustomizer);
   }
 
   @Test public void handleStart_addsRemoteEndpointWhenParsed() {
-    handler = new HttpHandler(currentTraceContext, new HttpParser()) {
-      @Override <Req> void parseRequest(HttpAdapter<Req, ?> adapter, Req request, Span span) {
+    handler = new HttpHandler(HttpRequestParser.DEFAULT, HttpResponseParser.DEFAULT) {
+      @Override void parseRequest(HttpRequest request, Span span) {
         span.remoteIpAndPort("1.2.3.4", 0);
       }
     };
 
-    handler.handleStart(adapter, request, span);
+    handler.handleStart(request, span);
 
     verify(span).remoteIpAndPort("1.2.3.4", 0);
   }
 
-  @Test public void handleFinish_nothingOnNoop_success() {
-    when(span.isNoop()).thenReturn(true);
+  @Test public void handleStart_startedEvenIfParsingThrows() {
+    when(span.isNoop()).thenReturn(false);
+    doThrow(new RuntimeException()).when(requestParser).parse(request, context, spanCustomizer);
 
-    handler.handleFinish(adapter, response, null, span);
+    handler.handleStart(request, span);
 
-    verify(span, never()).finish();
+    verify(span).start();
   }
 
-  @Test public void handleFinish_nothingOnNoop_error() {
+  @Test public void handleFinish_nothingOnNoop() {
     when(span.isNoop()).thenReturn(true);
 
-    handler.handleFinish(adapter, null, new RuntimeException("drat"), span);
+    handler.handleFinish(response, span);
 
     verify(span, never()).finish();
   }
 
   @Test public void handleFinish_parsesTagsWithCustomizer() {
-    when(adapter.statusCodeAsInt(response)).thenReturn(404);
     when(span.customizer()).thenReturn(spanCustomizer);
 
-    handler.handleFinish(adapter, response, null, span);
+    handler.handleFinish(response, span);
 
-    verify(spanCustomizer).tag("http.status_code", "404");
-    verify(spanCustomizer).tag("error", "404");
-    verifyNoMoreInteractions(spanCustomizer);
+    verify(responseParser).parse(response, context, spanCustomizer);
   }
 
-  @Test public void handleFinish_parsesTagsInScope() {
-    handler = new HttpHandler(currentTraceContext, new HttpParser() {
-      @Override public <Resp> void response(HttpAdapter<?, Resp> adapter, Resp res, Throwable error,
-        SpanCustomizer customizer) {
-        assertThat(currentTraceContext.get()).isNotNull();
-      }
-    }) {
-      @Override <Req> void parseRequest(HttpAdapter<Req, ?> adapter, Req request, Span span) {
-      }
-    };
+  /** Allows {@link SpanHandler} to see the error regardless of parsing. */
+  @Test public void handleFinish_errorRecordedInSpan() {
+    RuntimeException error = new RuntimeException("foo");
+    when(response.error()).thenReturn(error);
 
-    handler.handleFinish(adapter, response, null, span);
+    handler.handleFinish(response, span);
+
+    verify(span).error(error);
   }
 
-  @Test public void handleFinish_finishesWithSpanInScope() {
-    doAnswer(invocation -> {
-      assertThat(currentTraceContext.get()).isEqualTo(span.context());
-      return null;
-    }).when(span).finish();
+  @Test public void handleFinish_finishedEvenIfParsingThrows() {
+    when(span.isNoop()).thenReturn(false);
+    doThrow(new RuntimeException()).when(responseParser).parse(response, context, spanCustomizer);
 
-    handler.handleFinish(adapter, response, null, span);
-  }
-
-  @Test public void handleFinish_finishesWithSpanInScope_resettingIfNecessary() {
-    try (CurrentTraceContext.Scope ws = currentTraceContext.newScope(context2)) {
-      handleFinish_finishesWithSpanInScope();
-    }
-  }
-
-  @Test public void handleFinish_finishedEvenIfAdapterThrows() {
-    when(adapter.statusCodeAsInt(response)).thenThrow(new RuntimeException());
-
-    assertThatThrownBy(() -> handler.handleFinish(adapter, response, null, span))
-      .isInstanceOf(RuntimeException.class);
+    handler.handleFinish(response, span);
 
     verify(span).finish();
   }

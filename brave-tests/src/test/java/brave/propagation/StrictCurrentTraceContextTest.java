@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,6 +13,7 @@
  */
 package brave.propagation;
 
+import brave.propagation.CurrentTraceContext.Scope;
 import brave.test.propagation.CurrentTraceContextTest;
 import java.util.function.Supplier;
 import org.junit.Test;
@@ -20,21 +21,20 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class StrictCurrentTraceContextTest extends CurrentTraceContextTest {
-
-  @Override protected Class<? extends Supplier<CurrentTraceContext>> currentSupplier() {
-    return CurrentSupplier.class;
+  @Override protected Class<? extends Supplier<CurrentTraceContext.Builder>> builderSupplier() {
+    return BuilderSupplier.class;
   }
 
-  static class CurrentSupplier implements Supplier<CurrentTraceContext> {
-    @Override public CurrentTraceContext get() {
-      return new StrictCurrentTraceContext();
+  static class BuilderSupplier implements Supplier<CurrentTraceContext.Builder> {
+    @Override public CurrentTraceContext.Builder get() {
+      return new StrictCurrentTraceContext.Builder();
     }
   }
 
   @Test public void scope_enforcesCloseOnSameThread() throws InterruptedException {
     final Exception[] spawnedThreadException = new Exception[1];
     Thread scopingThread = new Thread(() -> {
-      try (CurrentTraceContext.Scope scope = currentTraceContext.newScope(context)) {
+      try (Scope scope = currentTraceContext.newScope(context)) {
         Thread spawnedThread = new Thread(() -> { // should not inherit scope!
           try {
             scope.close();
@@ -54,8 +54,7 @@ public class StrictCurrentTraceContextTest extends CurrentTraceContextTest {
     scopingThread.join();
 
     assertThat(spawnedThreadException[0])
-      .hasMessage("scope closed in a different thread: spawned thread");
-    assertThat(spawnedThreadException[0].getCause())
-      .hasMessage("Thread scoping thread opened scope for " + context + " here:");
+      .hasMessage("Thread [scoping thread] opened scope, but thread [spawned thread] closed it")
+      .hasRootCauseMessage("Thread [scoping thread] opened scope for " + context + " here:");
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -21,6 +21,7 @@ import brave.internal.Nullable;
 import brave.messaging.MessagingRequest;
 import brave.messaging.MessagingTracing;
 import brave.propagation.Propagation;
+import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -45,12 +46,23 @@ import javax.jms.XATopicConnection;
 
 import static brave.internal.Throwables.propagateIfFatal;
 import static brave.jms.MessageParser.destination;
-import static brave.jms.MessagePropagation.GETTER;
+import static brave.jms.MessageProperties.getPropertyIfString;
 
 /** Use this class to decorate your JMS consumer / producer and enable Tracing. */
 public final class JmsTracing {
   static final String JMS_QUEUE = "jms.queue";
   static final String JMS_TOPIC = "jms.topic";
+
+  /** Used for local message processors in {@link JmsTracing#nextSpan(Message)} */
+  static final Getter<Message, String> GETTER = new Getter<Message, String>() {
+    @Override public String get(Message message, String name) {
+      return getPropertyIfString(message, name);
+    }
+
+    @Override public String toString() {
+      return "Message::getStringProperty";
+    }
+  };
 
   // Use nested class to ensure logger isn't initialized unless it is accessed once.
   private static final class LoggerHolder {
@@ -125,7 +137,7 @@ public final class JmsTracing {
 
   // raw types to avoid accessing JMS 2.0 types unless we are sure they are present
   // Caching here instead of deferring further as there is overhead creating extractors and
-  // injectors, particularly when decorated with extra fields or secondary sampling.
+  // injectors, particularly when decorated with baggage or secondary sampling.
   @Nullable final Extractor jmsProducerExtractor;
   @Nullable final Injector jmsProducerInjector;
 
@@ -259,11 +271,15 @@ public final class JmsTracing {
   }
 
   void tagQueueOrTopic(MessagingRequest request, SpanCustomizer span) {
+    String channelName = request.channelName();
+    if (channelName == null) return;
+    // TODO: TAG
+
     String channelKind = request.channelKind();
     if ("queue".equals(channelKind)) {
-      span.tag(JMS_QUEUE, request.channelName());
+      span.tag(JMS_QUEUE, channelName);
     } else if ("topic".equals(channelKind)) {
-      span.tag(JMS_TOPIC, request.channelName());
+      span.tag(JMS_TOPIC, channelName);
     }
   }
 

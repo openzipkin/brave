@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  */
 package brave.http;
 
-import brave.propagation.Propagation;
+import brave.propagation.Propagation.Setter;
 import brave.test.propagation.PropagationSetterTest;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -21,14 +21,10 @@ import java.util.Map;
 
 import static brave.http.HttpClientRequest.SETTER;
 
-public class HttpClientRequestSetterTest extends PropagationSetterTest<HttpClientRequest, String> {
+public class HttpClientRequestSetterTest extends PropagationSetterTest<HttpClientRequest> {
   Map<String, String> headers = new LinkedHashMap<>();
 
-  @Override public Propagation.KeyFactory<String> keyFactory() {
-    return Propagation.KeyFactory.STRING;
-  }
-
-  @Override protected HttpClientRequest carrier() {
+  @Override protected HttpClientRequest request() {
     return new HttpClientRequest() {
       @Override public Object unwrap() {
         return null;
@@ -56,12 +52,11 @@ public class HttpClientRequestSetterTest extends PropagationSetterTest<HttpClien
     };
   }
 
-  @Override protected Propagation.Setter<HttpClientRequest
-    , String> setter() {
+  @Override protected Setter<HttpClientRequest, String> setter() {
     return SETTER;
   }
 
-  @Override protected Iterable<String> read(HttpClientRequest carrier, String key) {
+  @Override protected Iterable<String> read(HttpClientRequest request, String key) {
     String result = headers.get(key);
     return result != null ? Collections.singletonList(result) : Collections.emptyList();
   }

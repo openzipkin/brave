@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,33 +13,39 @@
  */
 package brave;
 
-import brave.Span.Kind;
 import brave.Tracer.SpanInScope;
-import brave.handler.FinishedSpanHandler;
+import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
+import brave.internal.Platform;
+import brave.internal.handler.OrphanTracker;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
-import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
 import brave.sampler.Sampler;
+import brave.sampler.SamplerFunctions;
+import brave.test.TestSpanHandler;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.Annotation;
 import zipkin2.Endpoint;
 import zipkin2.reporter.Reporter;
 
+import static brave.Span.Kind.CLIENT;
+import static brave.Span.Kind.SERVER;
+import static brave.propagation.SamplingFlags.EMPTY;
 import static brave.sampler.SamplerFunctions.deferDecision;
 import static brave.sampler.SamplerFunctions.neverSample;
 import static java.util.Arrays.asList;
@@ -47,21 +53,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
 public class TracerTest {
-  List<zipkin2.Span> spans = new ArrayList<>();
-  Propagation.Factory propagationFactory = B3Propagation.FACTORY;
-  CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.create();
-  Tracer tracer = Tracing.newBuilder()
-    .spanReporter(new Reporter<zipkin2.Span>() {
-      @Override public void report(zipkin2.Span span) {
-        spans.add(span);
-      }
+  static final BaggageField BAGGAGE_FIELD = BaggageField.create("user-id");
 
-      @Override public String toString() {
-        return "MyReporter{}";
-      }
-    })
+  TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).shared(true).build();
+  TestSpanHandler spans = new TestSpanHandler();
+  Propagation.Factory propagationFactory = B3Propagation.FACTORY;
+  CurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
+  Propagation.Factory baggageFactory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+    .add(SingleBaggageField.remote(BAGGAGE_FIELD)).build();
+  Tracer tracer = Tracing.newBuilder()
+    .addSpanHandler(spans)
+    .trackOrphans()
     .propagationFactory(new Propagation.Factory() {
-      @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
+      @Deprecated @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
         return propagationFactory.create(keyFactory);
       }
 
@@ -85,11 +89,11 @@ public class TracerTest {
     Tracing.current().close();
   }
 
-  @Test public void reporter_hasNiceToString() {
+  @Test public void handler_hasNiceToString() {
     tracer = Tracing.newBuilder().build().tracer();
 
-    assertThat(tracer.finishedSpanHandler)
-      .hasToString("LoggingReporter{name=brave.Tracer}");
+    assertThat(tracer.pendingSpans).extracting("spanHandler")
+      .hasToString("LogSpanHandler{name=brave.Tracer}");
   }
 
   @Test public void sampler() {
@@ -121,16 +125,14 @@ public class TracerTest {
   @Test public void localServiceName() {
     tracer = Tracing.newBuilder().localServiceName("my-foo").build().tracer();
 
-    assertThat(tracer).extracting(
-      "finishedSpanHandler.delegate.converter.localEndpoint.serviceName")
+    assertThat(tracer).extracting("pendingSpans.defaultSpan.localServiceName")
       .isEqualTo("my-foo");
   }
 
   @Test public void localServiceName_defaultIsUnknown() {
     tracer = Tracing.newBuilder().build().tracer();
 
-    assertThat(tracer).extracting(
-      "finishedSpanHandler.delegate.converter.localEndpoint.serviceName")
+    assertThat(tracer).extracting("pendingSpans.defaultSpan.localServiceName")
       .isEqualTo("unknown");
   }
 
@@ -138,8 +140,10 @@ public class TracerTest {
     Endpoint endpoint = Endpoint.newBuilder().ip("1.2.3.4").serviceName("my-bar").build();
     tracer = Tracing.newBuilder().localServiceName("my-foo").endpoint(endpoint).build().tracer();
 
-    assertThat(tracer).extracting("finishedSpanHandler.delegate.converter.localEndpoint")
-      .isEqualTo(endpoint);
+    MutableSpan defaultSpan = new MutableSpan();
+    defaultSpan.localServiceName("my-bar");
+    defaultSpan.localIp("1.2.3.4");
+    assertThat(tracer).extracting("pendingSpans.defaultSpan").isEqualTo(defaultSpan);
   }
 
   @Test public void newTrace_isRootSpan() {
@@ -178,27 +182,27 @@ public class TracerTest {
    * other for the server.
    */
   @Test public void join_sharedDataIsSeparate() {
-    Span clientSide = tracer.newTrace().kind(Kind.CLIENT).start(1L);
-    Span serverSide = tracer.joinSpan(clientSide.context()).kind(Kind.SERVER).start(2L);
+    Span clientSide = tracer.newTrace().kind(CLIENT).start(1L);
+    Span serverSide = tracer.joinSpan(clientSide.context()).kind(SERVER).start(2L);
     serverSide.finish(3L);
     clientSide.finish(4L);
 
     // Ensure they use the same span ID (sanity check)
     String spanId = spans.get(0).id();
-    assertThat(spans).extracting(zipkin2.Span::id)
+    assertThat(spans).extracting(MutableSpan::id)
       .containsExactly(spanId, spanId);
 
     // Ensure the important parts are separated correctly
     assertThat(spans).extracting(
-      zipkin2.Span::kind, zipkin2.Span::shared, zipkin2.Span::timestamp, zipkin2.Span::duration
+      MutableSpan::kind, MutableSpan::shared, MutableSpan::startTimestamp, MutableSpan::finishTimestamp
     ).containsExactly(
-      tuple(zipkin2.Span.Kind.SERVER, true, 2L, 1L),
-      tuple(zipkin2.Span.Kind.CLIENT, null, 1L, 3L)
+      tuple(SERVER, true, 2L, 3L),
+      tuple(CLIENT, false, 1L, 4L)
     );
   }
 
   @Test public void join_createsChildWhenUnsupported() {
-    tracer = Tracing.newBuilder().supportsJoin(false).spanReporter(spans::add).build().tracer();
+    tracer = Tracing.newBuilder().supportsJoin(false).addSpanHandler(spans).build().tracer();
 
     TraceContext fromIncomingRequest = tracer.newTrace().context();
 
@@ -210,8 +214,10 @@ public class TracerTest {
   }
 
   @Test public void finish_doesntCrashOnBadReporter() {
-    tracer = Tracing.newBuilder().spanReporter(span -> {
-      throw new RuntimeException();
+    tracer = Tracing.newBuilder().addSpanHandler(new SpanHandler() {
+      @Override public boolean begin(TraceContext context, MutableSpan span, TraceContext parent) {
+        throw new RuntimeException();
+      }
     }).build().tracer();
 
     tracer.newTrace().start().finish();
@@ -220,11 +226,11 @@ public class TracerTest {
   @Test public void join_createsChildWhenUnsupportedByPropagation() {
     tracer = Tracing.newBuilder()
       .propagationFactory(new Propagation.Factory() {
-        @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
+        @Deprecated public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
           return B3Propagation.FACTORY.create(keyFactory);
         }
       })
-      .spanReporter(spans::add).build().tracer();
+      .addSpanHandler(spans).build().tracer();
 
     TraceContext fromIncomingRequest = tracer.newTrace().context();
 
@@ -241,15 +247,6 @@ public class TracerTest {
     tracer.noop.set(true);
 
     assertThat(tracer.joinSpan(fromIncomingRequest))
-      .isInstanceOf(NoopSpan.class);
-  }
-
-  @Test public void join_noopReporter() {
-    tracer = Tracing.newBuilder().spanReporter(Reporter.NOOP).build().tracer();
-    TraceContext fromIncomingRequest = tracer.newTrace().context();
-
-    assertThat(tracer.joinSpan(fromIncomingRequest))
-      .matches(s -> s.context().sampled()) // context is sampled, but we aren't recording
       .isInstanceOf(NoopSpan.class);
   }
 
@@ -288,8 +285,6 @@ public class TracerTest {
   }
 
   @Test public void toSpan_decoratesExternalContext() {
-    TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true).build();
-
     assertThat(tracer.toSpan(context).context())
       .isNotSameAs(context)
       .extracting(TraceContext::localRootId)
@@ -312,15 +307,6 @@ public class TracerTest {
       .isInstanceOf(NoopSpan.class);
   }
 
-  @Test public void toSpan_noopReporter() {
-    tracer = Tracing.newBuilder().spanReporter(Reporter.NOOP).build().tracer();
-    TraceContext context = tracer.newTrace().context();
-
-    assertThat(tracer.toSpan(context))
-      .matches(s -> s.context().sampled()) // context is sampled, but we aren't recording
-      .isInstanceOf(NoopSpan.class);
-  }
-
   @Test public void toSpan_sampledLocalIsNotNoop() {
     TraceContext sampledLocal = tracer.newTrace().context()
       .toBuilder().sampled(false).sampledLocal(true).build();
@@ -331,10 +317,9 @@ public class TracerTest {
 
   @Test public void toSpan_notSampledIsNoop() {
     TraceContext notSampled =
-      tracer.newTrace().context().toBuilder().sampled(false).build();
+      tracer.nextSpanWithParent(SamplerFunctions.neverSample(), false, null).context();
 
-    assertThat(tracer.toSpan(notSampled))
-      .isInstanceOf(NoopSpan.class);
+    assertThat(tracer.toSpan(notSampled).isNoop()).isTrue();
   }
 
   @Test public void newChild() {
@@ -365,15 +350,6 @@ public class TracerTest {
       .isInstanceOf(NoopSpan.class);
   }
 
-  @Test public void newChild_noopReporter() {
-    tracer = Tracing.newBuilder().spanReporter(Reporter.NOOP).build().tracer();
-    TraceContext parent = tracer.newTrace().context();
-
-    assertThat(tracer.newChild(parent))
-      .matches(s -> s.context().sampled()) // context is sampled, but we aren't recording
-      .isInstanceOf(NoopSpan.class);
-  }
-
   @Test public void newChild_notSampledIsNoop() {
     TraceContext notSampled =
       tracer.newTrace().context().toBuilder().sampled(false).build();
@@ -397,8 +373,8 @@ public class TracerTest {
     }
   }
 
-  @Test public void currentSpanCustomizer_noopReporter() {
-    tracer = Tracing.newBuilder().spanReporter(Reporter.NOOP).build().tracer();
+  @Test public void currentSpanCustomizer_notSampled() {
+    tracer = Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).build().tracer();
 
     ScopedSpan parent = tracer.startScopedSpan("parent");
     try {
@@ -425,13 +401,26 @@ public class TracerTest {
   }
 
   @Test public void currentSpan_decoratesExternalContext() {
-    TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true).build();
-
     try (Scope ws = currentTraceContext.newScope(context)) {
       assertThat(tracer.currentSpan().context())
         .isNotSameAs(context)
         .extracting(TraceContext::localRootId)
         .isEqualTo(context.spanId());
+    }
+  }
+
+  @Test public void currentSpan_retainsSharedFlag() {
+    TraceContext context =
+      TraceContext.newBuilder().traceId(1L).spanId(2L).shared(true).sampled(true).build();
+
+    try (Scope ws = currentTraceContext.newScope(context)) {
+      assertThat(tracer.currentSpan().context().shared()).isTrue();
+    }
+  }
+
+  @Test public void currentSpan_doesntSetSharedFlag() {
+    try (Scope ws = currentTraceContext.newScope(context)) {
+      assertThat(tracer.currentSpan().context().shared()).isFalse();
     }
   }
 
@@ -456,18 +445,33 @@ public class TracerTest {
     assertThat(tracer.nextSpan(neverSample(), false).context().sampled()).isFalse();
   }
 
+  @Test public void nextSpanWithParent() {
+    Span span = tracer.nextSpanWithParent(deferDecision(), false, context);
+
+    assertThat(span.context().parentId()).isEqualTo(context.spanId());
+  }
+
+  @Test public void nextSpanWithParent_overrideToMakeNewTrace() {
+    Span span;
+    try (Scope ws = currentTraceContext.newScope(context)) {
+      span = tracer.nextSpanWithParent(deferDecision(), false, null);
+    }
+
+    assertThat(span.context().parentId()).isNull();
+  }
+
   @Test public void nextSpan_extractedNothing_makesChildOfCurrent() {
     Span parent = tracer.newTrace();
 
     try (SpanInScope ws = tracer.withSpanInScope(parent)) {
-      Span nextSpan = tracer.nextSpan(TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY));
+      Span nextSpan = tracer.nextSpan(TraceContextOrSamplingFlags.create(EMPTY));
       assertThat(nextSpan.context().parentId())
         .isEqualTo(parent.context().spanId());
     }
   }
 
   @Test public void nextSpan_extractedNothing_defaultsToMakeNewTrace() {
-    Span nextSpan = tracer.nextSpan(TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY));
+    Span nextSpan = tracer.nextSpan(TraceContextOrSamplingFlags.create(EMPTY));
 
     assertThat(nextSpan.context().parentId())
       .isNull();
@@ -484,7 +488,7 @@ public class TracerTest {
 
   @Test public void nextSpan_extractedExtra_newTrace() {
     TraceContextOrSamplingFlags extracted =
-      TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY).toBuilder().addExtra(1L).build();
+      TraceContextOrSamplingFlags.newBuilder(EMPTY).addExtra(1L).build();
 
     assertThat(tracer.nextSpan(extracted).context().extra())
       .containsExactly(1L);
@@ -494,7 +498,7 @@ public class TracerTest {
     Span parent = tracer.newTrace();
 
     TraceContextOrSamplingFlags extracted =
-      TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY).toBuilder().addExtra(1L).build();
+      TraceContextOrSamplingFlags.newBuilder(EMPTY).addExtra(1L).build();
 
     try (SpanInScope ws = tracer.withSpanInScope(parent)) {
       assertThat(tracer.nextSpan(extracted).context().extra())
@@ -504,10 +508,13 @@ public class TracerTest {
 
   @Test public void nextSpan_extractedExtra_appendsToChildOfCurrent() {
     // current parent already has extra stuff
-    Span parent = tracer.toSpan(tracer.newTrace().context().toBuilder().extra(asList(1L)).build());
+    Span parent = tracer.nextSpan(TraceContextOrSamplingFlags.newBuilder(EMPTY)
+      .addExtra(1L)
+      .build());
 
-    TraceContextOrSamplingFlags extracted =
-      TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY).toBuilder().addExtra(1F).build();
+    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder(EMPTY)
+      .addExtra(1F)
+      .build();
 
     try (SpanInScope ws = tracer.withSpanInScope(parent)) {
       assertThat(tracer.nextSpan(extracted).context().extra())
@@ -525,16 +532,15 @@ public class TracerTest {
 
   @Test public void nextSpan_extractedTraceId_extra() {
     TraceIdContext traceIdContext = TraceIdContext.newBuilder().traceId(1L).build();
-    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(traceIdContext)
-      .toBuilder().addExtra(1L).build();
+    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder(traceIdContext)
+      .addExtra(1L).build();
 
     assertThat(tracer.nextSpan(extracted).context().extra())
       .containsExactly(1L);
   }
 
   @Test public void nextSpan_extractedTraceContext() {
-    TraceContext traceContext = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
-    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(traceContext);
+    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(context);
 
     assertThat(tracer.nextSpan(extracted).context())
       .extracting(TraceContext::traceId, TraceContext::parentId)
@@ -542,9 +548,8 @@ public class TracerTest {
   }
 
   @Test public void nextSpan_extractedTraceContext_extra() {
-    TraceContext traceContext = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
-    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.create(traceContext)
-      .toBuilder().addExtra(1L).build();
+    TraceContextOrSamplingFlags extracted = TraceContextOrSamplingFlags.newBuilder(context)
+      .addExtra(1L).build();
 
     assertThat(tracer.nextSpan(extracted).context().extra())
       .contains(1L);
@@ -621,7 +626,7 @@ public class TracerTest {
     TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).sampled(true).build();
     try (SpanInScope ws = tracer.withSpanInScope(tracer.toSpan(context))) {
       assertThat(tracer.toString()).hasToString(
-        "Tracer{currentSpan=0000000000000001/000000000000000a, finishedSpanHandler=MyReporter{}}"
+        "Tracer{currentSpan=0000000000000001/000000000000000a, spanHandler=[TestSpanHandler{[]}, OrphanTracker{}]}"
       );
     }
   }
@@ -630,13 +635,13 @@ public class TracerTest {
     Tracing.current().setNoop(true);
 
     assertThat(tracer).hasToString(
-      "Tracer{noop=true, finishedSpanHandler=MyReporter{}}"
+      "Tracer{noop=true, spanHandler=[TestSpanHandler{[]}, OrphanTracker{}]}"
     );
   }
 
-  @Test public void toString_withFinishedSpanHandler() {
-    tracer = Tracing.newBuilder().addFinishedSpanHandler(new FinishedSpanHandler() {
-      @Override public boolean handle(TraceContext context, MutableSpan span) {
+  @Test public void toString_withSpanReporter() {
+    tracer = Tracing.newBuilder().addSpanHandler(new SpanHandler() {
+      @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
         return true;
       }
 
@@ -653,7 +658,7 @@ public class TracerTest {
     }).build().tracer();
 
     assertThat(tracer).hasToString(
-      "Tracer{finishedSpanHandler=[MyHandler, MyReporter]}"
+      "Tracer{spanHandler=[MyHandler, MyReporter]}"
     );
   }
 
@@ -692,58 +697,58 @@ public class TracerTest {
   }
 
   @Test public void join_getsExtraFromPropagationFactory() {
-    propagationFactory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "service");
+    propagationFactory = baggageFactory;
 
     TraceContext context = tracer.nextSpan().context();
-    ExtraFieldPropagation.set(context, "service", "napkin");
+    BAGGAGE_FIELD.updateValue(context, "napkin");
 
     TraceContext joined = tracer.joinSpan(context).context();
 
-    assertThat(ExtraFieldPropagation.get(joined, "service")).isEqualTo("napkin");
+    assertThat(BAGGAGE_FIELD.getValue(joined)).isEqualTo("napkin");
   }
 
   @Test public void nextSpan_getsExtraFromPropagationFactory() {
-    propagationFactory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "service");
+    propagationFactory = baggageFactory;
 
     Span parent = tracer.nextSpan();
-    ExtraFieldPropagation.set(parent.context(), "service", "napkin");
+    BAGGAGE_FIELD.updateValue(parent.context(), "napkin");
 
     TraceContext nextSpan;
     try (SpanInScope scope = tracer.withSpanInScope(parent)) {
       nextSpan = tracer.nextSpan().context();
     }
 
-    assertThat(ExtraFieldPropagation.get(nextSpan, "service")).isEqualTo("napkin");
+    assertThat(BAGGAGE_FIELD.getValue(nextSpan)).isEqualTo("napkin");
   }
 
   @Test public void newChild_getsExtraFromPropagationFactory() {
-    propagationFactory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "service");
+    propagationFactory = baggageFactory;
 
     TraceContext context = tracer.nextSpan().context();
-    ExtraFieldPropagation.set(context, "service", "napkin");
+    BAGGAGE_FIELD.updateValue(context, "napkin");
 
     TraceContext newChild = tracer.newChild(context).context();
 
-    assertThat(ExtraFieldPropagation.get(newChild, "service")).isEqualTo("napkin");
+    assertThat(BAGGAGE_FIELD.getValue(newChild)).isEqualTo("napkin");
   }
 
   @Test public void startScopedSpanWithParent_getsExtraFromPropagationFactory() {
-    propagationFactory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "service");
+    propagationFactory = baggageFactory;
 
     TraceContext context = tracer.nextSpan().context();
-    ExtraFieldPropagation.set(context, "service", "napkin");
+    BAGGAGE_FIELD.updateValue(context, "napkin");
 
     ScopedSpan scoped = tracer.startScopedSpanWithParent("foo", context);
     scoped.finish();
 
-    assertThat(ExtraFieldPropagation.get(scoped.context(), "service")).isEqualTo("napkin");
+    assertThat(BAGGAGE_FIELD.getValue(scoped.context())).isEqualTo("napkin");
   }
 
   @Test public void startScopedSpan_getsExtraFromPropagationFactory() {
-    propagationFactory = ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "service");
+    propagationFactory = baggageFactory;
 
     Span parent = tracer.nextSpan();
-    ExtraFieldPropagation.set(parent.context(), "service", "napkin");
+    BAGGAGE_FIELD.updateValue(parent.context(), "napkin");
 
     ScopedSpan scoped;
     try (SpanInScope scope = tracer.withSpanInScope(parent)) {
@@ -751,7 +756,7 @@ public class TracerTest {
       scoped.finish();
     }
 
-    assertThat(ExtraFieldPropagation.get(scoped.context(), "service")).isEqualTo("napkin");
+    assertThat(BAGGAGE_FIELD.getValue(scoped.context())).isEqualTo("napkin");
   }
 
   @Test public void startScopedSpan() {
@@ -764,35 +769,41 @@ public class TracerTest {
 
     assertThat(spans.get(0).name())
       .isEqualTo("foo");
-    assertThat(spans.get(0).durationAsLong())
+    assertThat(spans.get(0).finishTimestamp())
       .isPositive();
   }
 
-  @Test public void useSpanAfterFinished_doesNotCauseBraveFlush() throws InterruptedException {
+  @Test public void startScopedSpan_overrideName() {
+    ScopedSpan scoped = tracer.startScopedSpan("foo");
+    try {
+      scoped.name("bar");
+    } finally {
+      scoped.finish();
+    }
+
+    assertThat(spans.get(0).name()).isEqualTo("bar");
+  }
+
+  @Test public void useSpanAfterFinished_doesNotCauseBraveFlush() {
     simulateInProcessPropagation(tracer, tracer);
     GarbageCollectors.blockOnGC();
     tracer.newTrace().start().abandon(); //trigger orphaned span check
     assertThat(spans).hasSize(1);
-    assertThat(spans.stream()
-      .flatMap(span -> span.annotations().stream())
-      .map(Annotation::value)
-      .collect(Collectors.toList())).doesNotContain("brave.flush");
+    assertThat(spans.get(0).annotations())
+      .extracting(Map.Entry::getValue)
+      .doesNotContain("brave.flush");
   }
 
-  @Test public void useSpanAfterFinishedInOtherTracer_doesNotCauseBraveFlush()
-    throws InterruptedException {
-    Tracer noOpTracer = Tracing.newBuilder()
-      .build().tracer();
+  @Test public void useSpanAfterFinishedInOtherTracer_doesNotCauseBraveFlush() {
+    Tracer noOpTracer = Tracing.newBuilder().spanReporter(s -> {
+      // intentionally avoid any special-casing of Reporter.NOOP
+    }).build().tracer();
     simulateInProcessPropagation(noOpTracer, tracer);
     GarbageCollectors.blockOnGC();
     tracer.newTrace().start().abandon(); //trigger orphaned span check
 
     // We expect the span to be reported to the NOOP reporter, and nothing to be reported to "spans"
-    assertThat(spans).hasSize(0);
-    assertThat(spans.stream()
-      .flatMap(span -> span.annotations().stream())
-      .map(Annotation::value)
-      .collect(Collectors.toList())).doesNotContain("brave.flush");
+    assertThat(spans).isEmpty();
   }
 
   /**
@@ -824,7 +835,6 @@ public class TracerTest {
   @Test public void joinSpan_whenJoinIsSupported_resultantSpanIsLocalRoot() {
     tracer = Tracing.newBuilder().supportsJoin(true).build().tracer();
 
-    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
     Span span = tracer.joinSpan(context);
 
     assertThat(span.context().spanId()).isEqualTo(span.context().localRootId()); // Sanity check
@@ -839,7 +849,6 @@ public class TracerTest {
   @Test public void joinSpan_whenJoinIsNotSupported_resultantSpanIsLocalRoot() {
     tracer = Tracing.newBuilder().supportsJoin(false).build().tracer();
 
-    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
     Span span = tracer.joinSpan(context);
 
     assertThat(span.context().spanId()).isEqualTo(span.context().localRootId()); // Sanity check
@@ -866,8 +875,22 @@ public class TracerTest {
     }
   }
 
+  @Test public void startScopedSpanWithParent_ignoresCurrentSpan() {
+    ScopedSpan span = tracer.startScopedSpan("foo");
+    try {
+      ScopedSpan child = tracer.startScopedSpanWithParent("bar", null);
+      try {
+        assertThat(child.context().parentIdAsLong()).isZero();
+        assertThat(child.context().traceIdString()).isNotEqualTo(span.context().traceIdString());
+      } finally {
+        child.finish();
+      }
+    } finally {
+      span.finish();
+    }
+  }
+
   @Test public void startScopedSpanWithParent_resultantSpanIsLocalRoot() {
-    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
     ScopedSpan span = tracer.startScopedSpanWithParent("foo", context);
     try {
       assertThat(span.context().spanId()).isEqualTo(span.context().localRootId()); // Sanity check
@@ -888,7 +911,6 @@ public class TracerTest {
   }
 
   @Test public void newChild_resultantSpanIsLocalRoot() {
-    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
     Span span = tracer.newChild(context);
 
     assertThat(span.context().spanId()).isEqualTo(span.context().localRootId()); // Sanity check
@@ -897,6 +919,36 @@ public class TracerTest {
     // Check we don't always make children local roots
     Span child = tracer.newChild(span.context());
     assertThat(child.context().localRootId()).isEqualTo(span.context().localRootId());
+    assertThat(child.context().isLocalRoot()).isFalse();
+  }
+
+  @Test public void joinSpan_notYetSampledIsNotShared_root() {
+    Span span = tracer.joinSpan(context);
+
+    assertThat(span.context().shared()).isFalse();
+  }
+
+  @Test public void joinSpan_notYetSampledIsNotShared_child() {
+    TraceContext context =
+      TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).shared(true).build();
+    Span span = tracer.joinSpan(context);
+
+    assertThat(span.context().shared()).isFalse();
+  }
+
+  @Test public void newChild_childOfLocalRootIsNotShared() {
+    TraceContext context =
+      TraceContext.newBuilder().traceId(1).spanId(2).shared(true).sampled(true).build();
+    Span span = tracer.joinSpan(context);
+
+    assertThat(span.context().spanId()).isEqualTo(span.context().localRootId()); // Sanity check
+    assertThat(span.context().shared()).isTrue();
+    assertThat(span.context().isLocalRoot()).isTrue();
+
+    // Check we don't inherit the shared flag
+    Span child = tracer.newChild(span.context());
+    assertThat(child.context().localRootId()).isEqualTo(span.context().localRootId());
+    assertThat(child.context().shared()).isFalse();
     assertThat(child.context().isLocalRoot()).isFalse();
   }
 
@@ -1002,6 +1054,88 @@ public class TracerTest {
     localRootId(flags, flags, ctx -> tracer.nextSpan(ctx));
   }
 
+  @Test public void joinSpan_decorates() {
+    propagationFactory = baggageFactory;
+    TraceContext incoming = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true)
+      .shared(true).build();
+
+    TraceContext joined = tracer.joinSpan(incoming).context();
+    assertThat(joined).isNotSameAs(incoming);
+    assertThat(joined.extra()).isNotEmpty();
+  }
+
+  @Test public void joinSpan_decorates_unsampled() {
+    propagationFactory = baggageFactory;
+    TraceContext incoming = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(false)
+      .shared(true).build();
+
+    TraceContext joined = tracer.joinSpan(incoming).context();
+    assertThat(joined).isNotSameAs(incoming);
+    assertThat(joined.extra()).isNotEmpty();
+  }
+
+  @Test public void toSpan_decorates() {
+    propagationFactory = baggageFactory;
+    TraceContext incoming = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true).build();
+
+    TraceContext toSpan = tracer.toSpan(incoming).context();
+    assertThat(toSpan).isNotSameAs(incoming);
+    assertThat(toSpan.extra()).isNotEmpty();
+  }
+
+  @Test public void toSpan_decorates_unsampled() {
+    propagationFactory = baggageFactory;
+    TraceContext incoming = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(false).build();
+
+    TraceContext toSpan = tracer.toSpan(incoming).context();
+    assertThat(toSpan).isNotSameAs(incoming);
+    assertThat(toSpan.extra()).isNotEmpty();
+  }
+
+  @Test public void currentSpan_sameContextReference() {
+    Span span = tracer.newTrace();
+    try (SpanInScope ws = tracer.withSpanInScope(span)) {
+      assertThat(tracer.currentSpan().context())
+        .isSameAs(span.context());
+    }
+  }
+
+  @Test public void join_idempotent() {
+    TraceContext incoming = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true)
+      .shared(true).build();
+
+    TraceContext joined = tracer.joinSpan(incoming).context();
+    assertThat(joined).isNotSameAs(incoming);
+    assertThat(tracer.joinSpan(incoming).context()).isSameAs(joined);
+  }
+
+  @Test public void join_idempotent_unsampled() {
+    TraceContext incoming = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(false)
+      .shared(true).build();
+
+    TraceContext joined = tracer.joinSpan(incoming).context();
+    assertThat(joined).isNotSameAs(incoming);
+    assertThat(tracer.joinSpan(incoming).context())
+      .isNotSameAs(joined); // unsampled spans are by definition not tracked in pending spans
+  }
+
+  @Test public void toSpan_idempotent() {
+    TraceContext incoming = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true).build();
+
+    TraceContext toSpan = tracer.toSpan(incoming).context();
+    assertThat(toSpan).isNotSameAs(incoming);
+    assertThat(tracer.toSpan(incoming).context()).isSameAs(toSpan);
+  }
+
+  @Test public void toSpan_idempotent_unsampled() {
+    TraceContext incoming = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(false).build();
+
+    TraceContext toSpan = tracer.toSpan(incoming).context();
+    assertThat(toSpan).isNotSameAs(incoming);
+    assertThat(tracer.toSpan(incoming).context())
+      .isNotSameAs(toSpan); // unsampled spans are by definition not tracked in pending spans
+  }
+
   void localRootId(TraceContext c1, TraceContext c2,
     Function<TraceContextOrSamplingFlags, Span> fn) {
     localRootId(TraceContextOrSamplingFlags.create(c1), TraceContextOrSamplingFlags.create(c2), fn);
@@ -1016,17 +1150,17 @@ public class TracerTest {
     Function<TraceContextOrSamplingFlags, Span> ctxFn
   ) {
     Map<Long, List<String>> reportedNames = tracerThatPartitionsNamesOnlocalRootId();
-    Span server1 = ctxFn.apply(ctx1).name("server1").kind(Kind.SERVER).start();
-    Span server2 = ctxFn.apply(ctx2).name("server2").kind(Kind.SERVER).start();
+    Span server1 = ctxFn.apply(ctx1).name("server1").kind(SERVER).start();
+    Span server2 = ctxFn.apply(ctx2).name("server2").kind(SERVER).start();
     try {
-      Span client1 = tracer.newChild(server1.context()).name("client1").kind(Kind.CLIENT).start();
+      Span client1 = tracer.newChild(server1.context()).name("client1").kind(CLIENT).start();
       ScopedSpan processor1 = tracer.startScopedSpanWithParent("processor1", server1.context());
       try {
         try {
           ScopedSpan processor2 = tracer.startScopedSpanWithParent("processor2", server2.context());
           try {
-            tracer.nextSpan().name("client2").kind(Kind.CLIENT).start().finish();
-            tracer.nextSpan().name("client3").kind(Kind.CLIENT).start().finish();
+            tracer.nextSpan().name("client2").kind(CLIENT).start().finish();
+            tracer.nextSpan().name("client3").kind(CLIENT).start().finish();
           } finally {
             processor2.finish();
           }
@@ -1049,18 +1183,14 @@ public class TracerTest {
 
   Map<Long, List<String>> tracerThatPartitionsNamesOnlocalRootId() {
     Map<Long, List<String>> reportedNames = new LinkedHashMap<>();
-    tracer = Tracing.newBuilder().addFinishedSpanHandler(new FinishedSpanHandler() {
-      @Override public boolean handle(TraceContext context, MutableSpan span) {
+    tracer = Tracing.newBuilder().addSpanHandler(new SpanHandler() {
+      @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
         assertThat(context.localRootId()).isNotZero();
         reportedNames.computeIfAbsent(context.localRootId(), k -> new ArrayList<>())
           .add(span.name());
         return true; // retain
       }
-
-      @Override public boolean alwaysSampleLocal() {
-        return true;
-      }
-    }).spanReporter(Reporter.NOOP).build().tracer();
+    }).alwaysSampleLocal().build().tracer();
     return reportedNames;
   }
 }

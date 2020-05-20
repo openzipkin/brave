@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,22 +13,21 @@
  */
 package brave;
 
+import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.context.log4j2.ThreadContextScopeDecorator;
-import brave.handler.FinishedSpanHandler;
-import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.http.HttpServerBenchmarks;
 import brave.okhttp3.TracingCallFactory;
 import brave.propagation.B3Propagation;
-import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.ThreadLocalCurrentTraceContext;
-import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import brave.servlet.TracingFilter;
 import io.undertow.servlet.Servlets;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.FilterInfo;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Date;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -46,12 +45,14 @@ import okhttp3.Request;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
-import zipkin2.reporter.AsyncReporter;
 
 import static javax.servlet.DispatcherType.REQUEST;
 
 /** Uses the canonical zipkin frontend-backend app, with the fastest components */
 public class EndToEndBenchmarks extends HttpServerBenchmarks {
+  public static final BaggageField REQUEST_ID = BaggageField.create("x-vcap-request-id");
+  public static final BaggageField COUNTRY_CODE = BaggageField.create("country-code");
+  public static final BaggageField USER_ID = BaggageField.create("user-id");
   static volatile int PORT;
 
   static class HelloServlet extends HttpServlet {
@@ -64,8 +65,8 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
       if (req.getRequestURI().endsWith("/api")) {
         resp.getWriter().println(new Date().toString());
       } else {
-        // noop if extra field propagation is not configured
-        ExtraFieldPropagation.set("country-code", "FO");
+        // noop if baggage propagation is not configured
+        COUNTRY_CODE.updateValue("FO");
         Request request = new Request.Builder().url(new HttpUrl.Builder()
           .scheme("http")
           .host("127.0.0.1")
@@ -86,7 +87,9 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
     public Unsampled() {
       super(Tracing.newBuilder()
         .sampler(Sampler.NEVER_SAMPLE)
-        .spanReporter(AsyncReporter.create(new NoopSender()))
+        .addSpanHandler(new SpanHandler() {
+          // intentionally not NOOP to ensure spans report
+        })
         .build());
     }
   }
@@ -94,17 +97,11 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
   public static class OnlySampledLocal extends ForwardingTracingFilter {
     public OnlySampledLocal() {
       super(Tracing.newBuilder()
-        .addFinishedSpanHandler(new FinishedSpanHandler() {
-          @Override public boolean handle(TraceContext context, MutableSpan span) {
-            return true;
-          }
-
-          @Override public boolean alwaysSampleLocal() {
-            return true;
-          }
+        .addSpanHandler(new SpanHandler() {
+          // anonymous subtype prevents all recording from being no-op
         })
+        .alwaysSampleLocal()
         .sampler(Sampler.NEVER_SAMPLE)
-        .spanReporter(AsyncReporter.create(new NoopSender()))
         .build());
     }
   }
@@ -112,8 +109,10 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
   public static class Traced extends ForwardingTracingFilter {
     public Traced() {
       super(Tracing.newBuilder()
-        .spanReporter(AsyncReporter.create(new NoopSender()))
-        .build());
+          .addSpanHandler(new SpanHandler() {
+            // intentionally not NOOP to ensure spans report
+          })
+          .build());
     }
   }
 
@@ -122,23 +121,31 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
       super(Tracing.newBuilder()
         .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
           // intentionally added twice to test overhead of multiple correlations
-          .addScopeDecorator(ThreadContextScopeDecorator.create())
-          .addScopeDecorator(ThreadContextScopeDecorator.create())
+          .addScopeDecorator(ThreadContextScopeDecorator.get())
+          .addScopeDecorator(ThreadContextScopeDecorator.get())
           .build())
-        .spanReporter(AsyncReporter.create(new NoopSender()))
+        .addSpanHandler(new SpanHandler() {
+          // intentionally not NOOP to ensure spans report
+        })
         .build());
     }
   }
 
-  public static class TracedExtra extends ForwardingTracingFilter {
-    public TracedExtra() {
+  public static class TracedBaggage extends ForwardingTracingFilter {
+    public TracedBaggage() {
       super(Tracing.newBuilder()
-        .propagationFactory(ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
-          .addField("x-vcap-request-id")
-          .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
-          .build()
-        )
-        .spanReporter(AsyncReporter.create(new NoopSender()))
+        .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+          .add(SingleBaggageField.remote(REQUEST_ID))
+          .add(SingleBaggageField.newBuilder(COUNTRY_CODE)
+            .addKeyName("baggage-country-code")
+            .build())
+          .add(SingleBaggageField.newBuilder(USER_ID)
+            .addKeyName("baggage-user-id")
+            .build())
+          .build())
+        .addSpanHandler(new SpanHandler() {
+          // intentionally not NOOP to ensure spans report
+        })
         .build());
     }
   }
@@ -147,7 +154,9 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
     public Traced128() {
       super(Tracing.newBuilder()
         .traceId128Bit(true)
-        .spanReporter(AsyncReporter.create(new NoopSender()))
+        .addSpanHandler(new SpanHandler() {
+          // intentionally not NOOP to ensure spans report
+        })
         .build());
     }
   }
@@ -162,9 +171,9 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
       .addFilter(new FilterInfo("Traced", Traced.class))
       .addFilterUrlMapping("Traced", "/traced", REQUEST)
       .addFilterUrlMapping("Traced", "/traced/api", REQUEST)
-      .addFilter(new FilterInfo("TracedExtra", TracedExtra.class))
-      .addFilterUrlMapping("TracedExtra", "/tracedextra", REQUEST)
-      .addFilterUrlMapping("TracedExtra", "/tracedextra/api", REQUEST)
+      .addFilter(new FilterInfo("TracedBaggage", TracedBaggage.class))
+      .addFilterUrlMapping("TracedBaggage", "/tracedBaggage", REQUEST)
+      .addFilterUrlMapping("TracedBaggage", "/tracedBaggage/api", REQUEST)
       .addFilter(new FilterInfo("TracedCorrelated", TracedCorrelated.class))
       .addFilterUrlMapping("TracedCorrelated", "/tracedcorrelated", REQUEST)
       .addFilterUrlMapping("TracedCorrelated", "/tracedcorrelated/api", REQUEST)

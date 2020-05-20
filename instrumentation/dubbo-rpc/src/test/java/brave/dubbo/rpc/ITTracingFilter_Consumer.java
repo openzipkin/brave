@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,186 +13,217 @@
  */
 package brave.dubbo.rpc;
 
-import brave.ScopedSpan;
+import brave.Clock;
+import brave.Tag;
+import brave.handler.MutableSpan;
+import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
-import brave.propagation.TraceContextOrSamplingFlags;
+import brave.rpc.RpcResponseParser;
 import brave.rpc.RpcRuleSampler;
 import brave.rpc.RpcTracing;
-import brave.sampler.Sampler;
+import com.alibaba.dubbo.common.beanutil.JavaBeanDescriptor;
+import com.alibaba.dubbo.common.extension.ExtensionLoader;
 import com.alibaba.dubbo.config.ApplicationConfig;
 import com.alibaba.dubbo.config.ReferenceConfig;
+import com.alibaba.dubbo.rpc.Filter;
+import com.alibaba.dubbo.rpc.Result;
 import com.alibaba.dubbo.rpc.RpcContext;
 import com.alibaba.dubbo.rpc.RpcException;
-import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
-
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import zipkin2.Span;
 
+import static brave.Span.Kind.CLIENT;
 import static brave.rpc.RpcRequestMatchers.methodEquals;
 import static brave.rpc.RpcRequestMatchers.serviceEquals;
 import static brave.sampler.Sampler.ALWAYS_SAMPLE;
 import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class ITTracingFilter_Consumer extends ITTracingFilter {
+  ReferenceConfig<GraterService> wrongClient;
 
   @Before public void setup() {
-    setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
+    init();
     server.start();
 
+    String url = "dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean";
     client = new ReferenceConfig<>();
     client.setApplication(new ApplicationConfig("bean-consumer"));
     client.setFilter("tracing");
     client.setInterface(GreeterService.class);
-    client.setUrl("dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean");
+    client.setUrl(url);
+
+    wrongClient = new ReferenceConfig<>();
+    wrongClient.setApplication(new ApplicationConfig("bad-consumer"));
+    wrongClient.setFilter("tracing");
+    wrongClient.setInterface(GraterService.class);
+    wrongClient.setUrl(url);
   }
 
-  @Test public void propagatesSpan() throws Exception {
+  @Test public void propagatesNewTrace() {
     client.get().sayHello("jorge");
 
-    TraceContext context = server.takeRequest().context();
-    assertThat(context.parentId()).isNull();
-    assertThat(context.sampled()).isTrue();
-
-    takeSpan();
+    TraceContext extracted = server.takeRequest().context();
+    assertThat(extracted.sampled()).isTrue();
+    assertThat(extracted.parentIdString()).isNull();
+    assertSameIds(testSpanHandler.takeRemoteSpan(CLIENT), extracted);
   }
 
-  @Test public void makesChildOfCurrentSpan() throws Exception {
-    ScopedSpan parent = tracing.tracer().startScopedSpan("test");
-    try {
+  @Test public void propagatesChildOfCurrentSpan() {
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
       client.get().sayHello("jorge");
-    } finally {
-      parent.finish();
     }
 
-    TraceContext context = server.takeRequest().context();
-    assertThat(context.traceId())
-      .isEqualTo(parent.context().traceId());
-    assertThat(context.parentId())
-      .isEqualTo(parent.context().spanId());
+    TraceContext extracted = server.takeRequest().context();
+    assertThat(extracted.sampled()).isTrue();
+    assertChildOf(extracted, parent);
+    assertSameIds(testSpanHandler.takeRemoteSpan(CLIENT), extracted);
+  }
 
-    // we report one in-process and one RPC client span
-    assertThat(Arrays.asList(takeSpan(), takeSpan()))
-      .extracting(Span::kind)
-      .containsOnly(null, Span.Kind.CLIENT);
+  /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
+  @Test public void propagatesUnsampledContext() {
+    TraceContext parent = newTraceContext(SamplingFlags.NOT_SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
+      client.get().sayHello("jorge");
+    }
+
+    TraceContext extracted = server.takeRequest().context();
+    assertThat(extracted.sampled()).isFalse();
+    assertChildOf(extracted, parent);
+  }
+
+  @Test public void propagatesBaggage() {
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
+      BAGGAGE_FIELD.updateValue(parent, "joey");
+      client.get().sayHello("jorge");
+    }
+
+    TraceContext extracted = server.takeRequest().context();
+    assertThat(BAGGAGE_FIELD.getValue(extracted)).isEqualTo("joey");
+
+    testSpanHandler.takeRemoteSpan(CLIENT);
+  }
+
+  @Test public void propagatesBaggage_unsampled() {
+    TraceContext parent = newTraceContext(SamplingFlags.NOT_SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
+      BAGGAGE_FIELD.updateValue(parent, "joey");
+      client.get().sayHello("jorge");
+    }
+
+    TraceContext extracted = server.takeRequest().context();
+    assertThat(BAGGAGE_FIELD.getValue(extracted)).isEqualTo("joey");
+  }
+
+  /** This prevents confusion as a blocking client should end before, the start of the next span. */
+  @Test public void clientTimestampAndDurationEnclosedByParent() {
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
+    Clock clock = tracing.clock(parent);
+
+    long start = clock.currentTimeMicroseconds();
+    try (Scope scope = currentTraceContext.newScope(parent)) {
+      client.get().sayHello("jorge");
+    }
+    long finish = clock.currentTimeMicroseconds();
+
+    MutableSpan clientSpan = testSpanHandler.takeRemoteSpan(CLIENT);
+    assertChildOf(clientSpan, parent);
+    assertSpanInInterval(clientSpan, start, finish);
   }
 
   /**
    * This tests that the parent is determined at the time the request was made, not when the request
    * was executed.
    */
-  @Test public void usesParentFromInvocationTime() throws Exception {
-    server.enqueueDelay(TimeUnit.SECONDS.toMillis(1));
-
-    ScopedSpan parent = tracing.tracer().startScopedSpan("test");
-    try {
+  @Test public void usesParentFromInvocationTime() {
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
       RpcContext.getContext().asyncCall(() -> client.get().sayHello("jorge"));
       RpcContext.getContext().asyncCall(() -> client.get().sayHello("romeo"));
-    } finally {
-      parent.finish();
     }
 
-    ScopedSpan otherSpan = tracing.tracer().startScopedSpan("test2");
-    try {
+    try (Scope scope = currentTraceContext.newScope(null)) {
+      // complete within a different scope
       for (int i = 0; i < 2; i++) {
-        TraceContext context = server.takeRequest().context();
-        assertThat(context.traceId())
-          .isEqualTo(parent.context().traceId());
-        assertThat(context.parentId())
-          .isEqualTo(parent.context().spanId());
+        TraceContext extracted = server.takeRequest().context();
+        assertChildOf(extracted, parent);
       }
-    } finally {
-      otherSpan.finish();
     }
 
-    // Check we reported 2 in-process spans and 2 client spans
-    assertThat(Arrays.asList(takeSpan(), takeSpan(), takeSpan(), takeSpan()))
-      .extracting(Span::kind)
-      .containsOnly(null, Span.Kind.CLIENT);
+    // The spans may report in a different order than the requests
+    for (int i = 0; i < 2; i++) {
+      assertChildOf(testSpanHandler.takeRemoteSpan(CLIENT), parent);
+    }
   }
 
-  /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
-  @Test public void propagates_sampledFalse() throws Exception {
-    setTracing(tracingBuilder(Sampler.NEVER_SAMPLE).build());
-
-    client.get().sayHello("jorge");
-    TraceContextOrSamplingFlags extracted = server.takeRequest();
-    assertThat(extracted.sampled()).isFalse();
-
-    // @After will check that nothing is reported
-  }
-
-  @Test public void reportsClientKindToZipkin() throws Exception {
+  @Test public void reportsClientKindToZipkin() {
     client.get().sayHello("jorge");
 
-    Span span = takeSpan();
-    assertThat(span.kind())
-      .isEqualTo(Span.Kind.CLIENT);
+    testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
-  @Test public void defaultSpanNameIsMethodName() throws Exception {
+  @Test public void defaultSpanNameIsMethodName() {
     client.get().sayHello("jorge");
 
-    Span span = takeSpan();
-    assertThat(span.name())
-      .isEqualTo("greeterservice/sayhello");
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).name())
+        .isEqualTo("brave.dubbo.rpc.GreeterService/sayHello");
   }
 
-  @Test public void onTransportException_addsErrorTag() throws Exception {
+  @Test public void onTransportException_setsError() {
     server.stop();
 
-    try {
-      client.get().sayHello("jorge");
-      failBecauseExceptionWasNotThrown(RpcException.class);
-    } catch (RpcException e) {
-    }
+    assertThatThrownBy(() -> client.get().sayHello("jorge"))
+        .isInstanceOf(RpcException.class);
 
-    Span span = takeSpan();
-    assertThat(span.tags().get("error"))
-      .contains("RemotingException");
+    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*RemotingException.*");
   }
 
-  @Test public void onTransportException_addsErrorTag_async() throws Exception {
+  @Test public void onTransportException_setsError_async() {
     server.stop();
 
     RpcContext.getContext().asyncCall(() -> client.get().sayHello("romeo"));
 
-    Span span = takeSpan();
-    assertThat(span.tags().get("error"))
-      .contains("RemotingException");
+    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*RemotingException.*");
   }
 
-  @Test public void flushesSpanOneWay() throws Exception {
+  @Test public void finishesOneWay() {
     RpcContext.getContext().asyncCall(() -> {
       client.get().sayHello("romeo");
     });
 
-    Span span = takeSpan();
-    assertThat(span.duration())
-      .isNull();
+    testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
-  @Test public void addsErrorTag_onUnimplemented() throws Exception {
-    server.stop();
-    server = new TestServer();
-    server.service.setRef((method, parameterTypes, args) -> args);
-    server.start();
+  @Test public void setsError_onUnimplemented() {
+    assertThatThrownBy(() -> wrongClient.get().sayHello("jorge"))
+        .isInstanceOf(RpcException.class);
 
-    try {
-      client.get().sayHello("jorge");
-      failBecauseExceptionWasNotThrown(RpcException.class);
-    } catch (RpcException e) {
-    }
+    MutableSpan span =
+        testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Not found exported service.*");
+    assertThat(span.tags())
+        .containsEntry("dubbo.error_code", "1");
+  }
 
-    Span span = takeSpan();
-    assertThat(span.tags().get("dubbo.error_code"))
-      .isEqualTo("1");
-    assertThat(span.tags().get("error"))
-      .contains("Not found exported service");
+  /** Shows if you aren't using RpcTracing, the old "dubbo.error_code" works */
+  @Test public void setsError_onUnimplemented_legacy() {
+    ((TracingFilter) ExtensionLoader.getExtensionLoader(Filter.class)
+        .getExtension("tracing")).isInit = false;
+
+    ((TracingFilter) ExtensionLoader.getExtensionLoader(Filter.class)
+        .getExtension("tracing"))
+        .setTracing(tracing);
+
+    assertThatThrownBy(() -> wrongClient.get().sayHello("jorge"))
+        .isInstanceOf(RpcException.class);
+
+    MutableSpan span =
+        testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Not found exported service.*");
+    assertThat(span.tags())
+        .containsEntry("dubbo.error_code", "1");
   }
 
   /** Ensures the span completes on asynchronous invocation. */
@@ -203,16 +234,17 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     Object o = RpcContext.getContext().getFuture().get();
     assertThat(o).isNotNull();
 
-    Span span = takeSpan();
-    assertThat(span.kind())
-      .isEqualTo(Span.Kind.CLIENT);
+    testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
-  @Test public void customSampler() throws Exception {
-    setRpcTracing(RpcTracing.newBuilder(tracing).clientSampler(RpcRuleSampler.newBuilder()
-      .putRule(methodEquals("sayGoodbye"), NEVER_SAMPLE)
-      .putRule(serviceEquals("brave.dubbo"), ALWAYS_SAMPLE)
-      .build()).build());
+  /* RpcTracing-specific feature tests */
+
+  @Test public void customSampler() {
+    RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).clientSampler(RpcRuleSampler.newBuilder()
+        .putRule(methodEquals("sayGoodbye"), NEVER_SAMPLE)
+        .putRule(serviceEquals("brave.dubbo"), ALWAYS_SAMPLE)
+        .build()).build();
+    init().setRpcTracing(rpcTracing);
 
     // unsampled
     client.get().sayGoodbye("jorge");
@@ -220,7 +252,35 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     // sampled
     client.get().sayHello("jorge");
 
-    assertThat(takeSpan().name()).endsWith("sayhello");
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).name()).endsWith("sayHello");
     // @After will also check that sayGoodbye was not sampled
+  }
+
+  @Test public void customParser() {
+    Tag<DubboResponse> javaValue = new Tag<DubboResponse>("dubbo.result_value") {
+      @Override protected String parseValue(DubboResponse input, TraceContext context) {
+        Result result = input.result();
+        if (result == null) return null;
+        Object value = result.getValue();
+        if (value instanceof JavaBeanDescriptor) {
+          return String.valueOf(((JavaBeanDescriptor) value).getProperty("value"));
+        }
+        return null;
+      }
+    };
+
+    RpcTracing rpcTracing = RpcTracing.newBuilder(tracing)
+        .clientResponseParser((res, context, span) -> {
+          RpcResponseParser.DEFAULT.parse(res, context, span);
+          if (res instanceof DubboResponse) {
+            javaValue.tag((DubboResponse) res, span);
+          }
+        }).build();
+    init().setRpcTracing(rpcTracing);
+
+    String javaResult = client.get().sayHello("jorge");
+
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).tags())
+        .containsEntry("dubbo.result_value", javaResult);
   }
 }

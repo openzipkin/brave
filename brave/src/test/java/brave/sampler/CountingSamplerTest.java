@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -27,8 +27,8 @@ public class CountingSamplerTest extends SamplerTest {
     return withPercentage(0);
   }
 
-  @Test public void probabilityMinimumOnePercent() {
-    thrown.expect(IllegalArgumentException.class);
+  @Test(expected = IllegalArgumentException.class)
+  public void probabilityMinimumOnePercent() {
     newSampler(0.0001f);
   }
 }

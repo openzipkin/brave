@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,13 +14,10 @@
 package brave.http.features;
 
 import brave.Tracing;
-import brave.http.HttpAdapter;
-import brave.http.HttpSampler;
 import brave.http.HttpTracing;
-import brave.propagation.StrictScopeDecorator;
-import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.propagation.StrictCurrentTraceContext;
+import brave.test.IntegrationTestSpanHandler;
 import java.io.IOException;
-import java.util.concurrent.ConcurrentLinkedDeque;
 import okhttp3.Call;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -34,30 +31,25 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import static brave.Span.Kind.CLIENT;
+import static brave.Span.Kind.SERVER;
 import static brave.sampler.SamplerFunctions.neverSample;
-import static brave.sampler.SamplerFunctions.nullSafe;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.entry;
 
 /** This is an example of http request sampling */
 public class RequestSamplingTest {
   @Rule public MockWebServer server = new MockWebServer();
+  @Rule public IntegrationTestSpanHandler testSpanHandler = new IntegrationTestSpanHandler();
 
-  ConcurrentLinkedDeque<zipkin2.Span> spans = new ConcurrentLinkedDeque<>();
+  StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   Tracing tracing = Tracing.newBuilder()
     .localServiceName("server")
-    .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-      .addScopeDecorator(StrictScopeDecorator.create())
-      .build())
-    .spanReporter(spans::push)
+    .currentTraceContext(currentTraceContext)
+    .addSpanHandler(testSpanHandler)
     .build();
   HttpTracing httpTracing = HttpTracing.newBuilder(tracing)
     // server starts traces under the path /api
-    .serverSampler(nullSafe(new HttpSampler() {
-      @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
-        return adapter.path(request).startsWith("/api");
-      }
-    }))
+    .serverSampler((request) -> request.path().startsWith("/api"))
     // client doesn't start new traces
     .clientSampler(neverSample())
     .build();
@@ -83,19 +75,22 @@ public class RequestSamplingTest {
 
   @After public void close() {
     tracing.close();
+    currentTraceContext.close();
   }
 
   @Test public void serverDoesntTraceFoo() throws Exception {
     callServer("/foo");
-    assertThat(spans).isEmpty();
   }
 
   @Test public void clientTracedWhenServerIs() throws Exception {
     callServer("/api");
 
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
-      .contains(entry("http.path", "/api"), entry("http.path", "/next"));
+    assertThat(testSpanHandler.takeRemoteSpan(SERVER).tags())
+        .containsEntry("http.path", "/next");
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).tags())
+        .containsEntry("http.path", "/next");
+    assertThat(testSpanHandler.takeRemoteSpan(SERVER).tags())
+        .containsEntry("http.path", "/api");
   }
 
   void callServer(String path) throws IOException {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,20 +14,19 @@
 package brave.features.opentracing;
 
 import brave.Tracing;
+import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.propagation.B3Propagation;
-import brave.propagation.ExtraFieldPropagation;
-import brave.propagation.StrictScopeDecorator;
-import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
+import brave.test.TestSpanHandler;
 import io.opentracing.propagation.Format;
 import io.opentracing.propagation.TextMapAdapter;
-import java.util.ArrayList;
+import io.opentracing.tag.Tags;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.Annotation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.MapEntry.entry;
@@ -37,13 +36,14 @@ import static org.assertj.core.data.MapEntry.entry;
  * the core concepts.
  */
 public class OpenTracingAdapterTest {
-  List<zipkin2.Span> spans = new ArrayList<>();
+  static final BaggageField BAGGAGE_FIELD = BaggageField.create("userId");
+
+  TestSpanHandler spans = new TestSpanHandler();
   Tracing brave = Tracing.newBuilder()
-    .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-      .addScopeDecorator(StrictScopeDecorator.create())
-      .build())
-    .propagationFactory(ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "client-id"))
-    .spanReporter(spans::add).build();
+    .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+        .add(SingleBaggageField.newBuilder(BAGGAGE_FIELD)
+            .addKeyName("user-id").build()).build())
+    .addSpanHandler(spans).build();
 
   BraveTracer opentracing = BraveTracer.wrap(brave);
 
@@ -83,7 +83,7 @@ public class OpenTracingAdapterTest {
     map.put("X-B3-TraceId", "0000000000000001");
     map.put("X-B3-SpanId", "0000000000000002");
     map.put("X-B3-Sampled", "1");
-    map.put("Client-Id", "sammy");
+    map.put("User-Id", "sammy");
 
     BraveSpanContext openTracingContext =
       opentracing.extract(Format.Builtin.HTTP_HEADERS, new TextMapAdapter(map));
@@ -95,7 +95,7 @@ public class OpenTracingAdapterTest {
         .sampled(true).build());
 
     assertThat(openTracingContext.baggageItems())
-      .containsExactly(entry("client-id", "sammy"));
+      .containsExactly(entry(BAGGAGE_FIELD.name(), "sammy"));
   }
 
   @Test
@@ -106,8 +106,8 @@ public class OpenTracingAdapterTest {
       .sampled(true).build();
 
     Map<String, String> map = new LinkedHashMap<>();
-    TextMapAdapter carrier = new TextMapAdapter(map);
-    opentracing.inject(new BraveSpanContext(context), Format.Builtin.HTTP_HEADERS, carrier);
+    TextMapAdapter request = new TextMapAdapter(map);
+    opentracing.inject(new BraveSpanContext(context), Format.Builtin.HTTP_HEADERS, request);
 
     assertThat(map).containsExactly(
       entry("X-B3-TraceId", "0000000000000001"),
@@ -116,15 +116,31 @@ public class OpenTracingAdapterTest {
     );
   }
 
+  @Test
+  public void injectRemoteSpanTraceContext() {
+    BraveSpan openTracingSpan = opentracing.buildSpan("encode")
+        .withTag("lc", "codec")
+        .withTag(Tags.SPAN_KIND, Tags.SPAN_KIND_PRODUCER)
+        .withStartTimestamp(1L).start();
+
+    Map<String, String> map = new LinkedHashMap<>();
+    TextMapAdapter request = new TextMapAdapter(map);
+    opentracing.inject(openTracingSpan.context(), Format.Builtin.HTTP_HEADERS, request);
+
+    assertThat(map).containsOnlyKeys("b3");
+
+    openTracingSpan.unwrap().abandon();
+  }
+
   void checkSpanReportedToZipkin() {
     assertThat(spans).first().satisfies(s -> {
         assertThat(s.name()).isEqualTo("encode");
-        assertThat(s.timestamp()).isEqualTo(1L);
+        assertThat(s.startTimestamp()).isEqualTo(1L);
         assertThat(s.annotations())
-          .containsExactly(Annotation.create(2L, "pump fake"));
+          .containsExactly(entry(2L, "pump fake"));
         assertThat(s.tags())
           .containsExactly(entry("lc", "codec"));
-        assertThat(s.duration()).isEqualTo(2L);
+        assertThat(s.finishTimestamp()).isEqualTo(3L);
       }
     );
   }

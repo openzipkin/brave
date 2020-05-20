@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,13 +16,13 @@ package brave.features.sampler;
 import brave.ScopedSpan;
 import brave.Tracer;
 import brave.Tracing;
+import brave.propagation.StrictCurrentTraceContext;
 import brave.sampler.DeclarativeSampler;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
+import brave.test.TestSpanHandler;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -38,7 +38,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.stereotype.Component;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -47,14 +46,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class AspectJSamplerTest {
 
   // Don't use static configuration in real life. This is only to satisfy the unit test runner
-  static List<Span> spans = new ArrayList<>();
+  static StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
+  static TestSpanHandler spans = new TestSpanHandler();
   static AtomicReference<Tracing> tracing = new AtomicReference<>();
 
   @Autowired Service service;
 
   @Before public void clear() {
     tracing.set(Tracing.newBuilder()
-      .spanReporter(spans::add)
+      .currentTraceContext(currentTraceContext)
+      .addSpanHandler(spans)
       .sampler(new Sampler() {
         @Override public boolean isSampled(long traceId) {
           throw new AssertionError(); // in this case, we aren't expecting a fallback
@@ -66,6 +67,7 @@ public class AspectJSamplerTest {
   @After public void close() {
     Tracing currentTracing = tracing.get();
     if (currentTracing != null) currentTracing.close();
+    currentTraceContext.close();
   }
 
   @Test public void traced() {

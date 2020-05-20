@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,22 +13,18 @@
  */
 package brave.kafka.streams;
 
-import brave.Tracing;
+import brave.handler.MutableSpan;
 import brave.kafka.clients.KafkaTracing;
-import brave.propagation.B3Propagation;
-import brave.propagation.ExtraFieldPropagation;
-import brave.propagation.StrictScopeDecorator;
-import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.messaging.MessagingTracing;
+import brave.propagation.TraceContext;
 import com.github.charithe.kafka.EphemeralKafkaBroker;
 import com.github.charithe.kafka.KafkaJunitRule;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -55,60 +51,27 @@ import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
 import org.junit.After;
 import org.junit.ClassRule;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestName;
-import org.junit.rules.TestRule;
-import org.junit.rules.TestWatcher;
-import org.junit.runner.Description;
-import zipkin2.Annotation;
-import zipkin2.Span;
 
+import static brave.Span.Kind.CONSUMER;
+import static brave.Span.Kind.PRODUCER;
 import static brave.kafka.streams.KafkaStreamsTags.KAFKA_STREAMS_FILTERED_TAG;
+import static brave.kafka.streams.KafkaStreamsTracingTest.TEST_KEY;
+import static brave.kafka.streams.KafkaStreamsTracingTest.TEST_VALUE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
-public class ITKafkaStreamsTracing {
+public class ITKafkaStreamsTracing extends ITKafkaStreams {
   @ClassRule public static KafkaJunitRule kafka = new KafkaJunitRule(EphemeralKafkaBroker.create());
-  @Rule public TestName testName = new TestName();
 
-  String TEST_KEY = "foo";
-  String TEST_VALUE = "bar";
-
-  BlockingQueue<Span> spans = new LinkedBlockingQueue<>();
-  @Rule public TestRule assertSpansEmpty = new TestWatcher() {
-    // only check success path to avoid masking assertion errors or exceptions
-    @Override protected void succeeded(Description description) {
-      try {
-        assertThat(spans.poll(100, TimeUnit.MILLISECONDS))
-          .withFailMessage("Stream span remaining in queue. Check for redundant reporting")
-          .isNull();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-  };
-  Tracing tracing = Tracing.newBuilder()
-    .localServiceName("streams-app")
-    .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-      .addScopeDecorator(StrictScopeDecorator.create())
-      .build())
-    .propagationFactory(
-      ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "user-id"))
-    .spanReporter(spans::add)
-    .build();
-  KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.create(tracing);
-  Producer<String, String> producer;
-  Consumer<String, String> consumer;
+  Producer<String, String> producer = createProducer();
 
   @After public void close() {
-    if (producer != null) producer.close();
-    if (consumer != null) consumer.close();
-    Tracing tracing = Tracing.current();
-    if (tracing != null) tracing.close();
+    producer.close();
   }
 
   @Test
-  public void should_create_span_from_stream_input_topic() throws Exception {
+  public void should_create_span_from_stream_input_topic() {
     String inputTopic = testName.getMethodName() + "-input";
 
     StreamsBuilder builder = new StreamsBuilder();
@@ -118,22 +81,76 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    Span span = takeSpan();
-
-    assertThat(span.tags()).containsEntry("kafka.topic", inputTopic);
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_span_from_stream_input_topic_using_kafka_client_supplier()
-    throws Exception {
+  public void should_create_multiple_span_from_stream_input_topic_whenSharingDisabled() {
+    String inputTopic = testName.getMethodName() + "-input";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic).foreach((k, v) -> {
+    });
+    Topology topology = builder.build();
+
+    KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.newBuilder(tracing)
+      .singleRootSpanOnReceiveBatch(false)
+      .build();
+    KafkaStreams streams = kafkaStreamsTracing.kafkaStreams(topology, streamsProperties());
+
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
+
+    waitForStreamToRun(streams);
+
+    for (int i = 0; i < 3; i++) {
+      MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
+      assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+    }
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
+  public void should_create_one_span_from_stream_input_topic_whenSharingEnabled() {
+    String inputTopic = testName.getMethodName() + "-input";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic).foreach((k, v) -> {
+    });
+    Topology topology = builder.build();
+
+    MessagingTracing messagingTracing = MessagingTracing.create(tracing);
+    KafkaStreamsTracing kafkaStreamsTracing = KafkaStreamsTracing.newBuilder(messagingTracing)
+      .singleRootSpanOnReceiveBatch(true)
+      .build();
+    KafkaStreams streams = kafkaStreamsTracing.kafkaStreams(topology, streamsProperties());
+
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
+
+    waitForStreamToRun(streams);
+
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
+  public void should_create_span_from_stream_input_topic_using_kafka_client_supplier() {
     String inputTopic = testName.getMethodName() + "-input";
 
     StreamsBuilder builder = new StreamsBuilder();
@@ -144,21 +161,19 @@ public class ITKafkaStreamsTracing {
     KafkaStreams streams =
       new KafkaStreams(topology, streamsProperties(), kafkaStreamsTracing.kafkaClientSupplier());
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    Span span = takeSpan();
-
-    assertThat(span.tags()).containsEntry("kafka.topic", inputTopic);
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_input_and_output_topics() throws Exception {
+  public void should_create_spans_from_stream_input_and_output_topics() {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
@@ -168,27 +183,26 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
-    consumer = createTracingConsumer(outputTopic);
+    Consumer<String, String> consumer = createTracingConsumer(outputTopic);
 
     waitForStreamToRun(streams);
 
-    Span spanInput = takeSpan(), spanOutput = takeSpan();
-
-    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
-    assertThat(spanInput.traceId()).isEqualTo(spanOutput.traceId());
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanOutput = testSpanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
-    assertThat(spanOutput.kind().name()).isEqualTo(brave.Span.Kind.PRODUCER.name());
+    assertChildOf(spanOutput, spanInput);
 
     streams.close();
     streams.cleanUp();
+    consumer.close();
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_processor() throws Exception {
+  public void should_create_spans_from_stream_with_tracing_processor() {
     ProcessorSupplier<String, String> processorSupplier =
       kafkaStreamsTracing.processor(
         "forward-1", () ->
@@ -212,24 +226,22 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    Span spanInput = takeSpan(), spanProcessor = takeSpan();
-
-    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
-    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_filter_predicate_true()
-    throws Exception {
+  public void should_create_spans_from_stream_with_tracing_filter_predicate_true() {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
@@ -241,27 +253,29 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    // the filter transformer returns true so record is not dropped
-    Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
-
-    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
-    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
-    assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
     assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "false");
+
+    // the filter transformer returns true so record is not dropped
+
+    MutableSpan spanOutput = testSpanHandler.takeRemoteSpan(PRODUCER);
+    assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+    assertChildOf(spanOutput, spanProcessor);
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_filter_predicate_false()
-    throws Exception {
+  public void should_create_spans_from_stream_with_tracing_filter_predicate_false() {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
@@ -273,71 +287,69 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    // the filter transformer returns false so record is dropped
-    Span spanInput = takeSpan(), spanProcessor = takeSpan();
-
-    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
-    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
     assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "true");
+
+    // the filter transformer returns false so record is dropped
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_and_propagate_extra_from_stream_with_multi_processor()
-    throws Exception {
+  public void should_create_spans_and_propagate_extra_from_stream_with_multi_processor() {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
       .transformValues(kafkaStreamsTracing.peek("transform1", (o, o2) -> {
-        brave.Span span = tracing.tracer().currentSpan();
-        String userId = ExtraFieldPropagation.get(span.context(), "user-id");
-        assertThat(userId).isEqualTo("user1");
-        ExtraFieldPropagation.set(span.context(), "user-id", "user2");
+        TraceContext context = currentTraceContext.get();
+        assertThat(BAGGAGE_FIELD.getValue(context)).isEqualTo("user1");
+        BAGGAGE_FIELD.updateValue(context, "user2");
       }))
       .transformValues(kafkaStreamsTracing.peek("transform2", (s, s2) -> {
-        String userId =
-          ExtraFieldPropagation.get(tracing.tracer().currentSpan().context(), "user-id");
-        assertThat(userId).isEqualTo("user2");
+        TraceContext context = currentTraceContext.get();
+        assertThat(BAGGAGE_FIELD.getValue(context)).isEqualTo("user2");
       }))
       .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
     ProducerRecord<String, String> record = new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE);
-    record.headers().add("user-id", "user1".getBytes());
-    producer.send(record).get();
+    record.headers().add(BAGGAGE_FIELD_KEY, "user1".getBytes());
+    send(record);
 
     waitForStreamToRun(streams);
 
-    Span spanInput = takeSpan(), spanTransform1 = takeSpan(), spanTransform2 = takeSpan(),
-      spanOutput = takeSpan();
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    assertThat(spanInput.traceId()).isEqualTo(spanOutput.traceId());
-    assertThat(spanInput.traceId()).isEqualTo(spanTransform1.traceId());
-    assertThat(spanInput.traceId()).isEqualTo(spanTransform2.traceId());
-    assertThat(spanInput.id()).isEqualTo(spanTransform1.parentId());
-    assertThat(spanTransform1.id()).isEqualTo(spanTransform2.parentId());
-    assertThat(spanTransform2.id()).isEqualTo(spanOutput.parentId());
+    MutableSpan spanTransform1 = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanTransform1, spanInput);
+
+    MutableSpan spanTransform2 = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanTransform2, spanTransform1);
+
+    MutableSpan spanOutput = testSpanHandler.takeRemoteSpan(PRODUCER);
+    assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+    assertChildOf(spanOutput, spanTransform2);
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_filter_not_predicate_true()
-    throws Exception {
+  public void should_create_spans_from_stream_with_tracing_filter_not_predicate_true() {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
@@ -349,26 +361,25 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    // the filterNot transformer returns true so record is dropped
-    Span spanInput = takeSpan(), spanProcessor = takeSpan();
-
-    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
-    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
     assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "true");
+
+    // the filterNot transformer returns true so record is dropped
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_filter_not_predicate_false()
-    throws Exception {
+  public void should_create_spans_from_stream_with_tracing_filter_not_predicate_false() {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
@@ -380,27 +391,29 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    // the filterNot transformer returns true so record is not dropped
-    Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
-
-    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
-    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
-    assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
     assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "false");
+
+    // the filter transformer returns true so record is not dropped
+
+    MutableSpan spanOutput = testSpanHandler.takeRemoteSpan(PRODUCER);
+    assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+    assertChildOf(spanOutput, spanProcessor);
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_mark_as_filtered_predicate_true()
-    throws Exception {
+  public void should_create_spans_from_stream_with_tracing_mark_as_filtered_predicate_true() {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
@@ -413,27 +426,29 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    // the filter transformer returns true so record is not dropped
-    Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
-
-    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
-    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
-    assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
     assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "false");
+
+    // the filter transformer returns true so record is not dropped
+
+    MutableSpan spanOutput = testSpanHandler.takeRemoteSpan(PRODUCER);
+    assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+    assertChildOf(spanOutput, spanProcessor);
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_mark_as_filtered_predicate_false()
-    throws Exception {
+  public void should_create_spans_from_stream_with_tracing_mark_as_filtered_predicate_false() {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
@@ -446,26 +461,25 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    // the filter transformer returns false so record is dropped
-    Span spanInput = takeSpan(), spanProcessor = takeSpan();
-
-    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
-    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
     assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "true");
+
+    // the filter transformer returns false so record is dropped
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_mark_as_not_filtered_predicate_true()
-    throws Exception {
+  public void should_create_spans_from_stream_with_tracing_mark_as_not_filtered_predicate_true() {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
@@ -478,26 +492,25 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    // the filterNot transformer returns true so record is dropped
-    Span spanInput = takeSpan(), spanProcessor = takeSpan();
-
-    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
-    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
     assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "true");
+
+    // the filterNot transformer returns true so record is dropped
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_mark_as_not_filtered_predicate_false()
-    throws Exception {
+  public void should_create_spans_from_stream_with_tracing_mark_as_not_filtered_predicate_false() {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
@@ -511,26 +524,29 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    // the filterNot transformer returns true so record is not dropped
-    Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
-
-    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
-    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
-    assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
     assertThat(spanProcessor.tags()).containsEntry(KAFKA_STREAMS_FILTERED_TAG, "false");
+
+    // the filter transformer returns true so record is not dropped
+
+    MutableSpan spanOutput = testSpanHandler.takeRemoteSpan(PRODUCER);
+    assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+    assertChildOf(spanOutput, spanProcessor);
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_peek() throws Exception {
+  public void should_create_spans_from_stream_with_tracing_peek() {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
@@ -551,25 +567,27 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
-
-    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
-    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
-    assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
-    assertThat(spanProcessor.annotations()).contains(Annotation.create(now, "test"));
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
+    assertThat(spanProcessor.annotations()).contains(entry(now, "test"));
+
+    MutableSpan spanOutput = testSpanHandler.takeRemoteSpan(PRODUCER);
+    assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+    assertChildOf(spanOutput, spanProcessor);
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_mark() throws Exception {
+  public void should_create_spans_from_stream_with_tracing_mark() {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
@@ -581,24 +599,26 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
-
-    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
-    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
-    assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
+
+    MutableSpan spanOutput = testSpanHandler.takeRemoteSpan(PRODUCER);
+    assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+    assertChildOf(spanOutput, spanProcessor);
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_foreach() throws Exception {
+  public void should_create_spans_from_stream_with_tracing_foreach() {
     String inputTopic = testName.getMethodName() + "-input";
 
     StreamsBuilder builder = new StreamsBuilder();
@@ -614,24 +634,22 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    Span spanInput = takeSpan(), spanProcessor = takeSpan();
-
-    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
-    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_without_tracing_and_tracing_processor()
-    throws Exception {
+  public void should_create_spans_from_stream_without_tracing_and_tracing_processor() {
     ProcessorSupplier<String, String> processorSupplier =
       kafkaStreamsTracing.processor(
         "forward-1", () ->
@@ -655,23 +673,19 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreamsWithoutTracing(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    Span spanProcessor = takeSpan();
-
-    assertThat(spanProcessor.tags().size()).isEqualTo(2);
-    assertThat(spanProcessor.tags()).containsKeys("kafka.streams.application.id",
-      "kafka.streams.task.id");
+    assertThat(testSpanHandler.takeLocalSpan().tags())
+      .containsOnlyKeys("kafka.streams.application.id", "kafka.streams.task.id");
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_transformer() throws Exception {
+  public void should_create_spans_from_stream_with_tracing_transformer() {
     TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
       kafkaStreamsTracing.transformer(
         "transformer-1", () ->
@@ -709,26 +723,136 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
-
-    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
-    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
-    assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
+
+    MutableSpan spanOutput = testSpanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+    assertChildOf(spanOutput, spanProcessor);
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_without_tracing_with_tracing_flattransformer()
-    throws Exception {
+  public void should_throw_exception_upwards() {
+    TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
+      kafkaStreamsTracing.transformer(
+        "exception-transformer", () ->
+          new Transformer<String, String, KeyValue<String, String>>() {
+            ProcessorContext context;
+
+            @Override
+            public void init(ProcessorContext context) {
+              this.context = context;
+            }
+
+            @Override
+            public KeyValue<String, String> transform(String key, String value) {
+              throw new IllegalArgumentException("illegal-argument");
+            }
+
+            @Override
+            public void close() {
+            }
+          });
+
+    String inputTopic = testName.getMethodName() + "-input";
+    String outputTopic = testName.getMethodName() + "-output";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+      .transform(transformerSupplier)
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreams(topology);
+
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
+
+    waitForStreamToRun(streams);
+
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertThat(spanProcessor.error()).hasMessage("illegal-argument");
+    assertChildOf(spanProcessor, spanInput);
+
+    assertThat(!streams.state().isRunningOrRebalancing());
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
+  public void should_throw_sneaky_exception_upwards() {
+    TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
+      kafkaStreamsTracing.transformer(
+        "sneaky-exception-transformer", () ->
+          new Transformer<String, String, KeyValue<String, String>>() {
+            ProcessorContext context;
+
+            @Override
+            public void init(ProcessorContext context) {
+              this.context = context;
+            }
+
+            @Override
+            public KeyValue<String, String> transform(String key, String value) {
+              doThrowUnsafely(new FileNotFoundException("file-not-found"));
+              return KeyValue.pair(key, value);
+            }
+
+            @Override
+            public void close() {
+            }
+          });
+
+    String inputTopic = testName.getMethodName() + "-input";
+    String outputTopic = testName.getMethodName() + "-output";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+      .transform(transformerSupplier)
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreams(topology);
+
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
+
+    waitForStreamToRun(streams);
+
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertThat(spanProcessor.error()).hasMessage("file-not-found");
+    assertChildOf(spanProcessor, spanInput);
+
+    assertThat(!streams.state().isRunningOrRebalancing());
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  // Armeria Black Magic copied from
+  // https://github.com/line/armeria/blob/master/core/src/main/java/com/linecorp/armeria/common/util/Exceptions.java#L197
+  @SuppressWarnings("unchecked")
+  private static <E extends Throwable> void doThrowUnsafely(Throwable cause) throws E {
+    throw (E) cause;
+  }
+
+  @Test
+  public void should_create_spans_from_stream_without_tracing_with_tracing_flattransformer() {
     TransformerSupplier<String, String, Iterable<KeyValue<String, String>>> transformerSupplier =
       kafkaStreamsTracing.transformer(
         "double-transformer-1", () ->
@@ -766,31 +890,30 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    Span inputSpan = takeSpan();
-    Span spanProcessor = takeSpan();
-    Span outputSpan1 = takeSpan();
-    Span outputSpan2 = takeSpan();
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
-    assertThat(inputSpan.parentId()).isNull();
-    assertThat(spanProcessor.tags().size()).isEqualTo(2);
-    assertThat(spanProcessor.tags()).containsKeys("kafka.streams.application.id",
-      "kafka.streams.task.id");
-    assertThat(spanProcessor.traceId()).isEqualTo(inputSpan.traceId());
-    assertThat(outputSpan1.traceId()).isEqualTo(spanProcessor.traceId());
-    assertThat(outputSpan2.traceId()).isEqualTo(spanProcessor.traceId());
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
+    assertThat(spanProcessor.tags())
+      .containsOnlyKeys("kafka.streams.application.id", "kafka.streams.task.id");
+
+    for (int i = 0; i < 2; i++) {
+      MutableSpan spanOutput = testSpanHandler.takeRemoteSpan(PRODUCER);
+      assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+      assertChildOf(spanOutput, spanProcessor);
+    }
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_without_tracing_with_tracing_transformer()
-    throws Exception {
+  public void should_create_spans_from_stream_without_tracing_with_tracing_transformer() {
     TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
       kafkaStreamsTracing.transformer(
         "transformer-1", () ->
@@ -828,23 +951,19 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreamsWithoutTracing(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    Span spanProcessor = takeSpan();
-
-    assertThat(spanProcessor.tags().size()).isEqualTo(2);
-    assertThat(spanProcessor.tags()).containsKeys("kafka.streams.application.id",
-      "kafka.streams.task.id");
+    assertThat(testSpanHandler.takeLocalSpan().tags())
+      .containsOnlyKeys("kafka.streams.application.id", "kafka.streams.task.id");
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_valueTransformer() throws Exception {
+  public void should_create_spans_from_stream_with_tracing_valueTransformer() {
     ValueTransformerSupplier<String, String> transformerSupplier =
       kafkaStreamsTracing.valueTransformer(
         "transformer-1", () ->
@@ -882,25 +1001,26 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
-
-    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
-    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
-    assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
+
+    MutableSpan spanOutput = testSpanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+    assertChildOf(spanOutput, spanProcessor);
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_map() throws Exception {
+  public void should_create_spans_from_stream_with_tracing_map() {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
@@ -919,25 +1039,68 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
-
-    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
-    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
-    assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
+
+    MutableSpan spanOutput = testSpanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+    assertChildOf(spanOutput, spanProcessor);
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_mapValues() throws Exception {
+  public void should_create_spans_from_stream_with_tracing_flatMap() {
+    String inputTopic = testName.getMethodName() + "-input";
+    String outputTopic = testName.getMethodName() + "-output";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+      .flatTransform(kafkaStreamsTracing.flatMap("flat-map-1", (key, value) -> {
+        try {
+          Thread.sleep(100L);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+        return Arrays.asList(KeyValue.pair(key, value + "-1"), KeyValue.pair(key, value + "-2"));
+      }))
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreams(topology);
+
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
+
+    waitForStreamToRun(streams);
+
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
+    assertThat(spanProcessor.tags())
+      .containsOnlyKeys("kafka.streams.application.id", "kafka.streams.task.id");
+
+    for (int i = 0; i < 2; i++) {
+      MutableSpan spanOutput = testSpanHandler.takeRemoteSpan(PRODUCER);
+      assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+      assertChildOf(spanOutput, spanProcessor);
+    }
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
+  public void should_create_spans_from_stream_with_tracing_mapValues() {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
@@ -956,25 +1119,26 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
-
-    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
-    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
-    assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
+
+    MutableSpan spanOutput = testSpanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+    assertChildOf(spanOutput, spanProcessor);
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_mapValues_withKey() throws Exception {
+  public void should_create_spans_from_stream_with_tracing_mapValues_withKey() {
     String inputTopic = testName.getMethodName() + "-input";
     String outputTopic = testName.getMethodName() + "-output";
 
@@ -993,26 +1157,26 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
-
-    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
-    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
-    assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
+
+    MutableSpan spanOutput = testSpanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+    assertChildOf(spanOutput, spanProcessor);
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_without_tracing_with_tracing_valueTransformer()
-    throws Exception {
+  public void should_create_spans_from_stream_without_tracing_with_tracing_valueTransformer() {
     ValueTransformerSupplier<String, String> transformerSupplier =
       kafkaStreamsTracing.valueTransformer(
         "transformer-1", () ->
@@ -1050,24 +1214,19 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreamsWithoutTracing(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    Span spanProcessor = takeSpan();
-
-    assertThat(spanProcessor.tags().size()).isEqualTo(2);
-    assertThat(spanProcessor.tags()).containsKeys("kafka.streams.application.id",
-      "kafka.streams.task.id");
+    assertThat(testSpanHandler.takeLocalSpan().tags())
+      .containsOnlyKeys("kafka.streams.application.id", "kafka.streams.task.id");
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_valueTransformerWithKey()
-    throws Exception {
+  public void should_create_spans_from_stream_with_tracing_valueTransformerWithKey() {
     ValueTransformerWithKeySupplier<String, String, String> transformerSupplier =
       kafkaStreamsTracing.valueTransformerWithKey(
         "transformer-1", () ->
@@ -1105,26 +1264,26 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreams(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    Span spanInput = takeSpan(), spanProcessor = takeSpan(), spanOutput = takeSpan();
-
-    assertThat(spanInput.kind().name()).isEqualTo(brave.Span.Kind.CONSUMER.name());
-    assertThat(spanInput.traceId()).isEqualTo(spanProcessor.traceId());
-    assertThat(spanProcessor.traceId()).isEqualTo(spanOutput.traceId());
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
+
+    MutableSpan spanOutput = testSpanHandler.takeRemoteSpan(PRODUCER);
     assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+    assertChildOf(spanOutput, spanProcessor);
 
     streams.close();
     streams.cleanUp();
   }
 
   @Test
-  public void should_create_spans_from_stream_without_tracing_with_tracing_valueTransformerWithKey()
-    throws Exception {
+  public void should_create_spans_from_stream_without_tracing_with_tracing_valueTransformerWithKey() {
     ValueTransformerWithKeySupplier<String, String, String> transformerSupplier =
       kafkaStreamsTracing.valueTransformerWithKey(
         "transformer-1", () ->
@@ -1162,27 +1321,28 @@ public class ITKafkaStreamsTracing {
 
     KafkaStreams streams = buildKafkaStreamsWithoutTracing(topology);
 
-    producer = createProducer();
-    producer.send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE)).get();
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
 
     waitForStreamToRun(streams);
 
-    Span spanProcessor = takeSpan();
-
-    assertThat(spanProcessor.tags().size()).isEqualTo(2);
-    assertThat(spanProcessor.tags()).containsKeys("kafka.streams.application.id",
-      "kafka.streams.task.id");
+    assertThat(testSpanHandler.takeLocalSpan().tags())
+      .containsOnlyKeys("kafka.streams.application.id", "kafka.streams.task.id");
 
     streams.close();
     streams.cleanUp();
   }
 
-  private void waitForStreamToRun(KafkaStreams streams) throws InterruptedException {
+  private void waitForStreamToRun(KafkaStreams streams) {
     streams.start();
 
     do {
-      Thread.sleep(1_000);
-    } while (!streams.state().isRunning());
+      try {
+        Thread.sleep(1_000);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError(e);
+      }
+    } while (!streams.state().isRunningOrRebalancing());
   }
 
   KafkaStreams buildKafkaStreams(Topology topology) {
@@ -1196,7 +1356,7 @@ public class ITKafkaStreamsTracing {
       kafka.helper().consumerConfig().getProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
     properties.put(StreamsConfig.STATE_DIR_CONFIG, "target/kafka-streams");
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, testName.getMethodName());
-    properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+    properties.put(StreamsConfig.consumerPrefix(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG),
       Topology.AutoOffsetReset.EARLIEST.name().toLowerCase());
     return properties;
   }
@@ -1223,14 +1383,9 @@ public class ITKafkaStreamsTracing {
     return KafkaTracing.create(tracing).consumer(consumer);
   }
 
-  /**
-   * Call this to block until a span was reported
-   */
-  Span takeSpan() throws InterruptedException {
-    Span result = spans.poll(3, TimeUnit.SECONDS);
-    assertThat(result)
-      .withFailMessage("Stream span was not reported")
-      .isNotNull();
-    return result;
+  void send(ProducerRecord<String, String> record) {
+    BlockingCallback callback = new BlockingCallback();
+    producer.send(record, callback);
+    callback.join();
   }
 }

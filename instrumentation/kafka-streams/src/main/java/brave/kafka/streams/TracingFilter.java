@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,10 +18,10 @@ import brave.Tracer;
 import org.apache.kafka.streams.kstream.Predicate;
 import org.apache.kafka.streams.processor.ProcessorContext;
 
+import static brave.internal.Throwables.propagateIfFatal;
 import static brave.kafka.streams.KafkaStreamsTags.KAFKA_STREAMS_FILTERED_TAG;
 
 abstract class TracingFilter<K, V, R> {
-
   final KafkaStreamsTracing kafkaStreamsTracing;
   final String spanName;
   final Predicate<K, V> delegatePredicate;
@@ -59,8 +59,9 @@ abstract class TracingFilter<K, V, R> {
         span.tag(KAFKA_STREAMS_FILTERED_TAG, "true");
         return null; // meaning KV pair will not be forwarded thus effectively filtered
       }
-    } catch (RuntimeException | Error e) {
+    } catch (Throwable e) {
       error = e;
+      propagateIfFatal(e);
       throw e;
     } finally {
       // Inject this span so that the next stage uses it as a parent

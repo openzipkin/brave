@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,56 +19,42 @@ import brave.propagation.TraceContext;
 import brave.test.propagation.CurrentTraceContextTest;
 import java.util.function.Supplier;
 import org.apache.log4j.MDC;
-import org.junit.ComparisonFailure;
 import org.junit.Test;
 
 import static brave.context.log4j12.MDCScopeDecoratorTest.assumeMDCWorks;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class MDCCurrentTraceContextTest extends CurrentTraceContextTest {
-
   public MDCCurrentTraceContextTest() {
     assumeMDCWorks();
   }
 
-  @Override protected Class<? extends Supplier<CurrentTraceContext>> currentSupplier() {
-    return CurrentSupplier.class;
+  @Override protected Class<? extends Supplier<CurrentTraceContext.Builder>> builderSupplier() {
+    return BuilderSupplier.class;
   }
 
-  static class CurrentSupplier implements Supplier<CurrentTraceContext> {
-    @Override public CurrentTraceContext get() {
-      return MDCCurrentTraceContext.create();
+  static class BuilderSupplier implements Supplier<CurrentTraceContext.Builder> {
+    @Override public CurrentTraceContext.Builder get() {
+      return new MDCCurrentTraceContext.Builder(CurrentTraceContext.Default.inheritable());
     }
+  }
+
+  @Test(expected = AssertionError.class) // Log4J 1.2.x MDC is inheritable by default
+  public void isnt_inheritable() throws Exception {
+    super.isnt_inheritable();
   }
 
   @Test public void is_inheritable() throws Exception {
     super.is_inheritable(currentTraceContext);
   }
 
-  @Test(expected = ComparisonFailure.class) // Log4J 1.2.x MDC is inheritable by default
-  public void isnt_inheritable() throws Exception {
-    super.isnt_inheritable();
-  }
-
   @Override protected void verifyImplicitContext(@Nullable TraceContext context) {
     if (context != null) {
-      assertThat(MDC.get("traceId"))
-        .isEqualTo(context.traceIdString());
-      assertThat(MDC.get("parentId"))
-        .isEqualTo(context.parentIdString());
-      assertThat(MDC.get("spanId"))
-        .isEqualTo(context.spanIdString());
-      assertThat(MDC.get("sampled"))
-        .isEqualTo(context.sampled() != null ? context.sampled().toString() : null);
+      assertThat(MDC.get("traceId")).isEqualTo(context.traceIdString());
+      assertThat(MDC.get("spanId")).isEqualTo(context.spanIdString());
     } else {
-      assertThat(MDC.get("traceId"))
-        .isNull();
-      assertThat(MDC.get("parentId"))
-        .isNull();
-      assertThat(MDC.get("spanId"))
-        .isNull();
-      assertThat(MDC.get("sampled"))
-        .isNull();
+      assertThat(MDC.get("traceId")).isNull();
+      assertThat(MDC.get("spanId")).isNull();
     }
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,15 +14,15 @@
 package brave.servlet;
 
 import brave.Tracing;
+import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.http.HttpServerBenchmarks;
 import brave.propagation.B3Propagation;
-import brave.propagation.ExtraFieldPropagation;
 import brave.sampler.Sampler;
 import io.undertow.servlet.Servlets;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.FilterInfo;
 import java.io.IOException;
-import java.util.Arrays;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -38,6 +38,7 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import zipkin2.reporter.Reporter;
 
+import static brave.baggage.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
 import static javax.servlet.DispatcherType.REQUEST;
 
 public class ServletBenchmarks extends HttpServerBenchmarks {
@@ -46,7 +47,7 @@ public class ServletBenchmarks extends HttpServerBenchmarks {
     @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp)
       throws IOException {
       // noop if not configured
-      ExtraFieldPropagation.set("country-code", "FO");
+      BAGGAGE_FIELD.updateValue("FO");
       resp.addHeader("Content-Type", "text/plain; charset=UTF-8");
       resp.getWriter().println("hello world");
     }
@@ -66,14 +67,11 @@ public class ServletBenchmarks extends HttpServerBenchmarks {
     }
   }
 
-  public static class TracedExtra extends ForwardingTracingFilter {
-    public TracedExtra() {
+  public static class TracedBaggage extends ForwardingTracingFilter {
+    public TracedBaggage() {
       super(TracingFilter.create(Tracing.newBuilder()
-        .propagationFactory(ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
-          .addField("x-vcap-request-id")
-          .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
-          .build()
-        )
+        .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+          .add(SingleBaggageField.remote(BAGGAGE_FIELD)).build())
         .spanReporter(Reporter.NOOP)
         .build()));
     }
@@ -98,8 +96,8 @@ public class ServletBenchmarks extends HttpServerBenchmarks {
       .addFilterUrlMapping("Unsampled", "/unsampled", REQUEST)
       .addFilter(new FilterInfo("Traced", Traced.class))
       .addFilterUrlMapping("Traced", "/traced", REQUEST)
-      .addFilter(new FilterInfo("TracedExtra", TracedExtra.class))
-      .addFilterUrlMapping("TracedExtra", "/tracedextra", REQUEST)
+      .addFilter(new FilterInfo("TracedBaggage", TracedBaggage.class))
+      .addFilterUrlMapping("TracedBaggage", "/tracedBaggage", REQUEST)
       .addFilter(new FilterInfo("Traced128", Traced128.class))
       .addFilterUrlMapping("Traced128", "/traced128", REQUEST);
   }

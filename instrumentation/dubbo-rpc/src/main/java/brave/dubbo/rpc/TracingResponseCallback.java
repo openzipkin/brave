@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,54 +13,54 @@
  */
 package brave.dubbo.rpc;
 
-import brave.Span;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.TraceContext;
 import com.alibaba.dubbo.remoting.exchange.ResponseCallback;
-
-import static brave.dubbo.rpc.TracingFilter.onError;
 
 /**
  * Ensures deferred async calls complete a span upon success or failure callback.
  *
- * <p>This is an exact design copy of {@code brave.kafka.clients.TracingCallback}.
+ * <p>This was originally a copy of {@code brave.kafka.clients.TracingCallback}.
  */
-final class TracingResponseCallback {
-  static ResponseCallback create(@Nullable ResponseCallback delegate, Span span,
-    CurrentTraceContext current) {
-    if (delegate == null) return new FinishSpan(span);
-    return new DelegateAndFinishSpan(delegate, span, current);
+class TracingResponseCallback implements ResponseCallback {
+  static ResponseCallback create(
+    @Nullable ResponseCallback delegate, FinishSpan finishSpan,
+    CurrentTraceContext currentTraceContext, @Nullable TraceContext context) {
+    if (delegate == null) return new TracingResponseCallback(finishSpan);
+    return new DelegateAndFinishSpan(finishSpan, delegate, currentTraceContext, context);
   }
 
-  static class FinishSpan implements ResponseCallback {
-    final Span span;
+  final FinishSpan finishSpan;
 
-    FinishSpan(Span span) {
-      this.span = span;
-    }
-
-    @Override public void done(Object response) {
-      span.finish();
-    }
-
-    @Override public void caught(Throwable exception) {
-      onError(exception, span);
-      span.finish();
-    }
+  TracingResponseCallback(FinishSpan finishSpan) {
+    this.finishSpan = finishSpan;
   }
 
-  static final class DelegateAndFinishSpan extends FinishSpan {
+  @Override public void done(Object response) {
+    finishSpan.accept(response, null);
+  }
+
+  @Override public void caught(Throwable exception) {
+    finishSpan.accept(null, exception);
+  }
+
+  static final class DelegateAndFinishSpan extends TracingResponseCallback {
     final ResponseCallback delegate;
     final CurrentTraceContext current;
+    @Nullable final TraceContext context;
 
-    DelegateAndFinishSpan(ResponseCallback delegate, Span span, CurrentTraceContext current) {
-      super(span);
+    DelegateAndFinishSpan(FinishSpan finishSpan, ResponseCallback delegate,
+      CurrentTraceContext currentTraceContext, @Nullable TraceContext context) {
+      super(finishSpan);
       this.delegate = delegate;
-      this.current = current;
+      this.current = currentTraceContext;
+      this.context = context;
     }
 
     @Override public void done(Object response) {
-      try (CurrentTraceContext.Scope ws = current.maybeScope(span.context())) {
+      try (Scope ws = current.maybeScope(context)) {
         delegate.done(response);
       } finally {
         super.done(response);
@@ -68,7 +68,7 @@ final class TracingResponseCallback {
     }
 
     @Override public void caught(Throwable exception) {
-      try (CurrentTraceContext.Scope ws = current.maybeScope(span.context())) {
+      try (Scope ws = current.maybeScope(context)) {
         delegate.caught(exception);
       } finally {
         super.caught(exception);

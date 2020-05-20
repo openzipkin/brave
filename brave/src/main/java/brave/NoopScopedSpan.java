@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,7 +17,6 @@ import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 
 final class NoopScopedSpan extends ScopedSpan {
-
   final TraceContext context;
   final Scope scope;
 
@@ -34,11 +33,15 @@ final class NoopScopedSpan extends ScopedSpan {
     return context;
   }
 
-  @Override public ScopedSpan annotate(String value) {
+  @Override public ScopedSpan name(String name) {
     return this;
   }
 
   @Override public ScopedSpan tag(String key, String value) {
+    return this;
+  }
+
+  @Override public ScopedSpan annotate(String value) {
     return this;
   }
 

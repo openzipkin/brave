@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,11 +13,10 @@
  */
 package brave.vertx.web;
 
-import brave.SpanCustomizer;
+import brave.Span;
 import brave.Tracing;
-import brave.http.HttpAdapter;
-import brave.http.HttpServerParser;
-import brave.propagation.ExtraFieldPropagation;
+import brave.http.HttpRequestParser;
+import brave.http.HttpTags;
 import brave.test.http.ITHttpServer;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -27,12 +26,12 @@ import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
+import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Response;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
@@ -42,7 +41,7 @@ public class ITVertxWebTracing extends ITHttpServer {
   HttpServer server;
   volatile int port;
 
-  @Override protected void init() throws Exception {
+  @Override protected void init() {
     stop();
     vertx = Vertx.vertx(new VertxOptions());
 
@@ -68,8 +67,8 @@ public class ITVertxWebTracing extends ITHttpServer {
       }
       ctx.reroute("/async");
     });
-    router.route("/extra").handler(ctx -> {
-      ctx.response().end(ExtraFieldPropagation.get(EXTRA_KEY));
+    router.route("/baggage").handler(ctx -> {
+      ctx.response().end(BAGGAGE_FIELD.getValue());
     });
     router.route("/badrequest").handler(ctx -> {
       ctx.response().setStatusCode(400).end();
@@ -79,7 +78,7 @@ public class ITVertxWebTracing extends ITHttpServer {
       ctx.response().end("happy");
     });
     router.route("/exception").handler(ctx -> {
-      ctx.fail(new Exception());
+      ctx.fail(503, NOT_READY_ISE);
     });
     router.route("/items/:itemId").handler(ctx -> {
       ctx.response().end(ctx.request().getParam("itemId"));
@@ -96,7 +95,7 @@ public class ITVertxWebTracing extends ITHttpServer {
     });
     router.mountSubRouter("/nested", subrouter);
     router.route("/exceptionAsync").handler(ctx -> {
-      ctx.request().endHandler(v -> ctx.fail(new Exception()));
+      ctx.request().endHandler(v -> ctx.fail(503, NOT_READY_ISE));
     });
 
     Handler<RoutingContext> routingContextHandler =
@@ -113,47 +112,41 @@ public class ITVertxWebTracing extends ITHttpServer {
       latch.countDown();
     });
 
-    assertThat(latch.await(10, TimeUnit.SECONDS))
-      .withFailMessage("server didn't start")
-      .isTrue();
+    awaitFor10Seconds(latch, "server didn't start");
   }
 
   // makes sure we don't accidentally rewrite the incoming http path
-  @Test public void handlesReroute() throws Exception {
+  @Test public void handlesReroute() throws IOException {
     handlesReroute("/reroute");
   }
 
-  @Test public void handlesRerouteAsync() throws Exception {
+  @Test public void handlesRerouteAsync() throws IOException {
     handlesReroute("/rerouteAsync");
   }
 
-  @Override @Test public void httpRoute_nested() throws Exception {
+  @Override @Test public void httpRoute_nested() {
     // Can't currently fully resolve the route template of a sub-router
     // We get "/nested" not "/nested/items/:itemId
     // https://groups.google.com/forum/?fromgroups#!topic/vertx/FtF2yVr5ZF8
     try {
       super.httpRoute_nested();
       failBecauseExceptionWasNotThrown(AssertionError.class);
-    } catch (AssertionError e) {
+    } catch (AssertionError | IOException e) {
       assertThat(e.getMessage().contains("nested"));
     }
   }
 
-  void handlesReroute(String path) throws Exception {
-    httpTracing = httpTracing.toBuilder().serverParser(new HttpServerParser() {
-      @Override
-      public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
-        super.request(adapter, req, customizer);
-        customizer.tag("http.url", adapter.url(req)); // just the path is logged by default
-      }
+  void handlesReroute(String path) throws IOException {
+    httpTracing = httpTracing.toBuilder().serverRequestParser((request, context, span) -> {
+      HttpRequestParser.DEFAULT.parse(request, context, span);
+      HttpTags.URL.tag(request, span); // just the path is logged by default
     }).build();
     init();
 
     Response response = get(path);
     assertThat(response.isSuccessful()).withFailMessage("not successful: " + response).isTrue();
 
-    Span span = takeSpan();
-    assertThat(span.tags())
+    assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER).tags())
       .containsEntry("http.path", path)
       .containsEntry("http.url", url(path));
   }
@@ -163,21 +156,27 @@ public class ITVertxWebTracing extends ITHttpServer {
     return "http://127.0.0.1:" + port + path;
   }
 
-  @After public void stop() throws Exception {
-    if (server != null) {
-      CountDownLatch latch = new CountDownLatch(1);
-      server.close(ar -> {
-        latch.countDown();
-      });
-      latch.await(10, TimeUnit.SECONDS);
-    }
-    if (vertx != null) {
-      CountDownLatch latch = new CountDownLatch(1);
-      vertx.close(ar -> {
-        latch.countDown();
-      });
-      latch.await(10, TimeUnit.SECONDS);
-      vertx = null;
+  @After public void stop() {
+    if (vertx == null) return;
+
+    CountDownLatch latch = new CountDownLatch(2);
+    server.close(ar -> {
+      latch.countDown();
+    });
+    vertx.close(ar -> {
+      latch.countDown();
+    });
+    awaitFor10Seconds(latch, "server didn't close");
+  }
+
+  void awaitFor10Seconds(CountDownLatch latch, String message) {
+    try {
+      assertThat(latch.await(10, TimeUnit.SECONDS))
+        .withFailMessage(message)
+        .isTrue();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError(e);
     }
   }
 }

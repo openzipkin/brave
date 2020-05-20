@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,6 +13,9 @@
  */
 package brave.internal;
 
+import brave.propagation.SamplingFlags;
+import brave.propagation.TraceContext;
+import java.util.Collections;
 import org.junit.Test;
 
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
@@ -21,7 +24,6 @@ import static brave.internal.InternalPropagation.sampled;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class InternalPropagationTest {
-
   @Test public void set_sampled_true() {
     assertThat(sampled(true, 0))
       .isEqualTo(FLAG_SAMPLED_SET + FLAG_SAMPLED);
@@ -30,5 +32,19 @@ public class InternalPropagationTest {
   @Test public void set_sampled_false() {
     assertThat(sampled(false, FLAG_SAMPLED_SET | FLAG_SAMPLED))
       .isEqualTo(FLAG_SAMPLED_SET);
+  }
+
+  static {
+    SamplingFlags.EMPTY.toString(); // ensure wired
+  }
+
+  @Test public void shallowCopy() {
+    TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).debug(true)
+      .extra(Collections.singletonList(1L)).build();
+
+    assertThat(InternalPropagation.instance.shallowCopy(context))
+      .isNotSameAs(context)
+      .usingRecursiveComparison()
+      .isEqualTo(context);
   }
 }

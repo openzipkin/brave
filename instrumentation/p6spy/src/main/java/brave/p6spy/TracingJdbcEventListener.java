@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -25,9 +25,11 @@ import java.sql.SQLException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static brave.Span.Kind.CLIENT;
+
 final class TracingJdbcEventListener extends SimpleJdbcEventListener {
 
-  private final static Pattern URL_SERVICE_NAME_FINDER =
+  private static final Pattern URL_SERVICE_NAME_FINDER =
     Pattern.compile("zipkinServiceName=(\\w*)");
 
   @Nullable final String remoteServiceName;
@@ -56,7 +58,8 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
     Span span = ThreadLocalSpan.CURRENT_TRACER.next();
     if (span == null || span.isNoop()) return;
 
-    span.kind(Span.Kind.CLIENT).name(sql.substring(0, sql.indexOf(' ')));
+    int spaceIndex = sql.indexOf(' '); // Allow span names of single-word statements like COMMIT
+    span.kind(CLIENT).name(spaceIndex == -1 ? sql : sql.substring(0, spaceIndex));
     span.tag("sql.query", sql);
     parseServerIpAndPort(info.getConnectionInformation().getConnection(), span);
     span.start();
@@ -67,6 +70,7 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
     if (span == null || span.isNoop()) return;
 
     if (e != null) {
+      span.error(e);
       span.tag("error", Integer.toString(e.getErrorCode()));
     }
     span.finish();

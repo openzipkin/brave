@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,8 +15,12 @@ package brave.http.features;
 
 import brave.Span;
 import brave.Tracer;
+import brave.Tracer.SpanInScope;
 import brave.http.HttpClientHandler;
+import brave.http.HttpClientRequest;
+import brave.http.HttpClientResponse;
 import brave.http.HttpTracing;
+import brave.internal.Nullable;
 import java.io.IOException;
 import okhttp3.Interceptor;
 import okhttp3.Request;
@@ -25,7 +29,7 @@ import okhttp3.Response;
 /** Example interceptor. Use the real deal brave-instrumentation-okhttp3 in real life */
 final class TracingInterceptor implements Interceptor {
   final Tracer tracer;
-  final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
+  final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
 
   TracingInterceptor(HttpTracing httpTracing) {
     tracer = httpTracing.tracing().tracer();
@@ -33,27 +37,25 @@ final class TracingInterceptor implements Interceptor {
   }
 
   @Override public Response intercept(Interceptor.Chain chain) throws IOException {
-    HttpClientRequest request = new HttpClientRequest(chain.request());
+    RequestWrapper request = new RequestWrapper(chain.request());
     Span span = handler.handleSend(request);
-    HttpClientResponse response = null;
+    Response response = null;
     Throwable error = null;
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-      Response result = chain.proceed(request.build());
-      response = new HttpClientResponse(result);
-      return result;
-    } catch (IOException | RuntimeException | Error e) {
+    try (SpanInScope ws = tracer.withSpanInScope(span)) {
+      return response = chain.proceed(request.build());
+    } catch (Throwable e) {
       error = e;
       throw e;
     } finally {
-      handler.handleReceive(response, error, span);
+      handler.handleReceive(new ResponseWrapper(response, error), span);
     }
   }
 
-  static final class HttpClientRequest extends brave.http.HttpClientRequest {
+  static final class RequestWrapper extends HttpClientRequest {
     final Request delegate;
     Request.Builder builder;
 
-    HttpClientRequest(Request delegate) {
+    RequestWrapper(Request delegate) {
       this.delegate = delegate;
     }
 
@@ -87,19 +89,32 @@ final class TracingInterceptor implements Interceptor {
     }
   }
 
-  static final class HttpClientResponse extends brave.http.HttpClientResponse {
-    final Response delegate;
+  static final class ResponseWrapper extends HttpClientResponse {
+    final RequestWrapper request;
+    @Nullable final Response response;
+    @Nullable final Throwable error;
 
-    HttpClientResponse(Response delegate) {
-      this.delegate = delegate;
+    ResponseWrapper(@Nullable Response response, @Nullable Throwable error) {
+      // intentionally not the same instance as chain.proceed, as properties may have changed
+      this.request = new RequestWrapper(response.request());
+      this.response = response;
+      this.error = error;
     }
 
     @Override public Object unwrap() {
-      return delegate;
+      return response;
+    }
+
+    @Override public RequestWrapper request() {
+      return request;
+    }
+
+    @Override public Throwable error() {
+      return error;
     }
 
     @Override public int statusCode() {
-      return delegate.code();
+      return response.code();
     }
   }
 }

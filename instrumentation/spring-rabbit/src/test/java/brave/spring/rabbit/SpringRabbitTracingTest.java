@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,7 +14,6 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
-import brave.propagation.ThreadLocalCurrentTraceContext;
 import java.util.Collection;
 import java.util.List;
 import org.junit.After;
@@ -23,19 +22,15 @@ import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFacto
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.postprocessor.UnzipPostProcessor;
 import org.springframework.cache.interceptor.CacheInterceptor;
-import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class SpringRabbitTracingTest {
-  Tracing tracing = Tracing.newBuilder()
-    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-    .spanReporter(Reporter.NOOP)
-    .build();
+  Tracing tracing = Tracing.newBuilder().build();
   SpringRabbitTracing rabbitTracing = SpringRabbitTracing.create(tracing);
 
   @After public void close() {
-    Tracing.current().close();
+    tracing.close();
   }
 
   @Test public void decorateRabbitTemplate_adds_by_default() {
@@ -82,11 +77,13 @@ public class SpringRabbitTracingTest {
       .hasSize(1);
   }
 
-  @Test public void decorateSimpleRabbitListenerContainerFactory_appends_when_absent() {
+  @Test public void decorateSimpleRabbitListenerContainerFactory_appends_as_first_when_absent() {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
     factory.setAdviceChain(new CacheInterceptor());
 
+    // the order of advices is important for the downstream interceptor to see the tracing context
     assertThat(rabbitTracing.decorateSimpleRabbitListenerContainerFactory(factory).getAdviceChain())
-      .anyMatch(advice -> advice instanceof TracingRabbitListenerAdvice);
+      .hasSize(2)
+      .matches(adviceArray -> adviceArray[0] instanceof TracingRabbitListenerAdvice);
   }
 }

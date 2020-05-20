@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,11 +13,15 @@
  */
 package brave.spring.web;
 
+import brave.Span;
 import brave.test.http.ITHttpClient;
 import java.util.Arrays;
 import java.util.Collections;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.springframework.http.client.ClientHttpRequestFactory;
@@ -29,9 +33,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHttpRequestFactory> {
   ClientHttpRequestInterceptor interceptor;
+  CloseableHttpClient httpClient = HttpClients.createSystem();
+
+  @After @Override public void close() throws Exception {
+    httpClient.close();
+    super.close();
+  }
 
   ClientHttpRequestFactory configureClient(ClientHttpRequestInterceptor interceptor) {
-    HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
+    HttpComponentsClientHttpRequestFactory factory =
+      new HttpComponentsClientHttpRequestFactory(httpClient);
     factory.setReadTimeout(1000);
     factory.setConnectTimeout(1000);
     this.interceptor = interceptor;
@@ -42,8 +53,8 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     return configureClient(TracingClientHttpRequestInterceptor.create(httpTracing));
   }
 
-  @Override protected void closeClient(ClientHttpRequestFactory client) throws Exception {
-    ((HttpComponentsClientHttpRequestFactory) client).destroy();
+  @Override protected void closeClient(ClientHttpRequestFactory client) {
+    // done in close()
   }
 
   @Override protected void get(ClientHttpRequestFactory client, String pathIncludingQuery) {
@@ -58,7 +69,7 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     restTemplate.postForObject(url(uri), content, String.class);
   }
 
-  @Test public void currentSpanVisibleToUserInterceptors() throws Exception {
+  @Test public void currentSpanVisibleToUserInterceptors() {
     server.enqueue(new MockResponse());
 
     RestTemplate restTemplate = new RestTemplate(client);
@@ -69,11 +80,11 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     }));
     restTemplate.getForObject(server.url("/foo").toString(), String.class);
 
-    RecordedRequest request = server.takeRequest();
+    RecordedRequest request = takeRequest();
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    takeSpan();
+    testSpanHandler.takeRemoteSpan(Span.Kind.CLIENT);
   }
 
   @Override @Ignore("blind to the implementation of redirects")

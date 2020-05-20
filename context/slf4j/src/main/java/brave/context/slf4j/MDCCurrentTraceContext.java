@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,7 +15,6 @@ package brave.context.slf4j;
 
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
-import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import org.slf4j.MDC;
 
@@ -27,31 +26,44 @@ import org.slf4j.MDC;
  */
 @Deprecated
 public final class MDCCurrentTraceContext extends CurrentTraceContext {
-  static final CurrentTraceContext.Builder SCOPE_DECORATING_BUILDER =
-    ThreadLocalCurrentTraceContext.newBuilder().addScopeDecorator(MDCScopeDecorator.create());
-
   public static MDCCurrentTraceContext create() {
     return create(CurrentTraceContext.Default.inheritable());
   }
 
   public static MDCCurrentTraceContext create(CurrentTraceContext delegate) {
     if (delegate == null) throw new NullPointerException("delegate == null");
-    return new MDCCurrentTraceContext(delegate);
+    return new Builder(delegate).build();
+  }
+
+  static final class Builder extends CurrentTraceContext.Builder {
+    final CurrentTraceContext delegate;
+
+    Builder(CurrentTraceContext delegate) {
+      this.delegate = delegate;
+      addScopeDecorator(MDCScopeDecorator.create());
+    }
+
+    @Override public MDCCurrentTraceContext build() {
+      return new MDCCurrentTraceContext(this);
+    }
   }
 
   final CurrentTraceContext delegate;
 
-  MDCCurrentTraceContext(CurrentTraceContext delegate) {
-    super(SCOPE_DECORATING_BUILDER);
-    this.delegate = delegate;
+  MDCCurrentTraceContext(Builder builder) {
+    super(builder);
+    delegate = builder.delegate;
   }
 
   @Override public TraceContext get() {
     return delegate.get();
   }
 
-  @Override public CurrentTraceContext.Scope newScope(@Nullable TraceContext currentSpan) {
-    CurrentTraceContext.Scope scope = delegate.newScope(currentSpan);
-    return decorateScope(currentSpan, scope);
+  @Override public Scope newScope(@Nullable TraceContext context) {
+    return decorateScope(context, delegate.newScope(context));
+  }
+
+  @Override public Scope maybeScope(TraceContext context) {
+    return decorateScope(context, delegate.maybeScope(context));
   }
 }

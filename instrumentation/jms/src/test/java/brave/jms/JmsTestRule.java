@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -62,15 +62,16 @@ public abstract class JmsTestRule extends ExternalResource {
     return message;
   }
 
-  abstract void setReadOnlyProperties(Message message, boolean readOnlyProperties) throws Exception;
+  abstract void setReadOnlyProperties(Message message, boolean readOnlyProperties)
+    throws JMSException;
 
-  abstract Connection newConnection() throws Exception;
+  abstract Connection newConnection() throws JMSException;
 
-  abstract QueueConnection newQueueConnection() throws Exception;
+  abstract QueueConnection newQueueConnection() throws JMSException;
 
-  abstract TopicConnection newTopicConnection() throws Exception;
+  abstract TopicConnection newTopicConnection() throws JMSException;
 
-  @Override public void before() throws Exception {
+  @Override public void before() throws JMSException {
     connection = newConnection();
     connection.start();
     // Pass redundant info as we can't user default method in activeMQ
@@ -112,17 +113,17 @@ public abstract class JmsTestRule extends ExternalResource {
       super(testName);
     }
 
-    @Override Connection newConnection() throws Exception {
+    @Override Connection newConnection() throws JMSException {
       return new ActiveMQConnectionFactory("vm://localhost?broker.persistent=false")
         .createConnection();
     }
 
-    @Override QueueConnection newQueueConnection() throws Exception {
+    @Override QueueConnection newQueueConnection() throws JMSException {
       return new ActiveMQConnectionFactory("vm://localhost?broker.persistent=false")
         .createQueueConnection();
     }
 
-    @Override TopicConnection newTopicConnection() throws Exception {
+    @Override TopicConnection newTopicConnection() throws JMSException {
       return new ActiveMQConnectionFactory("vm://localhost?broker.persistent=false")
         .createTopicConnection();
     }

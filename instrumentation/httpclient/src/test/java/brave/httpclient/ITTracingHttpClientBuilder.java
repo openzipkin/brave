@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -24,6 +24,7 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.junit.Test;
+import brave.Span;
 
 import static org.apache.http.util.EntityUtils.consume;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,13 +44,13 @@ public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient
   }
 
   @Override protected void post(CloseableHttpClient client, String pathIncludingQuery, String body)
-    throws Exception {
+    throws IOException {
     HttpPost post = new HttpPost(URI.create(url(pathIncludingQuery)));
     post.setEntity(new StringEntity(body));
     consume(client.execute(post).getEntity());
   }
 
-  @Test public void currentSpanVisibleToUserFilters() throws Exception {
+  @Test public void currentSpanVisibleToUserFilters() throws IOException {
     server.enqueue(new MockResponse());
     closeClient(client);
 
@@ -60,10 +61,10 @@ public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient
 
     get(client, "/foo");
 
-    RecordedRequest request = server.takeRequest();
+    RecordedRequest request = takeRequest();
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    takeSpan();
+    testSpanHandler.takeRemoteSpan(Span.Kind.CLIENT);
   }
 }

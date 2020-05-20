@@ -2,6 +2,7 @@ Import-Package: \
   *
 Export-Package: \
   brave,\
+  brave.baggage,\
   brave.handler,\
   brave.propagation,\
   brave.sampler,\

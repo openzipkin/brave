@@ -1,21 +1,21 @@
 # brave-context-log4j12
-This adds trace and span IDs to the Log4J v1.2 Mapped Diagnostic Context so that you
+This adds trace and span IDs to the Log4J v1.2 Mapped Diagnostic Context (MDC) so that you
 can search or aggregate logs accordingly.
 
-To enable this, configure `brave.Tracing` with `MDCScopeDecorator`
-like so:
+To enable this, configure `brave.Tracing` with `MDCScopeDecorator` like so:
 
 ```java
+correlationContext = new Log4jContext();
 tracing = Tracing.newBuilder()
     .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-       .addScopeDecorator(MDCScopeDecorator.create())
-       .build()
+        .addScopeDecorator(MDCScopeDecorator.get())
+        .build()
     )
     ...
     .build();
 ```
 
-Then, in your log configuration, you can use `traceId`, `parentId`, `spanId` and `sampled`.
+Then, in your log configuration, you can use `traceId` and `spanId`.
 
 Here's an example log4j.properties pattern:
 

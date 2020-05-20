@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -29,6 +29,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -45,7 +46,6 @@ import org.apache.kafka.common.TopicPartition;
  * producers span if possible.
  */
 final class TracingConsumer<K, V> implements Consumer<K, V> {
-
   final Consumer<K, V> delegate;
   final KafkaTracing kafkaTracing;
   final Tracing tracing;
@@ -53,6 +53,9 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   final SamplerFunction<MessagingRequest> sampler;
   final Injector<KafkaConsumerRequest> injector;
   final String remoteServiceName;
+  final boolean singleRootSpanOnReceiveBatch;
+  final TraceContextOrSamplingFlags emptyExtraction;
+
   // replicate org.apache.kafka.clients.consumer.internals.NoOpConsumerRebalanceListener behaviour
   static final ConsumerRebalanceListener NO_OP_CONSUMER_REBALANCE_LISTENER =
     new ConsumerRebalanceListener() {
@@ -71,6 +74,8 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     this.sampler = kafkaTracing.consumerSampler;
     this.injector = kafkaTracing.consumerInjector;
     this.remoteServiceName = kafkaTracing.remoteServiceName;
+    this.singleRootSpanOnReceiveBatch = kafkaTracing.singleRootSpanOnReceiveBatch;
+    this.emptyExtraction = kafkaTracing.emptyExtraction;
   }
 
   // Do not use @Override annotation to avoid compatibility issue version < 2.0
@@ -95,8 +100,8 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
           kafkaTracing.extractAndClearHeaders(extractor, request, record.headers());
 
         // If we extracted neither a trace context, nor request-scoped data (extra),
-        // make or reuse a span for this topic
-        if (extracted.equals(TraceContextOrSamplingFlags.EMPTY)) {
+        // and sharing trace is enabled make or reuse a span for this topic
+        if (extracted.equals(emptyExtraction) && singleRootSpanOnReceiveBatch) {
           Span span = consumerSpansForTopic.get(topic);
           if (span == null) {
             span = kafkaTracing.nextMessagingSpan(sampler, request, extracted);
@@ -227,6 +232,17 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     return delegate.committed(partition, timeout);
   }
 
+  // Do not use @Override annotation to avoid compatibility issue version < 2.4
+  public Map<TopicPartition, OffsetAndMetadata> committed(Set<TopicPartition> partitions) {
+    return delegate.committed(partitions);
+  }
+
+  // Do not use @Override annotation to avoid compatibility issue version < 2.4
+  public Map<TopicPartition, OffsetAndMetadata> committed(
+    Set<TopicPartition> partitions, Duration timeout) {
+    return delegate.committed(partitions, timeout);
+  }
+
   @Override public Map<MetricName, ? extends Metric> metrics() {
     return delegate.metrics();
   }
@@ -290,6 +306,11 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions,
     Duration timeout) {
     return delegate.endOffsets(partitions, timeout);
+  }
+
+  // Do not use @Override annotation to avoid compatibility issue version < 2.5
+  public ConsumerGroupMetadata groupMetadata() {
+    return delegate.groupMetadata();
   }
 
   @Override public void close() {

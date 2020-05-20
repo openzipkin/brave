@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -30,7 +30,7 @@ public abstract class WrappingExecutorService implements ExecutorService {
 
   protected abstract ExecutorService delegate();
 
-  protected abstract <C> Callable<C> wrap(Callable<C> task);
+  protected abstract <R> Callable<R> wrap(Callable<R> task);
 
   protected abstract Runnable wrap(Runnable task);
 

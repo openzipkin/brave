@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,15 +14,17 @@
 package brave.sparkjava;
 
 import brave.Span;
-import brave.Tracer;
-import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.http.HttpServerHandler;
+import brave.http.HttpServerRequest;
+import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
+import brave.servlet.HttpServletRequestWrapper;
+import brave.servlet.HttpServletResponseWrapper;
 import spark.ExceptionHandler;
 import spark.Filter;
-import spark.Request;
-import spark.Response;
 
 public final class SparkTracing {
   public static SparkTracing create(Tracing tracing) {
@@ -33,102 +35,48 @@ public final class SparkTracing {
     return new SparkTracing(httpTracing);
   }
 
-  final Tracer tracer;
-  final HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler;
+  final CurrentTraceContext currentTraceContext;
+  final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
 
   SparkTracing(HttpTracing httpTracing) { // intentionally hidden constructor
-    tracer = httpTracing.tracing().tracer();
+    currentTraceContext = httpTracing.tracing().currentTraceContext();
     handler = HttpServerHandler.create(httpTracing);
   }
 
   public Filter before() {
     return (request, response) -> {
-      Span span = handler.handleReceive(new HttpServerRequest(request));
-      request.attribute(SpanInScope.class.getName(), tracer.withSpanInScope(span));
+      // Add servlet attribute "http.route" if this or similar is merged:
+      // https://github.com/perwendel/spark/pull/1126
+      Span span = handler.handleReceive(HttpServletRequestWrapper.create(request.raw()));
+      request.attribute(Span.class.getName(), span);
+      request.attribute(Scope.class.getName(), currentTraceContext.newScope(span.context()));
     };
   }
 
   public Filter afterAfter() {
-    return (request, response) -> {
-      Span span = tracer.currentSpan();
+    return (req, res) -> {
+      Span span = req.attribute(Span.class.getName());
       if (span == null) return;
-      handler.handleSend(new HttpServerResponse(response, request.requestMethod()), null, span);
-      ((SpanInScope) request.attribute(SpanInScope.class.getName())).close();
+      HttpServerResponse response = HttpServletResponseWrapper.create(req.raw(), res.raw(), null);
+      handler.handleSend(response, span);
+      ((Scope) req.attribute(Scope.class.getName())).close();
     };
   }
 
   public ExceptionHandler exception(ExceptionHandler delegate) {
-    return (error, request, response) -> {
+    return (error, req, res) -> {
       try {
-        delegate.handle(error, request, response);
+        delegate.handle(error, req, res);
       } finally {
-        Span span = tracer.currentSpan();
-        if (span == null) return;
-        handler.handleSend(new HttpServerResponse(response, request.requestMethod()), error, span);
-        ((SpanInScope) request.attribute(SpanInScope.class.getName())).close();
+        Span span = req.attribute(Span.class.getName());
+        if (span != null) {
+          HttpServerResponse response =
+            HttpServletResponseWrapper.create(req.raw(), res.raw(), error);
+          handler.handleSend(response, span);
+          req.raw().removeAttribute(Span.class.getName()); // prevent double-processing
+          ((Scope) req.attribute(Scope.class.getName())).close();
+        }
       }
     };
-  }
-
-  static final class HttpServerRequest extends brave.http.HttpServerRequest {
-    final Request delegate;
-
-    HttpServerRequest(Request delegate) {
-      this.delegate = delegate;
-    }
-
-    @Override public Request unwrap() {
-      return delegate;
-    }
-
-    @Override public boolean parseClientIpAndPort(Span span) {
-      return span.remoteIpAndPort(delegate.raw().getRemoteAddr(), delegate.raw().getRemotePort());
-    }
-
-    @Override public String method() {
-      return delegate.requestMethod();
-    }
-
-    @Override public String path() {
-      return delegate.pathInfo();
-    }
-
-    @Override public String url() {
-      String baseUrl = delegate.url();
-      if (delegate.queryString() != null && !delegate.queryString().isEmpty()) {
-        return baseUrl + "?" + delegate.queryString();
-      }
-      return baseUrl;
-    }
-
-    @Override public String header(String name) {
-      return delegate.raw().getHeader(name);
-    }
-  }
-
-  static final class HttpServerResponse extends brave.http.HttpServerResponse {
-    final Response delegate;
-    final String method;
-
-    HttpServerResponse(Response delegate, String method) {
-      this.delegate = delegate;
-      this.method = method;
-    }
-
-    @Override public Response unwrap() {
-      return delegate;
-    }
-
-    @Override public String method() {
-      return method;
-    }
-
-    @Override public String route() {
-      return null; // Update if this or similar merged https://github.com/perwendel/spark/pull/1126
-    }
-
-    @Override public int statusCode() {
-      return delegate.status();
-    }
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,10 @@
  */
 package brave;
 
-import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.Tracer.SpanInScope;
+import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
+import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import org.junit.After;
 import org.junit.Test;
@@ -22,12 +25,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class NoopSpanTest {
   Tracer tracer = Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE)
-    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
     .clock(() -> {
       throw new AssertionError();
     })
-    .spanReporter(s -> {
-      throw new AssertionError();
+    .addSpanHandler(new SpanHandler() {
+      @Override public boolean begin(TraceContext context, MutableSpan span, TraceContext parent) {
+        throw new AssertionError();
+      }
     })
     .build().tracer();
   Span span = tracer.newTrace();
@@ -61,5 +65,23 @@ public class NoopSpanTest {
     span.finish();
     span.abandon();
     span.flush();
+  }
+
+  @Test public void equals_lazySpan_sameContext() {
+    Span current;
+    try (SpanInScope ws = tracer.withSpanInScope(span)) {
+      current = tracer.currentSpan();
+    }
+
+    assertThat(span).isEqualTo(current);
+  }
+
+  @Test public void equals_lazySpan_notSameContext() {
+    Span current;
+    try (SpanInScope ws = tracer.withSpanInScope(tracer.newTrace())) {
+      current = tracer.currentSpan();
+    }
+
+    assertThat(span).isNotEqualTo(current);
   }
 }

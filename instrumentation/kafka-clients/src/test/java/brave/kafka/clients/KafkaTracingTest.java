@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,73 +14,67 @@
 package brave.kafka.clients;
 
 import brave.Span;
-import brave.Tracing;
-import brave.propagation.B3Propagation;
-import brave.propagation.CurrentTraceContext;
-import brave.propagation.ExtraFieldPropagation;
-import brave.propagation.TraceContext;
+import brave.propagation.B3SingleFormat;
+import brave.propagation.CurrentTraceContext.Scope;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.Test;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
+import static brave.test.ITRemote.BAGGAGE_FIELD;
+import static brave.test.ITRemote.BAGGAGE_FIELD_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public class KafkaTracingTest extends BaseTracingTest {
+public class KafkaTracingTest extends KafkaTest {
   @Test public void nextSpan_prefers_b3_header() {
-    fakeRecord.headers().add("b3", "0000000000000001-0000000000000002-1".getBytes(UTF_8));
+    consumerRecord.headers().add("b3", B3SingleFormat.writeB3SingleFormatAsBytes(incoming));
 
     Span child;
-    try (CurrentTraceContext.Scope ws = tracing.currentTraceContext()
-      .newScope(TraceContext.newBuilder().traceId(1).spanId(1).build())) {
-      child = kafkaTracing.nextSpan(fakeRecord);
+    try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
+      child = kafkaTracing.nextSpan(consumerRecord);
     }
-    assertThat(child.context().parentId())
-      .isEqualTo(2L);
+    child.finish();
+
+    assertThat(spans.get(0).id()).isEqualTo(child.context().spanIdString());
+    assertChildOf(spans.get(0), incoming);
   }
+
 
   @Test public void nextSpan_uses_current_context() {
     Span child;
-    try (CurrentTraceContext.Scope ws = tracing.currentTraceContext()
-      .newScope(TraceContext.newBuilder().traceId(1).spanId(1).build())) {
-      child = kafkaTracing.nextSpan(fakeRecord);
+    try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
+      child = kafkaTracing.nextSpan(consumerRecord);
     }
-    assertThat(child.context().parentId())
-      .isEqualTo(1L);
+    child.finish();
+
+    assertThat(spans.get(0).id()).isEqualTo(child.context().spanIdString());
+    assertChildOf(spans.get(0), parent);
   }
 
   @Test public void nextSpan_should_create_span_if_no_headers() {
-    assertThat(kafkaTracing.nextSpan(fakeRecord)).isNotNull();
+    assertThat(kafkaTracing.nextSpan(consumerRecord)).isNotNull();
   }
 
-  @Test public void nextSpan_should_create_span_with_extra_keys() {
-    tracing = Tracing.newBuilder()
-      .propagationFactory(
-        ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "user-id"))
-      .build();
-    kafkaTracing = KafkaTracing.newBuilder(tracing).build();
-    addB3MultiHeaders(fakeRecord);
-    fakeRecord.headers().add("user-id", "user1".getBytes());
+  @Test public void nextSpan_should_create_span_with_baggage() {
+    addB3MultiHeaders(parent, consumerRecord);
+    consumerRecord.headers().add(BAGGAGE_FIELD_KEY, "user1".getBytes());
 
-    Span span = kafkaTracing.nextSpan(fakeRecord);
-    assertThat(ExtraFieldPropagation.get(span.context(), "user-id")).contains("user1");
+    Span span = kafkaTracing.nextSpan(consumerRecord);
+    assertThat(BAGGAGE_FIELD.getValue(span.context())).contains("user1");
   }
 
   @Test public void nextSpan_should_tag_topic_and_key_when_no_incoming_context() {
-    kafkaTracing.nextSpan(fakeRecord).start().finish();
+    kafkaTracing.nextSpan(consumerRecord).start().finish();
 
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
+    assertThat(spans.get(0).tags())
       .containsOnly(entry("kafka.topic", TEST_TOPIC), entry("kafka.key", TEST_KEY));
   }
 
   @Test public void nextSpan_shouldnt_tag_null_key() {
-    fakeRecord = new ConsumerRecord<>(TEST_TOPIC, 0, 1, null, TEST_VALUE);
+    consumerRecord = new ConsumerRecord<>(TEST_TOPIC, 0, 1, null, TEST_VALUE);
 
-    kafkaTracing.nextSpan(fakeRecord).start().finish();
+    kafkaTracing.nextSpan(consumerRecord).start().finish();
 
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
+    assertThat(spans.get(0).tags())
       .containsOnly(entry("kafka.topic", TEST_TOPIC));
   }
 
@@ -90,8 +84,7 @@ public class KafkaTracingTest extends BaseTracingTest {
 
     kafkaTracing.nextSpan(record).start().finish();
 
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
+    assertThat(spans.get(0).tags())
       .containsOnly(entry("kafka.topic", TEST_TOPIC));
   }
 
@@ -100,25 +93,24 @@ public class KafkaTracingTest extends BaseTracingTest {
    * policy now, or later when dynamic policy is added to KafkaTracing
    */
   @Test public void nextSpan_shouldnt_tag_topic_and_key_when_incoming_context() {
-    addB3MultiHeaders(fakeRecord);
-    kafkaTracing.nextSpan(fakeRecord).start().finish();
+    addB3MultiHeaders(parent, consumerRecord);
+    kafkaTracing.nextSpan(consumerRecord).start().finish();
 
-    assertThat(spans)
-      .flatExtracting(s -> s.tags().entrySet())
+    assertThat(spans.get(0).tags())
       .isEmpty();
   }
 
   @Test public void nextSpan_should_clear_propagation_headers() {
-    addB3MultiHeaders(fakeRecord);
+    addB3MultiHeaders(parent, consumerRecord);
 
-    kafkaTracing.nextSpan(fakeRecord);
-    assertThat(fakeRecord.headers().toArray()).isEmpty();
+    kafkaTracing.nextSpan(consumerRecord);
+    assertThat(consumerRecord.headers().toArray()).isEmpty();
   }
 
   @Test public void nextSpan_should_not_clear_other_headers() {
-    fakeRecord.headers().add("foo", new byte[0]);
+    consumerRecord.headers().add("foo", new byte[0]);
 
-    kafkaTracing.nextSpan(fakeRecord);
-    assertThat(fakeRecord.headers().headers("foo")).isNotEmpty();
+    kafkaTracing.nextSpan(consumerRecord);
+    assertThat(consumerRecord.headers().headers("foo")).isNotEmpty();
   }
 }

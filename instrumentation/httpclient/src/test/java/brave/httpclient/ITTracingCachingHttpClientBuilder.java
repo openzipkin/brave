@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,11 +13,17 @@
  */
 package brave.httpclient;
 
+import brave.handler.MutableSpan;
+import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.SamplingFlags;
+import brave.propagation.TraceContext;
+import java.io.IOException;
+import java.util.Arrays;
 import okhttp3.mockwebserver.MockResponse;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.junit.Test;
-import zipkin2.Span;
 
+import static brave.Span.Kind.CLIENT;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilder {
@@ -28,24 +34,30 @@ public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilde
   /**
    * Handle when the client doesn't actually make a client span
    *
-   * <p>See https://github.com/apache/incubator-zipkin-brave/issues/864
+   * <p>See https://github.com/openzipkin/brave/issues/864
    */
-  @Test public void cacheControl() throws Exception {
+  @Test public void cacheControl() throws IOException {
     server.enqueue(new MockResponse()
       .addHeader("Content-Type", "text/plain")
       .addHeader("Cache-Control", "max-age=600, stale-while-revalidate=1200")
       .setBody("Hello"));
 
-    // important to use a different path than other tests!
-    get(client, "/cached");
-    get(client, "/cached");
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
+    try (Scope scope = currentTraceContext.newScope(parent)) {
+      get(client, "/cached");
+      get(client, "/cached");
+    }
 
     assertThat(server.getRequestCount()).isEqualTo(1);
 
-    Span first = takeSpan();
-    assertThat(first.kind()).isEqualTo(Span.Kind.CLIENT);
-    Span second = takeSpan();
-    assertThat(second.kind()).isNull();
-    assertThat(second.tags()).containsKey("http.cache_hit");
+    MutableSpan real = testSpanHandler.takeRemoteSpan(CLIENT);
+    MutableSpan cached = testSpanHandler.takeLocalSpan();
+    assertThat(cached.tags()).containsKey("http.cache_hit");
+
+    for (MutableSpan child : Arrays.asList(real, cached)) {
+      assertChildOf(child, parent);
+    }
+
+    assertSequential(real, cached);
   }
 }

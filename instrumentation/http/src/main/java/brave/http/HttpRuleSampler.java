@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,8 +19,8 @@ import brave.sampler.CountingSampler;
 import brave.sampler.Matcher;
 import brave.sampler.ParameterizedSampler;
 import brave.sampler.RateLimitingSampler;
-import brave.sampler.SamplerFunction;
 import brave.sampler.Sampler;
+import brave.sampler.SamplerFunction;
 
 import static brave.http.HttpRequestMatchers.methodEquals;
 import static brave.http.HttpRequestMatchers.pathStartsWith;
@@ -134,7 +134,7 @@ public final class HttpRuleSampler extends HttpSampler implements SamplerFunctio
     return delegate.trySample(request);
   }
 
-  @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
+  @Override @Deprecated public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
     if (request == null) return null;
     return trySample(new FromHttpAdapter<>(adapter, request));
   }

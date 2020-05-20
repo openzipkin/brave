@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,12 +15,10 @@ package brave.sampler;
 
 import java.util.Random;
 import org.assertj.core.data.Percentage;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoints;
 import org.junit.experimental.theories.Theories;
 import org.junit.experimental.theories.Theory;
-import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,9 +34,6 @@ public abstract class SamplerTest {
   abstract Sampler newSampler(float probability);
 
   abstract Percentage expectedErrorProbability();
-
-  @Rule
-  public ExpectedException thrown = ExpectedException.none();
 
   @DataPoints
   public static final float[] SAMPLE_PROBABILITIES = {0.01f, 0.5f, 0.9f};
@@ -69,17 +64,13 @@ public abstract class SamplerTest {
       INPUT_SIZE);
   }
 
-  @Test
+  @Test(expected = IllegalArgumentException.class)
   public void probabilityCantBeNegative() {
-    thrown.expect(IllegalArgumentException.class);
-
     newSampler(-1.0f);
   }
 
-  @Test
+  @Test(expected = IllegalArgumentException.class)
   public void probabilityCantBeOverOne() {
-    thrown.expect(IllegalArgumentException.class);
-
     newSampler(1.1f);
   }
 }

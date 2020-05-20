@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -27,7 +27,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class HttpServletAdapterTest {
+@Deprecated public class HttpServletAdapterTest {
   HttpServletAdapter adapter = new HttpServletAdapter();
   @Mock HttpServletRequest request;
   @Mock HttpServletResponse response;

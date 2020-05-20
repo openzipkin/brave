@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,49 +18,44 @@ import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public abstract class PropagationSetterTest<C, K> {
-  protected abstract Propagation.KeyFactory<K> keyFactory();
+public abstract class PropagationSetterTest<R> {
+  protected final Propagation<String> propagation = Propagation.B3_STRING;
 
-  protected abstract C carrier();
+  protected abstract R request();
 
-  protected abstract Propagation.Setter<C, K> setter();
+  protected abstract Propagation.Setter<R, String> setter();
 
-  protected abstract Iterable<String> read(C carrier, K key);
+  protected abstract Iterable<String> read(R request, String key);
 
-  @Test public void set() throws Exception {
-    K key = keyFactory().create("X-B3-TraceId");
-    setter().put(carrier(), key, "48485a3953bb6124");
+  @Test public void set() {
+    setter().put(request(), "X-B3-TraceId", "48485a3953bb6124");
 
-    assertThat(read(carrier(), key))
+    assertThat(read(request(), "X-B3-TraceId"))
       .containsExactly("48485a3953bb6124");
   }
 
-  @Test public void set128() throws Exception {
-    K key = keyFactory().create("X-B3-TraceId");
-    setter().put(carrier(), key, "463ac35c9f6413ad48485a3953bb6124");
+  @Test public void set128() {
+    setter().put(request(), "X-B3-TraceId", "463ac35c9f6413ad48485a3953bb6124");
 
-    assertThat(read(carrier(), key))
+    assertThat(read(request(), "X-B3-TraceId"))
       .containsExactly("463ac35c9f6413ad48485a3953bb6124");
   }
 
-  @Test public void setTwoKeys() throws Exception {
-    K key1 = keyFactory().create("X-B3-TraceId");
-    K key2 = keyFactory().create("X-B3-SpanId");
-    setter().put(carrier(), key1, "463ac35c9f6413ad48485a3953bb6124");
-    setter().put(carrier(), key2, "48485a3953bb6124");
+  @Test public void setTwoKeys() {
+    setter().put(request(), "X-B3-TraceId", "463ac35c9f6413ad48485a3953bb6124");
+    setter().put(request(), "X-B3-SpanId", "48485a3953bb6124");
 
-    assertThat(read(carrier(), key1))
+    assertThat(read(request(), "X-B3-TraceId"))
       .containsExactly("463ac35c9f6413ad48485a3953bb6124");
-    assertThat(read(carrier(), key2))
+    assertThat(read(request(), "X-B3-SpanId"))
       .containsExactly("48485a3953bb6124");
   }
 
-  @Test public void reset() throws Exception {
-    K key = keyFactory().create("X-B3-TraceId");
-    setter().put(carrier(), key, "48485a3953bb6124");
-    setter().put(carrier(), key, "463ac35c9f6413ad");
+  @Test public void reset() {
+    setter().put(request(), "X-B3-TraceId", "48485a3953bb6124");
+    setter().put(request(), "X-B3-TraceId", "463ac35c9f6413ad");
 
-    assertThat(read(carrier(), key))
+    assertThat(read(request(), "X-B3-TraceId"))
       .containsExactly("463ac35c9f6413ad");
   }
 }

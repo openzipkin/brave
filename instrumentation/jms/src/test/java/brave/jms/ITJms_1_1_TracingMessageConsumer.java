@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,8 +13,13 @@
  */
 package brave.jms;
 
+import brave.Tags;
+import brave.handler.MutableSpan;
 import brave.messaging.MessagingRuleSampler;
 import brave.messaging.MessagingTracing;
+import brave.propagation.B3SingleFormat;
+import brave.propagation.SamplingFlags;
+import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.util.Collections;
 import java.util.Map;
@@ -37,15 +42,15 @@ import org.junit.ComparisonFailure;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
-import zipkin2.Span;
 
-import static brave.jms.MessagePropagation.GETTER;
-import static brave.jms.MessagePropagation.SETTER;
+import static brave.Span.Kind.CONSUMER;
+import static brave.jms.MessageProperties.getPropertyIfString;
+import static brave.jms.MessageProperties.setStringProperty;
 import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** When adding tests here, also add to {@linkplain brave.jms.ITTracingJMSConsumer} */
-public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
+/** When adding tests here, also add to {@link brave.jms.ITTracingJMSConsumer} */
+public class ITJms_1_1_TracingMessageConsumer extends ITJms {
   @Rule public TestName testName = new TestName();
   @Rule public JmsTestRule jms = newJmsTestRule(testName);
 
@@ -68,7 +73,7 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
   TextMessage message;
   BytesMessage bytesMessage;
 
-  @Before public void setup() throws Exception {
+  @Before public void setup() throws JMSException {
     tracedSession = jmsTracing.connection(jms.connection)
       .createSession(false, Session.AUTO_ACKNOWLEDGE);
     tracedQueueSession = jmsTracing.queueConnection(jms.queueConnection)
@@ -90,21 +95,22 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
     lockMessages();
   }
 
-  void lockMessages() throws Exception {
+  void lockMessages() throws JMSException {
     // this forces us to handle JMS write concerns!
     jms.setReadOnlyProperties(message, true);
     jms.setReadOnlyProperties(bytesMessage, true);
     bytesMessage.reset();
   }
 
-  String resetB3PropertyToIncludeParentId(JmsTestRule jms) throws Exception {
+  TraceContext resetB3PropertyWithNewSampledContext(JmsTestRule jms) throws JMSException {
+    TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     message = jms.newMessage("foo");
     bytesMessage = jms.newBytesMessage("foo");
-    String parentId = "463ac35c9f6413ad";
-    SETTER.put(message, "b3", parentId + "-" + parentId + "-1");
-    SETTER.put(bytesMessage, "b3", parentId + "-" + parentId + "-1");
+    String b3 = B3SingleFormat.writeB3SingleFormatWithoutParentId(parent);
+    setStringProperty(message, "b3", b3);
+    setStringProperty(bytesMessage, "b3", b3);
     lockMessages();
-    return parentId;
+    return parent;
   }
 
   @After public void tearDownTraced() throws JMSException {
@@ -113,7 +119,31 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
     tracedTopicSession.close();
   }
 
-  @Test public void messageListener_startsNewTrace() throws Exception {
+  @Test public void messageListener_runsAfterConsumer() throws JMSException {
+    messageListener_runsAfterConsumer(() -> messageProducer.send(message), messageConsumer);
+  }
+
+  @Test public void messageListener_runsAfterConsumer_queue() throws JMSException {
+    messageListener_runsAfterConsumer(() -> queueSender.send(message), queueReceiver);
+  }
+
+  @Test public void messageListener_runsAfterConsumer_topic() throws JMSException {
+    messageListener_runsAfterConsumer(() -> topicPublisher.send(message), topicSubscriber);
+  }
+
+  void messageListener_runsAfterConsumer(JMSRunnable send, MessageConsumer messageConsumer)
+    throws JMSException {
+    messageConsumer.setMessageListener(m -> {
+    });
+    send.run();
+
+    MutableSpan consumerSpan = testSpanHandler.takeRemoteSpan(CONSUMER);
+    MutableSpan listenerSpan = testSpanHandler.takeLocalSpan();
+    assertChildOf(listenerSpan, consumerSpan);
+    assertSequential(consumerSpan, listenerSpan);
+  }
+
+  @Test public void messageListener_startsNewTrace() throws JMSException {
     messageListener_startsNewTrace(
       () -> messageProducer.send(message),
       messageConsumer,
@@ -121,7 +151,7 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
     );
   }
 
-  @Test public void messageListener_startsNewTrace_bytes() throws Exception {
+  @Test public void messageListener_startsNewTrace_bytes() throws JMSException {
     messageListener_startsNewTrace(
       () -> messageProducer.send(bytesMessage),
       messageConsumer,
@@ -129,7 +159,7 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
     );
   }
 
-  @Test public void messageListener_startsNewTrace_queue() throws Exception {
+  @Test public void messageListener_startsNewTrace_queue() throws JMSException {
     messageListener_startsNewTrace(
       () -> queueSender.send(message),
       queueReceiver,
@@ -137,7 +167,7 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
     );
   }
 
-  @Test public void messageListener_startsNewTrace_topic() throws Exception {
+  @Test public void messageListener_startsNewTrace_topic() throws JMSException {
     messageListener_startsNewTrace(
       () -> topicPublisher.send(message),
       topicSubscriber,
@@ -146,70 +176,110 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
   }
 
   void messageListener_startsNewTrace(JMSRunnable send, MessageConsumer messageConsumer,
-    Map<String, String> consumerTags) throws Exception {
+    Map<String, String> consumerTags) throws JMSException {
     messageConsumer.setMessageListener(
       m -> {
         tracing.tracer().currentSpanCustomizer().name("message-listener");
 
         // clearing headers ensures later work doesn't try to use the old parent
-        String b3 = GETTER.get(m, "b3");
+        String b3 = getPropertyIfString(m, "b3");
         tracing.tracer().currentSpanCustomizer().tag("b3", String.valueOf(b3 != null));
       }
     );
     send.run();
 
-    Span consumerSpan = takeSpan(), listenerSpan = takeSpan();
+    MutableSpan consumerSpan = testSpanHandler.takeRemoteSpan(CONSUMER);
+    MutableSpan listenerSpan = testSpanHandler.takeLocalSpan();
 
     assertThat(consumerSpan.name()).isEqualTo("receive");
     assertThat(consumerSpan.parentId()).isNull(); // root span
-    assertThat(consumerSpan.kind()).isEqualTo(Span.Kind.CONSUMER);
-    assertThat(consumerSpan.tags()).isEqualTo(consumerTags);
+    assertThat(consumerSpan.tags()).containsAllEntriesOf(consumerTags);
 
+    assertChildOf(listenerSpan, consumerSpan);
     assertThat(listenerSpan.name()).isEqualTo("message-listener"); // overridden name
-    assertThat(listenerSpan.parentId()).isEqualTo(consumerSpan.id()); // root span
-    assertThat(listenerSpan.kind()).isNull(); // processor span, not a consumer
     assertThat(listenerSpan.tags())
       .hasSize(1) // no redundant copy of consumer tags
       .containsEntry("b3", "false"); // b3 header not leaked to listener
   }
 
-  @Test public void messageListener_resumesTrace() throws Exception {
+  @Test public void messageListener_resumesTrace() throws JMSException {
     messageListener_resumesTrace(() -> messageProducer.send(message), messageConsumer);
   }
 
-  @Test public void messageListener_resumesTrace_bytes() throws Exception {
+  @Test public void messageListener_resumesTrace_bytes() throws JMSException {
     messageListener_resumesTrace(() -> messageProducer.send(bytesMessage), messageConsumer);
   }
 
-  @Test public void messageListener_resumesTrace_queue() throws Exception {
+  @Test public void messageListener_resumesTrace_queue() throws JMSException {
     messageListener_resumesTrace(() -> queueSender.send(message), queueReceiver);
   }
 
-  @Test public void messageListener_resumesTrace_topic() throws Exception {
+  @Test public void messageListener_resumesTrace_topic() throws JMSException {
     messageListener_resumesTrace(() -> topicPublisher.send(message), topicSubscriber);
   }
 
   void messageListener_resumesTrace(JMSRunnable send, MessageConsumer messageConsumer)
-    throws Exception {
+    throws JMSException {
     messageConsumer.setMessageListener(m -> {
         // clearing headers ensures later work doesn't try to use the old parent
-        String b3 = GETTER.get(m, "b3");
+        String b3 = getPropertyIfString(m, "b3");
         tracing.tracer().currentSpanCustomizer().tag("b3", String.valueOf(b3 != null));
       }
     );
 
-    String parentId = resetB3PropertyToIncludeParentId(jms);
+    TraceContext parent = resetB3PropertyWithNewSampledContext(jms);
     send.run();
 
-    Span consumerSpan = takeSpan(), listenerSpan = takeSpan();
-    assertThat(consumerSpan.parentId()).isEqualTo(parentId);
-    assertThat(listenerSpan.parentId()).isEqualTo(consumerSpan.id());
+    MutableSpan consumerSpan = testSpanHandler.takeRemoteSpan(CONSUMER);
+    MutableSpan listenerSpan = testSpanHandler.takeLocalSpan();
+
+    assertChildOf(consumerSpan, parent);
+    assertChildOf(listenerSpan, consumerSpan);
     assertThat(listenerSpan.tags())
       .hasSize(1) // no redundant copy of consumer tags
       .containsEntry("b3", "false"); // b3 header not leaked to listener
   }
 
-  @Test public void receive_startsNewTrace() throws Exception {
+  @Test public void messageListener_readsBaggage() throws JMSException {
+    messageListener_readsBaggage(() -> messageProducer.send(message), messageConsumer);
+  }
+
+  @Test public void messageListener_readsBaggage_bytes() throws JMSException {
+    messageListener_readsBaggage(() -> messageProducer.send(bytesMessage), messageConsumer);
+  }
+
+  @Test public void messageListener_readsBaggage_queue() throws JMSException {
+    messageListener_readsBaggage(() -> queueSender.send(message), queueReceiver);
+  }
+
+  @Test public void messageListener_readsBaggage_topic() throws JMSException {
+    messageListener_readsBaggage(() -> topicPublisher.send(message), topicSubscriber);
+  }
+
+  void messageListener_readsBaggage(JMSRunnable send, MessageConsumer messageConsumer)
+      throws JMSException {
+    messageConsumer.setMessageListener(m ->
+        Tags.BAGGAGE_FIELD.tag(BAGGAGE_FIELD, tracing.tracer().currentSpan())
+    );
+
+    message = jms.newMessage("baggage");
+    bytesMessage = jms.newBytesMessage("baggage");
+    String baggage = "joey";
+    setStringProperty(message, BAGGAGE_FIELD_KEY, baggage);
+    setStringProperty(bytesMessage, BAGGAGE_FIELD_KEY, baggage);
+    lockMessages();
+    send.run();
+
+    MutableSpan consumerSpan = testSpanHandler.takeRemoteSpan(CONSUMER);
+    MutableSpan listenerSpan = testSpanHandler.takeLocalSpan();
+
+    assertThat(consumerSpan.parentId()).isNull();
+    assertChildOf(listenerSpan, consumerSpan);
+    assertThat(listenerSpan.tags())
+        .containsEntry(BAGGAGE_FIELD.name(), baggage);
+  }
+
+  @Test public void receive_startsNewTrace() throws JMSException {
     receive_startsNewTrace(
       () -> messageProducer.send(message),
       messageConsumer,
@@ -217,7 +287,7 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
     );
   }
 
-  @Test public void receive_startsNewTrace_queue() throws Exception {
+  @Test public void receive_startsNewTrace_queue() throws JMSException {
     receive_startsNewTrace(
       () -> queueSender.send(message),
       queueReceiver,
@@ -225,7 +295,7 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
     );
   }
 
-  @Test public void receive_startsNewTrace_topic() throws Exception {
+  @Test public void receive_startsNewTrace_topic() throws JMSException {
     receive_startsNewTrace(
       () -> topicPublisher.send(message),
       topicSubscriber,
@@ -234,48 +304,47 @@ public class ITJms_1_1_TracingMessageConsumer extends JmsTest {
   }
 
   void receive_startsNewTrace(JMSRunnable send, MessageConsumer messageConsumer,
-    Map<String, String> consumerTags) throws Exception {
+    Map<String, String> consumerTags) throws JMSException {
     send.run();
 
     messageConsumer.receive();
 
-    Span consumerSpan = takeSpan();
+    MutableSpan consumerSpan = testSpanHandler.takeRemoteSpan(CONSUMER);
     assertThat(consumerSpan.name()).isEqualTo("receive");
     assertThat(consumerSpan.parentId()).isNull(); // root span
-    assertThat(consumerSpan.kind()).isEqualTo(Span.Kind.CONSUMER);
-    assertThat(consumerSpan.tags()).isEqualTo(consumerTags);
+    assertThat(consumerSpan.tags()).containsAllEntriesOf(consumerTags);
   }
 
-  @Test public void receive_resumesTrace() throws Exception {
+  @Test public void receive_resumesTrace() throws JMSException {
     receive_resumesTrace(() -> messageProducer.send(message), messageConsumer);
   }
 
   @Test(expected = ComparisonFailure.class) // TODO: https://github.com/openzipkin/brave/issues/967
-  public void receive_resumesTrace_bytes() throws Exception {
+  public void receive_resumesTrace_bytes() throws JMSException {
     receive_resumesTrace(() -> messageProducer.send(bytesMessage), messageConsumer);
   }
 
-  @Test public void receive_resumesTrace_queue() throws Exception {
+  @Test public void receive_resumesTrace_queue() throws JMSException {
     receive_resumesTrace(() -> queueSender.send(message), queueReceiver);
   }
 
-  @Test public void receive_resumesTrace_topic() throws Exception {
+  @Test public void receive_resumesTrace_topic() throws JMSException {
     receive_resumesTrace(() -> topicPublisher.send(message), topicSubscriber);
   }
 
-  void receive_resumesTrace(JMSRunnable send, MessageConsumer messageConsumer) throws Exception {
-    String parentId = resetB3PropertyToIncludeParentId(jms);
+  void receive_resumesTrace(JMSRunnable send, MessageConsumer messageConsumer) throws JMSException {
+    TraceContext parent = resetB3PropertyWithNewSampledContext(jms);
     send.run();
 
     Message received = messageConsumer.receive();
-    Span consumerSpan = takeSpan();
-    assertThat(consumerSpan.parentId()).isEqualTo(parentId);
+    MutableSpan consumerSpan = testSpanHandler.takeRemoteSpan(CONSUMER);
+    assertChildOf(consumerSpan, parent);
 
     assertThat(received.getStringProperty("b3"))
-      .isEqualTo(parentId + "-" + consumerSpan.id() + "-1");
+      .isEqualTo(parent.traceIdString() + "-" + consumerSpan.id() + "-1");
   }
 
-  @Test public void receive_customSampler() throws Exception {
+  @Test public void receive_customSampler() throws JMSException {
     queueReceiver.close();
     tracedSession.close();
 

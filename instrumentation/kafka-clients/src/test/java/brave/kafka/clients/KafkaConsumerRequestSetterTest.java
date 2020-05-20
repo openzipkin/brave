@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -21,26 +21,21 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public class KafkaConsumerRequestSetterTest
-  extends PropagationSetterTest<KafkaConsumerRequest, String> {
-  KafkaConsumerRequest carrier = new KafkaConsumerRequest(
+public class KafkaConsumerRequestSetterTest extends PropagationSetterTest<KafkaConsumerRequest> {
+  KafkaConsumerRequest request = new KafkaConsumerRequest(
     new ConsumerRecord<>("topic", 0, 1L, "key", "value")
   );
 
-  @Override public Propagation.KeyFactory<String> keyFactory() {
-    return Propagation.KeyFactory.STRING;
-  }
-
-  @Override protected KafkaConsumerRequest carrier() {
-    return carrier;
+  @Override protected KafkaConsumerRequest request() {
+    return request;
   }
 
   @Override protected Propagation.Setter<KafkaConsumerRequest, String> setter() {
-    return KafkaConsumerRequest::setHeader;
+    return KafkaConsumerRequest.SETTER;
   }
 
-  @Override protected Iterable<String> read(KafkaConsumerRequest carrier, String key) {
-    return StreamSupport.stream(carrier.delegate.headers().headers(key).spliterator(), false)
+  @Override protected Iterable<String> read(KafkaConsumerRequest request, String key) {
+    return StreamSupport.stream(request.delegate.headers().headers(key).spliterator(), false)
       .map(h -> new String(h.value(), UTF_8))
       .collect(Collectors.toList());
   }

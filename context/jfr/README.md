@@ -13,7 +13,7 @@ With the above in place, you can configure `brave.Tracing` with
 ```java
 tracing = Tracing.newBuilder()
     .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-       .addScopeDecorator(JfrScopeDecorator.create())
+       .addScopeDecorator(JfrScopeDecorator.get())
        .build()
     )
     ...

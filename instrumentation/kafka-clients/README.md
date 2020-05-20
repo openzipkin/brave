@@ -8,22 +8,21 @@ Add decorators for Kafka producer and consumer to enable tracing.
 First, setup the generic Kafka component like this:
 ```java
 kafkaTracing = KafkaTracing.newBuilder(messagingTracing)
-                           .writeB3SingleFormat(true) // for more efficient propagation
                            .remoteServiceName("my-broker")
                            .build();
 ```
 
 To use the producer simply wrap it like this :
 ```java
-Producer<K, V> stringProducer = new KafkaProducer<>(settings);
-TracingProducer<K, V> tracingProducer = kafkaTracing.producer(producer);
+Producer<K, V> producer = new KafkaProducer<>(settings);
+Producer<K, V> tracingProducer = kafkaTracing.producer(producer);
 tracingProducer.send(new ProducerRecord<K, V>("my-topic", key, value));
 ```
 
 Same goes for the consumer :
 ```java
 Consumer<K, V> consumer = new KafkaConsumer<>(settings);
-TracingConsumer<K, V> tracingConsumer = kafkaTracing.consumer(consumer);
+Consumer<K, V> tracingConsumer = kafkaTracing.consumer(consumer);
 tracingConsumer.poll(10);
 ```
 
@@ -103,6 +102,37 @@ to trace manually or you can do similar via automatic instrumentation like Aspec
 }
 ```
 
+## Single Root Span on Consumer
+
+When a Tracing Kafka Consumer is processing records that do not have trace-context (i.e. Producer is not tracing)
+it will reuse the same root span `poll` to group all processing of records returned.
+
+```
+trace 1:
+poll
+|- processing1
+|- processing2
+...
++- processing N
+```
+
+If this is not the desired behavior, users can customize it by setting `singleRootSpanOnReceiveBatch` to `false`.
+This will create a root span `poll` for each record received.
+
+```
+trace 1:
+poll
++- processing1
+
+trace 2:
+poll
++- processing2
+...
+trace N:
+poll
++- processing N
+```
+
 ## Notes
 * This tracer is only compatible with Kafka versions including headers support ( > 0.11.0).
-* More information about "Message Tracing" [here](https://github.com/apache/incubator-zipkin-website/blob/master/pages/instrumenting.md#message-tracing)
+* More information about "Message Tracing" [here](https://github.com/openzipkin/openzipkin.github.io/wiki/Messaging-instrumentation-abstraction)

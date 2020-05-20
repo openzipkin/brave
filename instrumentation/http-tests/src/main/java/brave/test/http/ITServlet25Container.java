@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,12 +15,12 @@ package brave.test.http;
 
 import brave.Tracer;
 import brave.http.HttpTracing;
-import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.TraceContext;
 import java.io.IOException;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
+import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
@@ -32,11 +32,15 @@ import okhttp3.Response;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.Test;
-import zipkin2.Span;
 
+import static brave.Span.Kind.SERVER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITServlet25Container extends ITServletContainer {
+
+  protected ITServlet25Container(ServletContainer.ServerController serverController) {
+    super(serverController);
+  }
 
   static class StatusServlet extends HttpServlet {
     final int status;
@@ -50,10 +54,10 @@ public abstract class ITServlet25Container extends ITServletContainer {
     }
   }
 
-  static class ExtraServlet extends HttpServlet {
+  static class BaggageServlet extends HttpServlet {
     @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp)
       throws IOException {
-      resp.getWriter().print(ExtraFieldPropagation.get(EXTRA_KEY));
+      resp.getWriter().print(BAGGAGE_FIELD.getValue());
     }
   }
 
@@ -71,9 +75,10 @@ public abstract class ITServlet25Container extends ITServletContainer {
   }
 
   static class ExceptionServlet extends HttpServlet {
-    @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-      throw new IOException(); // null exception message!
+    @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
+      // Change the status from 500 to 503
+      req.setAttribute(RequestDispatcher.ERROR_STATUS_CODE, 503);
+      throw NOT_READY_ISE;
     }
   }
 
@@ -106,8 +111,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
-      String extra = ExtraFieldPropagation.get(EXTRA_KEY);
-      ((HttpServletResponse) response).setHeader(EXTRA_KEY, extra);
+      ((HttpServletResponse) response).setHeader(BAGGAGE_FIELD_KEY, BAGGAGE_FIELD.getValue());
       chain.doFilter(request, response);
     }
 
@@ -121,14 +125,14 @@ public abstract class ITServlet25Container extends ITServletContainer {
     String path = "/foo";
 
     Request request = new Request.Builder().url(url(path))
-      .header(EXTRA_KEY, "abcdefg").build();
+      .header(BAGGAGE_FIELD_KEY, "abcdefg").build();
     try (Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isTrue();
-      assertThat(response.header(EXTRA_KEY))
+      assertThat(response.header(BAGGAGE_FIELD_KEY))
         .isEqualTo("abcdefg");
     }
 
-    takeSpan();
+    testSpanHandler.takeRemoteSpan(SERVER);
   }
 
   // copies the header to the response
@@ -140,8 +144,8 @@ public abstract class ITServlet25Container extends ITServletContainer {
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
       TraceContext context = (TraceContext) request.getAttribute("brave.propagation.TraceContext");
-      String extra = ExtraFieldPropagation.get(context, EXTRA_KEY);
-      ((HttpServletResponse) response).setHeader(EXTRA_KEY, extra);
+      String value = BAGGAGE_FIELD.getValue(context);
+      ((HttpServletResponse) response).setHeader(BAGGAGE_FIELD_KEY, value);
       chain.doFilter(request, response);
     }
 
@@ -155,14 +159,14 @@ public abstract class ITServlet25Container extends ITServletContainer {
     String path = "/foo";
 
     Request request = new Request.Builder().url(url(path))
-      .header(EXTRA_KEY, "abcdefg").build();
+      .header(BAGGAGE_FIELD_KEY, "abcdefg").build();
     try (Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isTrue();
-      assertThat(response.header(EXTRA_KEY))
-        .isEqualTo("abcdefg");
+      assertThat(response.header(BAGGAGE_FIELD_KEY))
+          .isEqualTo("abcdefg");
     }
 
-    takeSpan();
+    testSpanHandler.takeRemoteSpan(SERVER);
   }
 
   // Shows how a framework can layer on "http.route" logic
@@ -190,9 +194,8 @@ public abstract class ITServlet25Container extends ITServletContainer {
 
     get("/foo");
 
-    Span span = takeSpan();
-    assertThat(span.name())
-      .isEqualTo("get /foo");
+    assertThat(testSpanHandler.takeRemoteSpan(SERVER).name())
+      .isEqualTo("GET /foo");
   }
 
   Filter customHook = new Filter() {
@@ -219,8 +222,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
 
     get("/foo");
 
-    Span span = takeSpan();
-    assertThat(span.tags())
+    assertThat(testSpanHandler.takeRemoteSpan(SERVER).tags())
       .containsEntry("foo", "bar");
   }
 
@@ -229,7 +231,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
     // add servlets for the test resource
     handler.addServlet(new ServletHolder(new StatusServlet(404)), "/*");
     handler.addServlet(new ServletHolder(new StatusServlet(200)), "/foo");
-    handler.addServlet(new ServletHolder(new ExtraServlet()), "/extra");
+    handler.addServlet(new ServletHolder(new BaggageServlet()), "/baggage");
     handler.addServlet(new ServletHolder(new StatusServlet(400)), "/badrequest");
     handler.addServlet(new ServletHolder(new ChildServlet(httpTracing)), "/child");
     handler.addServlet(new ServletHolder(new ExceptionServlet()), "/exception");

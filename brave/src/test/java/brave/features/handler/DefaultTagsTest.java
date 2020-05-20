@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,11 +15,10 @@ package brave.features.handler;
 
 import brave.ScopedSpan;
 import brave.Tracing;
-import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.propagation.TraceContext;
-import java.util.ArrayList;
-import java.util.List;
+import brave.test.TestSpanHandler;
 import org.junit.After;
 import org.junit.Test;
 
@@ -31,10 +30,10 @@ import static org.assertj.core.api.Assertions.entry;
  * environment details that are not request-specific, such as region.
  */
 public class DefaultTagsTest {
-  List<zipkin2.Span> spans = new ArrayList<>();
+  TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing = Tracing.newBuilder()
-    .addFinishedSpanHandler(new FinishedSpanHandler() {
-      @Override public boolean handle(TraceContext context, MutableSpan span) {
+    .addSpanHandler(new SpanHandler() {
+      @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
         if (context.isLocalRoot()) {
           // pretend these are sourced from the environment
           span.tag("env", "prod");
@@ -43,7 +42,7 @@ public class DefaultTagsTest {
         return true;
       }
     })
-    .spanReporter(spans::add)
+    .addSpanHandler(spans)
     .build();
 
   @After public void close() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,12 +13,14 @@
  */
 package brave.spring.web3;
 
+import brave.Span;
 import brave.spring.web.TracingClientHttpRequestInterceptor;
 import brave.test.http.ITHttpClient;
 import java.util.Arrays;
 import java.util.Collections;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
@@ -42,8 +44,8 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     return configureClient(TracingClientHttpRequestInterceptor.create(httpTracing));
   }
 
-  @Override protected void closeClient(ClientHttpRequestFactory client) throws Exception {
-    ((HttpComponentsClientHttpRequestFactory) client).destroy();
+  @Override protected void closeClient(ClientHttpRequestFactory client) {
+    // unnecessary to cleanup as the IT runs in a sub-process
   }
 
   @Override protected void get(ClientHttpRequestFactory client, String pathIncludingQuery) {
@@ -58,7 +60,7 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     restTemplate.postForObject(url(uri), content, String.class);
   }
 
-  @Test public void currentSpanVisibleToUserInterceptors() throws Exception {
+  @Test public void currentSpanVisibleToUserInterceptors() throws InterruptedException {
     server.enqueue(new MockResponse());
 
     RestTemplate restTemplate = new RestTemplate(client);
@@ -73,16 +75,14 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     assertThat(request.getHeader("x-b3-traceId"))
       .isEqualTo(request.getHeader("my-id"));
 
-    takeSpan();
+    testSpanHandler.takeRemoteSpan(Span.Kind.CLIENT);
   }
 
-  @Override @Test(expected = AssertionError.class)
-  public void redirect() throws Exception { // blind to the implementation of redirects
-    super.redirect();
+  @Override @Ignore("blind to the implementation of redirects")
+  public void redirect() {
   }
 
-  @Override @Test(expected = AssertionError.class)
-  public void reportsServerAddress() throws Exception { // doesn't know the remote address
-    super.reportsServerAddress();
+  @Override @Ignore("doesn't know the remote address")
+  public void reportsServerAddress() {
   }
 }

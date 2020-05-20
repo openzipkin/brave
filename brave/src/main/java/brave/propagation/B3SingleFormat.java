@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,16 +13,13 @@
  */
 package brave.propagation;
 
-import brave.internal.HexCodec;
 import brave.internal.Nullable;
 import brave.internal.Platform;
+import brave.internal.RecyclableBuffers;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 
-import static brave.internal.HexCodec.writeHexLong;
-import static brave.internal.InternalPropagation.FLAG_DEBUG;
-import static brave.internal.InternalPropagation.FLAG_SAMPLED;
-import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
+import static brave.internal.codec.HexCodec.writeHexLong;
 
 /**
  * This format corresponds to the propagation key "b3" (or "B3"), which delimits fields in the
@@ -57,6 +54,13 @@ import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 public final class B3SingleFormat {
   static final int FORMAT_MAX_LENGTH = 32 + 1 + 16 + 3 + 16; // traceid128-spanid-1-parentid
 
+  static final int // instead of enum for smaller bytecode
+    FIELD_TRACE_ID_HIGH = 1,
+    FIELD_TRACE_ID = 2,
+    FIELD_SPAN_ID = 3,
+    FIELD_SAMPLED = 4,
+    FIELD_PARENT_SPAN_ID = 5;
+
   /**
    * Writes all B3 defined fields in the trace context, except {@link TraceContext#parentIdAsLong()
    * parent ID}, to a hyphen delimited string.
@@ -68,17 +72,17 @@ public final class B3SingleFormat {
    * with the client.
    */
   public static String writeB3SingleFormatWithoutParentId(TraceContext context) {
-    char[] buffer = getCharBuffer();
+    char[] buffer = RecyclableBuffers.parseBuffer();
     int length = writeB3SingleFormat(context, 0L, buffer);
     return new String(buffer, 0, length);
   }
 
   /**
-   * Like {@link #writeB3SingleFormatWithoutParentId(TraceContext)}, but for carriers with byte
+   * Like {@link #writeB3SingleFormatWithoutParentId(TraceContext)}, but for requests with byte
    * array or byte buffer values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
    */
   public static byte[] writeB3SingleFormatWithoutParentIdAsBytes(TraceContext context) {
-    char[] buffer = getCharBuffer();
+    char[] buffer = RecyclableBuffers.parseBuffer();
     int length = writeB3SingleFormat(context, 0L, buffer);
     return asciiToNewByteArray(buffer, length);
   }
@@ -92,17 +96,17 @@ public final class B3SingleFormat {
    * reuses a client's span ID, prefer {@link #writeB3SingleFormatWithoutParentId(TraceContext)}.
    */
   public static String writeB3SingleFormat(TraceContext context) {
-    char[] buffer = getCharBuffer();
+    char[] buffer = RecyclableBuffers.parseBuffer();
     int length = writeB3SingleFormat(context, context.parentIdAsLong(), buffer);
     return new String(buffer, 0, length);
   }
 
   /**
-   * Like {@link #writeB3SingleFormat(TraceContext)}, but for carriers with byte array or byte
+   * Like {@link #writeB3SingleFormat(TraceContext)}, but for requests with byte array or byte
    * buffer values. For example, {@link ByteBuffer#wrap(byte[])} can wrap the result.
    */
   public static byte[] writeB3SingleFormatAsBytes(TraceContext context) {
-    char[] buffer = getCharBuffer();
+    char[] buffer = RecyclableBuffers.parseBuffer();
     int length = writeB3SingleFormat(context, context.parentIdAsLong(), buffer);
     return asciiToNewByteArray(buffer, length);
   }
@@ -140,94 +144,134 @@ public final class B3SingleFormat {
   }
 
   /**
-   * @param beginIndex the start index, inclusive
-   * @param endIndex the end index, exclusive
+   * This reads a trace context a sequence potentially larger than the format. The use-case is
+   * reducing garbage, by re-using the input {@code value} across multiple parse operations.
+   *
+   * @param value the sequence that contains a B3 single formatted trace context
+   * @param beginIndex the inclusive begin index: {@linkplain CharSequence#charAt(int) index} of the
+   * first character in B3 single format.
+   * @param endIndex the exclusive end index: {@linkplain CharSequence#charAt(int) index}
+   * <em>after</em> the last character in B3 single format.
    */
   @Nullable
-  public static TraceContextOrSamplingFlags parseB3SingleFormat(CharSequence b3, int beginIndex,
+  public static TraceContextOrSamplingFlags parseB3SingleFormat(CharSequence value, int beginIndex,
     int endIndex) {
-    if (beginIndex == endIndex) {
+    int length = endIndex - beginIndex;
+
+    if (length == 0) {
       Platform.get().log("Invalid input: empty", null);
       return null;
-    }
-
-    int pos = beginIndex;
-    if (pos + 1 == endIndex) { // possibly sampling flags
-      return tryParseSamplingFlags(b3, pos);
-    }
-
-    // At this point we minimally expect a traceId-spanId pair
-    if (endIndex < 16 + 1 + 16 /* traceid64-spanid */) {
-      Platform.get().log("Invalid input: truncated", null);
-      return null;
-    } else if (endIndex > FORMAT_MAX_LENGTH) {
+    } else if (length == 1) { // possibly sampling flags
+      SamplingFlags flags = tryParseSamplingFlags(value.charAt(beginIndex));
+      return flags != null ? TraceContextOrSamplingFlags.create(flags) : null;
+    } else if (length > FORMAT_MAX_LENGTH) {
       Platform.get().log("Invalid input: too long", null);
       return null;
     }
 
-    long traceIdHigh, traceId;
-    if (b3.charAt(pos + 32) == '-') {
-      traceIdHigh = tryParse16HexCharacters(b3, pos, endIndex);
-      pos += 16; // upper 64 bits of the trace ID
-      traceId = tryParse16HexCharacters(b3, pos, endIndex);
-    } else {
-      traceIdHigh = 0L;
-      traceId = tryParse16HexCharacters(b3, pos, endIndex);
-    }
-    pos += 16; // traceId
-
-    if (traceIdHigh == 0L && traceId == 0L) {
-      Platform.get().log("Invalid input: expected a 16 or 32 lower hex trace ID at offset 0", null);
-      return null;
-    }
-
-    if (isLowerHex(b3.charAt(pos))) {
-      Platform.get().log("Invalid input: trace ID is too long", null);
-      return null;
-    }
-
-    if (!checkHyphen(b3, pos++)) return null;
-
-    long spanId = tryParse16HexCharacters(b3, pos, endIndex);
-    if (spanId == 0L) {
-      Platform.get().log("Invalid input: expected a 16 lower hex span ID at offset {0}", pos, null);
-      return null;
-    }
-    pos += 16; // spanid
-
+    long traceIdHigh = 0L, traceId = 0L, spanId = 0L, parentId = 0L;
     int flags = 0;
-    long parentId = 0L;
-    if (endIndex > pos) {
-      if (isLowerHex(b3.charAt(pos))) {
-        Platform.get().log("Invalid input: span ID is too long", null);
+
+    // Assume it is a 128-bit trace ID and revise back as necessary
+    int currentField = FIELD_TRACE_ID_HIGH, currentFieldLength = 0;
+    // Used for hex-decoding, performed by bitwise addition
+    long buffer = 0L;
+
+    // Instead of pos < endIndex, this uses pos <= endIndex to keep field processing consolidated.
+    // Otherwise, we'd have to process again when outside the loop to handle dangling data on EOF.
+    for (int pos = beginIndex; pos <= endIndex; pos++) {
+      // treat EOF same as a hyphen for simplicity
+      boolean isEof = pos == endIndex;
+      char c = isEof ? '-' : value.charAt(pos);
+
+      if (c == '-') {
+        if (currentField == FIELD_SAMPLED) {
+          // The last field could be sampled or parent ID. Revise assumption if longer than 1 char.
+          if (isEof && currentFieldLength > 1) {
+            currentField = FIELD_PARENT_SPAN_ID;
+          }
+        } else if (currentField == FIELD_TRACE_ID_HIGH) {
+          // We reached a hyphen before the 17th hex character. This means it is a 64-bit trace ID.
+          currentField = FIELD_TRACE_ID;
+        }
+
+        if (!validateFieldLength(currentField, currentFieldLength)) {
+          return null;
+        }
+
+        switch (currentField) {
+          case FIELD_TRACE_ID:
+            traceId = buffer;
+
+            currentField = FIELD_SPAN_ID;
+            break;
+          case FIELD_SPAN_ID:
+            spanId = buffer;
+
+            // To handle malformed cases like below, it is easier to assume the next field is
+            // sampled and revert if later not vs peek to determine if it is sampled or parent ID.
+            // 'traceId-spanId--parentSpanId'
+            // 'traceId-spanId-'
+            currentField = FIELD_SAMPLED;
+            break;
+          case FIELD_SAMPLED:
+            SamplingFlags samplingFlags = tryParseSamplingFlags(value.charAt(pos - 1));
+            if (samplingFlags == null) return null;
+            flags = samplingFlags.flags;
+
+            currentField = FIELD_PARENT_SPAN_ID;
+            break;
+          case FIELD_PARENT_SPAN_ID:
+            parentId = buffer;
+
+            if (!isEof) {
+              Platform.get().log("Invalid input: more than 4 fields exist", null);
+              return null;
+            }
+
+            break;
+          default:
+            throw new AssertionError();
+        }
+
+        buffer = 0L;
+        currentFieldLength = 0;
+        continue;
+      }
+
+      // At this point, 'c' is not a hyphen
+
+      // When we get to a non-hyphen at position 16, we have a 128-bit trace ID.
+      if (currentField == FIELD_TRACE_ID_HIGH && currentFieldLength == 16) {
+        // No validation: traceIdHigh is all zeros when a 64-bit trace ID is encoded in 128-bits.
+        traceIdHigh = buffer;
+
+        // This character is the next hex. If it isn't, the next iteration will throw. Either way,
+        // reset so that we can capture the next 16 characters of the trace ID.
+        buffer = 0L;
+        currentField = FIELD_TRACE_ID;
+        currentFieldLength = 0;
+      }
+
+      currentFieldLength++;
+
+      // The rest of this is normal lower-hex decoding
+      buffer <<= 4;
+      if (c >= '0' && c <= '9') {
+        buffer |= c - '0';
+      } else if (c >= 'a' && c <= 'f') {
+        buffer |= c - 'a' + 10;
+      } else {
+        log(currentField, "Invalid input: only valid characters are lower-hex for {0}");
         return null;
       }
+    }
 
-      // If we are at this point, we have more than just traceId-spanId.
-      // If the sampling field is present, we'll have a delimiter 2 characters from now. Ex "-1"
-      // If it is absent, but a parent ID is (which is strange), we'll have at least 17 characters.
-      // Therefore, if we have less than two characters, the input is truncated.
-      if (endIndex == pos + 1) {
-        Platform.get().log("Invalid input: truncated", null);
-        return null;
-      }
-      if (!checkHyphen(b3, pos++)) return null;
-
-      // If our position is at the end of the string, or another delimiter is one character past our
-      // position, try to read sampled status.
-      boolean afterSampledField = notHexFollowsPos(b3, pos, endIndex);
-      if (endIndex == pos + 1 || afterSampledField) {
-        flags = parseFlags(b3, pos);
-        if (flags == 0) return null;
-        pos++; // consume the sampled status
-        if (afterSampledField && !checkHyphen(b3, pos++)) return null; // consume the delimiter
-      }
-
-      if (endIndex > pos || afterSampledField) {
-        // If we are at this point, we should have a parent ID, encoded as "[0-9a-f]{16}"
-        parentId = tryParseParentId(b3, pos, endIndex);
-        if (parentId == 0L) return null;
-      }
+    // Since we are using a hidden constructor, we need to validate here.
+    if ((traceIdHigh == 0L && traceId == 0L) || spanId == 0L) {
+      int field = spanId == 0L ? FIELD_SPAN_ID : FIELD_TRACE_ID;
+      log(field, "Invalid input: read all zeros {0}");
+      return null;
     }
 
     return TraceContextOrSamplingFlags.create(new TraceContext(
@@ -241,68 +285,55 @@ public final class B3SingleFormat {
     ));
   }
 
-  /** Returns zero if truncated, malformed, or too big after logging */
-  static long tryParseParentId(CharSequence b3, int pos, int endIndex) {
-    if (endIndex < pos + 16) {
-      Platform.get().log("Invalid input: truncated", null);
-      return 0L;
+  @Nullable static SamplingFlags tryParseSamplingFlags(char sampledChar) {
+    switch (sampledChar) {
+      case '1':
+        return SamplingFlags.SAMPLED;
+      case '0':
+        return SamplingFlags.NOT_SAMPLED;
+      case 'd':
+        return SamplingFlags.DEBUG;
+      default:
+        log(FIELD_SAMPLED, "Invalid input: expected 0, 1 or d for {0}");
+        return null;
     }
+  }
 
-    long parentId = tryParse16HexCharacters(b3, pos, endIndex);
-    if (parentId == 0L) {
-      Platform.get()
-        .log("Invalid input: expected a 16 lower hex parent ID at offset {0}", pos, null);
-      return 0L;
+  static boolean validateFieldLength(int field, int length) {
+    int expectedLength = field == FIELD_SAMPLED ? 1 : 16;
+    if (length == 0) {
+      log(field, "Invalid input: empty {0}");
+      return false;
+    } else if (length < expectedLength) {
+      log(field, "Invalid input: {0} is too short");
+      return false;
+    } else if (length > expectedLength) {
+      log(field, "Invalid input: {0} is too long");
+      return false;
     }
+    return true;
+  }
 
-    pos += 16;
-    if (endIndex != pos) {
-      Platform.get().log("Invalid input: parent ID is too long", null);
-      return 0L;
+  static void log(int fieldCode, String s) {
+    String field;
+    switch (fieldCode) {
+      case FIELD_TRACE_ID_HIGH:
+      case FIELD_TRACE_ID:
+        field = "trace ID";
+        break;
+      case FIELD_SPAN_ID:
+        field = "span ID";
+        break;
+      case FIELD_SAMPLED:
+        field = "sampled";
+        break;
+      case FIELD_PARENT_SPAN_ID:
+        field = "parent ID";
+        break;
+      default:
+        throw new AssertionError("field code unmatched: " + fieldCode);
     }
-    return parentId;
-  }
-
-  static TraceContextOrSamplingFlags tryParseSamplingFlags(CharSequence b3, int pos) {
-    int flags = parseFlags(b3, pos);
-    if (flags == 0) return null;
-    return TraceContextOrSamplingFlags.create(SamplingFlags.toSamplingFlags(flags));
-  }
-
-  static boolean checkHyphen(CharSequence b3, int pos) {
-    if (b3.charAt(pos) == '-') return true;
-    Platform.get().log("Invalid input: expected a hyphen(-) delimiter at offset {0}", pos, null);
-    return false;
-  }
-
-  static boolean notHexFollowsPos(CharSequence b3, int pos, int end) {
-    return (end >= pos + 2) && !isLowerHex(b3.charAt(pos + 1));
-  }
-
-  static long tryParse16HexCharacters(CharSequence lowerHex, int index, int end) {
-    int endIndex = index + 16;
-    if (endIndex > end) return 0L;
-    return HexCodec.lenientLowerHexToUnsignedLong(lowerHex, index, endIndex);
-  }
-
-  static int parseFlags(CharSequence b3, int pos) {
-    int flags;
-    char sampledChar = b3.charAt(pos);
-    if (sampledChar == 'd') {
-      flags = FLAG_SAMPLED_SET | FLAG_SAMPLED | FLAG_DEBUG;
-    } else if (sampledChar == '1') {
-      flags = FLAG_SAMPLED_SET | FLAG_SAMPLED;
-    } else if (sampledChar == '0') {
-      flags = FLAG_SAMPLED_SET;
-    } else {
-      logInvalidSampled(pos);
-      flags = 0;
-    }
-    return flags;
-  }
-
-  static void logInvalidSampled(int pos) {
-    Platform.get().log("Invalid input: expected 0, 1 or d for sampled at offset {0}", pos, null);
+    Platform.get().log(s, field, null);
   }
 
   static byte[] asciiToNewByteArray(char[] buffer, int length) {
@@ -311,21 +342,6 @@ public final class B3SingleFormat {
       result[i] = (byte) buffer[i];
     }
     return result;
-  }
-
-  static final ThreadLocal<char[]> CHAR_BUFFER = new ThreadLocal<>();
-
-  static char[] getCharBuffer() {
-    char[] charBuffer = CHAR_BUFFER.get();
-    if (charBuffer == null) {
-      charBuffer = new char[FORMAT_MAX_LENGTH];
-      CHAR_BUFFER.set(charBuffer);
-    }
-    return charBuffer;
-  }
-
-  static boolean isLowerHex(char c) {
-    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
   }
 
   B3SingleFormat() {

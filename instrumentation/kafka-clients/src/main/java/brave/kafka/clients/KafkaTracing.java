@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,10 +17,12 @@ import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.Tracing;
+import brave.baggage.BaggagePropagation;
 import brave.messaging.MessagingRequest;
 import brave.messaging.MessagingTracing;
 import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
+import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -34,8 +36,21 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 
+import static brave.kafka.clients.KafkaHeaders.lastStringHeader;
+
 /** Use this class to decorate your Kafka consumer / producer and enable Tracing. */
 public final class KafkaTracing {
+  /** Used for local message processors in {@link KafkaTracing#nextSpan(ConsumerRecord)}. */
+  static final Getter<Headers, String> GETTER = new Getter<Headers, String>() {
+    @Override public String get(Headers request, String key) {
+      return lastStringHeader(request, key);
+    }
+
+    @Override public String toString() {
+      return "Headers::lastHeader";
+    }
+  };
+
   public static KafkaTracing create(Tracing tracing) {
     return newBuilder(tracing).build();
   }
@@ -54,13 +69,25 @@ public final class KafkaTracing {
     return new Builder(messagingTracing);
   }
 
+  /** @since 5.10 **/
+  public Builder toBuilder() {
+    return new Builder(this);
+  }
+
   public static final class Builder {
     final MessagingTracing messagingTracing;
     String remoteServiceName = "kafka";
+    boolean singleRootSpanOnReceiveBatch = true;
 
     Builder(MessagingTracing messagingTracing) {
       if (messagingTracing == null) throw new NullPointerException("messagingTracing == null");
       this.messagingTracing = messagingTracing;
+    }
+
+    Builder(KafkaTracing kafkaTracing) {
+      this.messagingTracing = kafkaTracing.messagingTracing;
+      this.remoteServiceName = kafkaTracing.remoteServiceName;
+      this.singleRootSpanOnReceiveBatch = kafkaTracing.singleRootSpanOnReceiveBatch;
     }
 
     /**
@@ -69,6 +96,20 @@ public final class KafkaTracing {
      */
     public Builder remoteServiceName(String remoteServiceName) {
       this.remoteServiceName = remoteServiceName;
+      return this;
+    }
+
+    /**
+     * Controls the sharing of a {@code poll} span for incoming spans with no trace context.
+     *
+     * <p>If true, all the spans received in a poll batch that do not have trace-context will be
+     * added to a single new {@code poll} root span. Otherwise, a {@code poll} span will be created
+     * for each such message.
+     *
+     * @since 5.10
+     */
+    public Builder singleRootSpanOnReceiveBatch(boolean singleRootSpanOnReceiveBatch) {
+      this.singleRootSpanOnReceiveBatch = singleRootSpanOnReceiveBatch;
       return this;
     }
 
@@ -92,23 +133,31 @@ public final class KafkaTracing {
   final Extractor<Headers> processorExtractor;
   final Injector<KafkaProducerRequest> producerInjector;
   final Injector<KafkaConsumerRequest> consumerInjector;
-  final SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
   final Set<String> propagationKeys;
+  final TraceContextOrSamplingFlags emptyExtraction;
+  final SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
   final String remoteServiceName;
+  final boolean singleRootSpanOnReceiveBatch;
 
   KafkaTracing(Builder builder) { // intentionally hidden constructor
     this.messagingTracing = builder.messagingTracing;
     this.tracer = builder.messagingTracing.tracing().tracer();
     Propagation<String> propagation = messagingTracing.tracing().propagation();
-    this.producerExtractor = propagation.extractor(KafkaProducerRequest::getHeader);
-    this.consumerExtractor = propagation.extractor(KafkaConsumerRequest::getHeader);
-    this.processorExtractor = propagation.extractor(KafkaPropagation.GETTER);
-    this.producerInjector = propagation.injector(KafkaProducerRequest::setHeader);
-    this.consumerInjector = propagation.injector(KafkaConsumerRequest::setHeader);
+    this.producerExtractor = propagation.extractor(KafkaProducerRequest.GETTER);
+    this.consumerExtractor = propagation.extractor(KafkaConsumerRequest.GETTER);
+    this.processorExtractor = propagation.extractor(GETTER);
+    this.producerInjector = propagation.injector(KafkaProducerRequest.SETTER);
+    this.consumerInjector = propagation.injector(KafkaConsumerRequest.SETTER);
     this.producerSampler = messagingTracing.producerSampler();
     this.consumerSampler = messagingTracing.consumerSampler();
-    this.propagationKeys = new LinkedHashSet<>(propagation.keys());
     this.remoteServiceName = builder.remoteServiceName;
+    this.singleRootSpanOnReceiveBatch = builder.singleRootSpanOnReceiveBatch;
+
+    this.propagationKeys = new LinkedHashSet<>(propagation.keys());
+    this.propagationKeys.addAll(BaggagePropagation.allKeyNames(propagation));
+
+    // When baggage or similar is in use, the result != TraceContextOrSamplingFlags.EMPTY
+    this.emptyExtraction = propagation.extractor((c, k) -> null).extract(Boolean.TRUE);
   }
 
   /** @since 5.9 exposed for Kafka Streams tracing. */
@@ -156,7 +205,7 @@ public final class KafkaTracing {
   ) {
     TraceContextOrSamplingFlags extracted = extractor.extract(request);
     // Clear any propagation keys present in the headers
-    if (!extracted.equals(TraceContextOrSamplingFlags.EMPTY)) {
+    if (!extracted.equals(emptyExtraction)) {
       clearHeaders(headers);
     }
     return extracted;

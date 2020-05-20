@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,8 +13,8 @@
  */
 package brave;
 
-import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.Platform;
@@ -40,7 +40,7 @@ import static brave.internal.InternalPropagation.FLAG_SAMPLED;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_LOCAL;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 import static brave.internal.InternalPropagation.FLAG_SHARED;
-import static brave.internal.Lists.concatImmutableLists;
+import static brave.internal.collect.Lists.concat;
 import static brave.propagation.SamplingFlags.EMPTY;
 import static brave.propagation.SamplingFlags.NOT_SAMPLED;
 import static brave.propagation.SamplingFlags.SAMPLED;
@@ -86,10 +86,9 @@ import static brave.propagation.SamplingFlags.SAMPLED;
  * @see Propagation
  */
 public class Tracer {
-
   final Clock clock;
   final Propagation.Factory propagationFactory;
-  final FinishedSpanHandler finishedSpanHandler;
+  final SpanHandler spanHandler; // only for toString
   final PendingSpans pendingSpans;
   final Sampler sampler;
   final CurrentTraceContext currentTraceContext;
@@ -99,7 +98,7 @@ public class Tracer {
   Tracer(
     Clock clock,
     Propagation.Factory propagationFactory,
-    FinishedSpanHandler finishedSpanHandler,
+    SpanHandler spanHandler,
     PendingSpans pendingSpans,
     Sampler sampler,
     CurrentTraceContext currentTraceContext,
@@ -110,7 +109,7 @@ public class Tracer {
   ) {
     this.clock = clock;
     this.propagationFactory = propagationFactory;
-    this.finishedSpanHandler = finishedSpanHandler;
+    this.spanHandler = spanHandler;
     this.pendingSpans = pendingSpans;
     this.sampler = sampler;
     this.currentTraceContext = currentTraceContext;
@@ -130,7 +129,7 @@ public class Tracer {
     return new Tracer(
       clock,
       propagationFactory,
-      finishedSpanHandler,
+      spanHandler,
       pendingSpans,
       sampler,
       currentTraceContext,
@@ -148,7 +147,7 @@ public class Tracer {
    * #nextSpan()}.
    */
   public Span newTrace() {
-    return _toSpan(newRootContext(0));
+    return _toSpan(null, newRootContext(0));
   }
 
   /**
@@ -180,12 +179,23 @@ public class Tracer {
    */
   public final Span joinSpan(TraceContext context) {
     if (context == null) throw new NullPointerException("context == null");
-    long parentId = context.parentIdAsLong(), spanId = context.spanId();
-    if (!supportsJoin) {
-      parentId = context.spanId();
-      spanId = 0L;
+    if (!supportsJoin) return newChild(context);
+
+    // set shared flag if not already done
+    int flags = InternalPropagation.instance.flags(context);
+    if (!context.shared()) {
+      flags |= FLAG_SHARED;
+      return toSpan(context, InternalPropagation.instance.withFlags(context, flags));
+    } else {
+      flags &= ~FLAG_SHARED;
+      return toSpan(InternalPropagation.instance.withFlags(context, flags), context);
     }
-    return _toSpan(decorateContext(context, parentId, spanId));
+  }
+
+  /** Returns an equivalent context if exists in the pending map */
+  TraceContext swapForPendingContext(TraceContext context) {
+    PendingSpan pendingSpan = pendingSpans.get(context);
+    return pendingSpan != null ? pendingSpan.context() : null;
   }
 
   /**
@@ -197,10 +207,11 @@ public class Tracer {
    */
   public Span newChild(TraceContext parent) {
     if (parent == null) throw new NullPointerException("parent == null");
-    return _toSpan(decorateContext(parent, parent.spanId(), 0L));
+    return _toSpan(parent, decorateContext(parent, parent.spanId()));
   }
 
   TraceContext newRootContext(int flags) {
+    flags &= ~FLAG_SHARED; // cannot be shared if we aren't reusing the span ID
     return decorateContext(flags, 0L, 0L, 0L, 0L, 0L, Collections.emptyList());
   }
 
@@ -212,16 +223,16 @@ public class Tracer {
    * implies the {@link TraceContext#localRootId()} could be zero, if the context was manually
    * created.
    */
-  TraceContext decorateContext(TraceContext parent, long parentId, long spanId) {
+  TraceContext decorateContext(TraceContext parent, long parentId) {
     int flags = InternalPropagation.instance.flags(parent);
-    if (spanId != 0L) flags |= FLAG_SHARED;
+    flags &= ~FLAG_SHARED; // cannot be shared if we aren't reusing the span ID
     return decorateContext(
       flags,
       parent.traceIdHigh(),
       parent.traceId(),
       parent.localRootId(),
       parentId,
-      spanId,
+      0L,
       parent.extra()
     );
   }
@@ -230,7 +241,7 @@ public class Tracer {
    * Creates a trace context object holding the below fields. When fields such as span ID are
    * absent, they will be backfilled. Then, any missing state managed by the tracer are applied,
    * such as the "local root". Finally, decoration hooks apply to ensure any propagation state are
-   * added to the "extra" section of the result. This supports functionality like extra field
+   * added to the "extra" section of the result. This supports functionality like baggage
    * propagation.
    *
    * <p>All parameters except span ID can be empty in the case of a new root span.
@@ -241,7 +252,7 @@ public class Tracer {
    * @param localRootId Zero is a new local root. Otherwise, {@link TraceContext#localRootId()}.
    * @param parentId Same as {@link TraceContext#parentIdAsLong()}.
    * @param spanId When non-zero this is a shared span. See {@link TraceContext#spanId()}.
-   * @param extra Any incoming {@link TraceContext#extra() extra fields}.
+   * @param extra Any additional {@link TraceContext#extra() propagated state}.
    * @return a decorated, sampled context with local root information applied.
    */
   TraceContext decorateContext(
@@ -322,7 +333,7 @@ public class Tracer {
 
     TraceIdContext traceIdContext = extracted.traceIdContext();
     if (traceIdContext != null) {
-      return _toSpan(decorateContext(
+      return _toSpan(null, decorateContext(
         InternalPropagation.instance.flags(extracted.traceIdContext()),
         traceIdContext.traceIdHigh(),
         traceIdContext.traceId(),
@@ -336,46 +347,72 @@ public class Tracer {
     SamplingFlags samplingFlags = extracted.samplingFlags();
     List<Object> extra = extracted.extra();
 
-    TraceContext implicitParent = currentTraceContext.get();
+    TraceContext parent = currentTraceContext.get();
     int flags;
     long traceIdHigh = 0L, traceId = 0L, localRootId = 0L, spanId = 0L;
-    if (implicitParent != null) {
+    if (parent != null) {
       // At this point, we didn't extract trace IDs, but do have a trace in progress. Since typical
       // trace sampling is up front, we retain the decision from the parent.
-      flags = InternalPropagation.instance.flags(implicitParent);
-      traceIdHigh = implicitParent.traceIdHigh();
-      traceId = implicitParent.traceId();
-      localRootId = implicitParent.localRootId();
-      spanId = implicitParent.spanId();
-      extra = concatImmutableLists(extra, implicitParent.extra());
+      flags = InternalPropagation.instance.flags(parent);
+      traceIdHigh = parent.traceIdHigh();
+      traceId = parent.traceId();
+      localRootId = parent.localRootId();
+      spanId = parent.spanId();
+      extra = concat(extra, parent.extra());
     } else {
       flags = InternalPropagation.instance.flags(samplingFlags);
     }
-    return _toSpan(decorateContext(flags, traceIdHigh, traceId, localRootId, spanId, 0L, extra));
+    return _toSpan(parent,
+      decorateContext(flags, traceIdHigh, traceId, localRootId, spanId, 0L, extra));
   }
 
-  /** Converts the context to a Span object after decorating it for propagation */
+  /**
+   * Converts the context to a Span object after decorating it for propagation.
+   *
+   * <p>This api is not advised for routine use. It is better to hold a reference to a span created
+   * elsewhere vs rely on implicit lookups.
+   */
   public Span toSpan(TraceContext context) {
-    if (context == null) throw new NullPointerException("context == null");
-    if (isDecorated(context)) return _toSpan(context);
+    return toSpan(null, context);
+  }
 
-    return _toSpan(decorateContext(
+  Span toSpan(@Nullable TraceContext parent, TraceContext context) {
+    // Re-use a pending context if present: This ensures reference consistency on Span.context()
+    TraceContext pendingContext = swapForPendingContext(context);
+    if (pendingContext != null) return _toSpan(parent, pendingContext);
+
+    // There are a few known scenarios for the context to be absent from the pending map:
+    // * Created by a separate tracer (localRootId set)
+    // * Recreating the same trace context after it was garbage collected (localRootId set)
+    // * Ad-hoc usage of TraceContext.Builder (localRootId not set, as only settable internally)
+    //
+    // The first two scenarios are currently indistinguishable from each other. If we had a way to
+    // tell if the current tracer already decorated the context, we could avoid re-decorating it
+    // in the case of recreation. This is an edge case anyway and decoration should be idempotent.
+    // Hence, we decorate unconditionally here.
+    TraceContext decorated = decorateContext(
       InternalPropagation.instance.flags(context),
       context.traceIdHigh(),
       context.traceId(),
-      context.localRootId(),
+      parent != null ? context.localRootId() : 0L, // we are now a local root
       context.parentIdAsLong(),
       context.spanId(),
       context.extra()
-    ));
+    );
+
+    return _toSpan(parent, decorated);
   }
 
-  Span _toSpan(TraceContext decorated) {
-    if (isNoop(decorated)) return new NoopSpan(decorated);
+  Span _toSpan(@Nullable TraceContext parent, TraceContext context) {
+    if (isNoop(context)) return new NoopSpan(context);
+
     // allocate a mutable span in case multiple threads call this method.. they'll use the same data
-    PendingSpan pendingSpan = pendingSpans.getOrCreate(decorated, false);
-    return new RealSpan(decorated, pendingSpans, pendingSpan.state(), pendingSpan.clock(),
-      finishedSpanHandler);
+    PendingSpan pendingSpan = pendingSpans.getOrCreate(parent, context, false);
+    TraceContext pendingContext = pendingSpan.context();
+    // A lost race of Tracer.toSpan(context) is the only known situation where "context" won't be
+    // the same as pendingSpan.context()
+    if (pendingContext != null) context = pendingContext;
+    return new RealSpan(context, pendingSpans, pendingSpan.state(), pendingSpan.clock());
   }
 
   /**
@@ -449,11 +486,6 @@ public class Tracer {
   @Nullable public Span currentSpan() {
     TraceContext context = currentTraceContext.get();
     if (context == null) return null;
-    if (!isDecorated(context)) { // It wasn't initialized by our tracer, so we must decorate.
-      context = decorateContext(context, context.parentIdAsLong(), context.spanId());
-    }
-    if (isNoop(context)) return new NoopSpan(context);
-
     // Returns a lazy span to reduce overhead when tracer.currentSpan() is invoked just to see if
     // one exists, or when the result is never used.
     return new LazySpan(this, context);
@@ -489,7 +521,7 @@ public class Tracer {
    * }</pre>
    */
   public ScopedSpan startScopedSpan(String name) {
-    return startScopedSpanWithParent(name, null);
+    return startScopedSpanWithParent(name, currentTraceContext.get());
   }
 
   /**
@@ -504,7 +536,8 @@ public class Tracer {
    */
   public <T> ScopedSpan startScopedSpan(String name, SamplerFunction<T> samplerFunction, T arg) {
     if (name == null) throw new NullPointerException("name == null");
-    return newScopedSpan(name, nextContext(samplerFunction, arg));
+    TraceContext parent = currentTraceContext.get();
+    return newScopedSpan(parent, nextContext(samplerFunction, arg, parent), name);
   }
 
   /**
@@ -518,14 +551,30 @@ public class Tracer {
    * @since 5.8
    */
   public <T> Span nextSpan(SamplerFunction<T> samplerFunction, T arg) {
-    return _toSpan(nextContext(samplerFunction, arg));
+    TraceContext parent = currentTraceContext.get();
+    return _toSpan(parent, nextContext(samplerFunction, arg, parent));
   }
 
-  <T> TraceContext nextContext(SamplerFunction<T> samplerFunction, T arg) {
+  /**
+   * Like {@link #nextSpan(SamplerFunction, Object)} except this controls the parent context
+   * explicitly. This is useful when an invocation context is propagated manually, commonly the case
+   * with asynchronous client frameworks.
+   *
+   * @param samplerFunction invoked if there's no {@link CurrentTraceContext#get() current trace}
+   * @param arg parameter to {@link SamplerFunction#trySample(Object)}
+   * @param parent of the new span, or {@code null} if it should have no parent
+   * @see #nextSpan(SamplerFunction, Object)
+   * @since 5.10
+   */
+  public <T> Span nextSpanWithParent(SamplerFunction<T> samplerFunction, T arg,
+    @Nullable TraceContext parent) {
+    return _toSpan(parent, nextContext(samplerFunction, arg, parent));
+  }
+
+  <T> TraceContext nextContext(SamplerFunction<T> samplerFunction, T arg, TraceContext parent) {
     if (samplerFunction == null) throw new NullPointerException("samplerFunction == null");
     if (arg == null) throw new NullPointerException("arg == null");
-    TraceContext parent = currentTraceContext.get();
-    if (parent != null) return decorateContext(parent, parent.spanId(), 0L);
+    if (parent != null) return decorateContext(parent, parent.spanId());
 
     Boolean sampled = samplerFunction.trySample(arg);
     SamplingFlags flags = sampled != null ? (sampled ? SAMPLED : NOT_SAMPLED) : EMPTY;
@@ -541,21 +590,20 @@ public class Tracer {
   // this api is needed to make tools such as executors which need to carry the invocation context
   public ScopedSpan startScopedSpanWithParent(String name, @Nullable TraceContext parent) {
     if (name == null) throw new NullPointerException("name == null");
-    if (parent == null) parent = currentTraceContext.get();
     TraceContext context =
-      parent != null ? decorateContext(parent, parent.spanId(), 0L) : newRootContext(0);
-    return newScopedSpan(name, context);
+      parent != null ? decorateContext(parent, parent.spanId()) : newRootContext(0);
+    return newScopedSpan(parent, context, name);
   }
 
-  ScopedSpan newScopedSpan(String name, TraceContext context) {
+  ScopedSpan newScopedSpan(@Nullable TraceContext parent, TraceContext context, String name) {
     Scope scope = currentTraceContext.newScope(context);
     if (isNoop(context)) return new NoopScopedSpan(context, scope);
 
-    PendingSpan pendingSpan = pendingSpans.getOrCreate(context, true);
+    PendingSpan pendingSpan = pendingSpans.getOrCreate(parent, context, true);
     Clock clock = pendingSpan.clock();
     MutableSpan state = pendingSpan.state();
     state.name(name);
-    return new RealScopedSpan(context, scope, state, clock, pendingSpans, finishedSpanHandler);
+    return new RealScopedSpan(context, scope, state, clock, pendingSpans);
   }
 
   /** A span remains in the scope it was bound to until close is called. */
@@ -583,24 +631,14 @@ public class Tracer {
     return "Tracer{"
       + (currentSpan != null ? ("currentSpan=" + currentSpan + ", ") : "")
       + (noop.get() ? "noop=true, " : "")
-      + "finishedSpanHandler=" + finishedSpanHandler
-      + "}";
+      + "spanHandler=" + spanHandler + "}";
   }
 
   boolean isNoop(TraceContext context) {
-    if (finishedSpanHandler == FinishedSpanHandler.NOOP || noop.get()) return true;
+    if (noop.get()) return true;
     int flags = InternalPropagation.instance.flags(context);
     if ((flags & FLAG_SAMPLED_LOCAL) == FLAG_SAMPLED_LOCAL) return false;
     return (flags & FLAG_SAMPLED) != FLAG_SAMPLED;
-  }
-
-  /**
-   * To save overhead, we shouldn't re-decorate a context on operations such as {@link
-   * #toSpan(TraceContext)} or {@link #currentSpan()}. As the {@link TraceContext#localRootId()} can
-   * only be set internally, we use this as a signal that we've already decorated.
-   */
-  static boolean isDecorated(TraceContext context) {
-    return context.localRootId() != 0L;
   }
 
   /** Generates a new 64-bit ID, taking care to dodge zero which can be confused with absent */

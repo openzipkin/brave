@@ -18,11 +18,15 @@ leak unfinished asynchronous spans.
 Here's an example Servlet 3+ listener
 ```java
 public class TracingServletContextListener implements ServletContextListener {
+  // Configure an async span handler, which controls how often spans are sent
+  //   (this dependency is io.zipkin.reporter2:zipkin-sender-okhttp3)
   Sender sender = OkHttpSender.create("http://127.0.0.1:9411/api/v2/spans");
-  AsyncReporter<Span> spanReporter = AsyncReporter.create(sender);
+  //   (this dependency is io.zipkin.reporter2:zipkin-reporter-brave)
+  ZipkinSpanHandler zipkinSpanHandler = AsyncZipkinSpanHandler.create(sender);
   Tracing tracing = Tracing.newBuilder()
-        .localServiceName("my-service-name")
-        .spanReporter(spanReporter).build();
+                   .localServiceName("my-service")
+                   .addSpanHandler(zipkinSpanHandler)
+                   .build();
 
   @Override
   public void contextInitialized(ServletContextEvent servletContextEvent) {
@@ -36,7 +40,7 @@ public class TracingServletContextListener implements ServletContextListener {
   public void contextDestroyed(ServletContextEvent servletContextEvent) {
     try {
       tracing.close(); // disables Tracing.current()
-      spanReporter.close(); // stops reporting thread and flushes data
+      zipkinSpanHandler.close(); // stops reporting thread and flushes data
       sender.close(); // closes any transport resources
     } catch (IOException e) {
       // do something real
@@ -65,11 +69,15 @@ that configures tracing, and add that to your web.xml.
 Here's an example implementation:
 ```java
 public class DelegatingTracingFilter implements Filter {
+  // Configure an async span handler, which controls how often spans are sent
+  //   (this dependency is io.zipkin.reporter2:zipkin-sender-okhttp3)
   Sender sender = OkHttpSender.create("http://127.0.0.1:9411/api/v2/spans");
-  AsyncReporter<Span> spanReporter = AsyncReporter.create(sender);
+  //   (this dependency is io.zipkin.reporter2:zipkin-reporter-brave)
+  ZipkinSpanHandler zipkinSpanHandler = AsyncZipkinSpanHandler.create(sender);
   Tracing tracing = Tracing.newBuilder()
         .localServiceName("my-service-name")
-        .spanReporter(spanReporter).build();
+        .addSpanHandler(zipkinSpanHandler)
+        .build();
   Filter delegate = TracingFilter.create(tracing);
 
   @Override
@@ -81,7 +89,7 @@ public class DelegatingTracingFilter implements Filter {
   @Override public void destroy() {
     try {
       tracing.close(); // disables Tracing.current()
-      spanReporter.close(); // stops reporting thread and flushes data
+      zipkinSpanHandler.close(); // stops reporting thread and flushes data
       sender.close(); // closes any transport resources
     } catch (IOException e) {
       // do something real
@@ -92,8 +100,9 @@ public class DelegatingTracingFilter implements Filter {
 
 ## Collaborating with `TracingFilter`
 
-`TracingFilter` sets the servlet attributes so that you can access span
-data without relying on implicit context:
+`TracingFilter` adds some utilities as request attributes, so that you
+can read the trace context or write span data with less coupling. These
+attributes have the same name as their corresponding Java types:
 * `brave.SpanCustomizer` - add tags or rename the span without a tracer
 * `brave.propagation.TraceContext` - shows trace IDs and any extra data
 
@@ -103,7 +112,18 @@ SpanCustomizer customizer = (SpanCustomizer) request.getAttribute(SpanCustomizer
 if (customizer != null) customizer.tag("platform", "XX");
 ```
 
-`TracingFilter` also looks for the attribute "http.route". When present,
-this is available to normal parsing, for example a route-base span name.
-This feature allows frameworks like spring-webmvc to contribute
-controller information with less code duplication.
+`TracingFilter` looks for request attributes when completing a span.
+When integrating higher level frameworks, set the following attributes:
+
+* "http.route" - A string representing the route which this request matched or
+                 "" (empty string), if there was no match. Ex "/users/{userId}"
+                 Only set "http.route" when routing is supported!
+* "error" - An instance of `Throwable` raised when processing a user handler.
+            This is only necessary when the error is not propagated to the
+            Servlet layer.
+
+Ex. To copy the Spring match pattern as the "http.route":
+```java
+Object httpRoute = request.getAttribute(BEST_MATCHING_PATTERN_ATTRIBUTE);
+request.setAttribute("http.route", httpRoute != null ? httpRoute.toString() : "");
+```

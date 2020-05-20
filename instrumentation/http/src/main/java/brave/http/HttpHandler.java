@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,59 +14,75 @@
 package brave.http;
 
 import brave.Span;
-import brave.internal.Nullable;
-import brave.propagation.CurrentTraceContext;
-import brave.propagation.CurrentTraceContext.Scope;
+import brave.internal.Platform;
+
+import static brave.internal.Throwables.propagateIfFatal;
 
 abstract class HttpHandler {
-  final CurrentTraceContext currentTraceContext;
-  final HttpParser parser;
+  /**
+   * To avoid passing null to signatures that use HttpAdapter, we use a dummy value when {@link
+   * HttpRequest#unwrap()} or {@link HttpResponse#unwrap()} return null.
+   */
+  static final Object NULL_SENTINEL = new Object();
 
-  HttpHandler(CurrentTraceContext currentTraceContext, HttpParser parser) {
-    this.currentTraceContext = currentTraceContext;
-    this.parser = parser;
+  final HttpRequestParser requestParser;
+  final HttpResponseParser responseParser;
+
+  HttpHandler(HttpRequestParser requestParser, HttpResponseParser responseParser) {
+    this.requestParser = requestParser;
+    this.responseParser = responseParser;
   }
 
-  <Req> Span handleStart(HttpAdapter<Req, ?> adapter, Req request, Span span) {
+  Span handleStart(HttpRequest request, Span span) {
     if (span.isNoop()) return span;
-    Scope ws = currentTraceContext.maybeScope(span.context());
-    try {
-      parseRequest(adapter, request, span);
-    } finally {
-      ws.close();
-    }
 
-    // all of the above parsing happened before a timestamp on the span
-    long timestamp = adapter.startTimestamp(request);
-    if (timestamp == 0L) {
-      span.start();
-    } else {
-      span.start(timestamp);
+    try {
+      parseRequest(request, span);
+    } catch (Throwable t) {
+      propagateIfFatal(t);
+      Platform.get().log("error parsing request {0}", request, t);
+    } finally {
+      // all of the above parsing happened before a timestamp on the span
+      long timestamp = request.startTimestamp();
+      if (timestamp == 0L) {
+        span.start();
+      } else {
+        span.start(timestamp);
+      }
     }
     return span;
   }
 
-  /** parses remote IP:port and tags while the span is in scope (for logging for example) */
-  abstract <Req> void parseRequest(HttpAdapter<Req, ?> adapter, Req request, Span span);
+  void parseRequest(HttpRequest request, Span span) {
+    span.kind(request.spanKind());
+    requestParser.parse(request, span.context(), span.customizer());
+  }
 
-  <Resp> void handleFinish(HttpAdapter<?, Resp> adapter, @Nullable Resp response,
-    @Nullable Throwable error, Span span) {
+  void parseResponse(HttpResponse response, Span span) {
+    responseParser.parse(response, span.context(), span.customizer());
+  }
+
+  void handleFinish(HttpResponse response, Span span) {
+    if (response == null) throw new NullPointerException("response == null");
+    if (span == null) throw new NullPointerException("span == null");
     if (span.isNoop()) return;
-    long finishTimestamp = response != null ? adapter.finishTimestamp(response) : 0L;
 
-    // Scope the trace context so that log statements are valid and also parse code can use
-    // Tracer.currentSpan() as necessary.
-    Scope ws = currentTraceContext.maybeScope(span.context());
+    if (response.error() != null) {
+      span.error(response.error()); // Ensures MutableSpan.error() for SpanHandler
+    }
+
     try {
-      parser.response(adapter, response, error, span.customizer());
+      parseResponse(response, span);
+    } catch (Throwable t) {
+      propagateIfFatal(t);
+      Platform.get().log("error parsing response {0}", response, t);
     } finally {
-      // See instrumentation/RATIONALE.md for why we call finish in scope
+      long finishTimestamp = response.finishTimestamp();
       if (finishTimestamp == 0L) {
         span.finish();
       } else {
         span.finish(finishTimestamp);
       }
-      ws.close();
     }
   }
 }

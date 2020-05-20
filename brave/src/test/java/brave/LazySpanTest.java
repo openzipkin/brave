@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,24 +14,24 @@
 package brave;
 
 import brave.propagation.CurrentTraceContext.Scope;
-import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
-import java.util.ArrayList;
-import java.util.List;
+import brave.propagation.TraceContextOrSamplingFlags;
+import brave.test.TestSpanHandler;
 import org.junit.After;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class LazySpanTest {
-  List<zipkin2.Span> spans = new ArrayList<>();
-  Tracing tracing = Tracing.newBuilder()
-    .currentTraceContext(ThreadLocalCurrentTraceContext.create())
-    .spanReporter(spans::add)
-    .build();
+  TestSpanHandler spans = new TestSpanHandler();
+  Tracing tracing = Tracing.newBuilder().addSpanHandler(spans).build();
 
   TraceContext context = tracing.tracer().newTrace().context();
   TraceContext context2 = tracing.tracer().newTrace().context();
+  TraceContext unsampledContext =
+    tracing.tracer().nextSpan(TraceContextOrSamplingFlags.NOT_SAMPLED).context();
+  TraceContext unsampledContext2 =
+    tracing.tracer().nextSpan(TraceContextOrSamplingFlags.NOT_SAMPLED).context();
 
   @After public void close() {
     tracing.close();
@@ -78,5 +78,23 @@ public class LazySpanTest {
     }
 
     assertThat(current).isNotEqualTo(tracing.tracer().toSpan(context2));
+  }
+
+  @Test public void equals_noopSpan_sameContext() {
+    Span current;
+    try (Scope ws = tracing.currentTraceContext().newScope(unsampledContext)) {
+      current = tracing.tracer().currentSpan();
+    }
+
+    assertThat(current).isEqualTo(tracing.tracer().toSpan(unsampledContext));
+  }
+
+  @Test public void equals_noopSpan_notSameContext() {
+    Span current;
+    try (Scope ws = tracing.currentTraceContext().newScope(unsampledContext)) {
+      current = tracing.tracer().currentSpan();
+    }
+
+    assertThat(current).isNotEqualTo(tracing.tracer().toSpan(unsampledContext2));
   }
 }

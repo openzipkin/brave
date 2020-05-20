@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,6 +14,7 @@
 package brave.context.jfr;
 
 import brave.internal.Nullable;
+import brave.baggage.BaggageFields;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import brave.propagation.TraceContext;
@@ -31,7 +32,7 @@ import jdk.jfr.Label;
  * <pre>{@code
  * tracing = Tracing.newBuilder()
  *                  .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
- *                    .addScopeDecorator(JfrScopeDecorator.create())
+ *                    .addScopeDecorator(JfrScopeDecorator.get())
  *                    .build()
  *                  )
  *                  ...
@@ -39,6 +40,17 @@ import jdk.jfr.Label;
  * }</pre>
  */
 public final class JfrScopeDecorator implements ScopeDecorator {
+  static final ScopeDecorator INSTANCE = new JfrScopeDecorator();
+
+  /**
+   * Returns a singleton that configures {@link BaggageFields#TRACE_ID} and {@link
+   * BaggageFields#SPAN_ID}.
+   *
+   * @since 5.11
+   */
+  public static ScopeDecorator get() {
+    return INSTANCE;
+  }
 
   @Category("Zipkin")
   @Label("Scope")
@@ -49,18 +61,21 @@ public final class JfrScopeDecorator implements ScopeDecorator {
     @Label("Span Id") String spanId;
   }
 
-  public static ScopeDecorator create() {
+  /** @deprecated since 5.11 use {@link #get()} */
+  @Deprecated public static ScopeDecorator create() {
     return new JfrScopeDecorator();
   }
 
-  @Override public Scope decorateScope(@Nullable TraceContext currentSpan, Scope scope) {
+  @Override public Scope decorateScope(@Nullable TraceContext context, Scope scope) {
+    if (scope == Scope.NOOP) return scope; // we only scope fields constant in the context
+
     ScopeEvent event = new ScopeEvent();
     if (!event.isEnabled()) return scope;
 
-    if (currentSpan != null) {
-      event.traceId = currentSpan.traceIdString();
-      event.parentId = currentSpan.parentIdString();
-      event.spanId = currentSpan.spanIdString();
+    if (context != null) {
+      event.traceId = context.traceIdString();
+      event.parentId = context.parentIdString();
+      event.spanId = context.spanIdString();
     }
 
     event.begin();

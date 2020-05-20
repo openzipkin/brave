@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,9 +13,16 @@
  */
 package brave.test.propagation;
 
+import brave.baggage.BaggageField;
+import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
 import brave.internal.Nullable;
+import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.CurrentTraceContext.ScopeDecorator;
+import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.test.util.ClassLoaders;
 import java.util.concurrent.Callable;
@@ -26,6 +33,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.Test;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadableWithSupplier;
@@ -34,22 +42,32 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 public abstract class CurrentTraceContextTest {
+  protected static final SingleCorrelationField CORRELATION_FIELD =
+    SingleCorrelationField.create(BaggageField.create("userId"));
+
+  Propagation.Factory baggageFactory = BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+    .add(SingleBaggageField.remote(CORRELATION_FIELD.baggageField())).build();
 
   protected final CurrentTraceContext currentTraceContext;
-  protected final TraceContext context =
-    TraceContext.newBuilder().traceIdHigh(-1L).traceId(1L).spanId(1L).sampled(true).build();
+  protected final TraceContext context = baggageFactory.decorate(
+    TraceContext.newBuilder().traceIdHigh(-1L).traceId(1L).spanId(1L).sampled(true).build()
+  );
   protected final TraceContext notYetSampledContext =
     TraceContext.newBuilder().traceId(2L).spanId(1L).build();
   protected final TraceContext unsampledContext =
     TraceContext.newBuilder().traceId(2L).spanId(2L).sampled(false).build();
 
-  protected abstract Class<? extends Supplier<CurrentTraceContext>> currentSupplier();
+  protected abstract Class<? extends Supplier<CurrentTraceContext.Builder>> builderSupplier();
 
   protected CurrentTraceContextTest() {
-    currentTraceContext = newInstance(currentSupplier(), getClass().getClassLoader()).get();
+    currentTraceContext = newBuilder().build();
   }
 
   protected void verifyImplicitContext(@Nullable TraceContext context) {
+  }
+
+  private CurrentTraceContext.Builder newBuilder() {
+    return newInstance(builderSupplier(), getClass().getClassLoader()).get();
   }
 
   @Test public void currentSpan_defaultsToNull() {
@@ -72,6 +90,68 @@ public abstract class CurrentTraceContextTest {
       verifyImplicitContext(context);
     } finally {
       scope.close();
+    }
+  }
+
+  @Test public void newScope_noticesDifferentBaggageField() {
+    try (Scope scope = currentTraceContext.newScope(context)) {
+      TraceContext differentBaggageField = context.toBuilder().build();
+      CORRELATION_FIELD.baggageField().updateValue(differentBaggageField, "foo");
+
+      try (Scope scope2 = currentTraceContext.newScope(differentBaggageField)) {
+        assertThat(scope2).isNotEqualTo(Scope.NOOP);
+        assertThat(currentTraceContext.get())
+          .isEqualTo(differentBaggageField);
+        verifyImplicitContext(differentBaggageField);
+      }
+    }
+  }
+
+  @Test public void ignoresNoopScopeDecorator() {
+    ScopeDecorator one = (context, scope) -> scope;
+
+    CurrentTraceContext shouldHaveOnlyOne = newBuilder()
+      .addScopeDecorator(ScopeDecorator.NOOP)
+      .addScopeDecorator(one).build();
+
+    assertThat(shouldHaveOnlyOne).extracting("scopeDecorators")
+      .asInstanceOf(InstanceOfAssertFactories.ARRAY)
+      .doesNotContain(ScopeDecorator.NOOP);
+  }
+
+  @Test public void newScope_decoratesWithDifferentScope() {
+    Scope differentScope = () -> {
+    };
+
+    CurrentTraceContext decoratesWithDifferentScope = newBuilder()
+      .addScopeDecorator((context, scope) -> differentScope).build();
+
+    try (Scope scope = decoratesWithDifferentScope.newScope(context)) {
+      assertThat(scope).isSameAs(differentScope);
+    }
+
+    try (Scope scope = decoratesWithDifferentScope.newScope(null)) {
+      assertThat(scope).isSameAs(differentScope);
+    }
+  }
+
+  @Test public void maybeScope_decoratesWithDifferentScope() {
+    Scope differentScope = () -> {
+    };
+
+    CurrentTraceContext decoratesWithDifferentScope = newBuilder()
+      .addScopeDecorator((context, scope) -> differentScope).build();
+
+    try (Scope noop = Scope.NOOP) {
+      try (Scope scope = decoratesWithDifferentScope.maybeScope(context)) {
+        assertThat(scope).isSameAs(differentScope);
+      }
+    }
+
+    try (Scope noop = Scope.NOOP) {
+      try (Scope scope = decoratesWithDifferentScope.maybeScope(null)) {
+        assertThat(scope).isSameAs(differentScope);
+      }
     }
   }
 
@@ -215,8 +295,7 @@ public abstract class CurrentTraceContextTest {
     Callable<?> callable;
     try (Scope scope = currentTraceContext.newScope(context)) {
       callable = currentTraceContext.wrap(() -> {
-        assertThat(currentTraceContext.get())
-          .isEqualTo(context);
+        assertThat(currentTraceContext.get()).isEqualTo(context);
         verifyImplicitContext(context);
         return true;
       });
@@ -240,7 +319,7 @@ public abstract class CurrentTraceContextTest {
     }
   }
 
-  @Test public void attachesSpanInRunnable() throws Exception {
+  @Test public void attachesSpanInRunnable() {
     Runnable runnable;
     try (Scope scope = currentTraceContext.newScope(context)) {
       runnable = currentTraceContext.wrap(() -> {
@@ -271,20 +350,22 @@ public abstract class CurrentTraceContextTest {
   }
 
   @Test public void unloadable_unused() {
-    assertRunIsUnloadableWithSupplier(Unused.class, currentSupplier());
+    assertRunIsUnloadableWithSupplier(Unused.class, builderSupplier());
   }
 
-  static class Unused extends ClassLoaders.ConsumerRunnable<CurrentTraceContext> {
-    @Override public void accept(CurrentTraceContext currentTraceContext) {
+  static class Unused extends ClassLoaders.ConsumerRunnable<CurrentTraceContext.Builder> {
+    @Override public void accept(CurrentTraceContext.Builder builder) {
+      builder.build();
     }
   }
 
   @Test public void unloadable_afterScopeClose() {
-    assertRunIsUnloadableWithSupplier(ClosedScope.class, currentSupplier());
+    assertRunIsUnloadableWithSupplier(ClosedScope.class, builderSupplier());
   }
 
-  static class ClosedScope extends ClassLoaders.ConsumerRunnable<CurrentTraceContext> {
-    @Override public void accept(CurrentTraceContext current) {
+  static class ClosedScope extends ClassLoaders.ConsumerRunnable<CurrentTraceContext.Builder> {
+    @Override public void accept(CurrentTraceContext.Builder builder) {
+      CurrentTraceContext current = builder.build();
       try (Scope ws = current.newScope(TraceContext.newBuilder().traceId(1L).spanId(2L).build())) {
       }
     }
@@ -297,7 +378,7 @@ public abstract class CurrentTraceContextTest {
   @SuppressWarnings("CheckReturnValue")
   @Test public void notUnloadable_whenScopeLeaked() {
     try {
-      assertRunIsUnloadableWithSupplier(LeakedScope.class, currentSupplier());
+      assertRunIsUnloadableWithSupplier(LeakedScope.class, builderSupplier());
       failBecauseExceptionWasNotThrown(AssertionError.class);
     } catch (AssertionError e) {
       // clear the leaked scope so other tests don't break
@@ -305,9 +386,9 @@ public abstract class CurrentTraceContextTest {
     }
   }
 
-  static class LeakedScope extends ClassLoaders.ConsumerRunnable<CurrentTraceContext> {
-    @Override public void accept(CurrentTraceContext current) {
-      current.newScope(TraceContext.newBuilder().traceId(1L).spanId(2L).build());
+  static class LeakedScope extends ClassLoaders.ConsumerRunnable<CurrentTraceContext.Builder> {
+    @Override public void accept(CurrentTraceContext.Builder builder) {
+      builder.build().newScope(TraceContext.newBuilder().traceId(1L).spanId(2L).build());
     }
   }
 }

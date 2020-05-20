@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,6 +15,8 @@ package brave.spring.beans;
 
 import brave.Tracing;
 import brave.rpc.RpcRequest;
+import brave.rpc.RpcRequestParser;
+import brave.rpc.RpcResponseParser;
 import brave.rpc.RpcTracing;
 import brave.rpc.RpcTracingCustomizer;
 import brave.sampler.SamplerFunction;
@@ -23,13 +25,18 @@ import org.springframework.beans.factory.FactoryBean;
 
 /** Spring XML config does not support chained builders. This converts accordingly */
 public class RpcTracingFactoryBean implements FactoryBean {
-
   Tracing tracing;
   SamplerFunction<RpcRequest> clientSampler, serverSampler;
+  RpcRequestParser clientRequestParser, serverRequestParser;
+  RpcResponseParser clientResponseParser, serverResponseParser;
   List<RpcTracingCustomizer> customizers;
 
   @Override public RpcTracing getObject() {
     RpcTracing.Builder builder = RpcTracing.newBuilder(tracing);
+    if (clientRequestParser != null) builder.clientRequestParser(clientRequestParser);
+    if (clientResponseParser != null) builder.clientResponseParser(clientResponseParser);
+    if (serverRequestParser != null) builder.serverRequestParser(serverRequestParser);
+    if (serverResponseParser != null) builder.serverResponseParser(serverResponseParser);
     if (clientSampler != null) builder.clientSampler(clientSampler);
     if (serverSampler != null) builder.serverSampler(serverSampler);
     if (customizers != null) {
@@ -48,6 +55,22 @@ public class RpcTracingFactoryBean implements FactoryBean {
 
   public void setTracing(Tracing tracing) {
     this.tracing = tracing;
+  }
+
+  public void setClientRequestParser(RpcRequestParser clientRequestParser) {
+    this.clientRequestParser = clientRequestParser;
+  }
+
+  public void setClientResponseParser(RpcResponseParser clientResponseParser) {
+    this.clientResponseParser = clientResponseParser;
+  }
+
+  public void setServerRequestParser(RpcRequestParser serverRequestParser) {
+    this.serverRequestParser = serverRequestParser;
+  }
+
+  public void setServerResponseParser(RpcResponseParser serverResponseParser) {
+    this.serverResponseParser = serverResponseParser;
   }
 
   public void setClientSampler(SamplerFunction<RpcRequest> clientSampler) {

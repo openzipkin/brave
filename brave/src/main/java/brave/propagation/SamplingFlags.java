@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -39,6 +39,10 @@ public class SamplingFlags {
       public TraceContext newTraceContext(int flags, long traceIdHigh, long traceId,
         long localRootId, long parentId, long spanId, List<Object> extra) {
         return new TraceContext(flags, traceIdHigh, traceId, localRootId, parentId, spanId, extra);
+      }
+
+      @Override public TraceContext shallowCopy(TraceContext context) {
+        return context.shallowCopy();
       }
 
       @Override public TraceContext withExtra(TraceContext context, List<Object> extra) {
@@ -106,13 +110,25 @@ public class SamplingFlags {
   }
 
   @Override public String toString() {
-    return "SamplingFlags(sampled="
-      + sampled()
-      + ", sampledLocal="
-      + sampledLocal()
-      + ", debug="
-      + debug()
-      + ")";
+    return toString(flags);
+  }
+
+  static String toString(int flags) {
+    StringBuilder result = new StringBuilder();
+    if ((flags & FLAG_DEBUG) == FLAG_DEBUG) {
+      result.append("DEBUG");
+    } else  if ((flags & FLAG_SAMPLED_SET) == FLAG_SAMPLED_SET) {
+      if ((flags & FLAG_SAMPLED) == FLAG_SAMPLED) {
+        result.append("SAMPLED_REMOTE");
+      } else {
+        result.append("NOT_SAMPLED_REMOTE");
+      }
+    }
+    if ((flags & FLAG_SAMPLED_LOCAL) == FLAG_SAMPLED_LOCAL) {
+      if (result.length() > 0) result.append('|');
+      result.append("SAMPLED_LOCAL");
+    }
+    return result.toString();
   }
 
   /** @deprecated prefer using constants. This will be removed in Brave v6 */

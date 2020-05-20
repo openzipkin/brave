@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright 2013-2019 The OpenZipkin Authors
+    Copyright 2013-2020 The OpenZipkin Authors
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
     in compliance with the License. You may obtain a copy of the License at
@@ -19,7 +19,7 @@
 
   <groupId>io.zipkin.brave</groupId>
   <artifactId>brave-parent</artifactId>
-  <version>5.9.1-SNAPSHOT</version>
+  <version>5.12.4-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Brave (parent)</name>
@@ -75,58 +75,58 @@
 
     <!-- override to set exclusions per-project -->
     <errorprone.args />
-    <errorprone.version>2.3.3</errorprone.version>
+    <errorprone.version>2.3.4</errorprone.version>
 
     <!-- use the same values in bom/pom.xml -->
-    <zipkin.version>2.19.0</zipkin.version>
-    <zipkin-reporter.version>2.11.0</zipkin-reporter.version>
+    <zipkin.version>2.21.1</zipkin.version>
+    <zipkin-reporter.version>2.15.0</zipkin-reporter.version>
 
     <!-- Ensure older versions of spring still work -->
-    <spring4.version>4.3.25.RELEASE</spring4.version>
+    <spring5.version>5.2.6.RELEASE</spring5.version>
     <spring.version>3.2.18.RELEASE</spring.version>
 
-    <!-- don't use apis not in jetty 7.6* else testing servlet 2.5 will imply duplication -->
-    <jetty.version>8.1.22.v20160922</jetty.version>
+    <!-- Apis used, but not in Jetty 7.6* imply duplication in servlet25 test fixtures -->
+    <!-- prefer sparkjava's jetty to reduce downloads -->
+    <jetty.version>9.4.28.v20200408</jetty.version>
     <jetty-servlet25.version>7.6.21.v20160908</jetty-servlet25.version>
     <!-- Note: 3.1.x requires Java 8; 3.0.20.Final is broken -->
-    <resteasy.version>3.6.2.Final</resteasy.version>
+    <resteasy.version>3.11.2.Final</resteasy.version>
 
-    <kafka.version>2.3.0</kafka.version>
+    <kafka.version>2.5.0</kafka.version>
     <!-- must align with kafka version https://github.com/charithe/kafka-junit -->
-    <kafka-junit.version>4.1.6</kafka-junit.version>
-    <activemq.version>5.15.10</activemq.version>
-    <spring-rabbit.version>1.7.14.RELEASE</spring-rabbit.version>
+    <kafka-junit.version>4.1.9</kafka-junit.version>
+    <activemq.version>5.15.12</activemq.version>
+    <spring-rabbit.version>2.2.6.RELEASE</spring-rabbit.version>
 
-    <finagle.version>19.9.0</finagle.version>
-    <log4j.version>2.12.1</log4j.version>
-    <okhttp.version>4.2.2</okhttp.version>
-    <httpclient.version>4.5.10</httpclient.version>
+    <finagle.version>20.4.1</finagle.version>
+    <log4j.version>2.13.2</log4j.version>
+    <okhttp.version>4.6.0</okhttp.version>
+    <httpclient.version>4.5.12</httpclient.version>
 
-    <grpc.version>1.23.0</grpc.version>
+    <grpc.version>1.29.0</grpc.version>
     <!-- prefer grpc's version of netty -->
-    <netty.version>4.1.38.Final</netty.version>
+    <netty.version>4.1.48.Final</netty.version>
 
     <sparkjava.version>2.9.1</sparkjava.version>
-    <junit.version>4.12</junit.version>
-    <assertj.version>3.13.2</assertj.version>
-    <powermock.version>2.0.2</powermock.version>
-    <!-- Up to v2.27.0 of mockito has a conflict https://github.com/mockito/mockito/issues/1606
-    java.lang.NoSuchMethodError: net.bytebuddy.dynamic.loading.MultipleParentClassLoader$Builder.appendMostSpecific(Ljava/util/Collection;)Lnet/bytebuddy/dynamic/loading/MultipleParentClassLoader$Builder
-    -->
-    <mockito.version>2.23.4</mockito.version>
-    <!-- last version on jax-rs 2.0 per https://jersey.github.io/download.html -->
-    <jersey.version>2.25.1</jersey.version>
-    <jmh.version>1.21</jmh.version>
+    <junit.version>4.13</junit.version>
+    <assertj.version>3.16.1</assertj.version>
+    <powermock.version>2.0.7</powermock.version>
+    <mockito.version>2.28.2</mockito.version>
+    <jersey.version>2.30.1</jersey.version>
+    <jmh.version>1.23</jmh.version>
+    <testcontainers.version>1.14.1</testcontainers.version>
 
     <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
     <maven-install-plugin.version>3.0.0-M1</maven-install-plugin.version>
     <maven-deploy-plugin.version>3.0.0-M1</maven-deploy-plugin.version>
-    <maven-source-plugin.version>3.1.0</maven-source-plugin.version>
-    <maven-javadoc-plugin.version>3.1.1</maven-javadoc-plugin.version>
-    <maven-jar-plugin.version>3.1.2</maven-jar-plugin.version>
-    <maven-shade-plugin.version>3.2.1</maven-shade-plugin.version>
-    <maven-failsafe-plugin.version>3.0.0-M3</maven-failsafe-plugin.version>
-    <maven-enforcer-plugin.version>3.0.0-M2</maven-enforcer-plugin.version>
+    <maven-release-plugin.version>3.0.0-M1</maven-release-plugin.version>
+    <maven-source-plugin.version>3.2.1</maven-source-plugin.version>
+    <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
+    <maven-jar-plugin.version>3.2.0</maven-jar-plugin.version>
+    <maven-shade-plugin.version>3.2.3</maven-shade-plugin.version>
+    <maven-failsafe-plugin.version>3.0.0-M4</maven-failsafe-plugin.version>
+    <maven-invoker-plugin.version>3.2.1</maven-invoker-plugin.version>
+    <maven-enforcer-plugin.version>3.0.0-M3</maven-enforcer-plugin.version>
     <maven-bundle-plugin.version>4.2.1</maven-bundle-plugin.version>
     <license-maven-plugin.version>3.0</license-maven-plugin.version>
   </properties>
@@ -232,7 +232,7 @@
       <dependency>
         <groupId>org.apache.httpcomponents</groupId>
         <artifactId>httpcore</artifactId>
-        <version>4.4.12</version>
+        <version>4.4.13</version>
       </dependency>
       <dependency>
         <groupId>org.apache.httpcomponents</groupId>
@@ -262,7 +262,7 @@
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
-        <version>1.7.28</version>
+        <version>1.7.30</version>
       </dependency>
       <dependency>
         <groupId>org.apache.logging.log4j</groupId>
@@ -382,9 +382,9 @@
         <plugin>
           <groupId>io.takari</groupId>
           <artifactId>maven</artifactId>
-          <version>0.7.6</version>
+          <version>0.7.7</version>
           <configuration>
-            <maven>3.6.2</maven>
+            <maven>3.6.3</maven>
           </configuration>
         </plugin>
 
@@ -446,7 +446,7 @@
         </plugin>
         <plugin>
           <artifactId>maven-invoker-plugin</artifactId>
-          <version>3.2.1</version>
+          <version>${maven-invoker-plugin.version}</version>
           <configuration>
             <cloneProjectsTo>${project.build.directory}/it</cloneProjectsTo>
             <settingsFile>${main.basedir}/src/it/settings.xml</settingsFile>
@@ -459,6 +459,7 @@
             <addTestClassPath>true</addTestClassPath>
             <skipInvocation>${skipTests}</skipInvocation>
             <streamLogs>true</streamLogs>
+            <mavenOpts>-Dorg.slf4j.simpleLogger.defaultLogLevel=WARN</mavenOpts>
           </configuration>
           <executions>
             <execution>
@@ -491,6 +492,16 @@
           <exclude>**/*.java</exclude>
         </excludes>
       </resource>
+      <!-- This adds the LICENSE and NOTICE file to the jar and -sources jar of each module -->
+      <resource>
+        <filtering>false</filtering>
+        <directory>${main.basedir}</directory>
+        <targetPath>META-INF/</targetPath>
+        <includes>
+          <include>LICENSE</include>
+          <include>NOTICE</include>
+        </includes>
+      </resource>
     </resources>
     <testResources>
       <testResource>
@@ -512,7 +523,7 @@
       <plugin>
         <groupId>net.orfjackal.retrolambda</groupId>
         <artifactId>retrolambda-maven-plugin</artifactId>
-        <version>2.5.6</version>
+        <version>2.5.7</version>
         <executions>
           <execution>
             <goals>
@@ -553,6 +564,8 @@
             <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager
             </java.util.logging.manager>
           </systemPropertyVariables>
+          <!-- Ensure scope leak cause ends up in the console -->
+          <trimStackTrace>false</trimStackTrace>
         </configuration>
       </plugin>
       <plugin>
@@ -565,6 +578,8 @@
             <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager
             </java.util.logging.manager>
           </systemPropertyVariables>
+          <!-- Ensure scope leak cause ends up in the console -->
+          <trimStackTrace>false</trimStackTrace>
         </configuration>
         <executions>
           <execution>
@@ -596,7 +611,7 @@
       </plugin>
       <plugin>
         <artifactId>maven-release-plugin</artifactId>
-        <version>2.5.3</version>
+        <version>${maven-release-plugin.version}</version>
         <configuration>
           <useReleaseProfile>false</useReleaseProfile>
           <releaseProfiles>release</releaseProfiles>
@@ -649,6 +664,7 @@
             <exclude>.editorconfig</exclude>
             <exclude>.gitattributes</exclude>
             <exclude>.gitignore</exclude>
+            <exclude>.mailmap</exclude>
             <exclude>.mvn/**</exclude>
             <exclude>mvnw*</exclude>
             <exclude>etc/header.txt</exclude>
@@ -656,6 +672,7 @@
             <exclude>**/.editorconfig</exclude>
             <exclude>**/log4j2.properties</exclude>
             <exclude>LICENSE</exclude>
+            <exclude>NOTICE</exclude>
             <exclude>**/*.md</exclude>
             <exclude>**/*.bnd</exclude>
             <exclude>**/com.alibaba.dubbo.rpc.Filter</exclude>
@@ -819,6 +836,31 @@
                 </configuration>
                 <goals>
                   <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>sonatype</id>
+      <distributionManagement>
+        <repository>
+          <id>sonatype</id>
+          <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+        </repository>
+      </distributionManagement>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>1.6</version>
+            <executions>
+              <execution>
+                <id>sign-release-artifacts</id>
+                <goals>
+                  <goal>sign</goal>
                 </goals>
               </execution>
             </executions>

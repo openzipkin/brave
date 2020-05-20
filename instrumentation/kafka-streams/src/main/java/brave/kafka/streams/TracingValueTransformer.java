@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,8 +18,9 @@ import brave.Tracer;
 import org.apache.kafka.streams.kstream.ValueTransformer;
 import org.apache.kafka.streams.processor.ProcessorContext;
 
-class TracingValueTransformer<V, VR> implements ValueTransformer<V, VR> {
+import static brave.internal.Throwables.propagateIfFatal;
 
+class TracingValueTransformer<V, VR> implements ValueTransformer<V, VR> {
   final KafkaStreamsTracing kafkaStreamsTracing;
   final Tracer tracer;
   final String spanName;
@@ -53,8 +54,9 @@ class TracingValueTransformer<V, VR> implements ValueTransformer<V, VR> {
     Throwable error = null;
     try {
       return delegateTransformer.transform(v);
-    } catch (RuntimeException | Error e) {
+    } catch (Throwable e) {
       error = e;
+      propagateIfFatal(e);
       throw e;
     } finally {
       // Inject this span so that the next stage uses it as a parent

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,33 +13,30 @@
  */
 package brave.http;
 
-import brave.ScopedSpan;
 import brave.SpanCustomizer;
 import brave.Tracing;
-import brave.http.HttpClientRequest.FromHttpAdapter;
-import brave.http.HttpClientRequest.ToHttpAdapter;
+import brave.handler.MutableSpan;
+import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
-import java.util.ArrayList;
-import java.util.List;
+import brave.test.IntegrationTestSpanHandler;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.MockitoJUnitRunner;
-import zipkin2.Span;
-import zipkin2.reporter.Reporter;
 
+import static brave.Span.Kind.CLIENT;
+import static brave.http.HttpHandler.NULL_SENTINEL;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Answers.CALLS_REAL_METHODS;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -47,138 +44,59 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class HttpClientHandlerTest {
-  List<Span> spans = new ArrayList<>();
-  @Mock HttpSampler sampler;
+  @Rule public IntegrationTestSpanHandler spanHandler = new IntegrationTestSpanHandler();
+
+  TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(1L).sampled(true).build();
+
   HttpTracing httpTracing;
-  HttpClientHandler<Object, Object> handler;
+  HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
 
-  @Spy HttpClientParser parser = new HttpClientParser();
-  @Mock HttpClientAdapter<Object, Object> adapter;
-  @Mock TraceContext.Injector<Object> injector;
-  @Mock Object request;
-  @Mock Object response;
-
-  @Mock SamplerFunction<HttpRequest> requestSampler;
-  HttpTracing defaultHttpTracing;
-  HttpClientHandler<HttpClientRequest, HttpClientResponse> defaultHandler;
-
-  @Mock(answer = CALLS_REAL_METHODS) HttpClientRequest defaultRequest;
-  @Mock(answer = CALLS_REAL_METHODS) HttpClientResponse defaultResponse;
+  @Mock(answer = CALLS_REAL_METHODS) HttpClientRequest request;
+  @Mock(answer = CALLS_REAL_METHODS) HttpClientResponse response;
 
   @Before public void init() {
-    httpTracing = HttpTracing.newBuilder(Tracing.newBuilder().spanReporter(spans::add).build())
-      .clientSampler(sampler).clientParser(parser).build();
-    handler = HttpClientHandler.create(httpTracing, adapter);
+    init(httpTracingBuilder(tracingBuilder()));
+    when(request.method()).thenReturn("GET");
+  }
 
-    defaultHttpTracing =
-      HttpTracing.newBuilder(Tracing.newBuilder().spanReporter(spans::add).build())
-        .clientSampler(requestSampler).clientParser(parser).build();
-    defaultHandler = HttpClientHandler.create(defaultHttpTracing);
+  void init(HttpTracing.Builder builder) {
+    close();
+    httpTracing = builder.build();
+    handler = HttpClientHandler.create(httpTracing);
+  }
 
-    when(adapter.method(request)).thenReturn("GET");
+  HttpTracing.Builder httpTracingBuilder(Tracing.Builder tracingBuilder) {
+    return HttpTracing.newBuilder(tracingBuilder.build());
+  }
 
-    when(defaultRequest.unwrap()).thenReturn(request);
-    when(defaultResponse.unwrap()).thenReturn(response);
+  Tracing.Builder tracingBuilder() {
+    return Tracing.newBuilder().addSpanHandler(spanHandler);
   }
 
   @After public void close() {
-    Tracing.current().close();
-  }
-
-  @Test public void handleStart_parsesTagsWithCustomizer() {
-    brave.Span span = mock(brave.Span.class);
-    brave.SpanCustomizer spanCustomizer = mock(brave.SpanCustomizer.class);
-    when(adapter.method(request)).thenReturn("GET");
-    when(span.customizer()).thenReturn(spanCustomizer);
-
-    handler.handleStart(adapter, request, span);
-
-    verify(spanCustomizer).name("GET");
-    verify(spanCustomizer).tag("http.method", "GET");
-    verifyNoMoreInteractions(spanCustomizer);
-  }
-
-  @Test public void handleSend_defaultsToMakeNewTrace() {
-    when(sampler.trySample(any(FromHttpAdapter.class))).thenReturn(null);
-
-    assertThat(handler.handleSend(injector, request))
-      .extracting(brave.Span::isNoop, s -> s.context().parentId())
-      .containsExactly(false, null);
-  }
-
-  @Test public void handleSend_makesAChild() {
-    ScopedSpan parent = httpTracing.tracing().tracer().startScopedSpan("test");
-    try {
-      assertThat(handler.handleSend(injector, request))
-        .extracting(brave.Span::isNoop, s -> s.context().parentId())
-        .containsExactly(false, parent.context().spanId());
-    } finally {
-      parent.finish();
-    }
-  }
-
-  @Test public void handleSend_makesRequestBasedSamplingDecision() {
-    // request sampler says false eventhough trace ID sampler would have said true
-    when(sampler.trySample(any(FromHttpAdapter.class))).thenReturn(false);
-
-    assertThat(handler.handleSend(injector, request).isNoop())
-      .isTrue();
-  }
-
-  @Test public void handleSend_injectsTheTraceContext() {
-    TraceContext context = handler.handleSend(injector, request).context();
-
-    verify(injector).inject(context, request);
-  }
-
-  @Test public void handleSend_injectsTheTraceContext_onTheCarrier() {
-    HttpClientRequest customCarrier = mock(HttpClientRequest.class);
-    TraceContext context = handler.handleSend(injector, customCarrier, request).context();
-
-    verify(injector).inject(context, customCarrier);
-  }
-
-  @Test public void handleSend_addsClientAddressWhenOnlyServiceName() {
-    when(sampler.trySample(any(FromHttpAdapter.class))).thenReturn(null);
-
-    httpTracing = httpTracing.clientOf("remote-service");
-
-    HttpClientHandler.create(httpTracing, adapter).handleSend(injector, request).finish();
-
-    assertThat(spans)
-      .extracting(Span::remoteServiceName)
-      .containsExactly("remote-service");
-  }
-
-  @Test public void handleSend_skipsClientAddressWhenUnparsed() {
-    when(sampler.trySample(any(FromHttpAdapter.class))).thenReturn(null);
-
-    handler.handleSend(injector, request).finish();
-
-    assertThat(spans)
-      .extracting(Span::remoteServiceName)
-      .containsNull();
+    Tracing current = Tracing.current();
+    if (current != null) current.close();
   }
 
   @Test public void externalTimestamps() {
-    when(requestSampler.trySample(defaultRequest)).thenReturn(null);
-    when(defaultRequest.startTimestamp()).thenReturn(123000L);
-    when(defaultResponse.finishTimestamp()).thenReturn(124000L);
+    when(request.startTimestamp()).thenReturn(123000L);
+    when(response.finishTimestamp()).thenReturn(124000L);
 
-    brave.Span span = defaultHandler.handleSend(defaultRequest);
-    defaultHandler.handleReceive(defaultResponse, null, span);
+    brave.Span span = handler.handleSend(request);
+    handler.handleReceive(response, span);
 
-    assertThat(spans.get(0).durationAsLong()).isEqualTo(1000L);
+    assertThat(spanHandler.takeRemoteSpan(CLIENT))
+        .extracting(MutableSpan::startTimestamp, MutableSpan::finishTimestamp)
+        .containsExactly(123000L, 124000L);
   }
 
   @Test public void handleSend_traceIdSamplerSpecialCased() {
     Sampler sampler = mock(Sampler.class);
 
-    defaultHandler = HttpClientHandler.create(HttpTracing.newBuilder(
-      Tracing.newBuilder().sampler(sampler).spanReporter(Reporter.NOOP).build()
-    ).clientSampler(SamplerFunctions.deferDecision()).build());
+    init(httpTracingBuilder(tracingBuilder().sampler(sampler))
+      .clientSampler(SamplerFunctions.deferDecision()));
 
-    assertThat(defaultHandler.handleSend(defaultRequest).isNoop()).isTrue();
+    assertThat(handler.handleSend(request).isNoop()).isTrue();
 
     verify(sampler).isSampled(anyLong());
   }
@@ -186,69 +104,183 @@ public class HttpClientHandlerTest {
   @Test public void handleSend_neverSamplerSpecialCased() {
     Sampler sampler = mock(Sampler.class);
 
-    defaultHandler = HttpClientHandler.create(HttpTracing.newBuilder(
-      Tracing.newBuilder().sampler(sampler).spanReporter(Reporter.NOOP).build())
-      .clientSampler(SamplerFunctions.neverSample()).build());
+    init(httpTracingBuilder(tracingBuilder().sampler(sampler))
+      .clientSampler(SamplerFunctions.neverSample()));
 
-    assertThat(defaultHandler.handleSend(defaultRequest).isNoop()).isTrue();
+    assertThat(handler.handleSend(request).isNoop()).isTrue();
 
     verifyNoMoreInteractions(sampler);
   }
 
   @Test public void handleSend_samplerSeesHttpClientRequest() {
-    defaultHandler.handleSend(defaultRequest);
+    SamplerFunction<HttpRequest> clientSampler = mock(SamplerFunction.class);
+    init(httpTracingBuilder(tracingBuilder()).clientSampler(clientSampler));
 
-    verify(requestSampler).trySample(defaultRequest);
+    handler.handleSend(request);
+
+    verify(clientSampler).trySample(request);
   }
 
-  @Test public void nextSpan_samplerSeesHttpClientRequest() {
-    defaultHandler.nextSpan(defaultRequest);
+  @Test public void handleSendWithParent_overrideContext() {
+    try (
+      CurrentTraceContext.Scope ws = httpTracing.tracing.currentTraceContext().newScope(context)) {
+      brave.Span span = handler.handleSendWithParent(request, null);
 
-    verify(requestSampler).trySample(defaultRequest);
+      // If the overwrite was successful, we have a root span.
+      assertThat(span.context().parentIdAsLong()).isZero();
+    }
   }
 
-  @Test public void nextSpan_samplerSeesUnwrappedType_oldHandler() {
-    when(sampler.trySample(defaultRequest)).thenReturn(null);
+  @Test public void handleSendWithParent_overrideNull() {
+    try (CurrentTraceContext.Scope ws = httpTracing.tracing.currentTraceContext().newScope(null)) {
+      brave.Span span = handler.handleSendWithParent(request, context);
 
-    handler.nextSpan(defaultRequest);
-
-    verify(sampler).trySample(defaultRequest);
+      // If the overwrite was successful, we have a child span.
+      assertThat(span.context().parentIdAsLong()).isEqualTo(context.spanId());
+    }
   }
 
-  @Test public void handleSend_parserSeesUnwrappedType() {
-    when(requestSampler.trySample(defaultRequest)).thenReturn(null);
+  @Test public void handleReceive_finishesSpanEvenIfUnwrappedNull() {
+    brave.Span span = mock(brave.Span.class);
+    when(span.context()).thenReturn(context);
+    when(span.customizer()).thenReturn(span);
 
-    brave.Span span = defaultHandler.handleSend(defaultRequest);
-    defaultHandler.handleReceive(defaultResponse, null, span);
+    handler.handleReceive(mock(HttpClientResponse.class), span);
 
-    verify(parser).request(any(ToHttpAdapter.class), eq(request), any(SpanCustomizer.class));
+    verify(span).isNoop();
+    verify(span).context();
+    verify(span).customizer();
+    verify(span).finish();
+    verifyNoMoreInteractions(span);
   }
 
-  @Test public void handleReceive_oldHandler() {
-    when(sampler.trySample(any(FromHttpAdapter.class))).thenReturn(null);
+  @Test public void handleReceive_finishesSpanEvenIfUnwrappedNull_withError() {
+    brave.Span span = mock(brave.Span.class);
+    when(span.context()).thenReturn(context);
+    when(span.customizer()).thenReturn(span);
 
-    brave.Span span = handler.handleSend(injector, adapter, request);
+    Exception error = new RuntimeException("peanuts");
+    when(response.error()).thenReturn(error);
+
+    handler.handleReceive(response, span);
+
+    verify(span).isNoop();
+    verify(span).context();
+    verify(span).customizer();
+    verify(span).error(error);
+    verify(span).finish();
+    verifyNoMoreInteractions(span);
+  }
+
+  @Test public void handleReceive_responseRequired() {
+    brave.Span span = mock(brave.Span.class);
+
+    assertThatThrownBy(() -> handler.handleReceive(null, span))
+      .isInstanceOf(NullPointerException.class)
+      .hasMessage("response == null");
+  }
+
+  @Test public void deprecatedHandleReceive_externalTimestamps() {
+    when(request.startTimestamp()).thenReturn(123000L);
+    when(response.finishTimestamp()).thenReturn(124000L);
+
+    brave.Span span = handler.handleSend(request);
     handler.handleReceive(response, null, span);
 
-    verify(parser).response(eq(adapter), eq(response), isNull(), any(SpanCustomizer.class));
+    assertThat(spanHandler.takeRemoteSpan(CLIENT))
+        .extracting(MutableSpan::startTimestamp, MutableSpan::finishTimestamp)
+        .containsExactly(123000L, 124000L);
   }
 
-  @Test public void handleReceive_parserSeesUnwrappedType() {
-    when(requestSampler.trySample(defaultRequest)).thenReturn(null);
+  @Test public void deprecatedNextSpan_samplerSeesHttpClientRequest() {
+    SamplerFunction<HttpRequest> clientSampler = mock(SamplerFunction.class);
+    init(httpTracingBuilder(tracingBuilder()).clientSampler(clientSampler));
 
-    brave.Span span = defaultHandler.handleSend(defaultRequest);
-    defaultHandler.handleReceive(defaultResponse, null, span);
+    handler.nextSpan(request);
 
-    verify(parser).request(any(ToHttpAdapter.class), eq(request), any(SpanCustomizer.class));
+    verify(clientSampler).trySample(request);
   }
 
-  @Test public void handleReceive_parserSeesUnwrappedType_oldHandler() {
-    when(sampler.trySample(defaultRequest)).thenReturn(null);
+  @Test public void deprecatedHandleReceive_finishesSpanEvenIfUnwrappedNull() {
+    brave.Span span = mock(brave.Span.class);
+    when(span.context()).thenReturn(context);
+    when(span.customizer()).thenReturn(span);
 
-    brave.Span span = handler.handleSend(defaultRequest);
-    handler.handleReceive(defaultResponse, null, span);
+    handler.handleReceive(mock(HttpClientResponse.class), null, span);
 
-    HttpClientResponse.Adapter adapter = new HttpClientResponse.Adapter(defaultResponse);
-    verify(parser).response(eq(adapter), eq(response), isNull(), any(SpanCustomizer.class));
+    verify(span).isNoop();
+    verify(span).context();
+    verify(span).customizer();
+    verify(span).finish();
+    verifyNoMoreInteractions(span);
+  }
+
+  @Test public void deprecatedHandleReceive_finishesSpanEvenIfUnwrappedNull_withError() {
+    brave.Span span = mock(brave.Span.class);
+    when(span.context()).thenReturn(context);
+    when(span.customizer()).thenReturn(span);
+
+    Exception error = new RuntimeException("peanuts");
+
+    handler.handleReceive(mock(HttpClientResponse.class), error, span);
+
+    verify(span).isNoop();
+    verify(span).context();
+    verify(span).customizer();
+    verify(span).error(error);
+    verify(span).finish();
+    verifyNoMoreInteractions(span);
+  }
+
+  @Test public void handleSend_oldSamplerDoesntSeeNullWhenUnwrappedNull() {
+    AtomicBoolean reachedAssertion = new AtomicBoolean();
+    init(httpTracingBuilder(tracingBuilder())
+      .clientSampler(new HttpSampler() {
+        @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req req) {
+          assertThat(req).isSameAs(NULL_SENTINEL);
+          reachedAssertion.set(true);
+          return true;
+        }
+      }));
+
+    handler.handleSend(request);
+
+    assertThat(reachedAssertion).isTrue();
+  }
+
+  @Test public void handleSend_requestParserDoesntSeeNullWhenUnwrappedNull() {
+    AtomicBoolean reachedAssertion = new AtomicBoolean();
+    init(httpTracingBuilder(tracingBuilder())
+      .clientParser(new HttpClientParser() {
+        @Override
+        public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer span) {
+          assertThat(req).isSameAs(NULL_SENTINEL);
+          reachedAssertion.set(true);
+        }
+      }));
+
+    handler.handleSend(request);
+
+    assertThat(reachedAssertion).isTrue();
+  }
+
+  @Test public void handleReceive_responseParserDoesntSeeNullWhenUnwrappedNull() {
+    AtomicBoolean reachedAssertion = new AtomicBoolean();
+    init(httpTracingBuilder(tracingBuilder())
+      .clientParser(new HttpClientParser() {
+        @Override
+        public <Resp> void response(HttpAdapter<?, Resp> adapter, Resp resp, Throwable error,
+          SpanCustomizer span) {
+          assertThat(resp).isSameAs(NULL_SENTINEL);
+          reachedAssertion.set(true);
+        }
+      }));
+
+    brave.Span span = mock(brave.Span.class);
+    when(span.isNoop()).thenReturn(false);
+
+    handler.handleReceive(response, null, span);
+
+    assertThat(reachedAssertion).isTrue();
   }
 }

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright 2013-2019 The OpenZipkin Authors
+    Copyright 2013-2020 The OpenZipkin Authors
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
     in compliance with the License. You may obtain a copy of the License at
@@ -18,7 +18,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-context-parent</artifactId>
-    <version>5.9.1-SNAPSHOT</version>
+    <version>5.12.4-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -39,14 +39,14 @@
     <dependency>
       <groupId>io.reactivex.rxjava2</groupId>
       <artifactId>rxjava</artifactId>
-      <version>2.2.12</version>
+      <version>2.2.19</version>
       <scope>provided</scope>
     </dependency>
 
     <dependency>
       <groupId>com.squareup.retrofit2</groupId>
       <artifactId>adapter-rxjava2</artifactId>
-      <version>2.6.2</version>
+      <version>2.8.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -56,8 +56,8 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>brave-instrumentation-http-tests</artifactId>
+      <groupId>com.squareup.okhttp3</groupId>
+      <artifactId>mockwebserver</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

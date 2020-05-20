@@ -1,7 +1,6 @@
 # brave-instrumentation-grpc
 This contains tracing client and server interceptors for [grpc](https://github.com/grpc/grpc-java).
 
-
 The `GrpcTracing` class holds a reference to a tracing component,
 instructions on what to put into gRPC spans, and interceptors.
 
@@ -28,60 +27,81 @@ ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", serverPor
     .build();
 ```
 
-## Span data policy
-By default, the following are added to both gRPC client and server spans:
-* Span.name as the full method name: ex "helloworld.greeter/sayhello"
-* Tags/binary annotations:
-  * "grpc.status_code" when the status is not OK.
-  * "error", when there is an exception or status is not OK.
+## Sampling and data policy
 
-Ex. To add a tag corresponding to a message sent to a server, you can do
-something like this:
+Please read the [RPC documentation](../rpc/README.md) before proceeding, as it
+covers important topics such as which tags are added to spans, and how traces
+are sampled.
 
+### RPC model mapping
+
+As mentioned above, the RPC model types `RpcRequest` and `RpcResponse` allow
+portable sampling decisions and tag parsing.
+
+gRPC maps to this model as follows:
+* `RpcRequest.service()` - text preceding the first slash ('/') in `MethodDescriptor.fullMethodName`
+  * Ex. "helloworld.Greeter" for a full method name "helloworld.Greeter/SayHello"
+* `RpcRequest.method()` - text following the first slash ('/') in `MethodDescriptor.fullMethodName`
+  * Ex. "SayHello" for a full method name "helloworld.Greeter/SayHello"
+* `RpcResponse.errorCode()` - `Status.Code.name()` when not `Status.isOk()`
+  * Ex. `null` for `Status.Code.OK` and `UNKNOWN` for `Status.Code.UNKNOWN`
+
+### gRPC-specific model
+
+The `GrpcRequest` and `GrpcResponse` are available for custom sampling and tag
+parsing.
+
+Here is an example that adds default tags, and if gRPC, the method type (ex "UNARY"):
 ```java
-grpcTracing = grpcTracing.toBuilder()
-    .clientParser(new GrpcClientParser() {
-      @Override protected <M> void onMessageSent(M message, SpanCustomizer span) {
-        span.tag("grpc.message_sent", message.toString());
-      }
-    })
-    .build();
-```
-
-If you just want to control span naming policy, override `spanName` in
-your client or server parser.
-
-Ex:
-```java
-overrideSpanName = new GrpcClientParser() {
-  @Override protected <ReqT, RespT> String spanName(MethodDescriptor<ReqT, RespT> methodDescriptor) {
-    return methodDescriptor.getType().name();
+Tag<GrpcRequest> methodType = new Tag<GrpcRequest>("grpc.method_type") {
+  @Override protected String parseValue(GrpcRequest input, TraceContext context) {
+    return input.methodDescriptor().getType().name();
   }
 };
+
+RpcRequestParser addMethodType = (req, context, span) -> {
+  RpcRequestParser.DEFAULT.parse(req, context, span);
+  if (req instanceof GrpcRequest) methodType.tag((GrpcRequest) req, span);
+};
+
+grpcTracing = GrpcTracing.create(RpcTracing.newBuilder(tracing)
+    .clientRequestParser(addMethodType)
+    .serverRequestParser(addMethodType).build());
 ```
 
-## Sampling Policy
-The default sampling policy is to use the default (trace ID) sampler for
-server and client requests.
+## Message processing
 
-You can use an [RpcRuleSampler](../rpc/README.md) to override this based on
-gRPC service or method names.
+## Message processing callback context
+If you need to process messages, streaming or otherwise, you can use normal
+gRPC interceptors. The current span will be the following, regardless of
+message count per request (streaming):
 
-Ex. Here's a sampler that traces 100 "GetUserToken" requests per second. This
-doesn't start new traces for requests to the health check service. Other
-requests will use a global rate provided by the tracing component.
+* `ClientInterceptor`
+  * `ClientCall.sendMessage()` - the client trace context
+  * `ClientCall.Listener.onMessage()` - the invocation trace context (aka parent)
+  Why is discussed in the main [instrumentation rationale](../RATIONALE.md).
+* `ServerInterceptor`
+  * `ServerCall.Listener.onMessage()` - the server trace context
+  * `ServerCall.sendMessage()` - the server trace context
+  Both sides are in the server context, as otherwise would be a new trace.
 
+Ex. To annotate the time each message sent to a server, you can do this:
 ```java
-import static brave.rpc.RpcRequestMatchers.methodEquals;
-import static brave.rpc.RpcRequestMatchers.serviceEquals;
-import static brave.sampler.Matchers.and;
+SpanCustomizer span = CurrentSpanCustomizer.create(tracing);
 
-rpcTracing = rpcTracingBuilder.serverSampler(RpcRuleSampler.newBuilder()
-  .putRule(serviceEquals("grpc.health.v1.Health"), Sampler.NEVER_SAMPLE)
-  .putRule(and(serviceEquals("users.UserService"), methodEquals("GetUserToken")), RateLimitingSampler.create(100))
-  .build()).build();
-
-grpcTracing = GrpcTracing.create(rpcTracing);
+// Make sure this is ordered before the tracing interceptor! Otherwise, it will
+// not see the current span.
+managedChannelBuilder.intercept(new ClientInterceptor() {
+  public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
+    MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
+    return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
+      public void sendMessage(ReqT message) {
+        span.annotate("grpc.send_message");
+        delegate().sendMessage(message);
+      }
+    };
+  }
+}, grpcTracing.newClientInterceptor());
 ```
 
 ## gRPC Propagation Format (Census interop)

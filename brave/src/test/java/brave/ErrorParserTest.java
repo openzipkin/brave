@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,9 +18,11 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+@Deprecated
 @RunWith(MockitoJUnitRunner.class)
 public class ErrorParserTest {
   @Mock SpanCustomizer customizer;
@@ -29,6 +31,12 @@ public class ErrorParserTest {
 
   @Test public void error_customizer() {
     parser.error(new RuntimeException("this cake is a lie"), customizer);
+
+    verify(customizer).tag("error", "this cake is a lie");
+  }
+
+  @Test public void error_customizer_asTag() {
+    parser.tag(new RuntimeException("this cake is a lie"), customizer);
 
     verify(customizer).tag("error", "this cake is a lie");
   }
@@ -61,5 +69,33 @@ public class ErrorParserTest {
     ErrorParser.NOOP.error(new RuntimeException("this cake is a lie"), scopedSpan);
 
     verifyNoMoreInteractions(scopedSpan);
+  }
+
+  @Test public void parse_anonymous() {
+    assertThat(ErrorParser.parse(new RuntimeException() {
+    })).isEqualTo("RuntimeException");
+  }
+
+  @Test public void parse_anonymous_message() {
+    assertThat(ErrorParser.parse(new RuntimeException("this cake is a lie") {
+    })).isEqualTo("this cake is a lie");
+  }
+
+  ErrorParser subclassErrorParser = new ErrorParser() {
+    @Override protected void error(Throwable error, Object span) {
+      tag(span, "noterror", "the cake is fine");
+    }
+  };
+
+  @Test public void subclass() {
+    subclassErrorParser.error(new RuntimeException("this cake is a lie"), customizer);
+
+    verify(customizer).tag("noterror", "the cake is fine");
+  }
+
+  @Test public void subclass_asTag() {
+    subclassErrorParser.tag(new RuntimeException("this cake is a lie"), customizer);
+
+    verify(customizer).tag("noterror", "the cake is fine");
   }
 }

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Copyright 2013-2020 The OpenZipkin Authors
+
+    Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+    in compliance with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software distributed under the License
+    is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+    or implied. See the License for the specific language governing permissions and limitations under
+    the License.
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>@project.groupId@</groupId>
+  <artifactId>httpclient_v43</artifactId>
+  <version>@project.version@</version>
+  <name>httpclient_v43</name>
+
+  <properties>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+    <httpclient.version>4.3.6</httpclient.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>@project.groupId@</groupId>
+      <artifactId>brave-instrumentation-httpclient</artifactId>
+      <version>@project.version@</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient</artifactId>
+      <version>${httpclient.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient-cache</artifactId>
+      <version>${httpclient.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>@project.groupId@</groupId>
+      <artifactId>brave-instrumentation-http-tests</artifactId>
+      <version>@project.version@</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <sourceDirectory>@project.build.testSourceDirectory@</sourceDirectory>
+    <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>@maven-compiler-plugin.version@</version>
+        <configuration>
+          <includes>
+            <include>**/IT*.java</include>
+          </includes>
+        </configuration>
+      </plugin>
+      <plugin>
+        <!-- Use surefire to run the ITs until someone figures out how to get invoker to run
+             failsafe -->
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>@maven-failsafe-plugin.version@</version>
+        <configuration>
+          <failIfNoTests>true</failIfNoTests>
+          <includes>
+            <include>**/IT*.java</include>
+          </includes>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

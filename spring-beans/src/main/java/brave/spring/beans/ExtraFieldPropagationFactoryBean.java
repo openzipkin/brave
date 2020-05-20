@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,17 +18,24 @@ import brave.propagation.ExtraFieldCustomizer;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import java.util.List;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.FactoryBean;
 
-/** Spring XML config does not support chained builders. This converts accordingly */
-public class ExtraFieldPropagationFactoryBean implements FactoryBean {
+/** @deprecated Since 5.11 use {@link BaggagePropagationFactoryBean} */
+@Deprecated public class ExtraFieldPropagationFactoryBean implements FactoryBean {
+  // Spring uses commons logging
+  static final Log logger = LogFactory.getLog(ExtraFieldPropagationFactoryBean.class);
+
   Propagation.Factory propagationFactory = B3Propagation.FACTORY;
   List<String> fields;
   List<ExtraFieldCustomizer> customizers;
 
   @Override public Propagation.Factory getObject() {
+    logger.warn("The factory '" + getClass().getName() + "' will be removed in a future release.\n"
+        + "Use '" + BaggagePropagationFactoryBean.class.getName() + "' instead");
     ExtraFieldPropagation.FactoryBuilder builder =
-      ExtraFieldPropagation.newFactoryBuilder(propagationFactory);
+        ExtraFieldPropagation.newFactoryBuilder(propagationFactory);
     if (fields != null) {
       for (String field : fields) builder.addField(field);
     }

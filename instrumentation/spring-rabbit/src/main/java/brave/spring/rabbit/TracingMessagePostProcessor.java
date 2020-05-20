@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -26,6 +26,8 @@ import brave.sampler.SamplerFunction;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+
+import static brave.Span.Kind.PRODUCER;
 
 /**
  * MessagePostProcessor to be used with the {@link RabbitTemplate#setBeforePublishPostProcessors
@@ -73,7 +75,7 @@ final class TracingMessagePostProcessor implements MessagePostProcessor {
     }
 
     if (!span.isNoop()) {
-      span.kind(Span.Kind.PRODUCER).name("publish");
+      span.kind(PRODUCER).name("publish");
       if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
       // incur timestamp overhead only once
       long timestamp = tracing.clock(span.context()).currentTimeMicroseconds();

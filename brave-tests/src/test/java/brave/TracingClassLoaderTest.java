@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,21 +13,22 @@
  */
 package brave;
 
+import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
+import brave.propagation.TraceContext;
 import org.junit.Test;
-import zipkin2.reporter.Reporter;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TracingClassLoaderTest {
-
   @Test public void unloadable_afterClose() {
     assertRunIsUnloadable(ClosesTracing.class, getClass().getClassLoader());
   }
 
   static class ClosesTracing implements Runnable {
     @Override public void run() {
-      try (Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build()) {
+      try (Tracing tracing = Tracing.newBuilder().build()) {
       }
     }
   }
@@ -38,7 +39,7 @@ public class TracingClassLoaderTest {
 
   static class BasicUsage implements Runnable {
     @Override public void run() {
-      try (Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build()) {
+      try (Tracing tracing = Tracing.newBuilder().build()) {
         tracing.tracer().newTrace().start().finish();
       }
     }
@@ -50,8 +51,21 @@ public class TracingClassLoaderTest {
 
   static class ForgetClose implements Runnable {
     @Override public void run() {
-      Tracing.newBuilder().spanReporter(Reporter.NOOP).build();
+      Tracing.newBuilder().build();
       assertThat(Tracing.current()).isNotNull();
+    }
+  }
+
+  @Test public void unloadable_withLoggingReporter() {
+    assertRunIsUnloadable(UsingLoggingReporter.class, getClass().getClassLoader());
+  }
+
+  // This test will clutter output; it is somewhat difficult to avoid that and still run the test
+  static class UsingLoggingReporter implements Runnable {
+    @Override public void run() {
+      Tracing.LogSpanHandler reporter = new Tracing.LogSpanHandler();
+      TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
+      reporter.end(context, new MutableSpan(context, null), SpanHandler.Cause.FINISHED);
     }
   }
 }

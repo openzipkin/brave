@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,6 +13,7 @@
  */
 package brave.servlet.internal;
 
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Collection;
 import java.util.Locale;
@@ -27,9 +28,53 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class ServletRuntimeTest {
   ServletRuntime servlet25 = new ServletRuntime.Servlet25();
 
-  @Test public void servlet25_status_doesntParseAnonymousTypes() throws Exception {
+  /** getStatus doesn't exist in Servlet 2.5, so we add mechanisms to catch it. */
+  @Test public void servlet25_httpServletResponse_catchesStatus() throws IOException {
+    HttpServletResponse httpServletResponse =
+      servlet25.httpServletResponse(new HttpServletResponseImpl());
+
+    httpServletResponse.setStatus(404);
+    assertThat(servlet25.status(httpServletResponse))
+      .isEqualTo(404);
+
+    httpServletResponse.setStatus(418, "I'm a teapot");
+    assertThat(servlet25.status(httpServletResponse))
+      .isEqualTo(418);
+
+    httpServletResponse.sendError(500);
+    assertThat(servlet25.status(httpServletResponse))
+      .isEqualTo(500);
+
+    httpServletResponse.sendError(508, "Loop Detected");
+    assertThat(servlet25.status(httpServletResponse))
+      .isEqualTo(508);
+  }
+
+  @Test public void servlet25_status() {
+    assertThat(servlet25.status(new HttpServletResponseImpl()))
+      .isEqualTo(200);
+  }
+
+  @Test public void servlet25_status_cached() {
+    HttpServletResponseImpl response = new HttpServletResponseImpl();
+    assertThat(servlet25.status(response))
+      .isEqualTo(200);
+
+    assertThat(servlet25.status(response))
+      .isEqualTo(200);
+  }
+
+  @Test public void servlet25_status_cached_laterThrows() {
+    HttpServletResponseImpl response = new HttpServletResponseImpl();
+    servlet25.status(response);
+    response.shouldThrow = true;
+    assertThat(servlet25.status(response))
+      .isEqualTo(0);
+  }
+
+  @Test public void servlet25_status_doesntParseAnonymousTypes() {
     // while looks nice, this will overflow our cache
-    Response jettyResponse = new Response(null) {
+    Response jettyResponse = new Response(null, null) {
       @Override public int getStatus() {
         throw new AssertionError();
       }
@@ -38,7 +83,7 @@ public class ServletRuntimeTest {
       .isZero();
   }
 
-  @Test public void servlet25_status_doesntParseLocalTypes() throws Exception {
+  @Test public void servlet25_status_doesntParseLocalTypes() {
     // while looks nice, this will overflow our cache
     class LocalResponse extends HttpServletResponseImpl {
     }
@@ -52,7 +97,13 @@ public class ServletRuntimeTest {
     }
   }
 
-  @Test public void servlet25_status_nullOnException() throws Exception {
+  @Test public void servlet25_status_zeroOnException() {
+    assertThat(servlet25.status(new ExceptionResponse()))
+      .isZero();
+  }
+
+  @Test public void servlet25_status_zeroOnException_cached() {
+    servlet25.status(new ExceptionResponse());
     assertThat(servlet25.status(new ExceptionResponse()))
       .isZero();
   }
@@ -90,7 +141,7 @@ public class ServletRuntimeTest {
   class Response11 extends HttpServletResponseImpl {
   }
 
-  @Test public void servlet25_status_cachesUpToTenTypes() throws Exception {
+  @Test public void servlet25_status_cachesUpToTenTypes() {
     assertThat(servlet25.status(new Response1()))
       .isEqualTo(200);
     assertThat(servlet25.status(new Response2()))
@@ -115,7 +166,10 @@ public class ServletRuntimeTest {
       .isZero();
   }
 
-  public static class HttpServletResponseImpl implements HttpServletResponse {
+  static class HttpServletResponseImpl implements HttpServletResponse {
+    int statusCode = 200;
+    boolean shouldThrow;
+
     @Override public String getCharacterEncoding() {
       return null;
     }
@@ -136,6 +190,9 @@ public class ServletRuntimeTest {
     }
 
     @Override public void setContentLength(int len) {
+    }
+
+    @Override public void setContentLengthLong(long len) {
     }
 
     @Override public void setContentType(String type) {
@@ -225,7 +282,8 @@ public class ServletRuntimeTest {
     }
 
     @Override public int getStatus() {
-      return 200;
+      if (shouldThrow) throw new IllegalArgumentException();
+      return statusCode;
     }
 
     @Override public String getHeader(String name) {

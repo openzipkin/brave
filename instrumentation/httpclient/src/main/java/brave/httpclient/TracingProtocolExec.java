@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,7 +17,11 @@ import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.http.HttpClientHandler;
+import brave.http.HttpClientRequest;
+import brave.http.HttpClientResponse;
 import brave.http.HttpTracing;
+import brave.internal.Nullable;
+import brave.sampler.SamplerFunction;
 import java.io.IOException;
 import org.apache.http.Header;
 import org.apache.http.HttpException;
@@ -27,7 +31,6 @@ import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpExecutionAware;
-import org.apache.http.client.methods.HttpRequestWrapper;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.impl.execchain.ClientExecChain;
@@ -38,87 +41,111 @@ import org.apache.http.impl.execchain.ClientExecChain;
  */
 final class TracingProtocolExec implements ClientExecChain {
   final Tracer tracer;
-  final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
+  final SamplerFunction<brave.http.HttpRequest> httpSampler;
+  final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
   final ClientExecChain protocolExec;
 
   TracingProtocolExec(HttpTracing httpTracing, ClientExecChain protocolExec) {
     this.tracer = httpTracing.tracing().tracer();
+    this.httpSampler = httpTracing.clientRequestSampler();
     this.handler = HttpClientHandler.create(httpTracing);
     this.protocolExec = protocolExec;
   }
 
-  @Override public CloseableHttpResponse execute(HttpRoute route, HttpRequestWrapper request,
-    HttpClientContext clientContext, HttpExecutionAware execAware)
+  @Override public CloseableHttpResponse execute(HttpRoute route,
+    org.apache.http.client.methods.HttpRequestWrapper req,
+    HttpClientContext context, HttpExecutionAware execAware)
     throws IOException, HttpException {
-    Span span = handler.nextSpan(new HttpClientRequest(request));
-    HttpClientResponse response = null;
+    HttpRequestWrapper request = new HttpRequestWrapper(req, context.getTargetHost());
+    Span span = tracer.nextSpan(httpSampler, request);
+    context.setAttribute(Span.class.getName(), span);
+
+    CloseableHttpResponse response = null;
     Throwable error = null;
     try (SpanInScope ws = tracer.withSpanInScope(span)) {
-      CloseableHttpResponse result = protocolExec.execute(route, request, clientContext, execAware);
-      response = new HttpClientResponse(result);
-      return result;
-    } catch (IOException | HttpException | RuntimeException | Error e) {
+      return response = protocolExec.execute(route, req, context, execAware);
+    } catch (Throwable e) {
       error = e;
       throw e;
     } finally {
-      handler.handleReceive(response, error, span);
+      handler.handleReceive(new HttpResponseWrapper(response, context, error), span);
     }
   }
 
-  static final class HttpClientRequest extends brave.http.HttpClientRequest {
-    final HttpRequest delegate;
+  static final class HttpRequestWrapper extends HttpClientRequest {
+    final HttpRequest request;
+    @Nullable final HttpHost target;
 
-    HttpClientRequest(HttpRequest delegate) {
-      this.delegate = delegate;
+    HttpRequestWrapper(HttpRequest request, @Nullable HttpHost target) {
+      this.request = request;
+      this.target = target;
     }
 
     @Override public Object unwrap() {
-      return delegate;
+      return request;
     }
 
     @Override public String method() {
-      return delegate.getRequestLine().getMethod();
+      return request.getRequestLine().getMethod();
     }
 
     @Override public String path() {
-      String result = delegate.getRequestLine().getUri();
-      int begin = result.lastIndexOf('/');
+      if (request instanceof org.apache.http.client.methods.HttpRequestWrapper) {
+        return ((org.apache.http.client.methods.HttpRequestWrapper) request).getURI().getPath();
+      }
+      String result = request.getRequestLine().getUri();
       int queryIndex = result.indexOf('?');
-      return queryIndex == -1 ? result.substring(begin) : result.substring(begin, queryIndex);
+      return queryIndex == -1 ? result : result.substring(0, queryIndex);
     }
 
     @Override public String url() {
-      if (delegate instanceof HttpRequestWrapper) {
-        HttpRequestWrapper wrapper = (HttpRequestWrapper) delegate;
-        HttpHost target = wrapper.getTarget();
-        if (target != null) return target.toURI() + wrapper.getURI();
+      if (target != null && request instanceof org.apache.http.client.methods.HttpRequestWrapper) {
+        org.apache.http.client.methods.HttpRequestWrapper
+          wrapper = (org.apache.http.client.methods.HttpRequestWrapper) request;
+        return target.toURI() + wrapper.getURI();
       }
-      return delegate.getRequestLine().getUri();
+      return request.getRequestLine().getUri();
     }
 
     @Override public String header(String name) {
-      Header result = delegate.getFirstHeader(name);
+      Header result = request.getFirstHeader(name);
       return result != null ? result.getValue() : null;
     }
 
     @Override public void header(String name, String value) {
-      delegate.setHeader(name, value);
+      request.setHeader(name, value);
     }
   }
 
-  static final class HttpClientResponse extends brave.http.HttpClientResponse {
-    final HttpResponse delegate;
+  static final class HttpResponseWrapper extends HttpClientResponse {
+    @Nullable final HttpRequestWrapper request;
+    @Nullable final HttpResponse response;
+    @Nullable final Throwable error;
 
-    HttpClientResponse(HttpResponse delegate) {
-      this.delegate = delegate;
+    HttpResponseWrapper(@Nullable HttpResponse response, HttpClientContext context,
+      @Nullable Throwable error) {
+      HttpRequest request = context.getRequest();
+      HttpHost target = context.getTargetHost();
+      this.request = request != null ? new HttpRequestWrapper(request, target) : null;
+      this.response = response;
+      this.error = error;
     }
 
     @Override public Object unwrap() {
-      return delegate;
+      return response;
+    }
+
+    @Override @Nullable public HttpRequestWrapper request() {
+      return request;
+    }
+
+    @Override public Throwable error() {
+      return error;
     }
 
     @Override public int statusCode() {
-      StatusLine statusLine = delegate.getStatusLine();
+      if (response == null) return 0;
+      StatusLine statusLine = response.getStatusLine();
       return statusLine != null ? statusLine.getStatusCode() : 0;
     }
   }

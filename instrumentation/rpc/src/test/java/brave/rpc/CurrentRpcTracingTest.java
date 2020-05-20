@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -48,7 +48,7 @@ public class CurrentRpcTracingTest {
     RpcTracing current = RpcTracing.create(tracing);
 
     assertThat(RpcTracing.current())
-      .isSameAs(current);
+        .isSameAs(current);
   }
 
   @Test public void setsNotCurrentOnClose() {
@@ -91,6 +91,6 @@ public class CurrentRpcTracingTest {
     rpcTracings.remove(null);
     // depending on race, we should have either one instance or none
     assertThat(rpcTracings.isEmpty() || rpcTracings.size() == 1)
-      .isTrue();
+        .isTrue();
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,31 +15,21 @@ package brave.http;
 
 import brave.ErrorParser;
 import brave.SpanCustomizer;
-import brave.Tracing;
+import brave.Tag;
 import brave.internal.Nullable;
 
-public class HttpParser {
-  static final ErrorParser DEFAULT_ERROR_PARSER = new ErrorParser();
+import static brave.http.HttpResponseParser.Default.catchAllName;
+
+/** @deprecated Since 5.10, use {@link HttpRequestParser} and {@link HttpResponseParser} */
+@Deprecated public class HttpParser {
+  static final ErrorParser ERROR_PARSER = new ErrorParser();
 
   /**
-   * Override when making custom types. Typically, you'll use {@link Tracing#errorParser()}
-   *
-   * <pre>{@code
-   * class MyHttpClientParser extends HttpClientParser {
-   *   ErrorParser errorParser;
-   *
-   *   MyHttpClientParser(Tracing tracing) {
-   *     errorParser = tracing.errorParser();
-   *   }
-   *
-   *   protected ErrorParser errorParser() {
-   *     return errorParser;
-   *   }
-   * --snip--
-   * }</pre>
+   * @deprecated This is only used in Zipkin reporting. Since 5.12, use {@link
+   * zipkin2.reporter.brave.ZipkinSpanHandler.Builder#errorTag(Tag)}
    */
   protected ErrorParser errorParser() {
-    return DEFAULT_ERROR_PARSER;
+    return ERROR_PARSER;
   }
 
   /**
@@ -65,8 +55,11 @@ public class HttpParser {
     if (path != null) customizer.tag("http.path", path);
   }
 
-  /** Returns the span name of the request. Defaults to the http method. */
-  protected <Req> String spanName(HttpAdapter<Req, ?> adapter, Req req) {
+  /**
+   * Returns the span name of the request or null if the data needed is unavailable. Defaults to the
+   * http method.
+   */
+  @Nullable protected <Req> String spanName(HttpAdapter<Req, ?> adapter, Req req) {
     return adapter.method(req);
   }
 
@@ -119,9 +112,7 @@ public class HttpParser {
     String route = adapter.route(res);
     if (route == null) return null; // don't undo a valid name elsewhere
     if (!"".equals(route)) return method + " " + route;
-    if (statusCode / 100 == 3) return method + " redirected";
-    if (statusCode == 404) return method + " not_found";
-    return null; // unexpected
+    return catchAllName(method, statusCode);
   }
 
   /**

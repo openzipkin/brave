@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -40,23 +40,19 @@ import javax.jms.Message;
   }
 
   @Override public void onCompletion(Message message) {
-    Scope ws = current.maybeScope(span.context());
-    try {
+    try (Scope ws = current.maybeScope(span.context())) {
       delegate.onCompletion(message);
     } finally {
       span.finish();
-      ws.close();
     }
   }
 
   @Override public void onException(Message message, Exception exception) {
-    Scope ws = current.maybeScope(span.context());
-    try {
+    try (Scope ws = current.maybeScope(span.context())) {
       delegate.onException(message, exception);
     } finally {
       span.error(exception);
       span.finish();
-      ws.close();
     }
   }
 }

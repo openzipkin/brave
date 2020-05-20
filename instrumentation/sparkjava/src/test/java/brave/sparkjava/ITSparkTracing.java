@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,20 +14,26 @@
 package brave.sparkjava;
 
 import brave.test.http.ITHttpServer;
+import brave.test.http.Log4J2Log;
+import java.io.IOException;
 import okhttp3.Response;
+import org.eclipse.jetty.util.log.Log;
 import org.junit.After;
 import org.junit.AssumptionViolatedException;
 import spark.Spark;
 
 public class ITSparkTracing extends ITHttpServer {
+  public ITSparkTracing() {
+    Log.setLog(new Log4J2Log());
+  }
 
-  @Override protected Response get(String path) throws Exception {
+  @Override protected Response get(String path) throws IOException {
     if (path.toLowerCase().indexOf("async") == -1) return super.get(path);
     throw new AssumptionViolatedException(
       "ignored until https://github.com/perwendel/spark/issues/208");
   }
 
-  @Override protected void init() throws Exception {
+  @Override protected void init()  {
     stop();
 
     SparkTracing spark = SparkTracing.create(httpTracing);
@@ -46,14 +52,9 @@ public class ITSparkTracing extends ITHttpServer {
     return "http://localhost:4567" + path;
   }
 
-  /**
-   * Spark stop asynchronously but share one class Instance, so AddressAlreadyUsed Exception may
-   * happen. See:https://github.com/perwendel/spark/issues/705 . Just sleep 1 second to avoid this
-   * happens, after Spark.awaitStopped add,I will fix it.
-   */
   @After
-  public void stop() throws InterruptedException {
+  public void stop() {
     Spark.stop();
-    Thread.sleep(1000);
+    Spark.awaitStop();
   }
 }

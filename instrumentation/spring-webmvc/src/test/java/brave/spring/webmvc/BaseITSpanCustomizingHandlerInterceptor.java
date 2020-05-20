@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,8 +13,10 @@
  */
 package brave.spring.webmvc;
 
+import brave.handler.MutableSpan;
 import brave.servlet.TracingFilter;
 import brave.test.http.ITServletContainer;
+import brave.test.http.ServletContainer.ServerController;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.Test;
@@ -26,17 +28,20 @@ import org.springframework.web.servlet.DispatcherServlet;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
-import zipkin2.Span;
 
+import static brave.Span.Kind.SERVER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** This tests when you use servlet for tracing but MVC for tagging */
 public abstract class BaseITSpanCustomizingHandlerInterceptor extends ITServletContainer {
+  protected BaseITSpanCustomizingHandlerInterceptor(ServerController serverController) {
+    super(serverController);
+  }
 
   @Test public void addsControllerTags() throws Exception {
     get("/foo");
 
-    Span span = takeSpan();
+    MutableSpan span = testSpanHandler.takeRemoteSpan(SERVER);
     assertThat(span.tags())
       .containsKeys("mvc.controller.class", "mvc.controller.method");
     assertThat(span.tags().get("mvc.controller.class"))

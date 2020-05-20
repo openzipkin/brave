@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  */
 package brave.propagation;
 
-import brave.internal.HexCodec;
+import brave.internal.codec.HexCodec;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import java.util.Collections;
@@ -49,9 +49,21 @@ public class B3SinglePropagationBenchmarks {
     .sampled(true)
     .build();
 
-  static final Map<String, String> incoming = new LinkedHashMap<String, String>() {
+  static final Map<String, String> incoming128 = new LinkedHashMap<String, String>() {
     {
-      b3Injector.inject(context, this);
+      put("b3", "67891233abcdef012345678912345678-463ac35c9f6413ad-1");
+    }
+  };
+
+  static final Map<String, String> incoming64 = new LinkedHashMap<String, String>() {
+    {
+      put("b3", "2345678912345678-463ac35c9f6413ad-1");
+    }
+  };
+
+  static final Map<String, String> incomingPadded = new LinkedHashMap<String, String>() {
+    {
+      put("b3", "00000000000000002345678912345678-463ac35c9f6413ad-1");
     }
   };
 
@@ -70,12 +82,20 @@ public class B3SinglePropagationBenchmarks {
   static final Map<String, String> nothingIncoming = Collections.emptyMap();
 
   @Benchmark public void inject() {
-    Map<String, String> carrier = new LinkedHashMap<>();
-    b3Injector.inject(context, carrier);
+    Map<String, String> request = new LinkedHashMap<>();
+    b3Injector.inject(context, request);
   }
 
-  @Benchmark public TraceContextOrSamplingFlags extract() {
-    return b3Extractor.extract(incoming);
+  @Benchmark public TraceContextOrSamplingFlags extract_128() {
+    return b3Extractor.extract(incoming128);
+  }
+
+  @Benchmark public TraceContextOrSamplingFlags extract_64() {
+    return b3Extractor.extract(incoming64);
+  }
+
+  @Benchmark public TraceContextOrSamplingFlags extract_padded() {
+    return b3Extractor.extract(incomingPadded);
   }
 
   @Benchmark public TraceContextOrSamplingFlags extract_nothing() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,14 +18,14 @@ import brave.ErrorParser;
 import brave.Tracing;
 import brave.TracingCustomizer;
 import brave.handler.FinishedSpanHandler;
-import brave.propagation.CurrentTraceContext;
-import brave.propagation.ExtraFieldPropagation;
+import brave.handler.SpanHandler;
+import brave.handler.MutableSpan;
+import brave.propagation.B3SinglePropagation;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
-import java.util.List;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.After;
 import org.junit.Test;
-import zipkin2.Endpoint;
 import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -68,8 +68,7 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-      .extracting("tracer.finishedSpanHandler.delegate.converter.localEndpoint")
-      .extracting("serviceName")
+      .extracting("tracer.pendingSpans.defaultSpan.localServiceName")
       .isEqualTo("brave-webmvc-example");
   }
 
@@ -86,12 +85,14 @@ public class TracingFactoryBeanTest {
       + "</bean>"
     );
 
+    MutableSpan defaultSpan = new MutableSpan();
+    defaultSpan.localServiceName("brave-webmvc-example");
+    defaultSpan.localIp("1.2.3.4");
+    defaultSpan.localPort(8080);
+
     assertThat(context.getBean("tracing", Tracing.class))
-      .extracting("tracer.finishedSpanHandler.delegate.converter.localEndpoint")
-      .isEqualTo(Endpoint.newBuilder()
-        .serviceName("brave-webmvc-example")
-        .ip("1.2.3.4")
-        .port(8080).build());
+      .extracting("tracer.pendingSpans.defaultSpan")
+      .isEqualTo(defaultSpan);
   }
 
   @Test public void endpoint() {
@@ -107,12 +108,14 @@ public class TracingFactoryBeanTest {
       + "</bean>"
     );
 
+    MutableSpan defaultSpan = new MutableSpan();
+    defaultSpan.localServiceName("brave-webmvc-example");
+    defaultSpan.localIp("1.2.3.4");
+    defaultSpan.localPort(8080);
+
     assertThat(context.getBean("tracing", Tracing.class))
-      .extracting("tracer.finishedSpanHandler.delegate.converter.localEndpoint")
-      .isEqualTo(Endpoint.newBuilder()
-        .serviceName("brave-webmvc-example")
-        .ip("1.2.3.4")
-        .port(8080).build());
+      .extracting("tracer.pendingSpans.defaultSpan")
+      .isEqualTo(defaultSpan);
   }
 
   @Test public void spanReporter() {
@@ -125,24 +128,58 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-      .extracting("tracer.finishedSpanHandler.delegate.spanReporter")
+      .extracting("tracer.spanHandler.delegate.spanReporter.delegate")
       .isEqualTo(Reporter.CONSOLE);
   }
 
-  public static final FinishedSpanHandler FIREHOSE_HANDLER = mock(FinishedSpanHandler.class);
+  public static final FinishedSpanHandler FINISHED_SPAN_HANDLER = mock(FinishedSpanHandler.class);
 
   @Test public void finishedSpanHandlers() {
     context = new XmlBeans(""
+        + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
+        + "  <property name=\"finishedSpanHandlers\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".FINISHED_SPAN_HANDLER\"/>\n"
+        + "  </property>\n"
+        + "</bean>"
+    );
+
+    assertThat(context.getBean("tracing", Tracing.class))
+        .extracting("tracer.spanHandler.delegate")
+        .isEqualTo(FINISHED_SPAN_HANDLER);
+  }
+
+  public static final SpanHandler SPAN_HANDLER = mock(SpanHandler.class);
+
+  @Test public void spanHandlers() {
+    context = new XmlBeans(""
       + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
-      + "  <property name=\"finishedSpanHandlers\">\n"
-      + "    <util:constant static-field=\"" + getClass().getName() + ".FIREHOSE_HANDLER\"/>\n"
+      + "  <property name=\"spanHandlers\">\n"
+      + "    <util:constant static-field=\"" + getClass().getName() + ".SPAN_HANDLER\"/>\n"
       + "  </property>\n"
       + "</bean>"
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-      .extracting("tracer.finishedSpanHandler.handlers")
-      .satisfies(a -> assertThat((FinishedSpanHandler[]) a).startsWith(FIREHOSE_HANDLER));
+      .extracting("tracer.spanHandler.delegate")
+      .isEqualTo(SPAN_HANDLER);
+  }
+
+  @Test public void bothSpanHandlers() {
+    context = new XmlBeans(""
+        + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
+        + "  <property name=\"finishedSpanHandlers\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".FINISHED_SPAN_HANDLER\"/>\n"
+        + "  </property>\n"
+        + "  <property name=\"spanHandlers\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".SPAN_HANDLER\"/>\n"
+        + "  </property>\n"
+        + "</bean>"
+    );
+
+    assertThat(context.getBean("tracing", Tracing.class))
+        .extracting("tracer.spanHandler.delegate.handlers")
+        .asInstanceOf(InstanceOfAssertFactories.ARRAY)
+        .containsExactly(FINISHED_SPAN_HANDLER, SPAN_HANDLER);
   }
 
   @Test public void clock() {
@@ -203,26 +240,15 @@ public class TracingFactoryBeanTest {
 
   @Test public void propagationFactory() {
     context = new XmlBeans(""
-      + "<bean id=\"propagationFactory\" class=\"brave.propagation.ExtraFieldPropagation\" factory-method=\"newFactory\">\n"
-      + "  <constructor-arg index=\"0\">\n"
-      + "    <util:constant static-field=\"brave.propagation.B3Propagation.FACTORY\"/>\n"
-      + "  </constructor-arg>\n"
-      + "  <constructor-arg index=\"1\">\n"
-      + "    <list>\n"
-      + "      <value>x-vcap-request-id</value>\n"
-      + "      <value>x-amzn-trace-id</value>\n"
-      + "    </list>"
-      + "  </constructor-arg>\n"
-      + "</bean>", ""
       + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
-      + "  <property name=\"propagationFactory\" ref=\"propagationFactory\"/>\n"
+      + "  <property name=\"propagationFactory\">\n"
+      + "    <util:constant static-field=\"brave.propagation.B3SinglePropagation.FACTORY\"/>\n"
+      + "  </property>\n"
       + "</bean>"
     );
 
-    assertThat(context.getBean("tracing", Tracing.class).propagation())
-      .isInstanceOf(ExtraFieldPropagation.class)
-      .extracting("factory.fieldNames")
-      .isEqualToComparingFieldByField(new String[] {"x-vcap-request-id", "x-amzn-trace-id"});
+    assertThat(context.getBean("tracing", Tracing.class).propagationFactory())
+      .isSameAs(B3SinglePropagation.FACTORY);
   }
 
   @Test public void traceId128Bit() {

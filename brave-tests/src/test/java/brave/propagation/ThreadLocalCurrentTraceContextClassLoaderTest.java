@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -43,9 +43,24 @@ public class ThreadLocalCurrentTraceContextClassLoaderTest {
     }
   }
 
+  @Test public void leakedNullScope() {
+    assertRunIsUnloadable(LeakedNullScope.class, getClass().getClassLoader());
+  }
+
+  static class LeakedNullScope implements Runnable {
+    @Override public void run() {
+      CurrentTraceContext current = ThreadLocalCurrentTraceContext.newBuilder().build();
+      current.newScope(null);
+    }
+  }
+
   /**
-   * TODO: While it is an instrumentation bug to leak a scope, we should be tolerant, for example
-   * considering weak references or similar.
+   * TODO: While it is an instrumentation bug to leak a scope, we should be tolerant.
+   *
+   * <p>The current design problem is we don't know a reference type we can use that clears when
+   * the classloader is unloaded, regardless of GC. For example, having {@link Scope} extend {@link
+   * java.lang.ref.WeakReference} to hold the value to revert. This would only help if GC happened
+   * prior to the classloader unload, which would be an odd thing to rely on.
    */
   @Test(expected = AssertionError.class) public void leakedScope_preventsUnloading() {
     assertRunIsUnloadable(LeakedScope.class, getClass().getClassLoader());

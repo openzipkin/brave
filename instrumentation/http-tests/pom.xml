@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright 2013-2019 The OpenZipkin Authors
+    Copyright 2013-2020 The OpenZipkin Authors
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
     in compliance with the License. You may obtain a copy of the License at
@@ -18,7 +18,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
-    <version>5.9.1-SNAPSHOT</version>
+    <version>5.12.4-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -29,12 +29,18 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
     <main.java.version>1.8</main.java.version>
     <main.signature.artifact>java18</main.signature.artifact>
+    <!-- disable errorprone warning that "return this" is not synchronized! -->
+    <errorprone.args>-Xep:UnsynchronizedOverridesSynchronized:OFF</errorprone.args>
   </properties>
 
   <dependencies>
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-http</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-tests</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
@@ -45,17 +51,19 @@
       <artifactId>junit</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.eclipse.jetty</groupId>
-      <artifactId>jetty-servlet</artifactId>
-      <version>${jetty.version}</version>
-    </dependency>
-    <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
     </dependency>
     <dependency>
       <groupId>com.squareup.okhttp3</groupId>
       <artifactId>mockwebserver</artifactId>
+    </dependency>
+    <!-- Only subclasses of ITServletContainer need Jetty. -->
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-servlet</artifactId>
+      <version>${jetty.version}</version>
+      <optional>true</optional>
     </dependency>
   </dependencies>
 

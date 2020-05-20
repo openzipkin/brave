@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,8 +13,12 @@
  */
 package brave.propagation;
 
+import brave.baggage.BaggageFields;
+import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationConfig;
+import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
 import brave.context.log4j2.ThreadContextScopeDecorator;
-import brave.internal.HexCodec;
+import brave.propagation.CurrentTraceContext.Scope;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -22,7 +26,6 @@ import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
-import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
@@ -30,92 +33,130 @@ import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
+import static brave.baggage.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
+
 @Measurement(iterations = 5, time = 1)
 @Warmup(iterations = 10, time = 1)
 @Fork(3)
 @BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@State(Scope.Thread)
+@State(org.openjdk.jmh.annotations.Scope.Thread)
 public class CurrentTraceContextBenchmarks {
   static final CurrentTraceContext base = ThreadLocalCurrentTraceContext.create();
+  static final CurrentTraceContext log4j2OnlyTraceId = ThreadLocalCurrentTraceContext.newBuilder()
+    .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
+      .clear()
+      .add(SingleCorrelationField.create(BaggageFields.TRACE_ID))
+      .build())
+    .build();
+  static final CurrentTraceContext log4j2OnlyBaggage = ThreadLocalCurrentTraceContext.newBuilder()
+    .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
+      .clear()
+      .add(SingleCorrelationField.create(BAGGAGE_FIELD))
+      .build())
+    .build();
   static final CurrentTraceContext log4j2 = ThreadLocalCurrentTraceContext.newBuilder()
-    .addScopeDecorator(ThreadContextScopeDecorator.create())
+    .addScopeDecorator(ThreadContextScopeDecorator.get())
     .build();
 
-  static final TraceContext context = TraceContext.newBuilder()
-    .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef012345678912345678"))
-    .traceId(HexCodec.lowerHexToUnsignedLong("2345678912345678"))
-    .spanId(HexCodec.lowerHexToUnsignedLong("463ac35c9f6413ad"))
+  static final Propagation.Factory baggageFactory =
+    BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+      .add(BaggagePropagationConfig.SingleBaggageField.remote(BAGGAGE_FIELD)).build();
+
+  static final CurrentTraceContext log4j2Baggage = ThreadLocalCurrentTraceContext.newBuilder()
+    .addScopeDecorator(ThreadContextScopeDecorator.newBuilder()
+      .add(SingleCorrelationField.create(BAGGAGE_FIELD)).build())
     .build();
 
-  static final TraceContext contextWithParent = context.toBuilder()
-    .parentId(context.spanId())
-    .spanId(HexCodec.lowerHexToUnsignedLong("e64ac35c9f641ea3"))
-    .build();
+  static final TraceContext context = baggageFactory.decorate(TraceContext.newBuilder()
+    .traceId(1L)
+    .parentId(2L)
+    .spanId(3L)
+    .sampled(true)
+    .build());
 
-  final CurrentTraceContext.Scope log4j2Scope = log4j2.newScope(context);
+  static {
+    BAGGAGE_FIELD.updateValue(context, "romeo");
+  }
+
+  final Scope log4j2Scope = log4j2.newScope(context);
 
   @TearDown public void closeScope() {
     log4j2Scope.close();
   }
 
   @Benchmark public void newScope_default() {
-    try (CurrentTraceContext.Scope ws = base.newScope(contextWithParent)) {
+    try (Scope ws = base.newScope(context)) {
     }
   }
 
   @Benchmark public void newScope_log4j2() {
-    try (CurrentTraceContext.Scope ws = log4j2.newScope(contextWithParent)) {
+    try (Scope ws = log4j2.newScope(context)) {
+    }
+  }
+
+  @Benchmark public void newScope_log4j2_onlyTraceId() {
+    try (Scope ws = log4j2OnlyTraceId.newScope(context)) {
+    }
+  }
+
+  @Benchmark public void newScope_log4j2_onlyBaggage() {
+    try (Scope ws = log4j2OnlyBaggage.newScope(context)) {
+    }
+  }
+
+  @Benchmark public void newScope_log4j2_baggage() {
+    try (Scope ws = log4j2Baggage.newScope(context)) {
     }
   }
 
   @Benchmark public void newScope_redundant_default() {
-    try (CurrentTraceContext.Scope ws = base.newScope(context)) {
+    try (Scope ws = base.newScope(context)) {
     }
   }
 
   @Benchmark public void newScope_redundant_log4j2() {
-    try (CurrentTraceContext.Scope ws = log4j2.newScope(context)) {
+    try (Scope ws = log4j2.newScope(context)) {
     }
   }
 
   @Benchmark public void newScope_clear_default() {
-    try (CurrentTraceContext.Scope ws = base.newScope(null)) {
+    try (Scope ws = base.newScope(null)) {
     }
   }
 
   @Benchmark public void newScope_clear_log4j2() {
-    try (CurrentTraceContext.Scope ws = log4j2.newScope(null)) {
+    try (Scope ws = log4j2.newScope(null)) {
     }
   }
 
   @Benchmark public void maybeScope_default() {
-    try (CurrentTraceContext.Scope ws = base.maybeScope(contextWithParent)) {
+    try (Scope ws = base.maybeScope(context)) {
     }
   }
 
   @Benchmark public void maybeScope_log4j2() {
-    try (CurrentTraceContext.Scope ws = log4j2.maybeScope(contextWithParent)) {
+    try (Scope ws = log4j2.maybeScope(context)) {
     }
   }
 
   @Benchmark public void maybeScope_redundant_default() {
-    try (CurrentTraceContext.Scope ws = base.maybeScope(context)) {
+    try (Scope ws = base.maybeScope(context)) {
     }
   }
 
   @Benchmark public void maybeScope_redundant_log4j2() {
-    try (CurrentTraceContext.Scope ws = log4j2.maybeScope(context)) {
+    try (Scope ws = log4j2.maybeScope(context)) {
     }
   }
 
   @Benchmark public void maybeScope_clear_default() {
-    try (CurrentTraceContext.Scope ws = base.maybeScope(null)) {
+    try (Scope ws = base.maybeScope(null)) {
     }
   }
 
   @Benchmark public void maybeScope_clear_log4j2() {
-    try (CurrentTraceContext.Scope ws = log4j2.maybeScope(null)) {
+    try (Scope ws = log4j2.maybeScope(null)) {
     }
   }
 

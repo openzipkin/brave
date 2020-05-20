@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,9 +14,12 @@
 package brave.vertx.web;
 
 import brave.Span;
-import brave.Tracer;
 import brave.http.HttpServerHandler;
+import brave.http.HttpServerRequest;
+import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
 import io.vertx.core.Handler;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.ext.web.RoutingContext;
@@ -33,12 +36,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * {@code TracingHandler} in https://github.com/opentracing-contrib/java-vertx-web
  */
 final class TracingRoutingContextHandler implements Handler<RoutingContext> {
-  final Tracer tracer;
-  final HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler;
+  final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
+  final CurrentTraceContext currentTraceContext;
 
   TracingRoutingContextHandler(HttpTracing httpTracing) {
-    tracer = httpTracing.tracing().tracer();
     handler = HttpServerHandler.create(httpTracing);
+    currentTraceContext = httpTracing.tracing().currentTraceContext();
   }
 
   @Override public void handle(RoutingContext context) {
@@ -51,12 +54,12 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
       return;
     }
 
-    Span span = handler.handleReceive(new HttpServerRequest(context.request()));
+    Span span = handler.handleReceive(new HttpServerRequestWrapper(context.request()));
     TracingHandler handler = new TracingHandler(context, span);
     context.put(TracingHandler.class.getName(), handler);
     context.addHeadersEndHandler(handler);
 
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+    try (Scope ws = currentTraceContext.maybeScope(span.context())) {
       context.next();
     }
   }
@@ -73,14 +76,14 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
 
     @Override public void handle(Void aVoid) {
       if (!finished.compareAndSet(false, true)) return;
-      handler.handleSend(new HttpServerResponse(context), context.failure(), span);
+      handler.handleSend(new HttpServerResponseWrapper(context), span);
     }
   }
 
-  static final class HttpServerRequest extends brave.http.HttpServerRequest {
+  static final class HttpServerRequestWrapper extends HttpServerRequest {
     final io.vertx.core.http.HttpServerRequest delegate;
 
-    HttpServerRequest(io.vertx.core.http.HttpServerRequest delegate) {
+    HttpServerRequestWrapper(io.vertx.core.http.HttpServerRequest delegate) {
       this.delegate = delegate;
     }
 
@@ -105,36 +108,41 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
     }
 
     @Override public boolean parseClientIpAndPort(Span span) {
+      if (parseClientIpFromXForwardedFor(span)) return true;
       SocketAddress addr = delegate.remoteAddress();
       return span.remoteIpAndPort(addr.host(), addr.port());
     }
   }
 
-  static final class HttpServerResponse extends brave.http.HttpServerResponse {
-    final io.vertx.core.http.HttpServerResponse delegate;
-    final String method, httpRoute;
+  static final class HttpServerResponseWrapper extends HttpServerResponse {
+    final RoutingContext context;
+    HttpServerRequestWrapper request;
 
-    HttpServerResponse(RoutingContext context) {
-      this.delegate = context.response();
-      this.method = context.request().rawMethod();
-      String httpRoute = context.currentRoute().getPath();
-      this.httpRoute = httpRoute != null ? httpRoute : "";
+    HttpServerResponseWrapper(RoutingContext context) {
+      this.context = context;
     }
 
-    @Override public io.vertx.core.http.HttpServerResponse unwrap() {
-      return delegate;
+    @Override public RoutingContext unwrap() {
+      return context;
+    }
+
+    @Override public HttpServerRequestWrapper request() {
+      if (request == null) request = new HttpServerRequestWrapper(context.request());
+      return request;
+    }
+
+    @Override public Throwable error() {
+      return context.failure();
     }
 
     @Override public int statusCode() {
-      return delegate.getStatusCode();
+      return context.response().getStatusCode();
     }
 
-    @Override public String method() {
-      return method;
-    }
-
+    // This is an example of where the route is not on the request object. Hence, we override.
     @Override public String route() {
-      return httpRoute;
+      String httpRoute = context.currentRoute().getPath();
+      return httpRoute != null ? httpRoute : "";
     }
   }
 }

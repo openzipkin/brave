@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,6 +14,7 @@
 package brave.spring.webmvc;
 
 import brave.test.http.ITServletContainer;
+import brave.test.http.Jetty9ServerController;
 import java.util.EnumSet;
 import javax.servlet.DispatcherType;
 import javax.servlet.FilterRegistration.Dynamic;
@@ -28,18 +29,20 @@ import org.springframework.web.servlet.DispatcherServlet;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
-import zipkin2.Span;
+import brave.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** This tests when you use servlet for tracing but MVC for tagging */
 public class ITSpanCustomizingAsyncHandlerInterceptor extends ITServletContainer {
+  public ITSpanCustomizingAsyncHandlerInterceptor() {
+    super(new Jetty9ServerController());
+  }
 
   @Test public void addsControllerTags() throws Exception {
     get("/foo");
 
-    Span span = takeSpan();
-    assertThat(span.tags())
+    assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER).tags())
       .containsEntry("mvc.controller.class", "Servlet3TestController")
       .containsEntry("mvc.controller.method", "foo");
   }

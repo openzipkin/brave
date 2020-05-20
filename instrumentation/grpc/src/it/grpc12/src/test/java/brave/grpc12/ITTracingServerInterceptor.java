@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,6 +13,11 @@
  */
 package brave.grpc12;
 
-public class ITTracingServerInterceptor extends brave.grpc.ITTracingServerInterceptor {
+import brave.grpc.BaseITTracingServerInterceptor;
+import io.grpc.ManagedChannelBuilder;
 
+public class ITTracingServerInterceptor extends BaseITTracingServerInterceptor {
+  @Override protected ManagedChannelBuilder<?> usePlainText(ManagedChannelBuilder<?> builder) {
+    return builder.usePlaintext(true);
+  }
 }

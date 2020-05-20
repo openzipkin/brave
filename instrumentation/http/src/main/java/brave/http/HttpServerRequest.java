@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,7 +14,7 @@
 package brave.http;
 
 import brave.Span;
-import brave.propagation.Propagation.Getter;
+import brave.propagation.Propagation.RemoteGetter;
 
 /**
  * Marks an interface for use in {@link HttpServerHandler#handleReceive(HttpServerRequest)}. This
@@ -24,9 +24,13 @@ import brave.propagation.Propagation.Getter;
  * @since 5.7
  */
 public abstract class HttpServerRequest extends HttpRequest {
-  static final Getter<HttpServerRequest, String> GETTER = new Getter<HttpServerRequest, String>() {
-    @Override public String get(HttpServerRequest carrier, String key) {
-      return carrier.header(key);
+  static final RemoteGetter<HttpServerRequest> GETTER = new RemoteGetter<HttpServerRequest>() {
+    @Override public Span.Kind spanKind() {
+      return Span.Kind.SERVER;
+    }
+
+    @Override public String get(HttpServerRequest request, String key) {
+      return request.header(key);
     }
 
     @Override public String toString() {
@@ -39,136 +43,33 @@ public abstract class HttpServerRequest extends HttpRequest {
   }
 
   /**
-   * Override and return true when it is possible to parse the {@link Span#remoteIpAndPort(String,
-   * int) remote IP and port} from the {@link #unwrap() delegate}. Defaults to false.
+   * Used by {@link HttpServerHandler#handleReceive(HttpServerRequest)} to add remote socket
+   * information about the client from the {@linkplain #unwrap() delegate}.
    *
-   * @see HttpServerAdapter#parseClientIpAndPort(Object, Span)
+   * <p>By default, this tries to parse the {@linkplain #parseClientIpFromXForwardedFor(Span)
+   * forwarded IP}. Override to add client socket information when forwarded info is not available.
+   *
+   * <p>Aside: It is more likely a server request object will be able to parse socket information
+   * as opposed to a client object. This is because client requests are often parsed before a
+   * network route is chosen, whereas server requests are parsed after the network layer.
+   *
+   * @return true if parsing was successful.
+   * @since 5.7
    */
   public boolean parseClientIpAndPort(Span span) {
-    return false;
+    return parseClientIpFromXForwardedFor(span);
   }
 
   /**
-   * <h3>Why do we need an {@link HttpServerAdapter}?</h3>
+   * Uses the first value in the "X-Forwarded-For" header, or returns false if not present.
    *
-   * <p>We'd normally expect {@link HttpServerRequest} to be used directly, so not need an adapter.
-   * However, parsing hasn't yet been converted to this type. Even if it was, there are public apis
-   * that still accept instances of adapters. A bridge is needed until deprecated methods are
-   * removed.
+   * @since 5.10
    */
-  // Intentionally hidden; Void type used to force generics to fail handling the wrong side.
-  @Deprecated static final class ToHttpAdapter extends brave.http.HttpServerAdapter<Object, Void> {
-    final HttpServerRequest delegate;
-    final Object unwrapped;
-
-    ToHttpAdapter(HttpServerRequest delegate) {
-      if (delegate == null) throw new NullPointerException("delegate == null");
-      this.delegate = delegate;
-      this.unwrapped = delegate.unwrap();
-      if (unwrapped == null) throw new NullPointerException("delegate.unwrap() == null");
-    }
-
-    @Override public final boolean parseClientIpAndPort(Object req, Span span) {
-      if (req == unwrapped) {
-        if (parseClientIpFromXForwardedFor(req, span)) return true;
-        return delegate.parseClientIpAndPort(span);
-      }
-      return false;
-    }
-
-    @Override public final long startTimestamp(Object request) {
-      if (request == unwrapped) return delegate.startTimestamp();
-      return 0L;
-    }
-
-    @Override public final String method(Object request) {
-      if (request == unwrapped) return delegate.method();
-      return null;
-    }
-
-    @Override public final String url(Object request) {
-      if (request == unwrapped) return delegate.url();
-      return null;
-    }
-
-    @Override public final String requestHeader(Object request, String name) {
-      if (request == unwrapped) return delegate.header(name);
-      return null;
-    }
-
-    @Override public final String path(Object request) {
-      if (request == unwrapped) return delegate.path();
-      return null;
-    }
-
-    // Skip response adapter methods
-
-    @Override public final String methodFromResponse(Void response) {
-      return null;
-    }
-
-    @Override public final String route(Void response) {
-      return null;
-    }
-
-    @Override public final int statusCodeAsInt(Void response) {
-      return 0;
-    }
-
-    @Override public final Integer statusCode(Void response) {
-      return null;
-    }
-
-    @Override public final long finishTimestamp(Void response) {
-      return 0L;
-    }
-
-    @Override public final String toString() {
-      return delegate.toString();
-    }
-  }
-
-  @Deprecated static final class FromHttpAdapter<Req> extends HttpServerRequest {
-    final HttpServerAdapter<Req, ?> adapter;
-    final Req request;
-
-    FromHttpAdapter(HttpServerAdapter<Req, ?> adapter, Req request) {
-      if (adapter == null) throw new NullPointerException("adapter == null");
-      this.adapter = adapter;
-      if (request == null) throw new NullPointerException("request == null");
-      this.request = request;
-    }
-
-    @Override public Object unwrap() {
-      return request;
-    }
-
-    @Override public long startTimestamp() {
-      return adapter.startTimestamp(request);
-    }
-
-    @Override public String method() {
-      return adapter.method(request);
-    }
-
-    @Override public String path() {
-      return adapter.path(request);
-    }
-
-    @Override public String url() {
-      return adapter.url(request);
-    }
-
-    @Override public String header(String name) {
-      return adapter.requestHeader(request, name);
-    }
-
-    @Override public boolean parseClientIpAndPort(Span span) {
-      return adapter.parseClientIpAndPort(request, span);
-    }
-
-    @Override public final String toString() {
-      return request.toString();
-    }
+  protected boolean parseClientIpFromXForwardedFor(Span span) {
+    String forwardedFor = header("X-Forwarded-For");
+    if (forwardedFor == null) return false;
+    int indexOfComma = forwardedFor.indexOf(',');
+    if (indexOfComma != -1) forwardedFor = forwardedFor.substring(0, indexOfComma);
+    return span.remoteIpAndPort(forwardedFor, 0);
   }
 }

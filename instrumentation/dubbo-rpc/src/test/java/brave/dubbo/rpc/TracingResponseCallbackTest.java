@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,62 +13,57 @@
  */
 package brave.dubbo.rpc;
 
-import brave.Span;
-import brave.sampler.Sampler;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.ThreadLocalCurrentTraceContext;
+import brave.propagation.TraceContext;
 import com.alibaba.dubbo.remoting.exchange.ResponseCallback;
-import org.junit.Before;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-public class TracingResponseCallbackTest extends ITTracingFilter {
-  @Before public void setup() {
-    setTracing(tracingBuilder(Sampler.ALWAYS_SAMPLE).build());
+public class TracingResponseCallbackTest {
+  FinishSpan finishSpan = mock(FinishSpan.class);
+  TraceContext invocationContext = TraceContext.newBuilder().traceId(1).spanId(2).build();
+  CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.create();
+
+  @Test public void done_should_finish_span() {
+    ResponseCallback callback =
+      TracingResponseCallback.create(null, finishSpan, currentTraceContext, invocationContext);
+
+    callback.done(null);
+
+    verify(finishSpan).accept(null, null);
   }
 
-  @Test public void done_should_finish_span() throws Exception {
-    Span span = tracing.tracer().nextSpan().start();
+  @Test public void done_should_finish_span_caught() {
+    ResponseCallback callback =
+      TracingResponseCallback.create(null, finishSpan, currentTraceContext, invocationContext);
 
-    ResponseCallback tracingResponseCallback =
-      TracingResponseCallback.create(null, span, tracing.currentTraceContext());
-    tracingResponseCallback.done(null);
+    Throwable error = new Exception("Test exception");
+    callback.caught(error);
 
-    assertThat(spans.take()).isNotNull();
+    verify(finishSpan).accept(null, error);
   }
 
-  @Test public void caught_should_tag() throws Exception {
-    Span span = tracing.tracer().nextSpan().start();
-
-    ResponseCallback tracingResponseCallback =
-      TracingResponseCallback.create(null, span, tracing.currentTraceContext());
-    tracingResponseCallback.caught(new Exception("Test exception"));
-
-    assertThat(spans.take().tags())
-      .containsEntry("error", "Test exception");
-  }
-
-  @Test public void done_should_forward_then_finish_span() throws Exception {
-    Span span = tracing.tracer().nextSpan().start();
-
+  @Test public void done_should_forward_then_finish_span() {
     ResponseCallback delegate = mock(ResponseCallback.class);
-    ResponseCallback tracingResponseCallback =
-      TracingResponseCallback.create(delegate, span, tracing.currentTraceContext());
+
+    ResponseCallback callback =
+      TracingResponseCallback.create(delegate, finishSpan, currentTraceContext, invocationContext);
 
     Object result = new Object();
-    tracingResponseCallback.done(result);
+    callback.done(result);
 
     verify(delegate).done(result);
-    assertThat(spans.take()).isNotNull();
+    verify(finishSpan).accept(result, null);
   }
 
-  @Test public void done_should_have_span_in_scope() throws Exception {
-    Span span = tracing.tracer().nextSpan().start();
-
+  @Test public void done_should_have_span_in_scope() {
     ResponseCallback delegate = new ResponseCallback() {
       @Override public void done(Object response) {
-        assertThat(tracing.currentTraceContext().get()).isSameAs(span.context());
+        assertThat(currentTraceContext.get()).isSameAs(invocationContext);
       }
 
       @Override public void caught(Throwable exception) {
@@ -76,29 +71,32 @@ public class TracingResponseCallbackTest extends ITTracingFilter {
       }
     };
 
-    TracingResponseCallback.create(delegate, span, tracing.currentTraceContext())
-      .done(new Object());
+    ResponseCallback callback =
+      TracingResponseCallback.create(delegate, finishSpan, currentTraceContext, invocationContext);
 
-    assertThat(spans.take()).isNotNull();
+    Object result = new Object();
+    callback.done(result);
+
+    verify(finishSpan).accept(result, null);
   }
 
-  @Test public void caught_should_forward_then_tag() throws Exception {
-    Span span = tracing.tracer().nextSpan().start();
-
+  @Test public void done_should_have_span_in_scope_caught() {
     ResponseCallback delegate = new ResponseCallback() {
       @Override public void done(Object response) {
         throw new AssertionError();
       }
 
       @Override public void caught(Throwable exception) {
-        assertThat(tracing.currentTraceContext().get()).isSameAs(span.context());
+        assertThat(currentTraceContext.get()).isSameAs(invocationContext);
       }
     };
 
-    TracingResponseCallback.create(delegate, span, tracing.currentTraceContext())
-      .caught(new Exception("Test exception"));
+    ResponseCallback callback =
+      TracingResponseCallback.create(delegate, finishSpan, currentTraceContext, invocationContext);
 
-    assertThat(spans.take().tags())
-      .containsEntry("error", "Test exception");
+    Throwable error = new Exception("Test exception");
+    callback.caught(error);
+
+    verify(finishSpan).accept(null, error);
   }
 }

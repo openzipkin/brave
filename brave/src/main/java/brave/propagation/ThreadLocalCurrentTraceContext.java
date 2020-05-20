@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -39,20 +39,38 @@ import brave.internal.Nullable;
  */
 public class ThreadLocalCurrentTraceContext extends CurrentTraceContext { // not final for backport
   public static CurrentTraceContext create() {
-    return new Builder().build();
+    return new Builder(DEFAULT).build();
   }
 
-  public static CurrentTraceContext.Builder newBuilder() {
-    return new Builder();
+  public static Builder newBuilder() {
+    return new Builder(DEFAULT);
   }
 
-  static final class Builder extends CurrentTraceContext.Builder {
+  /**
+   * This component is backed by a possibly static shared thread local. Call this to clear the
+   * reference when you are sure any residual state is due to a leak. This is generally only useful
+   * in tests.
+   *
+   * @since 5.11
+   */
+  public void clear() {
+    local.remove();
+  }
 
-    @Override public CurrentTraceContext build() {
-      return new ThreadLocalCurrentTraceContext(this, DEFAULT);
+  /** @since 5.11 */ // overridden for covariance
+  public static final class Builder extends CurrentTraceContext.Builder {
+    final ThreadLocal<TraceContext> local;
+
+    Builder(ThreadLocal<TraceContext> local) {
+      this.local = local;
     }
 
-    Builder() {
+    @Override public Builder addScopeDecorator(ScopeDecorator scopeDecorator) {
+      return (Builder) super.addScopeDecorator(scopeDecorator);
+    }
+
+    @Override public ThreadLocalCurrentTraceContext build() {
+      return new ThreadLocalCurrentTraceContext(this);
     }
   }
 
@@ -60,14 +78,13 @@ public class ThreadLocalCurrentTraceContext extends CurrentTraceContext { // not
 
   @SuppressWarnings("ThreadLocalUsage") // intentional: to support multiple Tracer instances
   final ThreadLocal<TraceContext> local;
+  final RevertToNullScope revertToNull;
 
-  ThreadLocalCurrentTraceContext(
-    CurrentTraceContext.Builder builder,
-    ThreadLocal<TraceContext> local
-  ) {
+  ThreadLocalCurrentTraceContext(Builder builder) {
     super(builder);
-    if (local == null) throw new NullPointerException("local == null");
-    this.local = local;
+    if (builder.local == null) throw new NullPointerException("local == null");
+    local = builder.local;
+    revertToNull = new RevertToNullScope(local);
   }
 
   @Override public TraceContext get() {
@@ -77,12 +94,33 @@ public class ThreadLocalCurrentTraceContext extends CurrentTraceContext { // not
   @Override public Scope newScope(@Nullable TraceContext currentSpan) {
     final TraceContext previous = local.get();
     local.set(currentSpan);
-    class ThreadLocalScope implements Scope {
-      @Override public void close() {
-        local.set(previous);
-      }
-    }
-    Scope result = new ThreadLocalScope();
+    Scope result = previous != null ? new RevertToPreviousScope(local, previous) : revertToNull;
     return decorateScope(currentSpan, result);
+  }
+
+  static final class RevertToNullScope implements Scope {
+    final ThreadLocal<TraceContext> local;
+
+    RevertToNullScope(ThreadLocal<TraceContext> local) {
+      this.local = local;
+    }
+
+    @Override public void close() {
+      local.set(null);
+    }
+  }
+
+  static final class RevertToPreviousScope implements Scope {
+    final ThreadLocal<TraceContext> local;
+    final TraceContext previous;
+
+    RevertToPreviousScope(ThreadLocal<TraceContext> local, TraceContext previous) {
+      this.local = local;
+      this.previous = previous;
+    }
+
+    @Override public void close() {
+      local.set(previous);
+    }
   }
 }

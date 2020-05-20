@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,7 +19,7 @@ import brave.TracingCustomizer;
 /**
  * This allows configuration plugins to collaborate on building an instance of {@link HttpTracing}.
  *
- * <p>For example, a customizer can setup {@link HttpTracing.Builder#clientParser(HttpClientParser)
+ * <p>For example, a customizer can setup {@link HttpTracing.Builder#clientRequestParser(HttpRequestParser)
  * http parsers} without a reference to the {@link HttpTracing.Builder#Builder(Tracing) tracing
  * component}.
  *
@@ -39,9 +39,14 @@ import brave.TracingCustomizer;
  *   <li><a href="https://docs.spring.io/spring/docs/current/spring-framework-reference/core.html#beans-autowired-annotation">Spring Autowired Collections</a></li>
  * </ul></pre>
  *
+ * <p><em>Note</em>: This type is safe to implement as a lambda, or use as a method reference as it
+ * is effectively a {@code FunctionalInterface}. It isn't annotated as such because the project has
+ * a minimum Java language level 6.
+ *
  * @see TracingCustomizer
  * @since 5.7
  */
+// @FunctionalInterface, except Java language level 6. Do not add methods as it will break API!
 public interface HttpTracingCustomizer {
   /** Use to avoid comparing against null references */
   HttpTracingCustomizer NOOP = new HttpTracingCustomizer() {

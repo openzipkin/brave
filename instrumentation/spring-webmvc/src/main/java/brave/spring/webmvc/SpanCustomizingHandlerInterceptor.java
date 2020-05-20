@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,6 +14,7 @@
 package brave.spring.webmvc;
 
 import brave.SpanCustomizer;
+import brave.internal.Nullable;
 import brave.servlet.TracingFilter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -38,12 +39,16 @@ public final class SpanCustomizingHandlerInterceptor implements HandlerIntercept
   SpanCustomizingHandlerInterceptor() { // hide the ctor so we can change later if needed
   }
 
+  /**
+   * Parses the request and sets the "http.route" attribute so that the {@link TracingFilter} can
+   * read it.
+   */
   @Override
   public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object o) {
-    SpanCustomizer span = (SpanCustomizer) request.getAttribute(SpanCustomizer.class.getName());
-    if (span != null) {
+    Object span = request.getAttribute(SpanCustomizer.class.getName());
+    if (span instanceof SpanCustomizer) {
       setHttpRouteAttribute(request);
-      handlerParser.preHandle(request, o, span);
+      handlerParser.preHandle(request, o, (SpanCustomizer) span);
     }
     return true;
   }
@@ -53,8 +58,23 @@ public final class SpanCustomizingHandlerInterceptor implements HandlerIntercept
     ModelAndView modelAndView) {
   }
 
-  @Override public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
+  /** Sets the "error" attribute so that the {@link TracingFilter} can read it. */
+  @Override
+  public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
     Object handler, Exception ex) {
+    Object span = request.getAttribute(SpanCustomizer.class.getName());
+    if (span instanceof SpanCustomizer) {
+      setErrorAttribute(request, ex);
+    }
+  }
+
+  /**
+   * Sets the "error" attribute if not already set, so that the {@link TracingFilter} can read it.
+   */
+  static void setErrorAttribute(HttpServletRequest request, @Nullable Exception ex) {
+    if (ex != null && request.getAttribute("error") == null) {
+      request.setAttribute("error", ex);
+    }
   }
 
   /**

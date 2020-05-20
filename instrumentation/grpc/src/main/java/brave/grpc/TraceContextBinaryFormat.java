@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  */
 package brave.grpc;
 
-import brave.grpc.GrpcPropagation.Tags;
+import brave.grpc.GrpcPropagation.TagsBin;
 import brave.internal.Nullable;
 import brave.internal.Platform;
 import brave.propagation.TraceContext;
@@ -52,7 +52,7 @@ final class TraceContextBinaryFormat {
     return bytes;
   }
 
-  @Nullable static TraceContext parseBytes(byte[] bytes, @Nullable Tags tags) {
+  @Nullable static TraceContext parseBytes(byte[] bytes, @Nullable TagsBin tags) {
     if (bytes == null) throw new NullPointerException("bytes == null"); // programming error
     if (bytes.length == 0) return null;
     if (bytes[0] != VERSION) {

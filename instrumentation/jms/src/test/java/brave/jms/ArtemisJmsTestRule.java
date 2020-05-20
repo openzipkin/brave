@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,12 +17,13 @@ import java.lang.reflect.Field;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.jms.Connection;
 import javax.jms.JMSContext;
+import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.QueueConnection;
 import javax.jms.TopicConnection;
 import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
 import org.apache.activemq.artemis.jms.client.ActiveMQMessage;
-import org.apache.activemq.artemis.junit.EmbeddedJMSResource;
+import org.apache.activemq.artemis.junit.EmbeddedActiveMQResource;
 import org.junit.rules.TestName;
 
 /**
@@ -32,7 +33,7 @@ import org.junit.rules.TestName;
  * <p>See https://issues.apache.org/jira/browse/AMQ-5736?focusedCommentId=16593091&page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel#comment-16593091
  */
 class ArtemisJmsTestRule extends JmsTestRule {
-  EmbeddedJMSResource resource = new EmbeddedJMSResource();
+  EmbeddedActiveMQResource resource = new EmbeddedActiveMQResource();
   ActiveMQJMSConnectionFactory factory;
   AtomicBoolean started = new AtomicBoolean();
 
@@ -46,26 +47,29 @@ class ArtemisJmsTestRule extends JmsTestRule {
     return factory.createContext(JMSContext.AUTO_ACKNOWLEDGE);
   }
 
-  @Override Connection newConnection() throws Exception {
+  @Override Connection newConnection() throws JMSException {
     if (!started.getAndSet(true)) resource.start();
     return factory.createConnection();
   }
 
-  @Override QueueConnection newQueueConnection() throws Exception {
+  @Override QueueConnection newQueueConnection() throws JMSException {
     if (!started.getAndSet(true)) resource.start();
     return factory.createQueueConnection();
   }
 
-  @Override TopicConnection newTopicConnection() throws Exception {
+  @Override TopicConnection newTopicConnection() throws JMSException {
     if (!started.getAndSet(true)) resource.start();
     return factory.createTopicConnection();
   }
 
-  @Override void setReadOnlyProperties(Message message, boolean readOnlyProperties)
-    throws Exception {
-    Field propertiesReadOnly = ActiveMQMessage.class.getDeclaredField("propertiesReadOnly");
-    propertiesReadOnly.setAccessible(true);
-    propertiesReadOnly.set(message, readOnlyProperties);
+  @Override void setReadOnlyProperties(Message message, boolean readOnlyProperties) {
+    try {
+      Field propertiesReadOnly = ActiveMQMessage.class.getDeclaredField("propertiesReadOnly");
+      propertiesReadOnly.setAccessible(true);
+      propertiesReadOnly.set(message, readOnlyProperties);
+    } catch (Exception e) {
+      throw new AssertionError(e);
+    }
   }
 
   @Override public void after() {

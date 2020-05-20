@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,9 +13,11 @@
  */
 package brave.test.propagation;
 
-import brave.internal.HexCodec;
+import brave.internal.codec.HexCodec;
 import brave.internal.Nullable;
 import brave.propagation.Propagation;
+import brave.propagation.Propagation.Getter;
+import brave.propagation.Propagation.Setter;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -29,11 +31,11 @@ import static brave.test.util.ClassLoaders.assertRunIsUnloadableWithSupplier;
 import static brave.test.util.ClassLoaders.newInstance;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public abstract class PropagationTest<K> {
+public abstract class PropagationTest {
 
-  protected abstract Class<? extends Supplier<Propagation<K>>> propagationSupplier();
+  protected abstract Class<? extends Supplier<Propagation<String>>> propagationSupplier();
 
-  protected abstract void inject(Map<K, String> map, @Nullable String traceId,
+  protected abstract void inject(Map<String, String> map, @Nullable String traceId,
     @Nullable String parentId, @Nullable String spanId, @Nullable Boolean sampled,
     @Nullable Boolean debug);
 
@@ -41,10 +43,10 @@ public abstract class PropagationTest<K> {
    * There's currently no standard API to just inject sampling flags, as IDs are intended to be
    * propagated.
    */
-  protected abstract void inject(Map<K, String> carrier, SamplingFlags samplingFlags);
+  protected abstract void inject(Map<String, String> request, SamplingFlags samplingFlags);
 
-  protected Map<K, String> map = new LinkedHashMap<>();
-  MapEntry<K> mapEntry = new MapEntry<>();
+  protected Map<String, String> map = new LinkedHashMap<>();
+  MapEntry mapEntry = new MapEntry();
 
   TraceContext rootSpan = TraceContext.newBuilder()
     .traceId(1L)
@@ -54,7 +56,7 @@ public abstract class PropagationTest<K> {
     .parentId(rootSpan.spanId())
     .spanId(2).build();
 
-  protected final Propagation<K> propagation;
+  protected final Propagation<String> propagation;
 
   protected PropagationTest() {
     propagation = newInstance(propagationSupplier(), getClass().getClassLoader()).get();
@@ -131,7 +133,7 @@ public abstract class PropagationTest<K> {
     assertThat(extracted)
       .isEqualTo(expected);
 
-    Map<K, String> injected = new LinkedHashMap<>();
+    Map<String, String> injected = new LinkedHashMap<>();
     if (expected.context() != null) {
       propagation.injector(mapEntry).inject(expected.context(), injected);
     } else {
@@ -141,18 +143,18 @@ public abstract class PropagationTest<K> {
     assertThat(map).isEqualTo(injected);
   }
 
-  protected static class MapEntry<K> implements
-    Propagation.Getter<Map<K, String>, K>,
-    Propagation.Setter<Map<K, String>, K> {
+  protected static class MapEntry implements
+    Getter<Map<String, String>, String>,
+    Setter<Map<String, String>, String> {
     public MapEntry() {
     }
 
-    @Override public void put(Map<K, String> carrier, K key, String value) {
-      carrier.put(key, value);
+    @Override public void put(Map<String, String> request, String key, String value) {
+      request.put(key, value);
     }
 
-    @Override public String get(Map<K, String> carrier, K key) {
-      return carrier.get(key);
+    @Override public String get(Map<String, String> request, String key) {
+      return request.get(key);
     }
   }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,6 +13,7 @@
  */
 package brave.jms;
 
+import brave.Span;
 import brave.messaging.MessagingRuleSampler;
 import brave.messaging.MessagingTracing;
 import brave.sampler.Sampler;
@@ -25,34 +26,33 @@ import javax.jms.MessageProducer;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.rules.TestName;
-import zipkin2.Span;
 
 import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** When adding tests here, also add to {@linkplain brave.jms.ITTracingJMSProducer} */
+/** When adding tests here, also add to {@link brave.jms.ITTracingJMSProducer} */
 public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessageProducer {
 
   @Override JmsTestRule newJmsTestRule(TestName testName) {
     return new ArtemisJmsTestRule(testName);
   }
 
-  @Test public void should_complete_on_callback() throws Exception {
+  @Test public void should_complete_on_callback() throws JMSException {
     should_complete_on_callback(
       listener -> messageProducer.send(jms.destination, message, listener));
   }
 
-  @Test public void should_complete_on_callback_queue() throws Exception {
+  @Test public void should_complete_on_callback_queue() throws JMSException {
     should_complete_on_callback(
       listener -> queueSender.send(jms.queue, message, listener));
   }
 
-  @Test public void should_complete_on_callback_topic() throws Exception {
+  @Test public void should_complete_on_callback_topic() throws JMSException {
     should_complete_on_callback(
       listener -> topicPublisher.send(jms.topic, message, listener));
   }
 
-  void should_complete_on_callback(JMSAsync async) throws Exception {
+  void should_complete_on_callback(JMSAsync async) throws JMSException {
     async.send(new CompletionListener() {
       @Override public void onCompletion(Message message) {
         tracing.tracer().currentSpanCustomizer().tag("onCompletion", "");
@@ -63,15 +63,13 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
       }
     });
 
-    Span producerSpan = takeSpan();
-    assertThat(producerSpan.timestampAsLong()).isPositive();
-    assertThat(producerSpan.durationAsLong()).isPositive();
-    assertThat(producerSpan.tags()).containsKeys("onCompletion");
+    assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.PRODUCER).tags())
+      .containsKey("onCompletion");
   }
 
   @Test
   @Ignore("https://issues.apache.org/jira/browse/ARTEMIS-2054")
-  public void should_complete_on_error_callback() throws Exception {
+  public void should_complete_on_error_callback() throws JMSException {
     CountDownLatch latch = new CountDownLatch(1);
 
     // To force error to be on callback thread, we need to wait until message is
@@ -106,13 +104,10 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
     jms.after();
     latch.countDown();
 
-    Span producerSpan = takeSpan();
-    assertThat(producerSpan.timestampAsLong()).isPositive();
-    assertThat(producerSpan.durationAsLong()).isPositive();
-    assertThat(producerSpan.tags()).containsKeys("error", "onException");
+    testSpanHandler.takeRemoteSpanWithErrorTag(Span.Kind.PRODUCER, "onException");
   }
 
-  @Test public void customSampler() throws Exception {
+  @Test public void customSampler() throws JMSException {
     MessagingRuleSampler producerSampler = MessagingRuleSampler.newBuilder()
       .putRule(channelNameEquals(jms.queue.getQueueName()), Sampler.NEVER_SAMPLE)
       .build();
@@ -122,7 +117,7 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
       .build();
          JMSContext context = JmsTracing.create(messagingTracing)
            .connectionFactory(((ArtemisJmsTestRule) jms).factory)
-           .createContext(JMSContext.AUTO_ACKNOWLEDGE);
+           .createContext(JMSContext.AUTO_ACKNOWLEDGE)
     ) {
       context.createProducer().send(jms.queue, "foo");
     }

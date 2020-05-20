@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,7 +15,7 @@ package brave.spring.beans;
 
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContextCustomizer;
-import java.util.List;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.After;
 import org.junit.Test;
 
@@ -44,7 +44,8 @@ public class CurrentTraceContextFactoryBeanTest {
 
     assertThat(context.getBean("currentTraceContext", CurrentTraceContext.class))
       .extracting("scopeDecorators")
-      .satisfies(e -> assertThat((List) e).isNotEmpty());
+      .asInstanceOf(InstanceOfAssertFactories.ARRAY)
+      .isNotEmpty();
   }
 
   public static final CurrentTraceContextCustomizer

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,6 @@
  */
 package brave;
 
-import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.CurrentTraceContext.Scope;
@@ -21,28 +20,24 @@ import brave.propagation.TraceContext;
 
 /** This wraps the public api and guards access to a mutable span. */
 final class RealScopedSpan extends ScopedSpan {
-
   final TraceContext context;
   final Scope scope;
   final MutableSpan state;
   final Clock clock;
   final PendingSpans pendingSpans;
-  final FinishedSpanHandler finishedSpanHandler;
 
   RealScopedSpan(
     TraceContext context,
     Scope scope,
     MutableSpan state,
     Clock clock,
-    PendingSpans pendingSpans,
-    FinishedSpanHandler finishedSpanHandler
+    PendingSpans pendingSpans
   ) {
     this.context = context;
     this.scope = scope;
     this.pendingSpans = pendingSpans;
     this.state = state;
     this.clock = clock;
-    this.finishedSpanHandler = finishedSpanHandler;
   }
 
   @Override public boolean isNoop() {
@@ -53,13 +48,18 @@ final class RealScopedSpan extends ScopedSpan {
     return context;
   }
 
-  @Override public ScopedSpan annotate(String value) {
-    state.annotate(clock.currentTimeMicroseconds(), value);
+  @Override public ScopedSpan name(String name) {
+    state.name(name);
     return this;
   }
 
   @Override public ScopedSpan tag(String key, String value) {
     state.tag(key, value);
+    return this;
+  }
+
+  @Override public ScopedSpan annotate(String value) {
+    state.annotate(clock.currentTimeMicroseconds(), value);
     return this;
   }
 
@@ -70,9 +70,7 @@ final class RealScopedSpan extends ScopedSpan {
 
   @Override public void finish() {
     scope.close();
-    if (!pendingSpans.remove(context)) return; // don't double-report
-    state.finishTimestamp(clock.currentTimeMicroseconds());
-    finishedSpanHandler.handle(context, state);
+    pendingSpans.finish(context, 0L);
   }
 
   @Override public boolean equals(Object o) {

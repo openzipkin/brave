@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,31 +13,26 @@
  */
 package brave;
 
-import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.TraceContext;
 
 /** This wraps the public api and guards access to a mutable span. */
 final class RealSpan extends Span {
-
   final TraceContext context;
   final PendingSpans pendingSpans;
   final MutableSpan state;
   final Clock clock;
-  final FinishedSpanHandler finishedSpanHandler;
 
   RealSpan(TraceContext context,
     PendingSpans pendingSpans,
     MutableSpan state,
-    Clock clock,
-    FinishedSpanHandler finishedSpanHandler
+    Clock clock
   ) {
     this.context = context;
     this.pendingSpans = pendingSpans;
     this.state = state;
     this.clock = clock;
-    this.finishedSpanHandler = finishedSpanHandler;
   }
 
   @Override public boolean isNoop() {
@@ -140,24 +135,21 @@ final class RealSpan extends Span {
   }
 
   @Override public void finish() {
-    finish(clock.currentTimeMicroseconds());
+    finish(0L);
   }
 
   @Override public void finish(long timestamp) {
-    if (!pendingSpans.remove(context)) return;
     synchronized (state) {
-      state.finishTimestamp(timestamp);
+      pendingSpans.finish(context, timestamp);
     }
-    finishedSpanHandler.handle(context, state);
   }
 
   @Override public void abandon() {
-    pendingSpans.remove(context);
+    pendingSpans.abandon(context);
   }
 
   @Override public void flush() {
-    abandon();
-    finishedSpanHandler.handle(context, state);
+    pendingSpans.flush(context);
   }
 
   @Override public String toString() {
@@ -173,6 +165,8 @@ final class RealSpan extends Span {
     return isEqualToRealOrLazySpan(context, o);
   }
 
+  // We don't compare a RealSpan vs a NoopSpan as they can never equal each other.
+  // RealSpan's are always locally sampled and Noop ones are always not.
   static boolean isEqualToRealOrLazySpan(TraceContext context, Object o) {
     if (o instanceof LazySpan) {
       return context.equals(((LazySpan) o).context);

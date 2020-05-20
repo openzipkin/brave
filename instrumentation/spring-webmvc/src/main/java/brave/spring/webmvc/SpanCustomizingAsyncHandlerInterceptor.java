@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,6 +14,7 @@
 package brave.spring.webmvc;
 
 import brave.SpanCustomizer;
+import brave.servlet.TracingFilter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,7 @@ import org.springframework.web.servlet.AsyncHandlerInterceptor;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
+import static brave.spring.webmvc.SpanCustomizingHandlerInterceptor.setErrorAttribute;
 import static brave.spring.webmvc.SpanCustomizingHandlerInterceptor.setHttpRouteAttribute;
 
 /**
@@ -36,16 +38,21 @@ public final class SpanCustomizingAsyncHandlerInterceptor extends HandlerInterce
 
   @Override
   public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object o) {
-    SpanCustomizer span = (SpanCustomizer) request.getAttribute(SpanCustomizer.class.getName());
-    if (span != null) handlerParser.preHandle(request, o, span);
+    Object span = request.getAttribute(SpanCustomizer.class.getName());
+    if (span instanceof SpanCustomizer) handlerParser.preHandle(request, o, (SpanCustomizer) span);
     return true;
   }
 
-  // Set the route attribute on completion to avoid any thread visibility issues reading it
+  /**
+   * Sets the "error" and "http.route" attributes so that the {@link TracingFilter} can read them.
+   */
   @Override
   public void afterCompletion(
     HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
-    SpanCustomizer span = (SpanCustomizer) request.getAttribute(SpanCustomizer.class.getName());
-    if (span != null) setHttpRouteAttribute(request);
+    Object span = request.getAttribute(SpanCustomizer.class.getName());
+    if (span instanceof SpanCustomizer) {
+      setErrorAttribute(request, ex);
+      setHttpRouteAttribute(request);
+    }
   }
 }

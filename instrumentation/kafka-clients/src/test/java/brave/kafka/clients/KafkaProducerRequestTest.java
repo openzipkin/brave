@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -29,23 +29,5 @@ public class KafkaProducerRequestTest {
   @Test public void topic() {
     assertThat(request.channelKind()).isEqualTo("topic");
     assertThat(request.channelName()).isEqualTo(record.topic());
-  }
-
-  @Test public void getHeader() {
-    record.headers().add("b3", new byte[] {'1'});
-
-    assertThat(request.getHeader("b3"))
-      .isEqualTo("1");
-  }
-
-  @Test public void getHeader_null() {
-    assertThat(request.getHeader("b3")).isNull();
-  }
-
-  @Test public void setHeader() {
-    request.setHeader("b3", "1");
-
-    assertThat(record.headers().lastHeader("b3").value())
-      .containsExactly('1');
   }
 }

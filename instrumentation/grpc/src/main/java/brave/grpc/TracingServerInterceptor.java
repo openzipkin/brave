@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,185 +13,171 @@
  */
 package brave.grpc;
 
+import brave.NoopSpanCustomizer;
 import brave.Span;
-import brave.Tracer;
-import brave.Tracer.SpanInScope;
-import brave.grpc.GrpcPropagation.Tags;
-import brave.propagation.TraceContext.Extractor;
-import brave.propagation.TraceContextOrSamplingFlags;
-import brave.rpc.RpcRequest;
-import brave.sampler.SamplerFunction;
+import brave.SpanCustomizer;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.TraceContext;
+import brave.rpc.RpcServerHandler;
 import io.grpc.ForwardingServerCall.SimpleForwardingServerCall;
 import io.grpc.ForwardingServerCallListener.SimpleForwardingServerCallListener;
 import io.grpc.Metadata;
+import io.grpc.Metadata.Key;
 import io.grpc.ServerCall;
+import io.grpc.ServerCall.Listener;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.Status;
-
-import static brave.grpc.GrpcPropagation.RPC_METHOD;
-import static brave.grpc.GrpcServerRequest.GETTER;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 // not exposed directly as implementation notably changes between versions 1.2 and 1.3
 final class TracingServerInterceptor implements ServerInterceptor {
-  final Tracer tracer;
-  final Extractor<GrpcServerRequest> extractor;
-  final SamplerFunction<RpcRequest> sampler;
-  final GrpcServerParser parser;
+  final Map<String, Key<String>> nameToKey;
+  final CurrentTraceContext currentTraceContext;
+  final RpcServerHandler handler;
   final boolean grpcPropagationFormatEnabled;
+  final MessageProcessor messageProcessor;
 
   TracingServerInterceptor(GrpcTracing grpcTracing) {
-    tracer = grpcTracing.rpcTracing.tracing().tracer();
-    extractor = grpcTracing.propagation.extractor(GETTER);
-    sampler = grpcTracing.rpcTracing.serverSampler();
-    parser = grpcTracing.serverParser;
+    nameToKey = grpcTracing.nameToKey;
+    currentTraceContext = grpcTracing.rpcTracing.tracing().currentTraceContext();
+    handler = RpcServerHandler.create(grpcTracing.rpcTracing);
     grpcPropagationFormatEnabled = grpcTracing.grpcPropagationFormatEnabled;
+    messageProcessor = grpcTracing.serverMessageProcessor;
   }
 
   @Override
-  public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
+  public <ReqT, RespT> Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
     Metadata headers, ServerCallHandler<ReqT, RespT> next) {
-    GrpcServerRequest request = new GrpcServerRequest(call.getMethodDescriptor(), headers);
-    TraceContextOrSamplingFlags extracted = extractor.extract(request);
-    Span span = nextSpan(extracted, request);
+    GrpcServerRequest request = new GrpcServerRequest(nameToKey, call, headers);
 
-    // If grpc propagation is enabled, make sure we refresh the server method
-    if (grpcPropagationFormatEnabled) {
-      Tags tags = span.context().findExtra(Tags.class);
-      if (tags != null) tags.put(RPC_METHOD, call.getMethodDescriptor().getFullMethodName());
-    }
+    Span span = handler.handleReceive(request);
+    AtomicReference<Span> spanRef = new AtomicReference<>(span);
 
-    span.kind(Span.Kind.SERVER);
-    parser.onStart(call, headers, span.customizer());
     // startCall invokes user interceptors, so we place the span in scope here
-    ServerCall.Listener<ReqT> result;
-    SpanInScope scope = tracer.withSpanInScope(span);
-    Throwable error = null;
-    try {
-      result = next.startCall(new TracingServerCall<>(span, call), headers);
-    } catch (RuntimeException | Error e) {
-      error = e;
+    Listener<ReqT> result;
+    try (Scope scope = currentTraceContext.maybeScope(span.context())) {
+      result = next.startCall(new TracingServerCall<>(call, span, spanRef, request), headers);
+    } catch (Throwable e) {
+      // Another interceptor may throw an exception during startCall, in which case no other
+      // callbacks are called, so go ahead and close the span here.
+      //
+      // See instrumentation/grpc/RATIONALE.md for why we don't use the handler here
+      spanRef.set(null);
+      if (span != null) span.error(e).finish();
       throw e;
-    } finally {
-      if (error != null) span.error(error).finish();
-      scope.close();
     }
 
-    // This ensures the server implementation can see the span in scope
-    return new ScopingServerCallListener<>(tracer, span, result, parser);
+    return new TracingServerCallListener<>(result, span, spanRef, request);
   }
 
-  /** Creates a potentially noop span representing this request */
-  // This is the same code as HttpServerHandler.nextSpan
-  // TODO: pull this into RpcServerHandler when stable https://github.com/openzipkin/brave/pull/999
-  Span nextSpan(TraceContextOrSamplingFlags extracted, GrpcServerRequest request) {
-    Boolean sampled = extracted.sampled();
-    // only recreate the context if the sampler made a decision
-    if (sampled == null && (sampled = sampler.trySample(request)) != null) {
-      extracted = extracted.sampled(sampled.booleanValue());
-    }
-    return extracted.context() != null
-      ? tracer.joinSpan(extracted.context())
-      : tracer.nextSpan(extracted);
-  }
-
-  // TODO: this looks like it should be scoping, but isn't. Revisit
   final class TracingServerCall<ReqT, RespT> extends SimpleForwardingServerCall<ReqT, RespT> {
-    final Span span;
+    final TraceContext context;
+    final AtomicReference<Span> spanRef;
+    final GrpcServerRequest request;
+    final Metadata headers = new Metadata();
 
-    TracingServerCall(Span span, ServerCall<ReqT, RespT> call) {
-      super(call);
-      this.span = span;
+    TracingServerCall(ServerCall<ReqT, RespT> delegate, Span span, AtomicReference<Span> spanRef,
+      GrpcServerRequest request) {
+      super(delegate);
+      this.context = span.context();
+      this.spanRef = spanRef;
+      this.request = request;
     }
 
     @Override public void request(int numMessages) {
-      span.start();
-      super.request(numMessages);
+      try (Scope scope = currentTraceContext.maybeScope(context)) {
+        delegate().request(numMessages);
+      }
     }
 
-    @Override
-    public void sendMessage(RespT message) {
-      super.sendMessage(message);
-      parser.onMessageSent(message, span.customizer());
+    @Override public void sendHeaders(Metadata headers) {
+      try (Scope scope = currentTraceContext.maybeScope(context)) {
+        delegate().sendHeaders(headers);
+      }
+      // sendHeaders() JavaDoc mentions headers are not thread-safe, so we make a safe copy here.
+      this.headers.merge(headers);
+    }
+
+    @Override public void sendMessage(RespT message) {
+      try (Scope scope = currentTraceContext.maybeScope(context)) {
+        delegate().sendMessage(message);
+        Span span = spanRef.get(); // could be an error
+        SpanCustomizer customizer = span != null ? span.customizer() : NoopSpanCustomizer.INSTANCE;
+        messageProcessor.onMessageSent(message, customizer);
+      }
     }
 
     @Override public void close(Status status, Metadata trailers) {
-      try {
-        super.close(status, trailers);
-        parser.onClose(status, trailers, span.customizer());
-      } catch (RuntimeException | Error e) {
-        span.error(e);
-        throw e;
-      } finally {
-        span.finish();
+      // See /instrumentation/grpc/RATIONALE.md for why we don't catch exceptions from the delegate
+      GrpcServerResponse response = new GrpcServerResponse(request, headers, status, trailers);
+      Span span = spanRef.getAndSet(null);
+      if (span != null) handler.handleSend(response, span);
+
+      try (Scope scope = currentTraceContext.maybeScope(context)) {
+        delegate().close(status, trailers);
       }
     }
   }
 
-  static final class ScopingServerCallListener<ReqT>
-    extends SimpleForwardingServerCallListener<ReqT> {
-    final Tracer tracer;
-    final Span span;
-    final GrpcServerParser parser;
+  final class TracingServerCallListener<RespT> extends SimpleForwardingServerCallListener<RespT> {
+    final TraceContext context;
+    final AtomicReference<Span> spanRef;
+    final GrpcServerRequest request;
 
-    ScopingServerCallListener(Tracer tracer, Span span, ServerCall.Listener<ReqT> delegate,
-      GrpcServerParser parser) {
+    TracingServerCallListener(
+      Listener<RespT> delegate,
+      Span span,
+      AtomicReference<Span> spanRef,
+      GrpcServerRequest request
+    ) {
       super(delegate);
-      this.tracer = tracer;
-      this.span = span;
-      this.parser = parser;
+      this.context = span.context();
+      this.spanRef = spanRef;
+      this.request = request;
     }
 
-    @Override public void onMessage(ReqT message) {
-      SpanInScope scope = tracer.withSpanInScope(span);
-      try { // retrolambda can't resolve this try/finally
-        parser.onMessageReceived(message, span.customizer());
+    @Override public void onMessage(RespT message) {
+      try (Scope scope = currentTraceContext.maybeScope(context)) {
         delegate().onMessage(message);
-      } finally {
-        scope.close();
+        Span span = spanRef.get(); // could be an error
+        SpanCustomizer customizer = span != null ? span.customizer() : NoopSpanCustomizer.INSTANCE;
+        messageProcessor.onMessageReceived(message, customizer);
       }
     }
 
     @Override public void onHalfClose() {
-      SpanInScope scope = tracer.withSpanInScope(span);
-      Throwable error = null;
-      try {
+      try (Scope scope = currentTraceContext.maybeScope(context)) {
         delegate().onHalfClose();
-      } catch (RuntimeException | Error e) {
-        error = e;
-        throw e;
-      } finally {
+      } catch (Throwable e) {
         // If there was an exception executing onHalfClose, we don't expect other lifecycle
         // commands to succeed. Accordingly, we close the span
-        if (error != null) span.error(error).finish();
-        scope.close();
+        //
+        // See instrumentation/grpc/RATIONALE.md for why we don't use the handler here
+        Span span = spanRef.getAndSet(null);
+        if (span != null) span.error(e).finish();
+
+        throw e;
       }
     }
 
     @Override public void onCancel() {
-      SpanInScope scope = tracer.withSpanInScope(span);
-      try { // retrolambda can't resolve this try/finally
+      try (Scope scope = currentTraceContext.maybeScope(context)) {
         delegate().onCancel();
-      } finally {
-        scope.close();
       }
     }
 
     @Override public void onComplete() {
-      SpanInScope scope = tracer.withSpanInScope(span);
-      try { // retrolambda can't resolve this try/finally
+      try (Scope scope = currentTraceContext.maybeScope(context)) {
         delegate().onComplete();
-      } finally {
-        scope.close();
       }
     }
 
     @Override public void onReady() {
-      SpanInScope scope = tracer.withSpanInScope(span);
-      try { // retrolambda can't resolve this try/finally
+      try (Scope scope = currentTraceContext.maybeScope(context)) {
         delegate().onReady();
-      } finally {
-        scope.close();
       }
     }
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,20 +17,21 @@ import brave.Span;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.Platform;
-import brave.internal.RecyclableBuffers;
 import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.List;
 
-import static brave.internal.HexCodec.lenientLowerHexToUnsignedLong;
-import static brave.internal.HexCodec.toLowerHex;
-import static brave.internal.HexCodec.writeHexLong;
+import static brave.internal.codec.HexCodec.lenientLowerHexToUnsignedLong;
+import static brave.internal.codec.HexCodec.toLowerHex;
+import static brave.internal.codec.HexCodec.writeHexLong;
 import static brave.internal.InternalPropagation.FLAG_LOCAL_ROOT;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_LOCAL;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 import static brave.internal.InternalPropagation.FLAG_SHARED;
-import static brave.internal.Lists.ensureImmutable;
+import static brave.internal.collect.Lists.ensureImmutable;
+import static brave.internal.collect.Lists.ensureMutable;
+import static brave.propagation.TraceIdContext.toTraceIdString;
 
 /**
  * Contains trace identifiers and sampling data propagated in and out-of-process.
@@ -40,6 +41,8 @@ import static brave.internal.Lists.ensureImmutable;
  * <p>The implementation was originally {@code com.github.kristofa.brave.SpanId}, which was a
  * port of {@code com.twitter.finagle.tracing.TraceId}. Unlike these mentioned, this type does not
  * expose a single binary representation. That's because propagation forms can now vary.
+ *
+ * @since 4.0
  */
 //@Immutable
 public final class TraceContext extends SamplingFlags {
@@ -55,31 +58,44 @@ public final class TraceContext extends SamplingFlags {
    * HttpURLConnection connection = (HttpURLConnection) new URL("http://myserver").openConnection();
    * injector.inject(span.context(), connection);
    * }</pre>
+   *
+   * <p><em>Note</em>: This type is safe to implement as a lambda, or use as a method reference as
+   * it is effectively a {@code FunctionalInterface}. It isn't annotated as such because the project
+   * has a minimum Java language level 6.
+   *
+   * @since 4.0
    */
-  public interface Injector<C> {
+  // @FunctionalInterface, except Java language level 6. Do not add methods as it will break API!
+  public interface Injector<R> {
     /**
      * Usually calls a setter for each propagation field to send downstream.
      *
      * @param traceContext possibly unsampled.
-     * @param carrier holds propagation fields. For example, an outgoing message or http request.
+     * @param request holds propagation fields. For example, an outgoing message or http request.
      */
-    void inject(TraceContext traceContext, C carrier);
+    void inject(TraceContext traceContext, R request);
   }
 
   /**
    * Used to continue an incoming trace. For example, by reading http headers.
    *
+   * <p><em>Note</em>: This type is safe to implement as a lambda, or use as a method reference as
+   * it is effectively a {@code FunctionalInterface}. It isn't annotated as such because the project
+   * has a minimum Java language level 6.
+   *
    * @see brave.Tracer#nextSpan(TraceContextOrSamplingFlags)
+   * @since 4.0
    */
-  public interface Extractor<C> {
+  // @FunctionalInterface, except Java language level 6. Do not add methods as it will break API!
+  public interface Extractor<R> {
 
     /**
-     * Returns either a trace context or sampling flags parsed from the carrier. If nothing was
+     * Returns either a trace context or sampling flags parsed from the request. If nothing was
      * parsable, sampling flags will be set to {@link SamplingFlags#EMPTY}.
      *
-     * @param carrier holds propagation fields. For example, an incoming message or http request.
+     * @param request holds propagation fields. For example, an incoming message or http request.
      */
-    TraceContextOrSamplingFlags extract(C carrier);
+    TraceContextOrSamplingFlags extract(R request);
   }
 
   public static Builder newBuilder() {
@@ -174,20 +190,22 @@ public final class TraceContext extends SamplingFlags {
    *
    * <p>Implementations are responsible for scoping any data stored here. This can be performed
    * when {@link Propagation.Factory#decorate(TraceContext)} is called.
+   *
+   * @since 4.9
    */
   public List<Object> extra() {
-    return extra;
+    return extraList;
   }
 
   /**
-   * Returns an {@linkplain #extra() extra} of the given type if present or null if not.
+   * Returns a {@linkplain #extra() propagated state} of the given type if present or null if not.
    *
-   * <p>Note: it is the responsibility of {@link Propagation.Factory#decorate(TraceContext)}
-   * to consolidate extra fields. If it doesn't, there could be multiple instance of a given type
-   * and this can break logic.
+   * <p>Note: It is the responsibility of {@link Propagation.Factory#decorate(TraceContext)}
+   * to consolidate elements. If it doesn't, there could be multiple instances of a given type and
+   * this can break logic.
    */
-  public @Nullable <T> T findExtra(Class<T> type) {
-    return findExtra(type, extra);
+  @Nullable public <T> T findExtra(Class<T> type) {
+    return findExtra(type, extraList);
   }
 
   public Builder toBuilder() {
@@ -200,14 +218,7 @@ public final class TraceContext extends SamplingFlags {
   public String traceIdString() {
     String r = traceIdString;
     if (r == null) {
-      if (traceIdHigh != 0) {
-        char[] result = RecyclableBuffers.idBuffer();
-        writeHexLong(result, 0, traceIdHigh);
-        writeHexLong(result, 16, traceId);
-        r = new String(result);
-      } else {
-        r = toLowerHex(traceId);
-      }
+      r = toTraceIdString(traceIdHigh, traceId);
       traceIdString = r;
     }
     return r;
@@ -266,7 +277,7 @@ public final class TraceContext extends SamplingFlags {
     long traceIdHigh, traceId, parentId, spanId;
     long localRootId; // intentionally only mutable by the copy constructor to control usage.
     int flags;
-    List<Object> extra = Collections.emptyList();
+    List<Object> extraList = Collections.emptyList();
 
     Builder(TraceContext context) { // no external implementations
       traceIdHigh = context.traceIdHigh;
@@ -275,7 +286,7 @@ public final class TraceContext extends SamplingFlags {
       parentId = context.parentId;
       spanId = context.spanId;
       flags = context.flags;
-      extra = context.extra;
+      extraList = context.extraList;
     }
 
     /** @see TraceContext#traceIdHigh() */
@@ -351,12 +362,33 @@ public final class TraceContext extends SamplingFlags {
     }
 
     /**
-     * Shares the input with the builder, replacing any current data in the builder.
-     *
-     * @see TraceContext#extra()
+     * @since 4.9
+     * @deprecated Since 5.12, use {@link #addExtra(Object)}
      */
-    public final Builder extra(List<Object> extra) {
-      this.extra = extra;
+    @Deprecated public Builder extra(List<Object> extraList) {
+      if (extraList == null) throw new NullPointerException("extraList == null");
+      for (Object extra : extraList) {
+        addExtra(extra);
+      }
+      return this;
+    }
+
+    /**
+     * Allows you to control {@link #extra()} explicitly.
+     *
+     * @since 5.12
+     */
+    public Builder clearExtra() {
+      extraList = Collections.emptyList();
+      return this;
+    }
+
+    /**
+     * @see #extra()
+     * @since 5.12
+     */
+    public Builder addExtra(Object extra) {
+      extraList = ensureExtraAdded(extraList, extra);
       return this;
     }
 
@@ -370,7 +402,7 @@ public final class TraceContext extends SamplingFlags {
      * <p>Example use:
      * <pre>{@code
      * // Attempt to parse the trace ID or break out if unsuccessful for any reason
-     * String traceIdString = getter.get(carrier, key);
+     * String traceIdString = getter.get(request, key);
      * if (!builder.parseTraceId(traceIdString, propagation.traceIdKey)) {
      *   return TraceContextOrSamplingFlags.EMPTY;
      * }
@@ -382,33 +414,47 @@ public final class TraceContext extends SamplingFlags {
      * @return false if the input is null or malformed
      */
     // temporarily package protected until we figure out if this is reusable enough to expose
-    final boolean parseTraceId(String traceIdString, Object key) {
+    boolean parseTraceId(String traceIdString, Object key) {
       if (isNull(key, traceIdString)) return false;
       int length = traceIdString.length();
       if (invalidIdLength(key, length, 32)) return false;
+
+      boolean traceIdHighAllZeros = false, traceIdAllZeros = false;
 
       // left-most characters, if any, are the high bits
       int traceIdIndex = Math.max(0, length - 16);
       if (traceIdIndex > 0) {
         traceIdHigh = lenientLowerHexToUnsignedLong(traceIdString, 0, traceIdIndex);
-        if (traceIdHigh == 0) {
+        if (traceIdHigh == 0L) {
+          traceIdHighAllZeros = isAllZeros(traceIdString, 0, traceIdIndex);
+          if (!traceIdHighAllZeros) {
+            maybeLogNotLowerHex(traceIdString);
+            return false;
+          }
+        }
+      } else {
+        traceIdHighAllZeros = true;
+      }
+
+      // right-most up to 16 characters are the low bits
+      traceId = lenientLowerHexToUnsignedLong(traceIdString, traceIdIndex, length);
+      if (traceId == 0L) {
+        traceIdAllZeros = isAllZeros(traceIdString, traceIdIndex, length);
+        if (!traceIdAllZeros) {
           maybeLogNotLowerHex(traceIdString);
           return false;
         }
       }
 
-      // right-most up to 16 characters are the low bits
-      traceId = lenientLowerHexToUnsignedLong(traceIdString, traceIdIndex, length);
-      if (traceId == 0) {
-        maybeLogNotLowerHex(traceIdString);
-        return false;
+      if (traceIdHighAllZeros && traceIdAllZeros) {
+        Platform.get().log("Invalid input: traceId was all zeros", null);
       }
-      return true;
+      return traceIdHigh != 0L || traceId != 0L;
     }
 
     /** Parses the parent id from the input string. Returns true if the ID was missing or valid. */
-    final <C, K> boolean parseParentId(Propagation.Getter<C, K> getter, C carrier, K key) {
-      String parentIdString = getter.get(carrier, key);
+    <R, K> boolean parseParentId(Propagation.Getter<R, K> getter, R request, K key) {
+      String parentIdString = getter.get(request, key);
       if (parentIdString == null) return true; // absent parent is ok
       int length = parentIdString.length();
       if (invalidIdLength(key, length, 16)) return false;
@@ -420,21 +466,25 @@ public final class TraceContext extends SamplingFlags {
     }
 
     /** Parses the span id from the input string. Returns true if the ID is valid. */
-    final <C, K> boolean parseSpanId(Propagation.Getter<C, K> getter, C carrier, K key) {
-      String spanIdString = getter.get(carrier, key);
+    <R, K> boolean parseSpanId(Propagation.Getter<R, K> getter, R request, K key) {
+      String spanIdString = getter.get(request, key);
       if (isNull(key, spanIdString)) return false;
       int length = spanIdString.length();
       if (invalidIdLength(key, length, 16)) return false;
 
       spanId = lenientLowerHexToUnsignedLong(spanIdString, 0, length);
       if (spanId == 0) {
+        if (isAllZeros(spanIdString, 0, length)) {
+          Platform.get().log("Invalid input: spanId was all zeros", null);
+          return false;
+        }
         maybeLogNotLowerHex(spanIdString);
         return false;
       }
       return true;
     }
 
-    boolean invalidIdLength(Object key, int length, int max) {
+    static boolean invalidIdLength(Object key, int length, int max) {
       if (length > 1 && length <= max) return false;
 
       assert max == 32 || max == 16;
@@ -445,23 +495,32 @@ public final class TraceContext extends SamplingFlags {
       return true;
     }
 
-    boolean isNull(Object key, String maybeNull) {
+    static boolean isNull(Object key, String maybeNull) {
       if (maybeNull != null) return false;
       Platform.get().log("{0} was null", key, null);
       return true;
     }
 
-    void maybeLogNotLowerHex(String notLowerHex) {
+    /** Helps differentiate a parse failure from a successful parse of all zeros. */
+    static boolean isAllZeros(String value, int beginIndex, int endIndex) {
+      for (int i = beginIndex; i < endIndex; i++) {
+        if (value.charAt(i) != '0') return false;
+      }
+      return true;
+    }
+
+    static void maybeLogNotLowerHex(String notLowerHex) {
       Platform.get().log("{0} is not a lower-hex string", notLowerHex, null);
     }
 
-    public final TraceContext build() {
+    /** @throws IllegalArgumentException if missing trace ID or span ID */
+    public TraceContext build() {
       String missing = "";
-      if (traceId == 0L) missing += " traceId";
+      if (traceIdHigh == 0L && traceId == 0L) missing += " traceId";
       if (spanId == 0L) missing += " spanId";
-      if (!"".equals(missing)) throw new IllegalStateException("Missing: " + missing);
+      if (!"".equals(missing)) throw new IllegalArgumentException("Missing:" + missing);
       return new TraceContext(
-        flags, traceIdHigh, traceId, localRootId, parentId, spanId, ensureImmutable(extra)
+        flags, traceIdHigh, traceId, localRootId, parentId, spanId, ensureImmutable(extraList)
       );
     }
 
@@ -469,16 +528,20 @@ public final class TraceContext extends SamplingFlags {
     }
   }
 
+  TraceContext shallowCopy() {
+    return new TraceContext(flags, traceIdHigh, traceId, localRootId, parentId, spanId, extraList);
+  }
+
   TraceContext withExtra(List<Object> extra) {
     return new TraceContext(flags, traceIdHigh, traceId, localRootId, parentId, spanId, extra);
   }
 
   TraceContext withFlags(int flags) {
-    return new TraceContext(flags, traceIdHigh, traceId, localRootId, parentId, spanId, extra);
+    return new TraceContext(flags, traceIdHigh, traceId, localRootId, parentId, spanId, extraList);
   }
 
   final long traceIdHigh, traceId, localRootId, parentId, spanId;
-  final List<Object> extra;
+  final List<Object> extraList;
 
   TraceContext(
     int flags,
@@ -487,7 +550,7 @@ public final class TraceContext extends SamplingFlags {
     long localRootId,
     long parentId,
     long spanId,
-    List<Object> extra
+    List<Object> extraList
   ) {
     super(flags);
     this.traceIdHigh = traceIdHigh;
@@ -495,7 +558,7 @@ public final class TraceContext extends SamplingFlags {
     this.localRootId = localRootId;
     this.parentId = parentId;
     this.spanId = spanId;
-    this.extra = extra;
+    this.extraList = extraList;
   }
 
   /**
@@ -506,7 +569,7 @@ public final class TraceContext extends SamplingFlags {
    */
   @Override public boolean equals(Object o) {
     if (o == this) return true;
-    // Hack that allows PendingSpans to lookup without allocating a new object.
+    // Hack that allows WeakConcurrentMap to lookup without allocating a new object.
     if (o instanceof WeakReference) o = ((WeakReference) o).get();
     if (!(o instanceof TraceContext)) return false;
     TraceContext that = (TraceContext) o;
@@ -540,6 +603,17 @@ public final class TraceContext extends SamplingFlags {
       hashCode = h;
     }
     return h;
+  }
+
+  static List<Object> ensureExtraAdded(List<Object> extraList, Object extra) {
+    if (extra == null) throw new NullPointerException("extra == null");
+    // ignore adding the same instance twice
+    for (int i = 0, length = extraList.size(); i < length; i++) {
+      if (extra == extraList.get(i)) return extraList;
+    }
+    extraList = ensureMutable(extraList);
+    extraList.add(extra);
+    return extraList;
   }
 
   static <T> T findExtra(Class<T> type, List<Object> extra) {

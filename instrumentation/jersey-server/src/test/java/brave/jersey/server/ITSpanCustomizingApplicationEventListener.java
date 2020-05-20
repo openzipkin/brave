@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,8 +13,10 @@
  */
 package brave.jersey.server;
 
+import brave.Span;
 import brave.servlet.TracingFilter;
 import brave.test.http.ITServletContainer;
+import brave.test.http.Jetty9ServerController;
 import java.util.EnumSet;
 import javax.servlet.DispatcherType;
 import javax.servlet.FilterRegistration.Dynamic;
@@ -25,11 +27,13 @@ import org.glassfish.jersey.servlet.ServletContainer;
 import org.junit.AssumptionViolatedException;
 import org.junit.Ignore;
 import org.junit.Test;
-import zipkin2.Span;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITSpanCustomizingApplicationEventListener extends ITServletContainer {
+  public ITSpanCustomizingApplicationEventListener() {
+    super(new Jetty9ServerController());
+  }
 
   @Override @Test public void reportsClientAddress() {
     throw new AssumptionViolatedException("TODO!");
@@ -38,8 +42,7 @@ public class ITSpanCustomizingApplicationEventListener extends ITServletContaine
   @Test public void tagsResource() throws Exception {
     get("/foo");
 
-    Span span = takeSpan();
-    assertThat(span.tags())
+    assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER).tags())
       .containsEntry("jaxrs.resource.class", "TestResource")
       .containsEntry("jaxrs.resource.method", "foo");
   }
@@ -49,7 +52,7 @@ public class ITSpanCustomizingApplicationEventListener extends ITServletContaine
   @Test public void managedAsync() throws Exception {
     get("/managedAsync");
 
-    takeSpan();
+    testSpanHandler.takeRemoteSpan(Span.Kind.SERVER);
   }
 
   @Override public void init(ServletContextHandler handler) {

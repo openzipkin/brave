@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,6 +18,8 @@ import brave.Tracer;
 import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
+import brave.http.HttpClientRequest;
+import brave.http.HttpClientResponse;
 import brave.http.HttpTracing;
 import javax.annotation.Priority;
 import javax.inject.Inject;
@@ -52,7 +54,7 @@ public final class TracingClientFilter implements ClientRequestFilter, ClientRes
   }
 
   final Tracer tracer;
-  final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
+  final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
 
   @Inject TracingClientFilter(HttpTracing httpTracing) {
     if (httpTracing == null) throw new NullPointerException("HttpTracing == null");
@@ -61,7 +63,7 @@ public final class TracingClientFilter implements ClientRequestFilter, ClientRes
   }
 
   @Override public void filter(ClientRequestContext request) {
-    Span span = handler.handleSend(new HttpClientRequest(request));
+    Span span = handler.handleSend(new ClientRequestContextWrapper(request));
     request.setProperty(SpanInScope.class.getName(), tracer.withSpanInScope(span));
   }
 
@@ -69,13 +71,13 @@ public final class TracingClientFilter implements ClientRequestFilter, ClientRes
     Span span = tracer.currentSpan();
     if (span == null) return;
     ((SpanInScope) request.getProperty(SpanInScope.class.getName())).close();
-    handler.handleReceive(new HttpClientResponse(response), null, span);
+    handler.handleReceive(new ClientResponseContextWrapper(request, response), span);
   }
 
-  static final class HttpClientRequest extends brave.http.HttpClientRequest {
+  static final class ClientRequestContextWrapper extends HttpClientRequest {
     final ClientRequestContext delegate;
 
-    HttpClientRequest(ClientRequestContext delegate) {
+    ClientRequestContextWrapper(ClientRequestContext delegate) {
       this.delegate = delegate;
     }
 
@@ -100,23 +102,34 @@ public final class TracingClientFilter implements ClientRequestFilter, ClientRes
     }
 
     @Override public void header(String name, String value) {
-      delegate.getStringHeaders().putSingle(name, value);
+      delegate.getHeaders().putSingle(name, value);
     }
   }
 
-  static final class HttpClientResponse extends brave.http.HttpClientResponse {
-    final ClientResponseContext delegate;
+  static final class ClientResponseContextWrapper extends HttpClientResponse {
+    final ClientRequestContextWrapper request;
+    final ClientResponseContext response;
 
-    HttpClientResponse(ClientResponseContext delegate) {
-      this.delegate = delegate;
+    ClientResponseContextWrapper(
+      ClientRequestContext request, ClientResponseContext response) {
+      this.request = new ClientRequestContextWrapper(request);
+      this.response = response;
     }
 
     @Override public Object unwrap() {
-      return delegate;
+      return response;
+    }
+
+    @Override public ClientRequestContextWrapper request() {
+      return request;
+    }
+
+    @Override public Throwable error() {
+      return null; // jax-rs has no visibility into errors
     }
 
     @Override public int statusCode() {
-      int result = delegate.getStatus();
+      int result = response.getStatus();
       return result != -1 ? result : 0;
     }
   }

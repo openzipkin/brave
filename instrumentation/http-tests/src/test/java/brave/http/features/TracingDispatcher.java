@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,8 +15,12 @@ package brave.http.features;
 
 import brave.Span;
 import brave.Tracer;
+import brave.Tracer.SpanInScope;
 import brave.http.HttpServerHandler;
+import brave.http.HttpServerRequest;
+import brave.http.HttpServerResponse;
 import brave.http.HttpTracing;
+import brave.internal.Nullable;
 import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -24,7 +28,7 @@ import okhttp3.mockwebserver.RecordedRequest;
 final class TracingDispatcher extends Dispatcher {
   final Dispatcher delegate;
   final Tracer tracer;
-  final HttpServerHandler<brave.http.HttpServerRequest, brave.http.HttpServerResponse> handler;
+  final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
 
   TracingDispatcher(HttpTracing httpTracing, Dispatcher delegate) {
     tracer = httpTracing.tracing().tracer();
@@ -32,24 +36,25 @@ final class TracingDispatcher extends Dispatcher {
     this.delegate = delegate;
   }
 
-  @Override public MockResponse dispatch(RecordedRequest request) throws InterruptedException {
-    Span span = handler.handleReceive(new HttpServerRequest(request));
+  @Override public MockResponse dispatch(RecordedRequest req) throws InterruptedException {
+    RecordedRequestWrapper request = new RecordedRequestWrapper(req);
+    Span span = handler.handleReceive(request);
     MockResponse response = null;
     Throwable error = null;
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-      return response = delegate.dispatch(request);
-    } catch (InterruptedException | RuntimeException | Error e) {
+    try (SpanInScope ws = tracer.withSpanInScope(span)) {
+      return response = delegate.dispatch(req);
+    } catch (Throwable e) {
       error = e;
       throw e;
     } finally {
-      handler.handleSend(new HttpServerResponse(response), error, span);
+      handler.handleSend(new MockResponseWrapper(request, response, error), span);
     }
   }
 
-  static final class HttpServerRequest extends brave.http.HttpServerRequest {
+  static final class RecordedRequestWrapper extends HttpServerRequest {
     final RecordedRequest delegate;
 
-    HttpServerRequest(RecordedRequest delegate) {
+    RecordedRequestWrapper(RecordedRequest delegate) {
       this.delegate = delegate;
     }
 
@@ -74,19 +79,33 @@ final class TracingDispatcher extends Dispatcher {
     }
   }
 
-  static final class HttpServerResponse extends brave.http.HttpServerResponse {
-    final MockResponse delegate;
+  static final class MockResponseWrapper extends HttpServerResponse {
+    final RecordedRequestWrapper request;
+    final @Nullable MockResponse response;
+    final @Nullable Throwable error;
 
-    HttpServerResponse(MockResponse delegate) {
-      this.delegate = delegate;
+    MockResponseWrapper(RecordedRequestWrapper request, @Nullable MockResponse response,
+      @Nullable Throwable error) {
+      this.request = request;
+      this.response = response;
+      this.error = error;
     }
 
     @Override public Object unwrap() {
-      return delegate;
+      return response;
+    }
+
+    @Override public RecordedRequestWrapper request() {
+      return request;
+    }
+
+    @Override public Throwable error() {
+      return error;
     }
 
     @Override public int statusCode() {
-      return Integer.parseInt(delegate.getStatus().split(" ")[1]);
+      if (response == null) return 0;
+      return Integer.parseInt(response.getStatus().split(" ")[1]);
     }
   }
 }

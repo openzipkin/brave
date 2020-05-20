@@ -18,7 +18,7 @@
 
   <groupId>io.zipkin.brave</groupId>
   <artifactId>brave-bom</artifactId>
-  <version>5.9.1-SNAPSHOT</version>
+  <version>5.12.4-SNAPSHOT</version>
   <name>Brave BOM</name>
   <description>Bill Of Materials POM for all Brave artifacts</description>
   <packaging>pom</packaging>
@@ -26,11 +26,16 @@
   <inceptionYear>2013</inceptionYear>
 
   <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
+    <project.build.outputEncoding>UTF-8</project.build.outputEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
     <main.basedir>${project.basedir}/..</main.basedir>
 
     <!-- use the same values in ../pom.xml -->
-    <zipkin.version>2.19.0</zipkin.version>
-    <zipkin-reporter.version>2.11.0</zipkin-reporter.version>
+    <zipkin.version>2.21.1</zipkin.version>
+    <zipkin-reporter.version>2.15.0</zipkin-reporter.version>
   </properties>
 
   <organization>
@@ -204,6 +209,11 @@
       </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
+        <artifactId>brave-instrumentation-mongodb</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-mysql</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -274,4 +284,31 @@
       </dependency>
     </dependencies>
   </dependencyManagement>
+  <profiles>
+    <profile>
+      <id>sonatype</id>
+      <distributionManagement>
+        <repository>
+          <id>sonatype</id>
+          <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+        </repository>
+      </distributionManagement>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>1.6</version>
+            <executions>
+              <execution>
+                <id>sign-release-artifacts</id>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,11 +14,15 @@
 package brave.jms;
 
 import brave.Span;
+import brave.Span.Kind;
+import brave.propagation.B3SingleFormat;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.Propagation;
+import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
+import javax.jms.JMSException;
 import javax.jms.MessageListener;
 import javax.jms.QueueConnection;
 import javax.jms.TopicConnection;
@@ -29,7 +33,7 @@ import javax.jms.XATopicConnection;
 import org.apache.activemq.command.ActiveMQTextMessage;
 import org.junit.Test;
 
-import static brave.jms.MessagePropagation.SETTER;
+import static brave.jms.MessageProperties.setStringProperty;
 import static java.util.Arrays.asList;
 import static org.apache.activemq.command.ActiveMQDestination.QUEUE_TYPE;
 import static org.apache.activemq.command.ActiveMQDestination.createDestination;
@@ -37,7 +41,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.Mockito.mock;
 
-public class JmsTracingTest extends JmsTest {
+public class JmsTracingTest extends ITJms {
+  TraceContext parent = newTraceContext(SamplingFlags.DEBUG);
   ActiveMQTextMessage message = new ActiveMQTextMessage();
 
   @Test public void connectionFactory_wrapsInput() {
@@ -160,19 +165,19 @@ public class JmsTracingTest extends JmsTest {
       .isSameAs(wrapped);
   }
 
-  @Test public void messageListener_traces() throws Exception {
+  @Test public void messageListener_traces() {
     jmsTracing.messageListener(mock(MessageListener.class), false)
       .onMessage(message);
 
-    assertThat(takeSpan().name()).isEqualTo("on-message");
+    assertThat(testSpanHandler.takeLocalSpan().name()).isEqualTo("on-message");
   }
 
-  @Test public void messageListener_traces_addsConsumerSpan() throws Exception {
+  @Test public void messageListener_traces_addsConsumerSpan() {
     jmsTracing.messageListener(mock(MessageListener.class), true)
       .onMessage(message);
 
-    assertThat(asList(takeSpan(), takeSpan()))
-      .extracting(zipkin2.Span::name)
+    assertThat(asList(testSpanHandler.takeRemoteSpan(Kind.CONSUMER), testSpanHandler.takeLocalSpan()))
+      .extracting(brave.handler.MutableSpan::name)
       .containsExactly("receive", "on-message");
   }
 
@@ -187,30 +192,28 @@ public class JmsTracingTest extends JmsTest {
       .isSameAs(wrapped);
   }
 
-  @Test public void nextSpan_prefers_b3_header() throws Exception {
-    SETTER.put(message, "b3", "0000000000000001-0000000000000002-1");
+  @Test public void nextSpan_prefers_b3_header() {
+    TraceContext incoming = newTraceContext(SamplingFlags.NOT_SAMPLED);
+    setStringProperty(message, "b3", B3SingleFormat.writeB3SingleFormat(incoming));
 
     Span child;
-    try (Scope ws = tracing.currentTraceContext()
-      .newScope(TraceContext.newBuilder().traceId(1).spanId(1).build())) {
+    try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
       child = jmsTracing.nextSpan(message);
     }
-    assertThat(child.context().parentId())
-      .isEqualTo(2L);
+    assertChildOf(child.context(), incoming);
+    assertThat(child.isNoop()).isTrue();
   }
 
   @Test public void nextSpan_uses_current_context() {
     Span child;
-    try (Scope ws = tracing.currentTraceContext()
-      .newScope(TraceContext.newBuilder().traceId(1).spanId(1).build())) {
+    try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
       child = jmsTracing.nextSpan(message);
     }
-    assertThat(child.context().parentId())
-      .isEqualTo(1L);
+    assertChildOf(child.context(), parent);
   }
 
-  @Test public void nextSpan_should_use_span_from_headers_as_parent() throws Exception {
-    SETTER.put(message, "b3", "0000000000000001-0000000000000002-1");
+  @Test public void nextSpan_should_use_span_from_headers_as_parent() {
+    setStringProperty(message, "b3", "0000000000000001-0000000000000002-1");
     Span span = jmsTracing.nextSpan(message);
 
     assertThat(span.context().parentId()).isEqualTo(2L);
@@ -222,11 +225,11 @@ public class JmsTracingTest extends JmsTest {
     assertThat(span).isNotNull();
   }
 
-  @Test public void nextSpan_should_tag_queue_when_no_incoming_context() throws Exception {
+  @Test public void nextSpan_should_tag_queue_when_no_incoming_context() {
     message.setDestination(createDestination("foo", QUEUE_TYPE));
     jmsTracing.nextSpan(message).start().finish();
 
-    assertThat(takeSpan().tags())
+    assertThat(testSpanHandler.takeLocalSpan().tags())
       .containsOnly(entry("jms.queue", "foo"));
   }
 
@@ -234,25 +237,23 @@ public class JmsTracingTest extends JmsTest {
    * We assume the queue is already tagged by the producer span. However, we can change this policy
    * now, or later when dynamic policy is added to JmsTracing
    */
-  @Test public void nextSpan_shouldnt_tag_queue_when_incoming_context() throws Exception {
-    SETTER.put(message, "b3", "0000000000000001-0000000000000002-1");
+  @Test public void nextSpan_shouldnt_tag_queue_when_incoming_context() {
+    setStringProperty(message, "b3", "0000000000000001-0000000000000002-1");
     message.setDestination(createDestination("foo", QUEUE_TYPE));
     jmsTracing.nextSpan(message).start().finish();
 
-    assertThat(takeSpan().tags()).isEmpty();
+    assertThat(testSpanHandler.takeLocalSpan().tags()).isEmpty();
   }
 
-  @Test public void nextSpan_should_clear_propagation_headers() throws Exception {
-    TraceContext context =
-      TraceContext.newBuilder().traceId(1L).parentId(2L).spanId(3L).debug(true).build();
-    Propagation.B3_STRING.injector(SETTER).inject(context, message);
-    Propagation.B3_SINGLE_STRING.injector(SETTER).inject(context, message);
+  @Test public void nextSpan_should_clear_propagation_headers() {
+    Propagation.B3_STRING.injector(SETTER).inject(parent, message);
+    Propagation.B3_SINGLE_STRING.injector(SETTER).inject(parent, message);
 
     jmsTracing.nextSpan(message);
-    assertThat(JmsTest.propertiesToMap(message)).isEmpty();
+    assertThat(ITJms.propertiesToMap(message)).isEmpty();
   }
 
-  @Test public void nextSpan_should_not_clear_other_headers() throws Exception {
+  @Test public void nextSpan_should_not_clear_other_headers() throws JMSException {
     message.setIntProperty("foo", 1);
 
     jmsTracing.nextSpan(message);

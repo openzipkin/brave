@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,7 +18,7 @@ import brave.propagation.TraceContext;
 import zipkin2.Endpoint;
 
 /**
- * Used to model the latency of an operation.
+ * Subtype of {@link SpanCustomizer} which can capture latency and remote context of an operation.
  *
  * Here's a typical example of synchronous tracing from perspective of the span:
  * <pre>{@code
@@ -37,8 +37,9 @@ import zipkin2.Endpoint;
  *
  * <p>This captures duration of {@link #start()} until {@link #finish()} is called.
  *
- * <p>Note: All methods return {@linkplain Span} for chaining, but the instance is always the same.
- * Also, when only tracing in-process operations, consider {@link ScopedSpan}: a simpler api.
+ * <h3>Usage notes</h3>
+ * All methods return {@linkplain Span} for chaining, but the instance is always the same. Also,
+ * when only tracing in-process operations, consider {@link ScopedSpan}: a simpler api.
  */
 // Design note: this does not require a builder as the span is mutable anyway. Having a single
 // mutation interface is less code to maintain. Those looking to prepare a span before starting it
@@ -125,14 +126,20 @@ public abstract class Span implements SpanCustomizer {
   /** {@inheritDoc} */
   @Override public abstract Span tag(String key, String value);
 
-  /** Adds tags depending on the configured {@link Tracing#errorParser() error parser} */
+  /**
+   * Records an error that impacted this operation.
+   *
+   * <p><em>Note:</em> Calling this does not {@linkplain #finish() finish} the span.
+   *
+   * @since 4.19
+   */
   // Design note: <T extends Throwable> T error(T throwable) is tempting but this doesn't work in
   // multi-catch. In practice, you should always at least catch RuntimeException and Error.
   public abstract Span error(Throwable throwable);
 
   /**
-   * @deprecated Use {@link #remoteServiceName(String)} {@link #remoteIpAndPort(String, int)}. Will
-   * be removed in Brave v6.
+   * @deprecated Since 5.0, use {@link #remoteServiceName(String)} {@link #remoteIpAndPort(String,
+   * int)}.
    */
   @Deprecated public Span remoteEndpoint(Endpoint endpoint) {
     if (endpoint == null) return this;
@@ -200,7 +207,7 @@ public abstract class Span implements SpanCustomizer {
    */
   // Design note: This differs from Brave 3's LocalTracer which completes with a given duration.
   // This was changed for a few use cases.
-  // * Finishing a one-way span on another host https://github.com/apache/incubator-zipkin/issues/1243
+  // * Finishing a one-way span on another host https://github.com/openzipkin/zipkin/issues/1243
   //   * The other host will not be able to read the start timestamp, so can't calculate duration
   // * Consistency in Api: All units and measures are epoch microseconds
   //   * This can reduce accidents where people use duration when they mean a timestamp

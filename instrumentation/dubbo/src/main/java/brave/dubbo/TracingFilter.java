@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,17 +15,19 @@ package brave.dubbo;
 
 import brave.Span;
 import brave.Span.Kind;
-import brave.Tracer;
+import brave.SpanCustomizer;
+import brave.Tag;
 import brave.Tracing;
-import brave.internal.Platform;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
-import brave.propagation.TraceContextOrSamplingFlags;
-import brave.rpc.RpcRequest;
+import brave.rpc.RpcClientHandler;
+import brave.rpc.RpcResponse;
+import brave.rpc.RpcResponseParser;
+import brave.rpc.RpcServerHandler;
 import brave.rpc.RpcTracing;
-import brave.sampler.SamplerFunction;
-import java.net.InetSocketAddress;
 import java.util.Map;
-import java.util.concurrent.Future;
+import java.util.concurrent.CompletableFuture;
 import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.common.extension.ExtensionLoader;
@@ -36,143 +38,111 @@ import org.apache.dubbo.rpc.Invoker;
 import org.apache.dubbo.rpc.Result;
 import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.RpcException;
-import org.apache.dubbo.rpc.protocol.dubbo.FutureAdapter;
-import org.apache.dubbo.rpc.support.RpcUtils;
 
-import static brave.dubbo.DubboClientRequest.SETTER;
-import static brave.dubbo.DubboServerRequest.GETTER;
-import static brave.sampler.SamplerFunctions.deferDecision;
+import static brave.internal.Throwables.propagateIfFatal;
 
 @Activate(group = {CommonConstants.PROVIDER, CommonConstants.CONSUMER}, value = "tracing")
 // http://dubbo.apache.org/en-us/docs/dev/impls/filter.html
 // public constructor permitted to allow dubbo to instantiate this
 public final class TracingFilter implements Filter {
+  static final Tag<Throwable> DUBBO_ERROR_CODE = new Tag<Throwable>("dubbo.error_code") {
+    @Override protected String parseValue(Throwable input, TraceContext context) {
+      if (!(input instanceof RpcException)) return null;
+      return String.valueOf(((RpcException) input).getCode());
+    }
+  };
+  static final RpcResponseParser LEGACY_RESPONSE_PARSER = new RpcResponseParser() {
+    @Override public void parse(RpcResponse response, TraceContext context, SpanCustomizer span) {
+      DUBBO_ERROR_CODE.tag(response.error(), span);
+    }
+  };
 
-  Tracer tracer;
-  TraceContext.Extractor<DubboServerRequest> extractor;
-  TraceContext.Injector<DubboClientRequest> injector;
-  SamplerFunction<RpcRequest> clientSampler = deferDecision(), serverSampler = deferDecision();
+  CurrentTraceContext currentTraceContext;
+  RpcClientHandler clientHandler;
+  RpcServerHandler serverHandler;
   volatile boolean isInit = false;
 
   /**
    * {@link ExtensionLoader} supplies the tracing implementation which must be named "tracing". For
    * example, if using the {@link SpringExtensionFactory}, only a bean named "tracing" will be
    * injected.
+   *
+   * @deprecated Since 5.12 only use {@link #setRpcTracing(RpcTracing)}
    */
-  public void setTracing(Tracing tracing) {
+  @Deprecated public void setTracing(Tracing tracing) {
     if (tracing == null) throw new NullPointerException("rpcTracing == null");
-    tracer = tracing.tracer();
-    extractor = tracing.propagation().extractor(GETTER);
-    injector = tracing.propagation().injector(SETTER);
-    isInit = true;
+    setRpcTracing(RpcTracing.newBuilder(tracing)
+        .clientResponseParser(LEGACY_RESPONSE_PARSER)
+        .serverResponseParser(LEGACY_RESPONSE_PARSER)
+        .build());
   }
 
   /**
    * {@link ExtensionLoader} supplies the tracing implementation which must be named "rpcTracing".
    * For example, if using the {@link SpringExtensionFactory}, only a bean named "rpcTracing" will
    * be injected.
+   *
+   * <h3>Custom parsing</h3>
+   * Custom parsers, such as {@link RpcTracing#clientRequestParser()}, can use Dubbo-specific types
+   * {@link DubboRequest} and {@link DubboResponse} to get access such as the Java invocation or
+   * result.
    */
   public void setRpcTracing(RpcTracing rpcTracing) {
     if (rpcTracing == null) throw new NullPointerException("rpcTracing == null");
-    tracer = rpcTracing.tracing().tracer();
-    extractor = rpcTracing.tracing().propagation().extractor(GETTER);
-    injector = rpcTracing.tracing().propagation().injector(SETTER);
-    clientSampler = rpcTracing.clientSampler();
-    serverSampler = rpcTracing.serverSampler();
+    // we don't guard on init because we intentionally want to overwrite any call to setTracing
+    currentTraceContext = rpcTracing.tracing().currentTraceContext();
+    clientHandler = RpcClientHandler.create(rpcTracing);
+    serverHandler = RpcServerHandler.create(rpcTracing);
     isInit = true;
   }
 
   @Override
   public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
     if (!isInit) return invoker.invoke(invocation);
+    TraceContext invocationContext = currentTraceContext.get();
 
     RpcContext rpcContext = RpcContext.getContext();
     Kind kind = rpcContext.isProviderSide() ? Kind.SERVER : Kind.CLIENT;
-    final Span span;
+    Span span;
+    DubboRequest request;
     if (kind.equals(Kind.CLIENT)) {
       // When A service invoke B service, then B service then invoke C service, the parentId of the
       // C service span is A when read from invocation.getAttachments(). This is because
       // AbstractInvoker adds attachments via RpcContext.getContext(), not the invocation.
       // See org.apache.dubbo.rpc.protocol.AbstractInvoker(line 141) from v2.7.3
       Map<String, String> attachments = RpcContext.getContext().getAttachments();
-      DubboClientRequest request = new DubboClientRequest(invocation, attachments);
-      span = tracer.nextSpan(clientSampler, request);
-      injector.inject(span.context(), request);
+      DubboClientRequest clientRequest = new DubboClientRequest(invoker, invocation, attachments);
+      request = clientRequest;
+      span = clientHandler.handleSendWithParent(clientRequest, invocationContext);
     } else {
-      DubboServerRequest request = new DubboServerRequest(invocation, invocation.getAttachments());
-      TraceContextOrSamplingFlags extracted = extractor.extract(request);
-      span = nextSpan(extracted, request);
+      DubboServerRequest serverRequest = new DubboServerRequest(invoker, invocation);
+      request = serverRequest;
+      span = serverHandler.handleReceive(serverRequest);
     }
 
-    if (!span.isNoop()) {
-      span.kind(kind);
-      String service = invoker.getInterface().getSimpleName();
-      String method = RpcUtils.getMethodName(invocation);
-      span.name(service + "/" + method);
-      parseRemoteAddress(rpcContext, span);
-      span.start();
-    }
-
-    boolean isOneway = false, deferFinish = false;
-    Tracer.SpanInScope scope = tracer.withSpanInScope(span);
+    boolean isSynchronous = true;
+    Scope scope = currentTraceContext.newScope(span.context());
+    Result result = null;
     Throwable error = null;
     try {
-      Result result = invoker.invoke(invocation);
-      if (result.hasException()) {
-        onError(result.getException(), span);
-      }
-      isOneway = RpcUtils.isOneway(invoker.getUrl(), invocation);
-      Future<Object> future = rpcContext.getFuture(); // the case on async client invocation
-      if (!isOneway && future instanceof FutureAdapter) {
-        deferFinish = true;
-        ((FutureAdapter<Object>) future).whenComplete((v, t) -> {
-          if (t != null) {
-            onError(t, span);
-            span.finish();
-          } else {
-            span.finish();
-          }
-        });
+      result = invoker.invoke(invocation);
+      error = result.getException();
+      CompletableFuture<Object> future = rpcContext.getCompletableFuture();
+      if (future != null) {
+        isSynchronous = false;
+        // NOTE: We don't currently instrument CompletableFuture, so callbacks will not see the
+        // invocation context unless they use an executor instrumented by CurrentTraceContext
+        // If we later instrument this, take care to use the correct context depending on RPC kind!
+        future.whenComplete(FinishSpan.create(this, request, result, span));
       }
       return result;
-    } catch (Error | RuntimeException e) {
+    } catch (Throwable e) {
+      propagateIfFatal(e);
       error = e;
       throw e;
     } finally {
-      if (error != null) onError(error, span);
-      if (isOneway) {
-        span.flush();
-      } else if (!deferFinish) {
-        span.finish();
-      }
+      if (isSynchronous) FinishSpan.finish(this, request, result, error, span);
       scope.close();
-    }
-  }
-
-  /** Creates a potentially noop span representing this request */
-  // This is the same code as HttpServerHandler.nextSpan
-  // TODO: pull this into RpcServerHandler when stable https://github.com/openzipkin/brave/pull/999
-  Span nextSpan(TraceContextOrSamplingFlags extracted, DubboServerRequest request) {
-    Boolean sampled = extracted.sampled();
-    // only recreate the context if the sampler made a decision
-    if (sampled == null && (sampled = serverSampler.trySample(request)) != null) {
-      extracted = extracted.sampled(sampled.booleanValue());
-    }
-    return extracted.context() != null
-      ? tracer.joinSpan(extracted.context())
-      : tracer.nextSpan(extracted);
-  }
-
-  static void parseRemoteAddress(RpcContext rpcContext, Span span) {
-    InetSocketAddress remoteAddress = rpcContext.getRemoteAddress();
-    if (remoteAddress == null) return;
-    span.remoteIpAndPort(Platform.get().getHostString(remoteAddress), remoteAddress.getPort());
-  }
-
-  static void onError(Throwable error, Span span) {
-    span.error(error);
-    if (error instanceof RpcException) {
-      span.tag("dubbo.error_code", Integer.toString(((RpcException) error).getCode()));
     }
   }
 }

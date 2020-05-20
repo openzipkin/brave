@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,10 +13,12 @@
  */
 package brave.features.opentracing;
 
-import brave.propagation.ExtraFieldPropagation;
+import brave.baggage.BaggageField;
+import brave.internal.Nullable;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.tag.Tag;
+import io.opentracing.tag.Tags;
 import java.util.Map;
 
 final class BraveSpan implements io.opentracing.Span {
@@ -27,7 +29,7 @@ final class BraveSpan implements io.opentracing.Span {
   }
 
   final brave.Span delegate;
-  final SpanContext context;
+  final BraveSpanContext context;
 
   BraveSpan(brave.Span delegate) {
     this.delegate = delegate;
@@ -51,6 +53,12 @@ final class BraveSpan implements io.opentracing.Span {
   }
 
   @Override public io.opentracing.Span setTag(String key, String value) {
+    brave.Span.Kind kind = trySetKind(key, value);
+    if (kind != null) {
+      delegate.kind(kind);
+      context.kind = kind;
+      return this;
+    }
     delegate.tag(key, value);
     return this;
   }
@@ -93,16 +101,37 @@ final class BraveSpan implements io.opentracing.Span {
   }
 
   @Override public io.opentracing.Span setBaggageItem(String key, String value) {
-    ExtraFieldPropagation.set(delegate.context(), key, value);
+    BaggageField field = BaggageField.getByName(delegate.context(), key);
+    if (field == null) return this;
+    field.updateValue(delegate.context(), value);
     return this;
   }
 
   @Override public String getBaggageItem(String key) {
-    return ExtraFieldPropagation.get(delegate.context(), key);
+    BaggageField field = BaggageField.getByName(delegate.context(), key);
+    return field != null ? field.getValue(delegate.context()) : null;
   }
 
   @Override public io.opentracing.Span setOperationName(String operationName) {
     delegate.name(operationName);
     return this;
+  }
+
+  @Nullable static brave.Span.Kind trySetKind(String key, String value) {
+    if (!Tags.SPAN_KIND.getKey().equals(key)) return null;
+
+    brave.Span.Kind kind;
+    if (Tags.SPAN_KIND_CLIENT.equals(value)) {
+      kind = brave.Span.Kind.CLIENT;
+    } else if (Tags.SPAN_KIND_SERVER.equals(value)) {
+      kind = brave.Span.Kind.SERVER;
+    } else if (Tags.SPAN_KIND_PRODUCER.equals(value)) {
+      kind = brave.Span.Kind.PRODUCER;
+    } else if (Tags.SPAN_KIND_CONSUMER.equals(value)) {
+      kind = brave.Span.Kind.CONSUMER;
+    } else {
+      return null;
+    }
+    return kind;
   }
 }

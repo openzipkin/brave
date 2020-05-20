@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,16 +14,23 @@
 package brave.okhttp3;
 
 import brave.Span;
-import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpClientHandler;
+import brave.http.HttpClientRequest;
+import brave.http.HttpClientResponse;
 import brave.http.HttpTracing;
+import brave.internal.Nullable;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
+import brave.propagation.TraceContext;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import okhttp3.Connection;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
+
+import static brave.okhttp3.TracingCallFactory.NULL_SENTINEL;
 
 /**
  * This is a network-level interceptor, which creates a new span for each attempt. Note that this
@@ -39,32 +46,39 @@ public final class TracingInterceptor implements Interceptor {
     return new TracingInterceptor(httpTracing);
   }
 
-  final Tracer tracer;
-  final HttpClientHandler<brave.http.HttpClientRequest, brave.http.HttpClientResponse> handler;
+  final CurrentTraceContext currentTraceContext;
+  final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
 
   TracingInterceptor(HttpTracing httpTracing) {
     if (httpTracing == null) throw new NullPointerException("HttpTracing == null");
-    tracer = httpTracing.tracing().tracer();
+    currentTraceContext = httpTracing.tracing().currentTraceContext();
     handler = HttpClientHandler.create(httpTracing);
   }
 
   @Override public Response intercept(Chain chain) throws IOException {
-    HttpClientRequest request = new HttpClientRequest(chain.request());
+    RequestWrapper request = new RequestWrapper(chain.request());
 
-    Span span = handler.handleSend(request);
+    Span span;
+    TraceContext parent = chain.request().tag(TraceContext.class);
+    if (parent != null) { // TracingCallFactory setup this request
+      span = handler.handleSendWithParent(request, parent != NULL_SENTINEL ? parent : null);
+    } else { // This is using interceptors only
+      span = handler.handleSend(request);
+    }
+
     parseRouteAddress(chain, span);
 
-    HttpClientResponse response = null;
+    Response response = null;
     Throwable error = null;
-    try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-      Response result = chain.proceed(request.build());
-      response = new HttpClientResponse(result);
-      return result;
-    } catch (IOException | RuntimeException | Error e) {
-      error = e;
-      throw e;
+    try (Scope ws = currentTraceContext.newScope(span.context())) {
+      return response = chain.proceed(request.build());
+    } catch (Throwable t) {
+      error = t;
+      throw t;
     } finally {
-      handler.handleReceive(response, error, span);
+      // Intentionally not the same instance as chain.proceed, as properties may have changed
+      if (response != null) request = new RequestWrapper(response.request());
+      handler.handleReceive(new ResponseWrapper(request, response, error), span);
     }
   }
 
@@ -76,11 +90,11 @@ public final class TracingInterceptor implements Interceptor {
     span.remoteIpAndPort(socketAddress.getHostString(), socketAddress.getPort());
   }
 
-  static final class HttpClientRequest extends brave.http.HttpClientRequest {
+  static final class RequestWrapper extends HttpClientRequest {
     final Request delegate;
     Request.Builder builder;
 
-    HttpClientRequest(Request delegate) {
+    RequestWrapper(Request delegate) {
       this.delegate = delegate;
     }
 
@@ -114,19 +128,32 @@ public final class TracingInterceptor implements Interceptor {
     }
   }
 
-  static final class HttpClientResponse extends brave.http.HttpClientResponse {
-    final Response delegate;
+  static final class ResponseWrapper extends HttpClientResponse {
+    final RequestWrapper request;
+    @Nullable final Response response;
+    @Nullable final Throwable error;
 
-    HttpClientResponse(Response delegate) {
-      this.delegate = delegate;
+    ResponseWrapper(RequestWrapper request, @Nullable Response response,
+      @Nullable Throwable error) {
+      this.request = request;
+      this.response = response;
+      this.error = error;
     }
 
     @Override public Object unwrap() {
-      return delegate;
+      return response;
+    }
+
+    @Override public RequestWrapper request() {
+      return request;
+    }
+
+    @Override public Throwable error() {
+      return error;
     }
 
     @Override public int statusCode() {
-      return delegate.code();
+      return response != null ? response.code() : 0;
     }
   }
 }

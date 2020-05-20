@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,20 +15,39 @@ package brave.internal.recorder;
 
 import brave.Clock;
 import brave.handler.MutableSpan;
+import brave.internal.InternalPropagation;
+import brave.internal.Nullable;
+import brave.propagation.TraceContext;
+import java.lang.ref.WeakReference;
 
-public final class PendingSpan {
-  final MutableSpan state;
+/**
+ * This is the value of a map entry in {@link PendingSpans}, whose key is a weak reference to {@link
+ * #context()}.
+ *
+ * <p>{@link #context()} is cached so that externalized forms of a trace context to be swapped for
+ * the one in use. It is a weak reference as otherwise it would prevent the corresponding map key
+ * from being garbage collected.
+ */
+public final class PendingSpan extends WeakReference<TraceContext> {
+  final MutableSpan span;
   final TickClock clock;
-  volatile Throwable caller;
+  final TraceContext handlerContext;
 
-  PendingSpan(MutableSpan state, TickClock clock) {
-    this.state = state;
+  PendingSpan(TraceContext context, MutableSpan span, TickClock clock) {
+    super(context);
+    this.span = span;
     this.clock = clock;
+    this.handlerContext = InternalPropagation.instance.shallowCopy(context);
+  }
+
+  /** Returns the context for this span unless it was cleared due to GC. */
+  @Nullable public TraceContext context() {
+    return get();
   }
 
   /** Returns the state currently accumulated for this trace ID and span ID */
   public MutableSpan state() {
-    return state;
+    return span;
   }
 
   /** Returns a clock that ensures startTimestamp consistency across the trace */

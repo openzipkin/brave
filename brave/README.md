@@ -1,4 +1,4 @@
-Brave Api (v4)
+Brave Core Library
 ==============
 
 Brave is a library used to capture and report latency information about
@@ -12,21 +12,22 @@ http headers.
 
 ## Setup
 
-Most importantly, you need a Tracer, configured to [report to Zipkin](https://github.com/openzipkin/zipkin-reporter-java).
+Most importantly, you need a Tracer, usually configured to [report to Zipkin](https://github.com/openzipkin/zipkin-reporter-java).
 
 Here's an example setup that sends trace data (spans) to Zipkin over
-http (as opposed to Kafka).
+HTTP (as opposed to Kafka).
 
 ```java
 // Configure a reporter, which controls how often spans are sent
-//   (the dependency is io.zipkin.reporter2:zipkin-sender-okhttp3)
+//   (this dependency is io.zipkin.reporter2:zipkin-sender-okhttp3)
 sender = OkHttpSender.create("http://127.0.0.1:9411/api/v2/spans");
-spanReporter = AsyncReporter.create(sender);
+//   (this dependency is io.zipkin.reporter2:zipkin-reporter-brave)
+zipkinSpanHandler = AsyncZipkinSpanHandler.create(sender);
 
 // Create a tracing component with the service name you want to see in Zipkin.
 tracing = Tracing.newBuilder()
                  .localServiceName("my-service")
-                 .spanReporter(spanReporter)
+                 .addSpanHandler(zipkinSpanHandler)
                  .build();
 
 // Tracing exposes objects you might need, most importantly the tracer
@@ -36,7 +37,7 @@ tracer = tracing.tracer();
 // longer needed, close the components you made in reverse order. This might be
 // a shutdown hook for some users.
 tracing.close();
-spanReporter.close();
+zipkinSpanHandler.close();
 sender.close();
 ```
 
@@ -47,7 +48,8 @@ Zipkin v1 format. See [zipkin-reporter](https://github.com/openzipkin/zipkin-rep
 ```java
 sender = URLConnectionSender.create("http://localhost:9411/api/v1/spans");
 reporter = AsyncReporter.builder(sender)
-                        .build(SpanBytesEncoder.JSON_V1);
+                        .build(SpanBytesEncoder.JSON_V1); // don't forget to close!
+zipkinSpanHandler = ZipkinSpanHandler.create(reporter)
 ```
 
 ## Tracing
@@ -109,6 +111,22 @@ version.
 span.tag("clnt/finagle.version", "6.36.0");
 ```
 
+The `Tag` type is a helper that works with all variants of `Span`. For
+common or expensive tags, consider implementing `Tag` or re-using a
+built-in one.
+
+Here's an example of a potentially expensive tag:
+```java
+SUMMARY_TAG = new Tag<Summarizer>("summary") {
+  @Override protected String parseValue(Summarizer input, TraceContext context) {
+    return input.computeSummary();
+  }
+}
+
+// This works for any variant of span
+SUMMARY_TAG.tag(summarizer, span);
+```
+
 When exposing the ability to customize spans to third parties, prefer
 `brave.SpanCustomizer` as opposed to `brave.Span`. The former is simpler to
 understand and test, and doesn't tempt users with span lifecycle hooks.
@@ -151,84 +169,38 @@ void userCode() {
 }
 ```
 
-### RPC tracing
-Check for [instrumentation written here](../instrumentation/) and [Zipkin's list](https://zipkin.io/pages/existing_instrumentations.html)
-before rolling your own RPC instrumentation!
+### Remote spans
+Check for [instrumentation and abstractions](../instrumentation/) and [Zipkin's list](https://zipkin.io/pages/existing_instrumentations.html)
+for common patterns like client-server or messaging communication. Please at
+least read [this doc](../instrumentation/README.md) before deciding to write
+your own code to represent remote communication.
 
-RPC tracing is often done automatically by interceptors. Under the scenes,
-they add tags and events that relate to their role in an RPC operation.
+If you really think that the existing abstractions do not match your need, and
+you want to model your request yourself, you generally need to...
+1. Start the span and add trace headers to the request
+2. Put the span in scope so things like log integration works
+3. Invoke the request
+4. Catch any errors
+5. Complete the span
 
-Note: this is intentionally not an HTTP example, as we have [a special layer](../instrumentation/http)
-for that.
-
-Here's an example of a client span:
+Here's a simplified example:
 ```java
-// before you send a request, add metadata that describes the operation
-span = tracer.nextSpan().name(service + "/" + method).kind(CLIENT);
-span.tag("myrpc.version", "1.0.0");
-span.remoteServiceName("backend");
-span.remoteIpAndPort("172.3.4.1", 8108);
-
-// Add the trace context to the request, so it can be propagated in-band
-tracing.propagation().injector(Request::addHeader)
-                     .inject(span.context(), request);
-
-// when the request is scheduled, start the span
+requestWrapper = new ClientRequestWrapper(request);
+span = tracer.nextSpan(sampler, requestWrapper); // 1.
+tracing.propagation().injector(ClientRequestWrapper::addHeader)
+                     .inject(span.context(), requestWrapper);
+span.kind(request.spanKind());
+span.name("Report");
 span.start();
-
-// if there is an error, tag the span
-span.tag("error", error.getCode());
-
-// when the response is complete, finish the span
-span.finish();
+try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
+  return invoke(request); // 3.
+} catch (Throwable e) {
+  span.error(error); // 4.
+  throw e;
+} finally {
+  span.finish(); // 5.
+}
 ```
-
-#### One-Way RPC tracing
-
-Sometimes you need to model an asynchronous operation, where there is a
-request, but no response. In normal RPC tracing, you use `span.finish()`
-which indicates the response was received. In one-way tracing, you use
-`span.flush()` instead, as you don't expect a response.
-
-Here's how a client might model a one-way operation
-```java
-// start a new span representing a client request
-oneWaySend = tracer.nextSpan().name(service + "/" + method).kind(CLIENT);
---snip--
-
-// Add the trace context to the request, so it can be propagated in-band
-tracing.propagation().injector(Request::addHeader)
-                     .inject(oneWaySend.context(), request);
-
-// fire off the request asynchronously, totally dropping any response
-request.execute();
-
-// start the client side and flush instead of finish
-oneWaySend.start().flush();
-```
-
-And here's how a server might handle this..
-```java
-// pull the context out of the incoming request
-extractor = tracing.propagation().extractor(Request::getHeader);
-
-// convert that context to a span which you can name and add tags to
-oneWayReceive = nextSpan(tracer, extractor.extract(request))
-    .name("process-request")
-    .kind(SERVER)
-    ... add tags etc.
-
-// start the server side and flush instead of finish
-oneWayReceive.start().flush();
-
-// you should not modify this span anymore as it is complete. However,
-// you can create children to represent follow-up work.
-next = tracer.newSpan(oneWayReceive.context()).name("step2").start();
-```
-
-**Note** The above propagation logic is a simplified version of our [http handlers](https://github.com/openzipkin/brave/tree/master/instrumentation/http#http-server).
-
-There's a working example of a one-way span [here](src/test/java/brave/features/async/OneWaySpanTest.java).
 
 ## Sampling
 
@@ -304,6 +276,137 @@ Span nextSpan(final Request input) {
 
 Note: the above is the basis for the built-in [http sampler](../instrumentation/http)
 
+
+## Baggage
+Sometimes you need to propagate additional fields, such as a request ID or an alternate trace
+context.
+
+For example, if you have a need to know the a specific request's country code, you can
+propagate it through the trace as an HTTP header with the same name:
+```java
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+
+// Configure your baggage field
+COUNTRY_CODE = BaggageField.create("country-code");
+
+// When you initialize the builder, add the baggage you want to propagate
+tracingBuilder.propagationFactory(
+  BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+                    .add(SingleBaggageField.remote(COUNTRY_CODE))
+                    .build()
+);
+
+// Later, you can retrieve that country code in any of the services handling the trace
+// and add it as a span tag or do any other processing you want with it.
+countryCode = COUNTRY_CODE.getValue(context);
+```
+
+### Using `BaggageField`
+As long as a field is configured with `BaggagePropagation`, local reads and
+updates are possible in-process.
+
+If added to the `BaggagePropagation.Builder`, you can call below to affect
+the country code of the current trace context:
+```java
+COUNTRY_CODE.updateValue("FO");
+String countryCode = COUNTRY_CODE.getValue();
+```
+
+Or, if you have a reference to a trace context, it is more efficient to use it explicitly:
+```java
+COUNTRY_CODE.updateValue(span.context(), "FO");
+String countryCode = COUNTRY_CODE.get(span.context());
+Tags.BAGGAGE_FIELD.tag(COUNTRY_CODE, span);
+```
+
+### Remote Baggage
+
+By default, the name used as a propagation key (header) by `addRemoteField()` is the same as
+the lowercase variant of the field name. You can override this by supplying different key
+names. Note: they will be lower-cased.
+
+For example, the following will propagate the field "x-vcap-request-id" as-is, but send the
+fields "countryCode" and "userId" on the wire as "baggage-country-code" and "baggage-user-id"
+respectively.
+```java
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+
+REQUEST_ID = BaggageField.create("x-vcap-request-id");
+COUNTRY_CODE = BaggageField.create("countryCode");
+USER_ID = BaggageField.create("userId");
+
+tracingBuilder.propagationFactory(
+    BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+                      .add(SingleBaggageField.remote(REQUEST_ID))
+                      .add(SingleBaggageField.newBuilder(COUNTRY_CODE)
+                                             .addKeyName("baggage-country-code").build())
+                      .add(SingleBaggageField.newBuilder(USER_ID)
+                                             .addKeyName("baggage-user-id").build())
+                      .build()
+);
+```
+### Correlation
+
+You can also integrate baggage with other correlated contexts such as logging:
+```java
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
+
+AMZN_TRACE_ID = BaggageField.create("x-amzn-trace-id");
+
+// Allow logging patterns like %X{traceId} %X{x-amzn-trace-id}
+decorator = MDCScopeDecorator.newBuilder()
+                             .add(SingleCorrelationField.create(AMZN_TRACE_ID)).build()
+
+tracingBuilder.propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+                                                    .add(SingleBaggageField.remote(AMZN_TRACE_ID))
+                                                    .build())
+              .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
+                                                                 .addScopeDecorator(decorator)
+                                                                 .build())
+```
+
+#### Field mapping
+Your log correlation properties may not be the same as the baggage field names. You can
+override them in the builder as needed.
+
+Ex. If your log property is %X{trace-id}, you can do this:
+```java
+import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
+
+scopeBuilder.clear() // TRACE_ID is a default field!
+            .add(SingleCorrelationField.newBuilder(BaggageFields.TRACE_ID)
+                                       .name("trace-id").build())
+```
+
+### Appropriate usage
+
+Brave is an infrastructure library: you will create lock-in if you expose its apis into
+business code. Prefer exposing your own types for utility functions that use this class as this
+will insulate you from lock-in.
+
+While it may seem convenient, do not use this for security context propagation as it was not
+designed for this use case. For example, anything placed in here can be accessed by any code in
+the same classloader!
+
+### Passing through alternate trace contexts
+
+You may also need to propagate an second trace context transparently. For example, when in an
+Amazon Web Services environment, but not reporting data to X-Ray. To ensure X-Ray can co-exist
+correctly, pass-through its tracing header like so.
+
+```java
+import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+
+OTHER_TRACE_ID = BaggageField.create("x-amzn-trace-id");
+
+tracingBuilder.propagationFactory(
+  BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+                    .add(SingleBaggageField.remote(OTHER_TRACE_ID))
+                    .build()
+);
+```
+
 ## Propagation
 Propagation is needed to ensure activity originating from the same root
 are collected together in the same trace. The most common propagation
@@ -356,79 +459,9 @@ extractor = tracing.propagation().extractor(Request::getHeader);
 span = tracer.nextSpan(extractor.extract(request));
 ```
 
-### Propagating extra fields
-
-Sometimes you need to propagate extra fields, such as a request ID or an alternate trace context.
-For example, if you are in a Cloud Foundry environment, you might want to pass the request ID:
-
-```java
-// when you initialize the builder, define the extra field you want to propagate
-tracingBuilder.propagationFactory(
-  ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "x-vcap-request-id")
-);
-
-// later, you can tag that request ID or use it in log correlation
-requestId = ExtraFieldPropagation.get("x-vcap-request-id");
-```
-
-#### Appropriate usage
-
-Brave is an infrastructure library: you will create lock-in if you expose its apis into
-business code. Prefer exposing your own types for utility functions that use this class as this
-will insulate you from lock-in.
-
-While it may seem convenient, do not use this for security context propagation as it was not
-designed for this use case. For example, anything placed in here can be accessed by any code in
-the same classloader!
-
-#### Passing through alternate trace contexts
-
-You may also need to propagate an second trace context transparently. For example, when in an
-Amazon Web Services environment, but not reporting data to X-Ray. To ensure X-Ray can co-exist
-correctly, pass-through its tracing header like so.
-
-```java
-tracingBuilder.propagationFactory(
-  ExtraFieldPropagation.newFactory(B3Propagation.FACTORY, "x-amzn-trace-id")
-);
-```
-
-#### Prefixed fields
-
-You can also prefix fields, if they follow a common pattern. For example, the following will
-propagate the field "x-vcap-request-id" as-is, but send the fields "country-code" and "user-id"
-on the wire as "baggage-country-code" and "baggage-user-id" respectively.
-
-Setup your tracing instance with allowed fields:
-```java
-tracingBuilder.propagationFactory(
-  ExtraFieldPropagation.newFactoryBuilder(B3Propagation.FACTORY)
-                       .addField("x-vcap-request-id")
-                       .addPrefixedFields("baggage-", Arrays.asList("country-code", "user-id"))
-                       .build()
-);
-```
-
-Later, you can call below to affect the country code of the current trace context
-```java
-ExtraFieldPropagation.set("country-code", "FO");
-String countryCode = ExtraFieldPropagation.get("country-code");
-```
-
-Or, if you have a reference to a trace context, use it explicitly
-```java
-ExtraFieldPropagation.set(span.context(), "country-code", "FO");
-String countryCode = ExtraFieldPropagation.get(span.context(), "country-code");
-```
-
-#### Redacting fields
-
-You may have some fields that you would like to propagate in-process, but not downstream to other
-hosts. Use `.addRedactedField()` to indicate a field which should not be injected into headers.
-
 ### Extracting a propagated context
-The `TraceContext.Extractor<C>` reads trace identifiers and sampling status
-from an incoming request or message. The carrier is usually a request object
+The `TraceContext.Extractor<R>` reads trace identifiers and sampling status
+from an incoming request or message. The request is usually a request object
 or headers.
 
 This utility is used in standard instrumentation like [HttpServerHandler](../instrumentation/http/src/main/java/brave/http/HttpServerHandler.java),
@@ -487,32 +520,30 @@ via `Tracing.Builder.supportsJoin(false)`. This will force a new child span on
 
 ### Implementing Propagation
 
-`TraceContext.Extractor<C>` is implemented by a `Propagation.Factory` plugin. Internally, this code
+`TraceContext.Extractor<R>` is implemented by a `Propagation.Factory` plugin. Internally, this code
 will create the union type `TraceContextOrSamplingFlags` with one of the following:
 * `TraceContext` if trace and span IDs were present.
 * `TraceIdContext` if a trace ID was present, but not span IDs.
 * `SamplingFlags` if no identifiers were present
 
-Some `Propagation` implementations carry extra data from point of extraction (ex reading incoming
+Some `Propagation` implementations carry extra state from point of extraction (ex reading incoming
 headers) to injection (ex writing outgoing headers). For example, it might carry a request ID. When
-implementations have extra data, here's how they handle it.
-* If a `TraceContext` was extracted, add the extra data as `TraceContext.extra()`
+implementations have extra state, here's how they handle it.
+* If a `TraceContext` was extracted, add the extra state as `TraceContext.extra()`
 * Otherwise, add it as `TraceContextOrSamplingFlags.extra()`, which `Tracer.nextSpan` handles.
 
-## Handling Finished Spans
+## Handling Spans
 By default, data recorded before (`Span.finish()`) are reported to Zipkin
-via what's passed to `Tracing.Builder.spanReporter`. `FinishedSpanHandler`
-can modify or drop data before it goes to Zipkin. It can even intercept
-data that is not sampled for Zipkin.
+to a `SpanHandler`. For example, `Tracing.Builder.spanReporter` is an instance
+of a `SpanHandler` that reports data to Zipkin when sampled.
 
-`FinishedSpanHandler` can return false to drop spans that you never want
-to see in Zipkin. This should be used carefully as the spans dropped
-should not have children.
+You can create you own `SpanHandler`s to modify or drop data before it goes to
+Zipkin (or anywhere else). It can even intercept data that is not sampled!
 
 Here's an example of SQL COMMENT spans so they don't clutter Zipkin.
 ```java
-tracingBuilder.addFinishedSpanHandler(new FinishedSpanHandler() {
-  @Override public boolean handle(TraceContext context, MutableSpan span) {
+tracingBuilder.addSpanHandler(new SpanHandler() {
+  @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
     return !"comment".equals(span.name());
   }
 });
@@ -521,20 +552,16 @@ tracingBuilder.addFinishedSpanHandler(new FinishedSpanHandler() {
 Another example is redaction: you may need to scrub tags to ensure no
 personal information like credit card numbers end up in Zipkin.
 ```java
-tracingBuilder.addFinishedSpanHandler(new FinishedSpanHandler() {
-  @Override public boolean handle(TraceContext context, MutableSpan span) {
+tracingBuilder.addSpanHandler(new SpanHandler() {
+  @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
     span.forEachTag((key, value) ->
       value.replaceAll("[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{4}", "xxxx-xxxx-xxxx-xxxx")
     );
     return true; // retain the span
   }
-
-  @Override public boolean supportsOrphans() {
-    return true; // orphaned data created by bugs must also be cleaned!
-  }
 });
 ```
-An example of redaction is [here](src/test/java/brave/features/handler/RedactingFinishedSpanHandlerTest.java)
+An example of redaction is [here](src/test/java/brave/features/handler/RedactingSpanHandlerTest.java)
 
 ### Sampling locally
 While Brave defaults to report 100% of data to Zipkin, many will use a
@@ -543,27 +570,88 @@ maintained throughout the trace, across requests consistently. Sampling
 has disadvantages. For example, statistics on sampled data is usually
 misleading by nature of not observing all durations.
 
-`FinishedSpanHandler` returns `alwaysSampleLocal()` to indicate whether
-it should see all data, or just all data sent to Zipkin. You can override
-this to true to observe all operations.
+Call `Tracing.Builder.alwaysSampleLocal()` to indicate if `SpanHandler`s
+should see all data or only when data sampled remotely (`TraceContext.sampled()`).
 
-Here's an example of metrics handling:
+This easiest way to configure multiple aspects is with a `TracingCustomizer`.
+Here's an example that generates duration metrics, regardless of remote sampling:
 ```java
-tracingBuilder.addFinishedSpanHandler(new FinishedSpanHandler() {
-  @Override public boolean alwaysSampleLocal() {
-    return true; // since we want to always see timestamps, we have to always record
-  }
-
-  @Override public boolean handle(TraceContext context, MutableSpan span) {
+// Metrics wants duration of all operations, not just ones sampled remotely
+customizer = b -> b.alwaysSampleLocal().addSpanHandler(new SpanHandler() {
+  @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
     if (namesToAlwaysTime.contains(span.name())) {
       registry.timer("spans", "name", span.name())
-          .record(span.finishTimestamp() - span.startTimestamp(), MICROSECONDS);
+              .record(span.finishTimestamp() - span.startTimestamp(), MICROSECONDS);
     }
     return true; // retain the span
   }
 });
+
+// Later, your configuration library invokes the customize method
+customizer.customize(tracingBuilder);
 ```
-An example of metrics handling is [here](src/test/java/brave/features/handler/MetricsFinishedSpanHandler.java)
+A span metrics example is [here](src/test/java/brave/features/handler/SpanMetricsCustomizer.java)
+
+### Non-Zipkin Span Reporting example
+<h3>Non-Zipkin Span Reporting example</h3>
+When reporting to a Zipkin compatible collector, use [io.zipkin.reporter2:zipkin-reporter-brave](https://github.com/openzipkin/zipkin-reporter-java).
+
+The below example highlights notes for those sending data into a different
+format. Notably, most trace systems only need data at the `end` hook.
+
+```java
+public boolean end(TraceContext context, MutableSpan span, Cause cause) {
+  // Sampled means "remote sampled", e.g. to the tracing system.
+  if (!Boolean.TRUE.equals(context.sampled())) return true;
+
+  // span.tags("error") is only set when instrumentation sets it. If your
+  // format requires span.tags("error"), use Tags.ERROR when span.error()
+  // is set, but span.tags("error") is not. Some formats will look at the
+  // stack trace instead.
+  maybeAddErrorTag(context, span);
+  MyFormat customFormat = convert(context, span);
+  nonZipkinReporter.report(converted);
+  return true;
+}
+```
+
+### Child Counting Example
+Some data formats desire knowing how many spans a parent created. Below is an
+example of how to do that, using [WeakConcurrentMap](https://github.com/raphw/weak-lock-free).
+
+```java
+static final class TagChildCountDirect extends SpanHandler {
+--snip--
+  public boolean begin(TraceContext context, MutableSpan span, @Nullable TraceContext parent) {
+    if (!context.isLocalRoot()) { // a child
+      childToParent.putIfProbablyAbsent(context, parent);
+      parentToChildCount.get(parent).incrementAndGet();
+    }
+    return true;
+  }
+
+  public boolean end(TraceContext context, MutableSpan span, Cause cause) {
+    // Kick-out if this was not a normal finish
+    if (cause != Cause.FINISHED && !context.isLocalRoot()) { // a child
+      TraceContext parent = childToParent.remove(context);
+      AtomicInteger childCount = parentToChildCount.getIfPresent(parent);
+      if (childCount != null) childCount.decrementAndGet();
+      return true;
+    }
+
+    AtomicInteger childCount = parentToChildCount.getIfPresent(context);
+    span.tag("childCountDirect", childCount != null ? childCount.toString() : "0");
+
+    // clean up so no OutOfMemoryException!
+    childToParent.remove(context);
+    parentToChildCount.remove(context);
+
+    return true;
+  }
+}
+```
+
+The above is a partial implementation, the full code is [here](src/test/java/brave/features/handler/CountingChildrenTest.java).
 
 ## Current Tracing Component
 Brave supports a "current tracing component" concept which should only
@@ -733,8 +821,19 @@ use of `Tracer.currentSpan()` from external code.
 Here's an example of explicit propagation:
 ```java
 class MyFilter extends Filter {
+
+  public void onSchedule(Attributes attributes) {
+    // Stash the invoking trace context as this will be the correct parent of
+    // the request.
+    attributes.put(TraceContext.class, currentTraceContext.get());
+  }
+
   public void onStart(Request request, Attributes attributes) {
-    // Assume you have code to start the span and add relevant tags...
+    // Retrieve the parent, if any, and start the span.
+    TraceContext parent = attributes.get(TraceContext.class);
+    Span span = tracer.nextSpanWithParent(samplerFunction, request, parent);
+
+    // add tags etc..
 
     // We can't open a scope as onFinish happens on another thread.
     // Instead, we propagate the span manually so at least basic tracing
@@ -763,14 +862,13 @@ context with [our decorator](../context/log4j2/README.md):
 ```java
 tracing = Tracing.newBuilder()
     .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-       .addScopeDecorator(ThreadContextScopeDecorator.create())
-       .build()
-    )
+       .addScopeDecorator(ThreadContextScopeDecorator.get())
+       .build())
     ...
     .build();
 ```
 
-Besides logging, other tools are available. [StrictScopeDecorator](src/main/java/brave/propagation/StrictScopeDecorator.java) can
+Besides logging, other tools are available. [StrictCurrentTraceContext](src/main/java/brave/propagation/StrictCurrentTraceContext.java) can
 help find out when code is not closing scopes properly. This can be
 useful when writing or diagnosing custom instrumentation.
 
@@ -791,7 +889,7 @@ expensive and more precise `System.nanoTime()` function.
 
 ## Troubleshooting instrumentation
 Instrumentation problems can lead to scope leaks and orphaned data. When
-testing instrumentation, use [StrictScopeDecorator](src/main/java/brave/propagation/StrictScopeDecorator.java), as it will throw
+testing instrumentation, use [StrictCurrentTraceContext](src/main/java/brave/propagation/StrictCurrentTraceContext.java), as it will throw
 errors on known scoping problems.
 
 If you see data with the annotation `brave.flush`, you may have an
@@ -809,24 +907,23 @@ When writing unit tests, there are a few tricks that will make bugs
 easier to find:
 
 * Report spans into a concurrent queue, so you can read them in tests
-* Use `StrictScopeDecorator` to reveal subtle thread-related propagation bugs
+* Use `StrictCurrentTraceContext` to reveal subtle thread-related propagation bugs
 * Unconditionally cleanup `Tracing.current()`, to prevent leaks
 
 Here's an example setup for your unit test fixture:
 ```java
 ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>();
 
+StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create()
 Tracing tracing = Tracing.newBuilder()
-                 .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
-                   .addScopeDecorator(StrictScopeDecorator.create())
-                   .build()
-                 )
+                 .currentTraceContext(currentTraceContext)
                  .spanReporter(spans::add)
                  .build();
 
   @After public void close() {
     Tracing current = Tracing.current();
     if (current != null) current.close();
+    currentTraceContext.close();
   }
 ```
 
@@ -925,112 +1022,5 @@ instrumented services can read the longer 128-bit trace IDs.
 Note: this only affects the trace ID, not span IDs. For example, span ids
 within a trace are always 64-bit.
 
-## Acknowledgements
-Brave 4's design lends from past experience and similar open source work.
-Quite a lot of decisions were driven by portability with Brave 3, and the
-dozens of individuals involved in that. There are notable new aspects
-that are borrowed or adapted from others.
-
-### Stateful Span object
-Brave 4 allows you to pass around a Span object which can report itself
-to Zipkin when finished. This is better than using thread contexts in
-some cases, particularly where many async hops are in use. The Span api
-is derived from OpenTracing, narrowed to more cleanly match Zipkin's
-abstraction. As a result, a bridge from Brave 4 to OpenTracing v0.20.2
-is relatively little code. It should be able to implement future
-versions of OpenTracing as well.
-
-### ScopedSpan type
-Brave 4.19 introduced `ScopedSpan` which derives influence primarily from
-[OpenCensus SpanBuilder.startScopedSpan() Api](https://github.com/census-instrumentation/opencensus-java/blob/f852100ad9b77522fabd3c0b29e78202aed3a26e/api/src/main/java/io/opencensus/trace/SpanBuilder.java#L229), a convenience type to
-start work and ensure scope is visible downstream. One main difference here is
-we assume the scoped span is used in the same thread, so mark it as such. Also,
-we reduce the size of the api to help secure users against code drift.
-
-### Error Handling
-Brave 4.19 added `ErrorParser`, internally used by `Span.error(Throwable)`. This
-design incubated in [Spring Cloud Sleuth](https://github.com/spring-cloud/spring-cloud-sleuth) prior to becoming a primary type here.
-Our care and docs around error handling in general is credit to [Nike Wingtips](https://github.com/Nike-Inc/wingtips#warning-about-error-handling-when-using-try-with-resources-to-autoclose-spans).
-
-### Recorder architecture
-Much of Brave 4's architecture is borrowed from Finagle, whose design
-implies a separation between the propagated trace context and the data
-collected in process. For example, Brave's MutableSpanMap is the same
-overall design as Finagle's. The internals of MutableSpanMap were adapted
-from [WeakConcurrentMap](https://github.com/raphw/weak-lock-free).
-
-### Propagation Api
-OpenTracing's Tracer type has methods to inject or extract a trace
-context from a carrier. While naming is similar, Brave optimizes for
-direct integration with carrier types (such as http request) vs routing
-through an intermediate (such as a map). Brave also considers propagation
-a separate api from the tracer.
-
-### Current Tracer Api
-The first design work of `Tracing.currentTracer()` started in [Brave 3](https://github.com/openzipkin/brave/pull/210),
-which was itself influenced by Finagle's implicit Tracer api. This feature
-is noted as edge-case, when other means to get a reference to a trace are
-impossible. The only instrumentation that needed this was JDBC.
-
-Returning a possibly null reference from `Tracing.currentTracer()` implies:
-* Users never cache the reference returned (noted in javadocs)
-* Less code and type constraints on Tracer vs a lazy forwarding delegate
-* Less documentation as we don't have to explain what a Noop tracer does
-
-### CurrentTraceContext Api
-The first design of `CurrentTraceContext` was borrowed from `ContextUtils`
-in Google's [instrumentation-java](https://github.com/google/instrumentation-java) project.
-This was possible because of high collaboration between the projects and
-an almost identical goal. Slight departures including naming (which prefers
-Guice's naming conventions), and that the object scoped is a TraceContext
-vs a Span.
-
-Propagating a trace context instead of a span is a right fit for several reasons:
-* `TraceContext` can be created without a reference to a tracer
-* Common tasks like making child spans and staining log context only need the context
-* Brave's recorder is keyed on context, so there's no feature loss in this choice
-
-### Local Sampling flag
-The [Census](https://opencensus.io/) project has a concept of a[SampledSpanStore](https://github.com/census-instrumentation/opencensus-java/blob/master/api/src/main/java/io/opencensus/trace/export/SampledSpanStore.java).
-Typically, you configure a span name pattern or choose [individual spans](https://github.com/census-instrumentation/opencensus-java/blob/660e8f375bb483a3eb817940b3aa8534f86da314/api/src/main/java/io/opencensus/trace/EndSpanOptions.java#L65)
-for local (in-process) storage. This storage is used to power
-administrative pages named zPages. For example, [Tracez](https://github.com/census-instrumentation/opencensus-java/blob/660e8f375bb483a3eb817940b3aa8534f86da314/contrib/zpages/src/main/java/io/opencensus/contrib/zpages/TracezZPageHandler.java#L220)
-displays spans sampled locally which have errors or crossed a latency
-threshold.
-
-The "sample local" vocab in Census was re-used in Brave to describe the
-act of keeping data that isn't going to necessarily end up in Zipkin.
-
-The main difference in Brave is implementation. For example, the `sampledLocal`
-flag in Brave is a part of the TraceContext and so can be triggered when
-headers are parsed. This is needed to provide custom sampling mechanisms.
-Also, Brave has a small core library and doesn't package any specific
-storage abstraction, admin pages or latency processors. As such, we can't
-define specifically what sampled local means as Census' could. All it
-means is that `FinishedSpanHandler` will see data for that trace context.
-
-### FinishedSpanHandler Api
-Brave had for a long time re-used zipkin's Reporter library, which is
-like Census' SpanExporter in so far that they both allow pushing a specific
-format elsewhere, usually to a service. Brave's [FinishedSpanHandler](https://github.com/openzipkin/brave/blob/master/brave/src/main/java/brave/handler/FinishedSpanHandler.java)
-is a little more like Census' [SpanExporter.Handler](https://github.com/census-instrumentation/opencensus-java/blob/master/api/src/main/java/io/opencensus/trace/export/SpanExporter.java)
-in so far as the structure includes the trace context.. something we need
-access to in order to do things like advanced sampling.
-
-Where it differs is that the `MutableSpan` in Brave is.. well.. mutable,
-and this allows you to cheaply change data. Also, it isn't a struct based
-on a proto, so it can hold references to objects like `Exception`. This
-allows us to render data into different formats such as [Amazon's stack frames](https://docs.aws.amazon.com/xray/latest/devguide/xray-api-segmentdocuments.html)
-without having to guess what will be needed by parsing up front. As
-error parsing is deferred, overhead is less in cases where errors are not
-recorded (such as is the case on spans intentionally dropped).
-
-### Public namespace
-Brave 4's public namespace is more defensive that the past, using a package
-accessor design from [OkHttp](https://github.com/square/okhttp).
-
-### Rate-limiting sampler
-`RateLimitingSampler` was made to allow Amazon X-Ray rules to be
-expressed in Brave. We considered their [Reservoir design](https://github.com/aws/aws-xray-sdk-java/blob/2.0.1/aws-xray-recorder-sdk-core/src/main/java/com/amazonaws/xray/strategy/sampling/reservoir/Reservoir.java).
-Our implementation differs as it removes a race condition and attempts
-to be more fair by distributing accept decisions every decisecond.
+## Rationale
+See our [Rationale](RATIONALE.md) for design thoughts and acknowledgements.

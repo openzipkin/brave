@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,8 +18,9 @@ import brave.Tracer;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.processor.ProcessorContext;
 
-class TracingTransformer<K, V, R> implements Transformer<K, V, R> {
+import static brave.internal.Throwables.propagateIfFatal;
 
+class TracingTransformer<K, V, R> implements Transformer<K, V, R> {
   final KafkaStreamsTracing kafkaStreamsTracing;
   final Tracer tracer;
   final String spanName;
@@ -53,8 +54,9 @@ class TracingTransformer<K, V, R> implements Transformer<K, V, R> {
     Throwable error = null;
     try {
       return delegateTransformer.transform(k, v);
-    } catch (RuntimeException | Error e) {
+    } catch (Throwable e) {
       error = e;
+      propagateIfFatal(e);
       throw e;
     } finally {
       // Inject this span so that the next stage uses it as a parent

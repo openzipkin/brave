@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -32,10 +32,10 @@ public class RequestTest {
       .hasToString("IceCreamRequest{chocolate}");
   }
 
-  @Test public void toString_doesntStackoverflowWhenUnwrapIsNull() {
+  @Test public void toString_doesntStackoverflowWhenUnwrapIsThis() {
     class BuggyRequest extends Request {
       @Override public Object unwrap() {
-        return null;
+        return this;
       }
 
       @Override public Span.Kind spanKind() {
@@ -44,5 +44,19 @@ public class RequestTest {
     }
     assertThat(new BuggyRequest())
       .hasToString("BuggyRequest");
+  }
+
+  @Test public void toString_doesntNPEWhenUnwrapIsNull() {
+    class NoRequest extends Request {
+      @Override public Object unwrap() {
+        return null;
+      }
+
+      @Override public Span.Kind spanKind() {
+        return Span.Kind.SERVER;
+      }
+    }
+    assertThat(new NoRequest())
+      .hasToString("NoRequest");
   }
 }

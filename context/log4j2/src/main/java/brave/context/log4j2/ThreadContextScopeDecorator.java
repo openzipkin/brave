@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,45 +13,95 @@
  */
 package brave.context.log4j2;
 
-import brave.internal.propagation.CorrelationFieldScopeDecorator;
-import brave.propagation.CurrentTraceContext.ScopeDecorator;
+import brave.baggage.BaggageFields;
+import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
+import brave.baggage.CorrelationScopeDecorator;
+import brave.internal.CorrelationContext;
+import brave.internal.Nullable;
+import brave.propagation.CurrentTraceContext;
 import org.apache.logging.log4j.ThreadContext;
 
 /**
- * Adds {@linkplain ThreadContext} properties "traceId", "parentId", "spanId" and "sampled" when a
- * {@link brave.Tracer#currentSpan() span is current}. "traceId" and "spanId" are used in log
- * correlation. "parentId" is used for scenarios such as log parsing that reconstructs the trace
- * tree. "sampled" is used as a hint that a span found in logs might be in Zipkin.
+ * Creates a {@link CorrelationScopeDecorator} for Log4j 2 {@linkplain ThreadContext Thread
+ * Context}.
  *
  * <p>Ex.
  * <pre>{@code
  * tracing = Tracing.newBuilder()
  *                  .currentTraceContext(ThreadLocalCurrentTraceContext.newBuilder()
- *                    .addScopeDecorator(ThreadContextScopeDecorator.create())
+ *                    .addScopeDecorator(ThreadContextScopeDecorator.get())
  *                    .build()
  *                  )
  *                  ...
  *                  .build();
  * }</pre>
+ *
+ * @see CorrelationScopeDecorator
  */
-public final class ThreadContextScopeDecorator extends CorrelationFieldScopeDecorator {
+public final class ThreadContextScopeDecorator {
+  static final CurrentTraceContext.ScopeDecorator INSTANCE = new Builder().build();
 
-  public static ScopeDecorator create() {
-    return new ThreadContextScopeDecorator();
+  /**
+   * Returns a singleton that configures {@link BaggageFields#TRACE_ID} and {@link
+   * BaggageFields#SPAN_ID}.
+   *
+   * @since 5.11
+   */
+  public static CurrentTraceContext.ScopeDecorator get() {
+    return INSTANCE;
   }
 
-  @Override protected String get(String key) {
-    return ThreadContext.get(key);
+  /**
+   * Returns a builder that configures {@link BaggageFields#TRACE_ID} and {@link
+   * BaggageFields#SPAN_ID}.
+   *
+   * @since 5.11
+   */
+  public static CorrelationScopeDecorator.Builder newBuilder() {
+    return new Builder();
   }
 
-  @Override protected void put(String key, String value) {
-    ThreadContext.put(key, value);
+  /**
+   * Returns a scope decorator that configures {@link BaggageFields#TRACE_ID}, {@link
+   * BaggageFields#PARENT_ID}, {@link BaggageFields#SPAN_ID} and {@link BaggageFields#SAMPLED}
+   *
+   * @since 5.2
+   * @deprecated since 5.11 use {@link #get()} or {@link #newBuilder()}
+   */
+  @Deprecated public static CurrentTraceContext.ScopeDecorator create() {
+    return new Builder()
+      .clear()
+      .add(SingleCorrelationField.create(BaggageFields.TRACE_ID))
+      .add(SingleCorrelationField.create(BaggageFields.PARENT_ID))
+      .add(SingleCorrelationField.create(BaggageFields.SPAN_ID))
+      .add(SingleCorrelationField.create(BaggageFields.SAMPLED))
+      .build();
   }
 
-  @Override protected void remove(String key) {
-    ThreadContext.remove(key);
+  static final class Builder extends CorrelationScopeDecorator.Builder {
+    Builder() {
+      super(ThreadContextCorrelationContext.INSTANCE);
+    }
   }
 
-  ThreadContextScopeDecorator() {
+  // TODO: see if we can read/write directly to skip some overhead similar to
+  // https://github.com/census-instrumentation/opencensus-java/blob/2903747aca08b1e2e29da35c5527ff046918e562/contrib/log_correlation/log4j2/src/main/java/io/opencensus/contrib/logcorrelation/log4j2/OpenCensusTraceContextDataInjector.java
+  enum ThreadContextCorrelationContext implements CorrelationContext {
+    INSTANCE;
+
+    @Override public String getValue(String name) {
+      return ThreadContext.get(name);
+    }
+
+    @Override public boolean update(String name, @Nullable String value) {
+      if (value != null) {
+        ThreadContext.put(name, value);
+      } else if (ThreadContext.containsKey(name)) {
+        ThreadContext.remove(name);
+      } else {
+        return false;
+      }
+      return true;
+    }
   }
 }

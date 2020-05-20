@@ -10,7 +10,7 @@ instructions on what to put into http spans, and sampling policy.
 ## Span data policy
 By default, the following are added to both http client and server spans:
 * Span.name is the http method in lowercase: ex "get" or a route described below
-* Tags/binary annotations:
+* Tags:
   * "http.method", eg "GET"
   * "http.path", which does not include query parameters.
   * "http.status_code" when the status is not success.
@@ -24,17 +24,13 @@ Naming and tags are configurable in a library-agnostic way. For example,
 the same `HttpTracing` component configures OkHttp or Apache HttpClient
 identically.
 
-For example, to change the tagging policy for clients, you can do
-something like this:
+For example, to add a non-default tag for HTTP clients, you can do this:
 
 ```java
 httpTracing = httpTracing.toBuilder()
-    .clientParser(new HttpClientParser() {
-      @Override
-      public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
-        customizer.name(spanName(adapter, req)); // default span name
-        customizer.tag("http.url", adapter.url(req)); // the whole url, not just the path
-      }
+    .clientRequestParser((req, context, span) -> {
+      HttpClientRequestParser.DEFAULT.parse(req, context, span);
+      HttpTags.URL.tag(req, context, span); // add the url in addition to defaults
     })
     .build();
 
@@ -47,16 +43,15 @@ override `spanName` in your client or server parser.
 
 Ex:
 ```java
-overrideSpanName = new HttpClientParser() {
-  @Override public <Req> String spanName(HttpAdapter<Req, ?> adapter, Req req) {
-    // If using JAX-RS, maybe we want to use the resource method
-    if (adapter instanceof ContainerAdapter) {
-      Method method = ((ContainerAdapter) adapter).resourceMethod(req);
-      return method.getName().toLowerCase();
+overrideSpanName = new HttpRequestParser.Default() {
+  @Override protected String spanName(HttpRequest req, TraceContext context) {
+    // If using Armeria, maybe we want to reuse the request log name
+    Object raw = req.unwrap();
+    if (raw instanceof ServiceRequestContext) {
+      RequestLog requestLog = ((ServiceRequestContext) raw).log();
+      return requestLog.name();
     }
-    // If not using framework-specific knowledge, we can use http
-    // attributes or go with the default.
-    return super.spanName(adapter, req);
+    return super.spanName(req, context); // otherwise, go with the defaults
   }
 };
 ```
@@ -64,9 +59,25 @@ overrideSpanName = new HttpClientParser() {
 Note that span name can be overwritten any time, for example, when
 parsing the response, which is the case when route-based names are used.
 
+### Baggage
+To add baggage fields as span tags, use the context parameter like so:
+
+```java
+public static final BaggageField USER_NAME = BaggageField.create("user-name");
+// Ensure BaggagePropagation configures USER_NAME!
+
+httpTracing = httpTracing.toBuilder()
+    .clientRequestParser((req, context, span) -> {
+      HttpClientRequestParser.DEFAULT.parse(req, context, span);
+      String userName = USER_NAME.getValue(context);
+      if (userName != null) span.tag("user-name", userName);
+    })
+    .build();
+```
+
 ## Sampling Policy
 The default sampling policy is to use the default (trace ID) sampler for
-server and client requests.
+client and server requests.
 
 For example, if there's a incoming request that has no trace IDs in its
 headers, the sampler indicated by `Tracing.Builder.sampler` decides whether
@@ -101,10 +112,10 @@ httpTracingBuilder.serverSampler(HttpRuleSampler.newBuilder()
 
 ## Http Route
 The http route is an expression such as `/items/:itemId` representing an
-application endpoint. `HttpAdapter.route()` parses this from a response,
-returning the route that matched the request, empty if no route matched,
-or null if routes aren't supported. This value is either used to create
-a tag "http.route" or as an input to a span naming function.
+application endpoint. Implement `HttpServerResponse.route()` to return the
+route that matched the request, empty if no route matched, or null if routes
+aren't supported. This value is either used to create a tag "http.route" or as
+an input to a span naming function.
 
 ### Http route cardinality
 The http route groups similar requests together, so results in limited
@@ -122,7 +133,7 @@ http route for metrics, coerce empty to constants like "redirected" or
 "not_found" with the http status. Knowing the difference between not
 found and redirected can be a simple intrusion detection signal. The
 default span name policy uses constants when a route isn't known for
-reasons including sharing the span name as a metrics correlation field.
+reasons including sharing the span name as a metrics baggage field.
 
 # Developing new instrumentation
 
@@ -134,8 +145,8 @@ covers topics including propagation. You may find our [feature tests](src/test/j
 ## Http Client
 
 The first step in developing http client instrumentation is implementing
-a `HttpClientAdapter` for your native library. This ensures users can
-portably control tags using `HttpClientParser`.
+`HttpClientRequest` and `HttpClientResponse` for your native library.
+This ensures users can portably control tags using `HttpClientParser`.
 
 Next, you'll need to indicate how to insert trace IDs into the outgoing
 request. Often, this is as simple as `Request::setHeader`.
@@ -146,8 +157,7 @@ constructor like so:
 ```java
 MyTracingFilter(HttpTracing httpTracing) {
   tracer = httpTracing.tracing().tracer();
-  handler = HttpClientHandler.create(httpTracing, new MyHttpClientAdapter());
-  extractor = httpTracing.tracing().propagation().injector(Request::setHeader);
+  handler = HttpClientHandler.create(httpTracing);
 }
 ```
 
@@ -158,22 +168,49 @@ You generally need to...
 1. Start the span and add trace headers to the request
 2. Put the span in scope so things like log integration works
 3. Invoke the request
-4. Catch any errors
+4. If there was a Throwable, add it to the span
 5. Complete the span
 
 ```java
-Span span = handler.handleSend(injector, request); // 1.
+HttpClientRequestWrapper requestWrapper = new HttpClientRequestWrapper(request);
+Span span = handler.handleSend(requestWrapper); // 1.
+HttpClientResponse response = null;
 Throwable error = null;
-SpanInScope scope = tracer.withSpanInScope(span); // 2.
-try {
-  response = invoke(request); // 3.
-} catch (RuntimeException | Error e) {
+try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
+  return response = invoke(request); // 3.
+} catch (Throwable e) {
   error = e; // 4.
   throw e;
 } finally {
-  handler.handleReceive(response, error, span); // 5.
-  scope.close();
+  HttpClientResponseWrapper responseWrapper =
+    new HttpClientResponseWrapper(requestWrapper, response, error);
+  handler.handleReceive(responseWrapper, span); // 5.
 }
+```
+
+### Asynchronous callbacks
+
+Asynchronous callbacks are a bit more complicated as they can happen on
+different threads. This means you need to manually carry the trace context from
+where the HTTP call is scheduled until when the request actually starts.
+
+You generally need to...
+1. Stash the invoking trace context as a property of the request
+2. Retrieve that context when the request starts
+3. Use that context when creating the client span
+
+```java
+public void onSchedule(HttpContext context) {
+  TraceContext invocationContext = currentTraceContext().get();
+  context.setAttribute(TraceContext.class, invocationContext); // 1.
+}
+
+// use the invocation context in callback associated with starting the request
+public void onStart(HttpContext context, HttpClientRequest req) {
+  TraceContext parent = context.getAttribute(TraceContext.class); // 2.
+
+  HttpClientRequestWrapper request = new HttpClientRequestWrapper(req);
+  Span span = handler.handleSendWithParent(request, parent); // 3.
 ```
 
 ## Http Server
@@ -183,9 +220,10 @@ The first step in developing http server instrumentation is implementing
 library. This ensures your instrumentation can extract headers, sample and
 control tags.
 
-With these two items, you now have the most important parts needed to
-trace your server library. You'll likely initialize the following in a
-constructor like so:
+With these two implemented, you have the most important parts needed to trace
+your server library. Initialize the HTTP server handler that uses the request
+and response types along with the tracer.
+
 ```java
 MyTracingInterceptor(HttpTracing httpTracing) {
   tracer = httpTracing.tracing().tracer();
@@ -199,83 +237,90 @@ Synchronous interception is the most straight forward instrumentation.
 You generally need to...
 1. Extract any trace IDs from headers and start the span
 2. Put the span in scope so things like log integration works
-3. Invoke the request
-4. Catch any errors
+3. Process the request
+4. If there was a Throwable, add it to the span
 5. Complete the span
 
 ```java
-Span span = handler.handleReceive(extractor, request); // 1.
+HttpServerRequestWrapper requestWrapper = new HttpServerRequestWrapper(request);
+Span span = handler.handleReceive(requestWrapper); // 1.
+HttpServerResponse response = null;
 Throwable error = null;
-SpanInScope scope = tracer.withSpanInScope(span); // 2.
-try { // 2.
-  response = invoke(request); // 3.
-} catch (RuntimeException | Error e) {
+try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
+  return response = process(request); // 3.
+} catch (Throwable e) {
   error = e; // 4.
   throw e;
 } finally {
-  handler.handleSend(response, error, span); // 5.
-  scope.close();
+  HttpServerResponseWrapper responseWrapper =
+    ? new HttpServerResponseWrapper(requestWrapper, response, error);
+  handler.handleSend(responseWrapper, span); // 5.
 }
 ```
 
-### Supporting HttpAdapter.route(response)
+### Supporting HttpResponse.request()
 
-Although the route is associated with the request, not the response,
-it is parsed from the response object. The reason is that many server
-implementations process the request before they can identify the route.
+`HttpResponse.request()` is request that initiated the HTTP response.
 
-Instrumentation authors implement support via extending HttpAdapter
-accordingly. There are a few patterns which might help.
+Implementations should return the last wire-level request that caused the
+response or error. HTTP properties like path and headers might be different,
+due to redirects or authentication. Some properties might not be visible until
+response processing, notably the route.
 
-#### Callback with non-final type
-When a framework uses an callback model, you are in control of the type
-being parsed. If the response type isn't final, simply subclass it with
-the route data.
+For these reasons, you may need to generate a different `HttpRequest` instance
+when constructing the `HttpResponse` vs when it was created.
 
-For example, if Spring MVC, it would be this:
-```java
-    // check for a wrapper type which holds the template
-    handler = HttpServerHandler.create(httpTracing, new HttpServletAdapter() {
-      @Override public String template(HttpServletResponse response) {
-        return response instanceof HttpServletResponseWithTemplate
-            ? ((HttpServletResponseWithTemplate) response).route : null;
-      }
+Here is an example for Apache HttpAsyncClient, which grabs the request out
+of its context as it doesn't have a reference during response processing:
 
-      @Override public String toString() {
-        return "WebMVCAdapter{}";
-      }
-    });
+```scala
+static final class HttpResponseWrapper extends HttpClientResponse {
+  @Nullable final HttpRequestWrapper request;
+  final HttpResponse response;
 
---snip--
-
-// when parsing the response, scope the route from the request
-
-    Object template = request.getAttribute(BEST_MATCHING_PATTERN_ATTRIBUTE);
-    if (route != null) {
-      response = new HttpServletResponseWithTemplate(response, route.toString());
-    }
-    handler.handleSend(response, ex, span);
+  HttpResponseWrapper(HttpResponse response, HttpContext context) {
+    HttpRequest request = HttpClientContext.adapt(context).getRequest();
+    this.request = request != null ? new HttpRequestWrapper(request, context) : null;
+    this.response = response;
+  }
 ```
 
-#### Callback with final type
-If the response type is final, you may be able to make a copy and stash
-the route as a synthetic header. Since this is a copy of the response,
-there's no chance a user will receive this header in a real response.
+### Supporting HttpRequest.route()
 
-Here's an example for Play, where the header "brave-http-route" holds
-the route temporarily until the parser can read it.
+The route is associated with the request, but it may not be visible until
+response processing. The reasons is that many server implementations process
+the request before they can identify the route.
+
+Instrumentation authors implement support via overriding `HttpRequest.route()`
+accordingly. There are a few patterns which might help.
+
+#### Servlet based libraries
+'brave-instrumentation-servlet' includes the type `HttpServletRequestWrapper`.
+This looks for the request attribute "http.route", which can be set in any way.
+
+For example, Spring WebMVC can add the route using `HandlerInterceptorAdapter`.
+This is how our 'brave-instrumentation-spring-webmvc' works:
+
+```java
+static void setHttpRouteAttribute(HttpServletRequest request) {
+  Object httpRoute = request.getAttribute(BEST_MATCHING_PATTERN_ATTRIBUTE);
+  request.setAttribute("http.route", httpRoute != null ? httpRoute.toString() : "");
+}
+```
+
+#### Adding a field to `HttpServerRequest`
+Another easy way is to add a field to your `HttpServerRequest` wrapper, and
+parse that in your implementation of `HttpServerRequest.route()`.
+
+Here is an example for Play, which passes the template along with the `Request`
+to the HTTP server handler:
 ```scala
-    result.onComplete {
-      case Failure(t) => handler.handleSend(null, t, span)
-      case Success(r) => {
-        // add a synthetic header if there was a routing path set
-        var resp = template.map(t => r.withHeaders("brave-http-route" -> t)).getOrElse(r)
-        handler.handleSend(resp, null, span)
-      }
-    }
+var template = req.attrs.get(Router.Attrs.HandlerDef).map(_.path)
+var request = new RequestWrapper(req, template)
+
 --snip--
-    override def route(response: Result): String =
-      response.header.headers.apply("brave-http-route")
+  override def route(): String =
+    template.map(t => StringUtils.replace(t, "<[^/]+>", "")).getOrElse("")
 ```
 
 #### Common mistakes
