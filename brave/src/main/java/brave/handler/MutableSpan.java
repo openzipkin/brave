@@ -46,6 +46,45 @@ import static brave.internal.codec.JsonWriter.UTF_8;
  * <p>In other words, this type is not thread safe. If you need to mutate this span in a different
  * thread, use the {@linkplain #MutableSpan(MutableSpan) copy constructor}.
  *
+ * <h3>MutableSpan.error() vs MutableSpan.tag("error")</h3>
+ * If {@link #tag(String)} returns a result for "error", it was from a layered api, instrumentation or the user.
+ * {@link #error()} is usually an uncaught exception and does not imply there's a tag "error".
+ *
+ * <p>Here are examples of a span with {@link #error()}, but no "error" tag:
+ * <ul>
+ *   <li>{@code brave.Span.error(new OutOfMemoryError()) -> MutableSpan.error(new OutOfMemoryError())}</li>
+ *   <li>{@code brave.Span.error(new RpcException()) -> MutableSpan.error(new RpcException())}</li>
+ *   <li>{@code brave.Span.error(new NullPointerException()) -> MutableSpan.error(new NullPointerException())}</li>
+ * </ul>
+ *
+ * <p>The above are examples of exceptions that users typically do not process, so are unlikely to
+ * parse into an "error" tag. The opposite is also true as not all errors are derived from
+ * {@link Throwable}. Particularly, RPC frameworks often do not use exceptions as error signals.
+ *
+ * <p>Here are examples of a span with an "error" tag, but no {@link #error()}:
+ * <ul>
+ *   <li>{@code io.opentracing.Span.tag(ERROR, true) -> MutableSpan.tag("error", "true")}</li>
+ *   <li>{@code brave.SpanCustomizer.tag("error", "") -> MutableSpan.tag("error", "")}</li>
+ *   <li>{@code brave.Span.tag("error", "CANCELLED") -> MutableSpan.tag("error", "CANCELLED")}</li>
+ * </ul>
+
+ * <p>The above examples are using in-band apis in Brave. {@link SpanHandler} is after the fact.
+ * Since there is no default "error" tag, span handlers here can tell the difference between
+ * explicitly set error messages, and what's needed by their format. For example, those only looking
+ * at Zipkin clones may forget that {@link #error()} exists for custom formats including metrics!
+ *
+ * <p>Here are examples of {@link SpanHandler#end(TraceContext, MutableSpan, SpanHandler.Cause)}
+ * implementations that process errors:
+ * <ul>
+ *   <li>{@code MutableSpan.tag("error", "")} to redact the error message from Zipkin</li>
+ *   <li>{@code MutableSpan.error() -> MutableSpan.tag("exception", normalized)} to match metrics dimension</li>
+ *   <li>{@code MutableSpan.error() -> CustomFormat.stackTrace} for sophisticated trace formats</li>
+ * </ul>
+ *
+ * In summary, Brave intentionally does not default an "error" {@link #tag(String)} from
+ * {@link #error()}. This allows {@link SpanHandler} instances that report data be as simple as an
+ * error bit, or advanced enough to keep a stacktrace and also a user tag.
+ *
  * @since 5.4
  */
 public final class MutableSpan implements Cloneable {
