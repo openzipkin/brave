@@ -102,3 +102,23 @@ git checkout master
 git push
 git push --tags
 ```
+
+## Generating jdiff and javadoc
+
+Once the release is done and the artifacts are in maven central, you can generate 
+the jdiff report in the `gh-pages` branch. It's not needed to do this for a 
+patch release.
+
+```bash
+$ wget -L -c https://search.maven.org/remotecontent?filepath=org/spf4j/spf4j-jdiff-maven-plugin/8.8.1/spf4j-jdiff-maven-plugin-8.8.1-uber.jar -O jdiff.jar
+$ java -jar jdiff.jar -gId io.zipkin.brave -aId brave -fromVersion 5.11.2 -toVersion 5.12.3 -o jdiff/5.11_to_5.12 -p 'brave brave.baggage brave.handler brave.propagation brave.sampler'
+$ git add jdiff/5.11_to_5.12
+$ git commit -m"jdiff report"
+$ git push upstream gh-pages
+``` 
+
+Note that 
+* The `fromVersion` and `toVersion` reflect the latest patch version of each release.
+* The output directory does not include the patch version number.
+* The `-p` parameter specifies the packages to include in the jdiff report,
+you can look at [bnd.bnd](brave/bnd.bnd) to see which packages we export. This rarely changes.
