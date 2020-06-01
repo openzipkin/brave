@@ -78,3 +78,19 @@ continue incoming state.
 Finally, this approach has been in use since late 2017, when we refined our
 only messaging instrumentation, `kafka-clients`, to support message processing.
 By re-using known working practice, we have less risk in abstraction.
+
+## Why don't we define a message ID for tools lacking one, such as Kafka?
+
+Typical message ID formats encode multiple components such as a broker ID or network address,
+destination, timestamp or offset. It may be tempting to compose a format to include the dimensions
+that likely pinpoint a message when there's no format defined by the library. For example, in Kafka,
+we could compose a format like `topic-partition-offset` to ensure `MessagingRequest.id()` would not
+be `null`, and people can access not-yet-standard fields such as partition or offset.
+
+If we did that, we'd add overhead with the only consumer being tracing itself. It would fail as a
+correlation field with other libraries as by definition our format would be bespoke. Moreover,
+higher layers of abstraction which might have a defined message ID format could be confused with
+ours. Later, if that same tool creates a message ID format, it would likely be different than ours.
+
+For reasons including these, if there's no canonical format, we opt out of synthesizing a message ID
+and just return `null`.
