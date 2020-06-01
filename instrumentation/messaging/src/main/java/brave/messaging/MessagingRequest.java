@@ -48,6 +48,8 @@ public abstract class MessagingRequest extends Request {
   /**
    * Type of channel, e.g. "queue" or "topic". {@code null} if unreadable.
    *
+   * <p>Conventionally associated with the key "messaging.channel_kind"
+   *
    * @see #channelName()
    * @since 5.9
    */
@@ -56,6 +58,8 @@ public abstract class MessagingRequest extends Request {
 
   /**
    * Messaging channel name, e.g. "hooks" or "complaints". {@code null} if unreadable.
+   *
+   * <p>Conventionally associated with the key "messaging.channel_name"
    *
    * @see #channelKind()
    * @since 5.9
@@ -72,6 +76,8 @@ public abstract class MessagingRequest extends Request {
    *   <li>JMS - "JMSMessageID" header. Ex "ID:10.77.42.209-4280-1477454185311-1:1:1391:1:1"</li>
    *   <li>RabbitMQ - AMQP "message-id" (max 256 char)</li>
    * </ul></pre>
+   *
+   * <p>Conventionally associated with the key "messaging.id"
    *
    * @since 5.13
    */

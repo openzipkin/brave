@@ -25,7 +25,8 @@ import brave.internal.Nullable;
  */
 public abstract class MessagingResponse extends Response {
   /**
-   * The request that initiated this messaging response or {@code null} if unknown.
+   * Information about the request that initiated this messaging response or {@code null} if
+   * unknown.
    *
    * @since 5.13
    */
