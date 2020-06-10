@@ -112,7 +112,7 @@ well the special case of JMS.
 | STOMP      | CONSUMER | MESSAGE        | Request   | message-id Header      | Remote | Connection | arbitrary
 | STOMP      | CONSUMER | ACK/NACK       | Response  | id Header              | Remote | Connection | arbitrary
 
-### Isn't correlation ID the same as a message ID
+### Isn't correlation ID the same as a message ID?
 A correlation ID is a system-wide lookup value that possibly can pass multiple steps. A message ID
 can have a scope as small as one segment (Ex. flow from producer to broker), and typically an
 implementation detail. It can bet the case that they are the same, but it is not commonly the case.
