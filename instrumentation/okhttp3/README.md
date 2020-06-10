@@ -9,7 +9,7 @@ tags like the http url.
 To enable tracing, wrap your client using `TracingCallFactory`.
 
 ```java
-callFactory = TracingCallFactory.create(tracing, okhttp);
+callFactory = TracingCallFactory.create(httpTracing, okhttp);
 ```
 
 ## TracingInterceptor
