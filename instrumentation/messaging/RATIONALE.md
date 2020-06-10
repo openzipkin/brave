@@ -93,6 +93,9 @@ well the special case of JMS.
 | AWS SQS    | CONSUMER | ReceiveMessage | Request   | MessageDeduplicationId | Remote | Queue      | SHA-256(body)
 | AWS SQS    | PRODUCER | SendMessage    | Response  | MessageId              | Remote | Global     | UUID
 | AWS SQS    | CONSUMER | ReceiveMessage | Response  | MessageId              | Remote | Global     | UUID
+| GCP PubSub | PRODUCER | Publish        | Response  | message_id             | Remote | Topic      | Integer
+| GCP PubSub | CONSUMER | Push           | Request   | message_id             | Remote | Topic      | Integer
+| GCP PubSub | CONSUMER | Pull           | Response  | message_id             | Remote | Topic      | Integer
 | JMS        | PRODUCER | Send           | Response  | JMSMessageId           | Remote | Global     | ID:opaque string
 | JMS        | CONSUMER | Receive        | Request   | JMSMessageId           | Remote | Global     | ID:opaque string
 | MQTT       | PRODUCER | PUBLISH        | Request   | Packet Identifier      | Local  | Connection | uint16
@@ -140,6 +143,9 @@ associated with the `MessageId`. The client can also set certain IDs. For exampl
 `MessageDeduplicationId` before sending a message to a FIFO queue to suppress redundant sends. In
 other words there are at least 3 identifiers for a single message, in different formats, depending
 on the use case.
+
+A Google PubSub Subscriber receives both a `message_id` and an `ack_id` in the `PullResponse`. The
+`ack_id` has a different format and is scoped to the subscriber.
 
 Pulsar has a client-generated `SequenceID`, but the broker controls the `MessageID` (sent in the
 response). The `MessageID` is not derived from the `SequenceID` and they serve different purposes.
