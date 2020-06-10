@@ -95,14 +95,14 @@ well the special case of JMS.
 | AWS SQS    | CONSUMER | ReceiveMessage | Response  | MessageId              | Remote | Global     | UUID
 | JMS        | PRODUCER | Send           | Response  | JMSMessageId           | Remote | Global     | ID:opaque string
 | JMS        | CONSUMER | Receive        | Request   | JMSMessageId           | Remote | Global     | ID:opaque string
-| Pulsar     | PRODUCER | Send           | Response  | MessageId              | Remote | Topic      | bytes(ledger|entry|parition)
-| Pulsar     | CONSUMER | Receive        | Request   | MessageId              | Remote | Topic      | bytes(ledger|entry|parition)
-| RocketMQ   | PRODUCER | send           | Response  | SendResult.msgId       | Remote | Topic      | HEX(ip|port|offset)
-| RocketMQ   | CONSUMER | consumeMessage | Request   | MessageExt.msgId       | Remote | Topic      | HEX(ip|port|offset)
 | MQTT       | PRODUCER | PUBLISH        | Request   | Packet Identifier      | Local  | Connection | uint16
 | MQTT       | PRODUCER | PUBACK/PUBREC  | Response  | Packet Identifier      | Local  | Connection | uint16
 | MQTT       | CONSUMER | PUBLISH        | Request   | Packet Identifier      | Remote | Connection | uint16
 | MQTT       | CONSUMER | PUBACK/PUBREC  | Response  | Packet Identifier      | Remote | Connection | uint16
+| Pulsar     | PRODUCER | Send           | Response  | MessageId              | Remote | Topic      | bytes(ledger|entry|parition)
+| Pulsar     | CONSUMER | Receive        | Request   | MessageId              | Remote | Topic      | bytes(ledger|entry|parition)
+| RocketMQ   | PRODUCER | send           | Response  | SendResult.msgId       | Remote | Topic      | HEX(ip|port|offset)
+| RocketMQ   | CONSUMER | consumeMessage | Request   | MessageExt.msgId       | Remote | Topic      | HEX(ip|port|offset)
 | STOMP      | PRODUCER | SEND           | Request   | receipt Header         | Local  | Connection | arbitrary
 | STOMP      | PRODUCER | RECEIPT/ERROR  | Response  | receipt-id Header      | Local  | Connection | arbitrary
 | STOMP      | CONSUMER | SEND           | Request   | receipt Header         | Remote | Connection | arbitrary
