@@ -79,7 +79,74 @@ Finally, this approach has been in use since late 2017, when we refined our
 only messaging instrumentation, `kafka-clients`, to support message processing.
 By re-using known working practice, we have less risk in abstraction.
 
-## Why don't we define a message ID for tools lacking one, such as Kafka?
+## Message ID
+In practice, the message ID is used for retrieval, correlation, duplicate detection or a combination
+of these. We derive semantics by looking at multiple open source projects and cloud services, as
+well the special case of JMS.
+
+| System     | Kind     | Operation      | Direction | Field                  | Owner  | Scope      | Format
+|------------|----------|----------------|-----------|------------------------|--------|------------|--------
+| AMQP       | PRODUCER | publish        | Request   | message-id             | Local  | Global     | 1-255 characters
+| AMQP       | CONSUMER | consume        | Request   | message-id             | Remote | Global     | 1-255 characters
+| Artemis    | CONSUMER | receive        | Request   | messageId              | Remote | Global     | random uint64
+| AWS SQS    | PRODUCER | SendMessage    | Request   | MessageDeduplicationId | Local  | Queue      | SHA-256(body)
+| AWS SQS    | CONSUMER | ReceiveMessage | Request   | MessageDeduplicationId | Remote | Queue      | SHA-256(body)
+| AWS SQS    | PRODUCER | SendMessage    | Response  | MessageId              | Remote | Global     | UUID
+| AWS SQS    | CONSUMER | ReceiveMessage | Response  | MessageId              | Remote | Global     | UUID
+| JMS        | PRODUCER | Send           | Response  | JMSMessageId           | Remote | Global     | ID:opaque string
+| JMS        | CONSUMER | Receive        | Request   | JMSMessageId           | Remote | Global     | ID:opaque string
+| Pulsar     | PRODUCER | Send           | Response  | MessageId              | Remote | Topic      | bytes(ledger|entry|parition)
+| Pulsar     | CONSUMER | Receive        | Request   | MessageId              | Remote | Topic      | bytes(ledger|entry|parition)
+| RocketMQ   | PRODUCER | send           | Response  | SendResult.msgId       | Remote | Topic      | HEX(ip|port|offset)
+| RocketMQ   | CONSUMER | consumeMessage | Request   | MessageExt.msgId       | Remote | Topic      | HEX(ip|port|offset)
+| MQTT       | PRODUCER | PUBLISH        | Request   | Packet Identifier      | Local  | Connection | uint16
+| MQTT       | PRODUCER | PUBACK/PUBREC  | Response  | Packet Identifier      | Local  | Connection | uint16
+| MQTT       | CONSUMER | PUBLISH        | Request   | Packet Identifier      | Remote | Connection | uint16
+| MQTT       | CONSUMER | PUBACK/PUBREC  | Response  | Packet Identifier      | Remote | Connection | uint16
+| STOMP      | PRODUCER | SEND           | Request   | receipt Header         | Local  | Connection | arbitrary
+| STOMP      | PRODUCER | RECEIPT/ERROR  | Response  | receipt-id Header      | Local  | Connection | arbitrary
+| STOMP      | CONSUMER | SEND           | Request   | receipt Header         | Remote | Connection | arbitrary
+| STOMP      | CONSUMER | RECEIPT/ERROR  | Response  | receipt-id Header      | Remote | Connection | arbitrary
+| STOMP      | PRODUCER | MESSAGE        | Request   | message-id Header      | Local  | Connection | arbitrary
+| STOMP      | PRODUCER | ACK/NACK       | Response  | id Header              | Local  | Connection | arbitrary
+| STOMP      | CONSUMER | MESSAGE        | Request   | message-id Header      | Remote | Connection | arbitrary
+| STOMP      | CONSUMER | ACK/NACK       | Response  | id Header              | Remote | Connection | arbitrary
+
+### Isn't correlation ID the same as a message ID
+A correlation ID is a system-wide lookup value that possibly can pass multiple steps. A message ID
+can have a scope as small as one segment (Ex. flow from producer to broker), and typically an
+implementation detail. It can bet the case that they are the same, but it is not commonly the case.
+
+For example in MQTT, the packet ID is only valid for one segment a message takes. This means for the
+same message body, the packet ID is overwritten when passing from the producer to the eventual
+consumer. A more extreme example is Artemis, where there is no api to receive the messageId
+associated with a published message. In other words, it is only visible in the consumer side, so
+cannot be used for correlation between the producer and consumer.
+
+That said, correlation IDs are sometimes used for single-segment processing. For example, one
+pattern in JMS is to copy the incoming `JMSMessageID` as the `CorrelationID` in a `JMSReplyTo`
+response, so that the sender can correlate the two.
+
+For the above reasons, we cannot use the message ID and correlation ID concepts interchangeably.
+
+### When is a message ID ambiguous?
+There are many types of features supported by message IDs. Some protocols use a global ID for
+multiple features. Others use separate ones. In some cases, the choice of which to use for the
+message ID field borders on arbitrary. Here are some examples to reinforce this.
+
+Amazon SQS includes a service-generated `MessageId` that can identify a message later consumed.
+However, to delete an instance of that message you need one of potentially many `ReceiptHandle`s
+associated with the `MessageId`. The client can also set certain IDs. For example, a client sets
+`MessageDeduplicationId` before sending a message to a FIFO queue to suppress redundant sends. In
+other words there are at least 3 identifiers for a single message, in different formats, depending
+on the use case.
+
+Pulsar has a client-generated `SequenceID`, but the broker controls the `MessageID` (sent in the
+response). The `MessageID` is not derived from the `SequenceID` and they serve different purposes.
+`SequenceID` is more about in-flight message tracking; consumer and admin apis use `MessageId` to
+identify, ack and nack a message.
+
+### Why don't we define a message ID for tools lacking one, such as Kafka?
 
 Typical message ID formats encode multiple components such as a broker ID or network address,
 destination, timestamp or offset. It may be tempting to compose a format to include the dimensions

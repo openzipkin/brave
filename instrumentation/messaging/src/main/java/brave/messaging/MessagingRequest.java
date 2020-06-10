@@ -48,7 +48,7 @@ public abstract class MessagingRequest extends Request {
   /**
    * Type of channel, e.g. "queue" or "topic". {@code null} if unreadable.
    *
-   * <p>Conventionally associated with the key "messaging.channel_kind"
+   * <p>Conventionally associated with the tag "messaging.channel_kind"
    *
    * @see #channelName()
    * @since 5.9
@@ -59,7 +59,7 @@ public abstract class MessagingRequest extends Request {
   /**
    * Messaging channel name, e.g. "hooks" or "complaints". {@code null} if unreadable.
    *
-   * <p>Conventionally associated with the key "messaging.channel_name"
+   * <p>Conventionally associated with the tag "messaging.channel_name"
    *
    * @see #channelKind()
    * @since 5.9
@@ -67,26 +67,15 @@ public abstract class MessagingRequest extends Request {
   @Nullable public abstract String channelName();
 
   /**
-   * The possibly system generated value that uniquely identifies this message. Return {@code null}
-   * if the ID was unreadable or the transport has no canonical message ID format.
+   * The possibly system generated value that identifies this message across one or more links. Ex
+   * "ID:10.77.42.209-4280-1477454185311-1:1:1391:1:1". Return {@code null} if the ID was unreadable
+   * or the transport has no canonical message ID format.
    *
-   * <p>Examples:
-   * <pre><ul>
-   *   <li>Amazon SQS - "MessageId" response field. ex "5fea7756-0ea4-451a-a703-a558b933e274"</li>
-   *   <li>JMS - "JMSMessageID" header set by the implementation. Ex "ID:10.77.42.209-4280-1477454185311-1:1:1391:1:1"</li>
-   *   <li>RabbitMQ - "message-id" property set by the user (not the client library) (max 256 char). ex "5fea7756-0ea4-451a-a703-a558b933e274"</li>
-   *   <li>RocketMQ - "MessageId" response field in HEX(ip|port|offset) format. ex "24084004018081003FAA1DDE2B3F898A00002A9F0000000000000CA0"</li>
-   * </ul></pre>
-   *
-   * <p>Conventionally associated with the key "messaging.id"
+   * <p>This is conventionally associated with the tag "messaging.id"
    *
    * <h3>Notes</h3>
-   * The value is set differently per backend. Most commonly, a consumer can read this value at
-   * request time, but a producer cannot until response time. For example, a Kafka JMS message ID is
-   * derived from partition and offset fields. The offset is only visible after the message is sent.
-   *
-   * <p>Even though this field is often used for duplicate detection, it is not guaranteed to be
-   * immutable on all messaging backends.
+   * Most commonly, a consumer can read this value at request time, but a producer cannot until
+   * response time. Sometimes the values seen by either side are different.
    *
    * @since 5.13
    */
