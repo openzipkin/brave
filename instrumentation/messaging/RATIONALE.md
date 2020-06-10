@@ -165,8 +165,24 @@ number or offset, as opposed to returning `null` or synthesizing an ID from mult
 
 We use a sequence number or offset with the understanding that this could clarify duplicate sends or
 trace context breaks in the same way that a message ID could, even if it requires looking at other
-fields. Plus many message ID formats require looking at other fields anyway.
+fields. Plus many message ID formats require looking at other fields anyway. A standard tag is
+easier to access as it requires no library specific types to parse.
 
+Ex. This requires just the messaging jar to express a policy that includes a message ID like field:
+```java
+MessagingTags.MESSAGE_ID.tag(req, context, span);
+```
+
+Ex. This requires messaging and Kafka instrumentation jars to tag the same:
+```java
+KafkaTags.OFFSET.tag(req, context, span);
+```
+
+Pragmatically, we choose to use a field that serves at least a common purpose as message ID where
+possible instead of returning `null` for lack of an exact match. Specific to Kafka, we choose the
+offset.
+
+### Why not synthesize a format that includes all needed fields when there's no message ID?
 Typical message ID formats encode multiple components such as a broker ID or network address,
 destination, timestamp or offset. It may be tempting to compose a format to include the dimensions
 that likely pinpoint a message when there's no format defined by the library. For example, in Kafka,
