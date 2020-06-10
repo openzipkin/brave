@@ -93,6 +93,8 @@ well the special case of JMS.
 | AWS SQS    | CONSUMER | ReceiveMessage | Request   | MessageDeduplicationId | Remote | Queue      | SHA-256(body)
 | AWS SQS    | PRODUCER | SendMessage    | Response  | MessageId              | Remote | Global     | UUID
 | AWS SQS    | CONSUMER | ReceiveMessage | Response  | MessageId              | Remote | Global     | UUID
+| AWS SNS    | PRODUCER | Publish        | Response  | MessageId              | Remote | Global     | UUID
+| AWS SNS    | CONSUMER | POST           | Request   | x-amz-sns-message-id   | Remote | Global     | UUID
 | GCP PubSub | PRODUCER | Publish        | Response  | message_id             | Remote | Topic      | Integer
 | GCP PubSub | CONSUMER | Push           | Request   | message_id             | Remote | Topic      | Integer
 | GCP PubSub | CONSUMER | Pull           | Response  | message_id             | Remote | Topic      | Integer
