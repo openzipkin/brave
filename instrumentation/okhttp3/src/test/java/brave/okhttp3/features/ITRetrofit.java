@@ -32,6 +32,7 @@ import retrofit2.Retrofit;
 import retrofit2.http.GET;
 
 import static brave.Span.Kind.CLIENT;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /** This tests integration with Retrofit */
 public class ITRetrofit extends ITRemote {
@@ -71,8 +72,14 @@ public class ITRetrofit extends ITRemote {
 
     service.call().execute();
 
-    // If this passes, we know that the traced call factory works!
-    testSpanHandler.takeRemoteSpan(CLIENT);
+    assertThat(server.takeRequest().getHeader("x-b3-traceid"))
+      .withFailMessage("Trace headers weren't added!")
+      .isNotNull();
+
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).tags())
+      .containsKey("http.path")
+      .withFailMessage("HTTP span wasn't reported!")
+      .isNotNull();
 
     // Context propagation, ex using RxJava2 or similar to follow-up with another call,
     // is a different matter. See brave-context-rxjava2
