@@ -80,46 +80,50 @@ only messaging instrumentation, `kafka-clients`, to support message processing.
 By re-using known working practice, we have less risk in abstraction.
 
 ## Message ID
-In practice, the message ID is used for retrieval, correlation, duplicate detection or a combination
-of these. We derive semantics by looking at multiple open source projects and cloud services, as
-well the special case of JMS.
+In practice, the message ID is used for deletion, visibility control, retrieval, correlation,
+duplicate detection or a combination of these. We derive semantics by looking at multiple open
+source projects and cloud services, as well the special case of JMS.
 
-| System   | Kind     | Operation      | Direction | Field                  | Owner  | Scope      | Format
-|----------|----------|----------------|-----------|------------------------|--------|------------|--------
-| AMQP     | PRODUCER | publish        | Request   | message-id             | Local  | Global     | 1-255 characters
-| AMQP     | CONSUMER | consume        | Request   | message-id             | Remote | Global     | 1-255 characters
-| Artemis  | CONSUMER | receive        | Request   | messageId              | Remote | Global     | random uint64
-| Kafka    | PRODUCER | send           | Response  | offset                 | Remote | Topic      | uint64
-| Kafka    | CONSUMER | poll           | Request   | offset                 | Remote | Topic      | uint64
-| Kinesis  | PRODUCER | Publish        | Response  | SequenceNumber         | Remote | Stream     | 1-128 digits
-| Kinesis  | CONSUMER | Lambda         | Request   | sequenceNumber         | Remote | Global     | 1-128 digits
-| SQS      | PRODUCER | SendMessage    | Request   | MessageDeduplicationId | Local  | Queue      | SHA-256(body)
-| SQS      | CONSUMER | ReceiveMessage | Request   | MessageDeduplicationId | Remote | Queue      | SHA-256(body)
-| SQS      | PRODUCER | SendMessage    | Response  | MessageId              | Remote | Global     | UUID
-| SQS      | CONSUMER | ReceiveMessage | Response  | MessageId              | Remote | Global     | UUID
-| SNS      | PRODUCER | Publish        | Response  | MessageId              | Remote | Global     | UUID
-| SNS      | CONSUMER | POST           | Request   | x-amz-sns-message-id   | Remote | Global     | UUID
-| PubSub   | PRODUCER | Publish        | Response  | message_id             | Remote | Topic      | Integer
-| PubSub   | CONSUMER | Push           | Request   | message_id             | Remote | Topic      | Integer
-| PubSub   | CONSUMER | Pull           | Response  | message_id             | Remote | Topic      | Integer
-| JMS      | PRODUCER | Send           | Response  | JMSMessageId           | Remote | Global     | ID:opaque string
-| JMS      | CONSUMER | Receive        | Request   | JMSMessageId           | Remote | Global     | ID:opaque string
-| MQTT     | PRODUCER | PUBLISH        | Request   | Packet Identifier      | Local  | Connection | uint16
-| MQTT     | PRODUCER | PUBACK/PUBREC  | Response  | Packet Identifier      | Local  | Connection | uint16
-| MQTT     | CONSUMER | PUBLISH        | Request   | Packet Identifier      | Remote | Connection | uint16
-| MQTT     | CONSUMER | PUBACK/PUBREC  | Response  | Packet Identifier      | Remote | Connection | uint16
-| Pulsar   | PRODUCER | Send           | Response  | MessageId              | Remote | Topic      | bytes(ledger|entry|parition)
-| Pulsar   | CONSUMER | Receive        | Request   | MessageId              | Remote | Topic      | bytes(ledger|entry|parition)
-| RocketMQ | PRODUCER | send           | Response  | msgId                  | Remote | Topic      | HEX(ip|port|offset)
-| RocketMQ | CONSUMER | consumeMessage | Request   | msgId                  | Remote | Topic      | HEX(ip|port|offset)
-| STOMP    | PRODUCER | SEND           | Request   | receipt Header         | Local  | Connection | arbitrary
-| STOMP    | PRODUCER | RECEIPT/ERROR  | Response  | receipt-id Header      | Local  | Connection | arbitrary
-| STOMP    | CONSUMER | SEND           | Request   | receipt Header         | Remote | Connection | arbitrary
-| STOMP    | CONSUMER | RECEIPT/ERROR  | Response  | receipt-id Header      | Remote | Connection | arbitrary
-| STOMP    | PRODUCER | MESSAGE        | Request   | message-id Header      | Local  | Connection | arbitrary
-| STOMP    | PRODUCER | ACK/NACK       | Response  | id Header              | Local  | Connection | arbitrary
-| STOMP    | CONSUMER | MESSAGE        | Request   | message-id Header      | Remote | Connection | arbitrary
-| STOMP    | CONSUMER | ACK/NACK       | Response  | id Header              | Remote | Connection | arbitrary
+| System      | Kind     | Operation      | Direction | Field                       | Owner  | Scope      | Format
+|-------------|----------|----------------|-----------|-----------------------------|--------|------------|--------
+| AMQP        | PRODUCER | publish        | Request   | message-id                  | Local  | Global     | 1-255 characters
+| AMQP        | CONSUMER | consume        | Request   | message-id                  | Remote | Global     | 1-255 characters
+| Azure Queue | PRODUCER | PutMessage     | Response  | MessageId                   | Remote | Global     | UUID
+| Azure Queue | CONSUMER | DeleteMessage  | Response  | MessageId                   | Remote | Global     | UUID
+| Artemis     | CONSUMER | receive        | Request   | messageId                   | Remote | Global     | random uint64
+| Kafka       | PRODUCER | send           | Response  | offset                      | Remote | Topic      | uint64
+| Kafka       | CONSUMER | poll           | Request   | offset                      | Remote | Topic      | uint64
+| Kinesis     | PRODUCER | Publish        | Response  | SequenceNumber              | Remote | Stream     | 1-128 digits
+| Kinesis     | CONSUMER | Lambda         | Request   | sequenceNumber              | Remote | Global     | 1-128 digits
+| SQS         | PRODUCER | SendMessage    | Request   | MessageDeduplicationId      | Local  | Queue      | SHA-256(body)
+| SQS         | CONSUMER | ReceiveMessage | Request   | MessageDeduplicationId      | Remote | Queue      | SHA-256(body)
+| SQS         | PRODUCER | SendMessage    | Response  | MessageId                   | Remote | Global     | UUID
+| SQS         | CONSUMER | ReceiveMessage | Response  | MessageId                   | Remote | Global     | UUID
+| SNS         | PRODUCER | Publish        | Response  | MessageId                   | Remote | Global     | UUID
+| SNS         | CONSUMER | POST           | Request   | x-amz-sns-message-id        | Remote | Global     | UUID
+| PubSub      | PRODUCER | Publish        | Response  | message_id                  | Remote | Topic      | Integer
+| PubSub      | CONSUMER | Push           | Request   | message_id                  | Remote | Topic      | Integer
+| PubSub      | CONSUMER | Pull           | Response  | message_id                  | Remote | Topic      | Integer
+| JMS         | PRODUCER | Send           | Response  | JMSMessageId                | Remote | Global     | ID:opaque string
+| JMS         | CONSUMER | Receive        | Request   | JMSMessageId                | Remote | Global     | ID:opaque string
+| MQTT        | PRODUCER | PUBLISH        | Request   | Packet Identifier           | Local  | Connection | uint16
+| MQTT        | PRODUCER | PUBACK/PUBREC  | Response  | Packet Identifier           | Local  | Connection | uint16
+| MQTT        | CONSUMER | PUBLISH        | Request   | Packet Identifier           | Remote | Connection | uint16
+| MQTT        | CONSUMER | PUBACK/PUBREC  | Response  | Packet Identifier           | Remote | Connection | uint16
+| Pulsar      | PRODUCER | Send           | Response  | MessageId                   | Remote | Topic      | bytes(ledger|entry|parition)
+| Pulsar      | CONSUMER | Receive        | Request   | MessageId                   | Remote | Topic      | bytes(ledger|entry|parition)
+| RocketMQ    | PRODUCER | send           | Response  | msgId                       | Remote | Topic      | HEX(ip|port|offset)
+| RocketMQ    | CONSUMER | consumeMessage | Request   | msgId                       | Remote | Topic      | HEX(ip|port|offset)
+| ServiceBus  | PRODUCER | POST           | Request   | BrokerProperties{MessageId} | Local  | Global     | 1-255 characters
+| ServiceBus  | CONSUMER | DELETE         | Request   | BrokerProperties{MessageId} | Remote | Global     | 1-255 characters
+| STOMP       | PRODUCER | SEND           | Request   | receipt Header              | Local  | Connection | arbitrary
+| STOMP       | PRODUCER | RECEIPT/ERROR  | Response  | receipt-id Header           | Local  | Connection | arbitrary
+| STOMP       | CONSUMER | SEND           | Request   | receipt Header              | Remote | Connection | arbitrary
+| STOMP       | CONSUMER | RECEIPT/ERROR  | Response  | receipt-id Header           | Remote | Connection | arbitrary
+| STOMP       | PRODUCER | MESSAGE        | Request   | message-id Header           | Local  | Connection | arbitrary
+| STOMP       | PRODUCER | ACK/NACK       | Response  | id Header                   | Local  | Connection | arbitrary
+| STOMP       | CONSUMER | MESSAGE        | Request   | message-id Header           | Remote | Connection | arbitrary
+| STOMP       | CONSUMER | ACK/NACK       | Response  | id Header                   | Remote | Connection | arbitrary
 
 ### Isn't correlation ID the same as a message ID?
 A correlation ID is a system-wide lookup value that possibly can pass multiple steps. A message ID
@@ -149,6 +153,15 @@ associated with the `MessageId`. The client can also set certain IDs. For exampl
 `MessageDeduplicationId` before sending a message to a FIFO queue to suppress redundant sends. In
 other words there are at least 3 identifiers for a single message, in different formats, depending
 on the use case.
+
+Azure Queue a service-generated `MessageId`, but also a client-generated `x-ms-client-request-id`
+for correlation. Unlike most services, Azure Queue has delete or update by `MessageId` functions,
+though a `popreceipt` (akin to subscriber) is also required for these tasks.
+
+Azure ServiceBus includes the AMQP `BrokerProperties{MessageId}` field, but it also supports the
+Kafka protocol, which does not have a message ID. In support of the latter, it also has a
+`SequenceId` field, which embeds parition information with a logical sequence. Note, when using
+Kafka protocol an `offset` will also exist, and is not directly related to the `SequenceId`.
 
 A Google PubSub Subscriber receives both a `message_id` and an `ack_id` in the `PullResponse`. The
 `ack_id` has a different format and is scoped to the subscriber.
