@@ -176,7 +176,7 @@ associated with the `MessageId`. The client can also set certain IDs. For exampl
 other words there are at least 3 identifiers for a single message, in different formats, depending
 on the use case.
 
-Azure Queue a service-generated `MessageId`, but also a client-generated `x-ms-client-request-id`
+Azure Queue includes a service-generated `MessageId`, but also a client-generated `x-ms-client-request-id`
 for correlation. Unlike most services, Azure Queue has delete or update by `MessageId` functions,
 though a `popreceipt` (akin to subscriber) is also required for these tasks.
 
