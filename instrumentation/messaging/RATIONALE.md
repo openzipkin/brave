@@ -142,7 +142,7 @@ TODO: move some rows above into here
 ### Isn't correlation ID the same as a message ID?
 A correlation ID is a system-wide lookup value that possibly can pass multiple steps. A message ID
 can have a scope as small as one segment (Ex. flow from producer to broker), and typically an
-implementation detail. It can bet the case that they are the same, but it is not commonly the case.
+implementation detail. It can be the case that they are the same, but it is not commonly the case.
 
 For example in MQTT, the packet ID is only valid for one segment a message takes. This means for the
 same message body, the packet ID is overwritten when passing from the producer to the eventual
