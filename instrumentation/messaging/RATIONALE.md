@@ -86,7 +86,7 @@ The message ID allows deletion, visibility control, retrieval, correlation, dupl
 combination of these use cases.
 
 The purpose of the Message ID, as defined here, is a correlation between one "send" event and any
-number of "receive" events. Not all operations can bet tracked in one trace. Some consumers log, but
+number of "receive" events. Not all operations can be tracked in one trace. Some consumers log, but
 don't trace. Others break traces, or trace in different systems. Moreover, this project doesn't
 trace all operations. With the message ID, processes curious about an ACK or NACK can find logs
 related to those operations, even if the logs do not include trace IDs.
