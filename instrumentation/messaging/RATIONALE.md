@@ -136,11 +136,19 @@ consumer. A more extreme example is Artemis, where there is no api to receive th
 associated with a published message. In other words, it is only visible in the consumer side, so
 cannot be used for correlation between the producer and consumer.
 
-That said, correlation IDs are sometimes used for single-segment processing. For example, one
-pattern in JMS is to copy the incoming `JMSMessageID` as the `CorrelationID` in a `JMSReplyTo`
-response, so that the sender can correlate the two.
+Another example are cloud services, such as Amazon SQS, Azure Queue and GCP PubSub. The message ID
+fields there are set by the service and cannot be set by the client. This means that a client cannot
+propagate the message ID from one part of a pipeline to another. Hence, in these cases a message ID
+cannot be a correlation ID. The message ID will only be the same between the last producer and its
+direct consumers.
 
-For the above reasons, we cannot use the message ID and correlation ID concepts interchangeably.
+Even though there's no strict relationship, message IDs are sometimes reused as correlation IDs. For
+example, one pattern in JMS is to copy the incoming `JMSMessageID` as the `CorrelationID` in a
+`JMSReplyTo` response. In this case, the same ID is used in different fields conventionally even if
+not defined by the specification.
+
+For the above reasons, we cannot use the message ID and correlation ID concepts interchangeably even
+if there are sometimes overlaps in use cases.
 
 ### When is a message ID ambiguous?
 There are many types of features supported by message IDs. Some protocols use a global ID for
