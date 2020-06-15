@@ -80,9 +80,20 @@ only messaging instrumentation, `kafka-clients`, to support message processing.
 By re-using known working practice, we have less risk in abstraction.
 
 ## Message ID
-In practice, the message ID is used for deletion, visibility control, retrieval, correlation,
-duplicate detection or a combination of these. We derive semantics by looking at multiple open
-source projects and cloud services, as well the special case of JMS.
+
+### Why would someone tag message ID?
+The message ID allows deletion, visibility control, retrieval, correlation, duplicate detection or a
+combination of these use cases.
+
+The purpose of the Message ID, as defined here, is a correlation between one "send" event and any
+number of "receive" events. Not all operations can bet tracked in one trace. Some consumers log, but
+don't trace. Others break traces, or trace in different systems. Moreover, this project doesn't
+trace all operations. With the message ID, processes curious about an ACK or NACK can find logs
+related to those operations, even if the logs do not include trace IDs.
+
+### What are some examples of message IDs?
+We derive semantics by looking at multiple open source projects and cloud services, as well the
+special case of JMS.
 
 | System      | Kind     | Operation      | Direction | Field                       | Owner  | Scope      | Format
 |-------------|----------|----------------|-----------|-----------------------------|--------|------------|--------
@@ -124,6 +135,9 @@ source projects and cloud services, as well the special case of JMS.
 | STOMP       | PRODUCER | ACK/NACK       | Response  | id Header                   | Local  | Connection | arbitrary
 | STOMP       | CONSUMER | MESSAGE        | Request   | message-id Header           | Remote | Connection | arbitrary
 | STOMP       | CONSUMER | ACK/NACK       | Response  | id Header                   | Remote | Connection | arbitrary
+
+### What are some examples of IDs that aren't message IDs?
+TODO: move some rows above into here
 
 ### Isn't correlation ID the same as a message ID?
 A correlation ID is a system-wide lookup value that possibly can pass multiple steps. A message ID
