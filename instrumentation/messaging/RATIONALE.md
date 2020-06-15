@@ -215,5 +215,4 @@ correlation field with other libraries as by definition our format would be besp
 higher layers of abstraction which might have a defined message ID format could be confused with
 ours. Later, if that same tool creates a message ID format, it would likely be different from ours.
 
-For reasons including these, if there's no message ID field, we fall back to a numeric property like
-offset or sequence, and failing that just return `null`.
+For reasons including these, if there's no message ID field, and failing that just return `null`.
