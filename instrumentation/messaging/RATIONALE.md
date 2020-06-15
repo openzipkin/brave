@@ -92,7 +92,7 @@ trace all operations. With the message ID, processes curious about an ACK or NAC
 related to those operations, even if the logs do not include trace IDs.
 
 ### What are some examples of message IDs?
-We derive semantics by looking at multiple open source projects and cloud services, as well the
+We derive semantics by looking at multiple open source projects and cloud services, as well as the
 special case of JMS.
 
 | System      | Kind     | Operation      | Direction | Field                       | Owner  | Scope      | Format
