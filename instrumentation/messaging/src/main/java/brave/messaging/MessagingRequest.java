@@ -77,8 +77,7 @@ public abstract class MessagingRequest extends Request {
    * Most commonly, a consumer can read this value at request time, but a producer cannot until
    * response time. Sometimes the values seen by either side are different.
    *
-   * <p>When there's no field named "message ID", but the system is partition based, use its offset
-   * or sequence ID instead.
+   * <p>When there's no field named "message ID", there could be an offset or sequence ID.
    *
    * @since 5.13
    */

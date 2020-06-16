@@ -193,15 +193,15 @@ response). The `MessageID` is not derived from the `SequenceID` and they serve d
 `SequenceID` is more about in-flight message tracking; consumer and admin apis use `MessageId` to
 identify, ack and nack a message.
 
-### Why use offset/sequence when there's no message ID?
-RocketMQ embeds offset in their message ID while Kafka and MQTT don't define a field named message
-ID. When there isn't a field named message ID, we use the closest stable value, such as a sequence
-number or offset, as opposed to returning `null` or synthesizing an ID from multiple fields.
+### Why not use offset/sequence when there's no message ID?
+Kafka and MQTT don't define a field named message ID. When there isn't a field named message ID, we
+considered a close stable value, specifically the as a sequence number or offset, as opposed to
+returning `null`.
 
-We use a sequence number or offset with the understanding that this could clarify duplicate sends or
-trace context breaks in the same way that a message ID could, even if it requires looking at other
-fields. Plus many message ID formats require looking at other fields anyway. A standard tag is
-easier to access as it requires no library specific types to parse.
+A sequence number or offset could clarify duplicate sends or trace context breaks in the same way
+that a message ID could, even if it requires looking at other fields. It is true that many message
+ID formats require looking at other fields anyway. A standard tag is easier to access as it requires
+no library specific types to parse.
 
 Ex. This requires just the messaging jar to express a policy that includes a message ID like field:
 ```java
@@ -213,9 +213,10 @@ Ex. This requires messaging and Kafka instrumentation jars to tag the same:
 KafkaTags.OFFSET.tag(req, context, span);
 ```
 
-Pragmatically, we choose to use a field that serves at least a common purpose as message ID where
-possible instead of returning `null` for lack of an exact match. Specific to Kafka, we choose the
-offset.
+However, we later decided that to make offset a standard field. Moreover, there are services, at
+least Azure ServiceBus, that can return both a message ID and a sequence number. We decided to
+formalize message ID as solely the field named as such as opposed to falling back to an offset field
+on `null`.
 
 ### Why not synthesize a format that includes all needed fields when there's no message ID?
 Typical message ID formats encode multiple components such as a broker ID or network address,
