@@ -84,10 +84,6 @@ final class JMSProducerRequest extends ProducerRequest {
   }
 
   @Override public String messageId() {
-    // JMSProducer.setAsync(CompletionListener) might see a non-null Message.getJMSMessageID() when
-    // JMSProducer.setDisableMessageID(false) was not called.
-    //
-    // TODO: integrate TracingCompletionListener so that it sets a field here for JMSMessageID
     return null; // message ID not available from JMSProducer
   }
 

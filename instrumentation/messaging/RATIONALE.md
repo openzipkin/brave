@@ -209,6 +209,10 @@ response). The `MessageID` is not derived from the `SequenceID` and they serve d
 `SequenceID` is more about in-flight message tracking; consumer and admin apis use `MessageId` to
 identify, ack and nack a message.
 
+When used synchronously, `JMSProducer` cannot read the `JMSMessageId` field, as there's no result
+type returned. Even when used asynchronously, there's a `setDisableMessageID` feature which disables
+it. This means from call to call, `JMSMessageId` could be visible or not, even in the same library.
+
 ### Why not use offset/sequence when there's no message ID?
 Kafka and MQTT don't define a field named message ID. When there isn't a field named message ID, we
 considered a close stable value, specifically the as a sequence number or offset, as opposed to

@@ -69,7 +69,7 @@ public abstract class MessagingRequest extends Request {
   /**
    * The possibly system generated value that identifies this message across one or more links. Ex
    * "ID:10.77.42.209-4280-1477454185311-1:1:1391:1:1". Return {@code null} if the ID was unreadable
-   * or the transport has no canonical message ID format.
+   * or the transport has no canonical message ID.
    *
    * <p>This is conventionally associated with the tag "messaging.id"
    *
