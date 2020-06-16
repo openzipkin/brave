@@ -102,42 +102,58 @@ special case of JMS.
 | Azure Queue | PRODUCER | PutMessage     | Response  | MessageId                   | Remote | Global     | UUID
 | Azure Queue | CONSUMER | DeleteMessage  | Response  | MessageId                   | Remote | Global     | UUID
 | Artemis     | CONSUMER | receive        | Request   | messageId                   | Remote | Global     | random uint64
-| Kafka       | PRODUCER | send           | Response  | offset                      | Remote | Topic      | uint64
-| Kafka       | CONSUMER | poll           | Request   | offset                      | Remote | Topic      | uint64
-| Kinesis     | PRODUCER | Publish        | Response  | SequenceNumber              | Remote | Stream     | 1-128 digits
-| Kinesis     | CONSUMER | Lambda         | Request   | sequenceNumber              | Remote | Global     | 1-128 digits
-| SQS         | PRODUCER | SendMessage    | Request   | MessageDeduplicationId      | Local  | Queue      | SHA-256(body)
-| SQS         | CONSUMER | ReceiveMessage | Request   | MessageDeduplicationId      | Remote | Queue      | SHA-256(body)
-| SQS         | PRODUCER | SendMessage    | Response  | MessageId                   | Remote | Global     | UUID
-| SQS         | CONSUMER | ReceiveMessage | Response  | MessageId                   | Remote | Global     | UUID
-| SNS         | PRODUCER | Publish        | Response  | MessageId                   | Remote | Global     | UUID
-| SNS         | CONSUMER | POST           | Request   | x-amz-sns-message-id        | Remote | Global     | UUID
-| PubSub      | PRODUCER | Publish        | Response  | message_id                  | Remote | Topic      | Integer
-| PubSub      | CONSUMER | Push           | Request   | message_id                  | Remote | Topic      | Integer
-| PubSub      | CONSUMER | Pull           | Response  | message_id                  | Remote | Topic      | Integer
+| AWS SQS     | PRODUCER | SendMessage    | Response  | MessageId                   | Remote | Global     | UUID
+| AWS SQS     | CONSUMER | ReceiveMessage | Response  | MessageId                   | Remote | Global     | UUID
+| AWS SNS     | PRODUCER | Publish        | Response  | MessageId                   | Remote | Global     | UUID
+| AWS SNS     | CONSUMER | POST           | Request   | x-amz-sns-message-id        | Remote | Global     | UUID
+| GCP PubSub  | PRODUCER | Publish        | Response  | message_id                  | Remote | Topic      | Integer
+| GCP PubSub  | CONSUMER | Push           | Request   | message_id                  | Remote | Topic      | Integer
+| GCP PubSub  | CONSUMER | Pull           | Response  | message_id                  | Remote | Topic      | Integer
 | JMS         | PRODUCER | Send           | Response  | JMSMessageId                | Remote | Global     | ID:opaque string
 | JMS         | CONSUMER | Receive        | Request   | JMSMessageId                | Remote | Global     | ID:opaque string
-| MQTT        | PRODUCER | PUBLISH        | Request   | Packet Identifier           | Local  | Connection | uint16
-| MQTT        | PRODUCER | PUBACK/PUBREC  | Response  | Packet Identifier           | Local  | Connection | uint16
-| MQTT        | CONSUMER | PUBLISH        | Request   | Packet Identifier           | Remote | Connection | uint16
-| MQTT        | CONSUMER | PUBACK/PUBREC  | Response  | Packet Identifier           | Remote | Connection | uint16
 | Pulsar      | PRODUCER | Send           | Response  | MessageId                   | Remote | Topic      | bytes(ledger|entry|parition)
 | Pulsar      | CONSUMER | Receive        | Request   | MessageId                   | Remote | Topic      | bytes(ledger|entry|parition)
 | RocketMQ    | PRODUCER | send           | Response  | msgId                       | Remote | Topic      | HEX(ip|port|offset)
 | RocketMQ    | CONSUMER | consumeMessage | Request   | msgId                       | Remote | Topic      | HEX(ip|port|offset)
 | ServiceBus  | PRODUCER | POST           | Request   | BrokerProperties{MessageId} | Local  | Global     | 1-255 characters
 | ServiceBus  | CONSUMER | DELETE         | Request   | BrokerProperties{MessageId} | Remote | Global     | 1-255 characters
+| STOMP       | PRODUCER | MESSAGE        | Request   | message-id Header           | Local  | Connection | arbitrary
+| STOMP       | CONSUMER | MESSAGE        | Request   | message-id Header           | Remote | Connection | arbitrary
+
+### What are some examples of IDs that aren't message IDs?
+
+The following fields are similar to message IDs, but are offset in nature, allowing message
+processing to resume at a given point. We will have a different tag for these.
+
+| System      | Kind     | Operation      | Direction | Field                       | Owner  | Scope      | Format
+|-------------|----------|----------------|-----------|-----------------------------|--------|------------|--------
+| Kafka       | PRODUCER | send           | Response  | offset                      | Remote | Topic      | uint64
+| Kafka       | CONSUMER | poll           | Request   | offset                      | Remote | Topic      | uint64
+| AWS Kinesis | PRODUCER | Publish        | Response  | SequenceNumber              | Remote | Stream     | 1-128 digits
+| AWS Kinesis | CONSUMER | Lambda         | Request   | sequenceNumber              | Remote | Global     | 1-128 digits
+
+The following fields give exactly once processing, but are independent of message ID or co-exist
+them.
+
+| System      | Kind     | Operation      | Direction | Field                       | Owner  | Scope      | Format
+|-------------|----------|----------------|-----------|-----------------------------|--------|------------|--------
+| AWS SQS     | PRODUCER | SendMessage    | Request   | MessageDeduplicationId      | Local  | Queue      | SHA-256(body)
+| AWS SQS     | CONSUMER | ReceiveMessage | Request   | MessageDeduplicationId      | Remote | Queue      | SHA-256(body)
+| MQTT        | PRODUCER | PUBLISH        | Request   | Packet Identifier           | Local  | Connection | uint16
+| MQTT        | CONSUMER | PUBLISH        | Request   | Packet Identifier           | Remote | Connection | uint16
+| MQTT        | PRODUCER | PUBACK/PUBREC  | Response  | Packet Identifier           | Local  | Connection | uint16
+| MQTT        | CONSUMER | PUBACK/PUBREC  | Response  | Packet Identifier           | Remote | Connection | uint16
+
+The following STOMP fields provide message acknowledgment featues, but are not classified as message IDs.
+
+| System      | Kind     | Operation      | Direction | Field                       | Owner  | Scope      | Format
+|-------------|----------|----------------|-----------|-----------------------------|--------|------------|--------
+| STOMP       | PRODUCER | ACK/NACK       | Response  | id Header                   | Local  | Connection | arbitrary
+| STOMP       | CONSUMER | ACK/NACK       | Response  | id Header                   | Remote | Connection | arbitrary
 | STOMP       | PRODUCER | SEND           | Request   | receipt Header              | Local  | Connection | arbitrary
 | STOMP       | PRODUCER | RECEIPT/ERROR  | Response  | receipt-id Header           | Local  | Connection | arbitrary
 | STOMP       | CONSUMER | SEND           | Request   | receipt Header              | Remote | Connection | arbitrary
 | STOMP       | CONSUMER | RECEIPT/ERROR  | Response  | receipt-id Header           | Remote | Connection | arbitrary
-| STOMP       | PRODUCER | MESSAGE        | Request   | message-id Header           | Local  | Connection | arbitrary
-| STOMP       | PRODUCER | ACK/NACK       | Response  | id Header                   | Local  | Connection | arbitrary
-| STOMP       | CONSUMER | MESSAGE        | Request   | message-id Header           | Remote | Connection | arbitrary
-| STOMP       | CONSUMER | ACK/NACK       | Response  | id Header                   | Remote | Connection | arbitrary
-
-### What are some examples of IDs that aren't message IDs?
-TODO: move some rows above into here
 
 ### Isn't correlation ID the same as a message ID?
 A correlation ID is a system-wide lookup value that possibly can pass multiple steps. A message ID
@@ -230,4 +246,4 @@ correlation field with other libraries as by definition our format would be besp
 higher layers of abstraction which might have a defined message ID format could be confused with
 ours. Later, if that same tool creates a message ID format, it would likely be different from ours.
 
-For reasons including these, if there's no message ID field, and failing that just return `null`.
+For reasons including these, if there's no message ID field just return `null`.
