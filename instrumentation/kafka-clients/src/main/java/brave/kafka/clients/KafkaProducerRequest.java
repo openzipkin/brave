@@ -14,6 +14,7 @@
 package brave.kafka.clients;
 
 import brave.Span.Kind;
+import brave.internal.Nullable;
 import brave.messaging.ProducerRequest;
 import brave.propagation.Propagation.RemoteGetter;
 import brave.propagation.Propagation.RemoteSetter;
@@ -58,6 +59,11 @@ final class KafkaProducerRequest extends ProducerRequest {
   KafkaProducerRequest(ProducerRecord<?, ?> delegate) {
     if (delegate == null) throw new NullPointerException("delegate == null");
     this.delegate = delegate;
+  }
+
+  @Nullable @Override public String messageId() {
+    // Kafka has no message ID, but an offset/sequence field will soon be a standard field
+    return null;
   }
 
   @Override public Kind spanKind() {

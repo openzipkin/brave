@@ -84,4 +84,8 @@ final class MessageConsumerRequest extends ConsumerRequest {
   @Override public String channelName() {
     return MessageParser.channelName(destination);
   }
+
+  @Override public String messageId() {
+    return MessageParser.messageId(delegate);
+  }
 }

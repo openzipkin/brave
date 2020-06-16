@@ -84,4 +84,8 @@ final class MessageProducerRequest extends ProducerRequest {
   @Override public String channelName() {
     return MessageParser.channelName(destination);
   }
+
+  @Override public String messageId() {
+    return MessageParser.messageId(delegate);
+  }
 }

@@ -13,19 +13,24 @@
  */
 package brave.messaging;
 
-import brave.Span;
+import brave.Response;
 import brave.internal.Nullable;
 
-import static brave.Span.Kind.CONSUMER;
-
 /**
- * Marks an interface for use in extraction and {@link MessagingRuleSampler}. This gives a standard
- * type to consider when parsing an incoming context.
+ * Abstract response type used for parsing and sampling of messaging clients and servers.
  *
- * @since 5.9
+ * @see ProducerResponse
+ * @see ConsumerResponse
+ * @since 5.13
  */
-public abstract class ConsumerRequest extends MessagingRequest {
-  @Override public Span.Kind spanKind() {
-    return CONSUMER;
+public abstract class MessagingResponse extends Response {
+  /**
+   * Information about the request that initiated this messaging response or {@code null} if
+   * unknown.
+   *
+   * @since 5.13
+   */
+  @Override @Nullable public MessagingRequest request() {
+    return null;
   }
 }

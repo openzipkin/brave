@@ -14,18 +14,13 @@
 package brave.messaging;
 
 import brave.Span;
-import brave.internal.Nullable;
-
-import static brave.Span.Kind.CONSUMER;
 
 /**
- * Marks an interface for use in extraction and {@link MessagingRuleSampler}. This gives a standard
- * type to consider when parsing an incoming context.
- *
- * @since 5.9
+ * @see ProducerRequest
+ * @since 5.13
  */
-public abstract class ConsumerRequest extends MessagingRequest {
-  @Override public Span.Kind spanKind() {
-    return CONSUMER;
+public abstract class ProducerResponse extends MessagingResponse {
+  @Override public final Span.Kind spanKind() {
+    return Span.Kind.PRODUCER;
   }
 }

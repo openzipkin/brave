@@ -14,9 +14,11 @@
 package brave.jms;
 
 import brave.Span;
+import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import javax.jms.CompletionListener;
+import javax.jms.Destination;
 import javax.jms.Message;
 
 /**
@@ -24,18 +26,21 @@ import javax.jms.Message;
  * for send and actual send.
  */
 @JMS2_0 final class TracingCompletionListener implements CompletionListener {
-  static CompletionListener create(CompletionListener delegate, Span span,
-    CurrentTraceContext current) {
-    return new TracingCompletionListener(delegate, span, current);
+  static CompletionListener create(CompletionListener delegate,
+    @Nullable Destination destination, Span span, CurrentTraceContext current) {
+    return new TracingCompletionListener(delegate, destination, span, current);
   }
 
-  final Span span;
   final CompletionListener delegate;
   final CurrentTraceContext current;
+  @Nullable final Destination destination;
+  final Span span;
 
-  TracingCompletionListener(CompletionListener delegate, Span span, CurrentTraceContext current) {
-    this.span = span;
+  TracingCompletionListener(CompletionListener delegate, Destination destination, Span span,
+    CurrentTraceContext current) {
     this.delegate = delegate;
+    this.destination = destination;
+    this.span = span;
     this.current = current;
   }
 
@@ -43,12 +48,16 @@ import javax.jms.Message;
     try (Scope ws = current.maybeScope(span.context())) {
       delegate.onCompletion(message);
     } finally {
+      // TODO: in order to tag messageId
+      // parse(new MessageConsumerRequest(message, destination))
       span.finish();
     }
   }
 
   @Override public void onException(Message message, Exception exception) {
     try (Scope ws = current.maybeScope(span.context())) {
+      // TODO: in order to tag messageId
+      // parse(new MessageConsumerRequest(message, destination))
       delegate.onException(message, exception);
     } finally {
       span.error(exception);
