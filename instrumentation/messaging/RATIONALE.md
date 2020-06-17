@@ -111,8 +111,8 @@ special case of JMS.
 | GCP PubSub  | CONSUMER | Pull           | Response  | message_id                  | Remote | Topic      | Integer
 | JMS         | PRODUCER | Send           | Response  | JMSMessageId                | Remote | Global     | ID:opaque string
 | JMS         | CONSUMER | Receive        | Request   | JMSMessageId                | Remote | Global     | ID:opaque string
-| Pulsar      | PRODUCER | Send           | Response  | MessageId                   | Remote | Topic      | bytes(ledger|entry|parition)
-| Pulsar      | CONSUMER | Receive        | Request   | MessageId                   | Remote | Topic      | bytes(ledger|entry|parition)
+| Pulsar      | PRODUCER | Send           | Response  | MessageId                   | Remote | Topic      | bytes(ledger|entry|partition)
+| Pulsar      | CONSUMER | Receive        | Request   | MessageId                   | Remote | Topic      | bytes(ledger|entry|partition)
 | RocketMQ    | PRODUCER | send           | Response  | msgId                       | Remote | Topic      | HEX(ip|port|offset)
 | RocketMQ    | CONSUMER | consumeMessage | Request   | msgId                       | Remote | Topic      | HEX(ip|port|offset)
 | ServiceBus  | PRODUCER | POST           | Request   | BrokerProperties{MessageId} | Local  | Global     | 1-255 characters
