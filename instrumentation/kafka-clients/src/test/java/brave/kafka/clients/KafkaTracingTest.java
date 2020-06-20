@@ -38,7 +38,6 @@ public class KafkaTracingTest extends KafkaTest {
     assertChildOf(spans.get(0), incoming);
   }
 
-
   @Test public void nextSpan_uses_current_context() {
     Span child;
     try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
@@ -105,6 +104,13 @@ public class KafkaTracingTest extends KafkaTest {
 
     kafkaTracing.nextSpan(consumerRecord);
     assertThat(consumerRecord.headers().toArray()).isEmpty();
+  }
+
+  @Test public void nextSpan_should_retain_baggage_headers() {
+    consumerRecord.headers().add(BAGGAGE_FIELD_KEY, new byte[0]);
+
+    kafkaTracing.nextSpan(consumerRecord);
+    assertThat(consumerRecord.headers().headers(BAGGAGE_FIELD_KEY)).isNotEmpty();
   }
 
   @Test public void nextSpan_should_not_clear_other_headers() {

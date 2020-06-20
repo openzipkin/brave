@@ -68,7 +68,7 @@ final class TracingMessagePostProcessor implements MessagePostProcessor {
     Span span;
     if (maybeParent == null) {
       TraceContextOrSamplingFlags extracted =
-        springRabbitTracing.extractAndClearHeaders(extractor, request, message);
+        springRabbitTracing.extractAndClearTraceIdHeaders(extractor, request, message);
       span = springRabbitTracing.nextMessagingSpan(sampler, request, extracted);
     } else { // If we have a span in scope assume headers were cleared before
       span = tracer.newChild(maybeParent);

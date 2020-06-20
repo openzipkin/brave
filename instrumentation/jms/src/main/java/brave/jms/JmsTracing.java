@@ -133,7 +133,7 @@ public final class JmsTracing {
   final Extractor<Message> processorExtractor;
   final SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
   final String remoteServiceName;
-  final Set<String> propagationKeys;
+  final Set<String> traceIdProperties;
 
   // raw types to avoid accessing JMS 2.0 types unless we are sure they are present
   // Caching here instead of deferring further as there is overhead creating extractors and
@@ -160,7 +160,7 @@ public final class JmsTracing {
     this.producerSampler = builder.messagingTracing.producerSampler();
     this.consumerSampler = builder.messagingTracing.consumerSampler();
     this.remoteServiceName = builder.remoteServiceName;
-    this.propagationKeys = new LinkedHashSet<>(tracing.propagation().keys());
+    this.traceIdProperties = new LinkedHashSet<>(tracing.propagation().keys());
   }
 
   public Connection connection(Connection connection) {
@@ -235,7 +235,7 @@ public final class JmsTracing {
    */
   public Span nextSpan(Message message) {
     TraceContextOrSamplingFlags extracted =
-      extractAndClearProperties(processorExtractor, message, message);
+      extractAndClearTraceIdProperties(processorExtractor, message, message);
     Span result = tracer.nextSpan(extracted); // Processor spans use the normal sampler.
 
     // When an upstream context was not present, lookup keys are unlikely added
@@ -246,13 +246,13 @@ public final class JmsTracing {
     return result;
   }
 
-  <R> TraceContextOrSamplingFlags extractAndClearProperties(
+  <R> TraceContextOrSamplingFlags extractAndClearTraceIdProperties(
     Extractor<R> extractor, R request, Message message
   ) {
     TraceContextOrSamplingFlags extracted = extractor.extract(request);
     // Clear propagation regardless of extraction as JMS requires clearing as a means to make the
     // message writable
-    PropertyFilter.filterProperties(message, propagationKeys);
+    PropertyFilter.filterProperties(message, traceIdProperties);
     return extracted;
   }
 

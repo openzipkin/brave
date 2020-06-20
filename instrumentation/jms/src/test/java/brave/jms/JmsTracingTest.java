@@ -253,6 +253,14 @@ public class JmsTracingTest extends ITJms {
     assertThat(ITJms.propertiesToMap(message)).isEmpty();
   }
 
+  @Test public void nextSpan_should_retain_baggage_headers() throws JMSException {
+    message.setStringProperty(BAGGAGE_FIELD_KEY, "");
+
+    jmsTracing.nextSpan(message);
+
+    assertThat(message.getStringProperty(BAGGAGE_FIELD_KEY)).isEmpty();
+  }
+
   @Test public void nextSpan_should_not_clear_other_headers() throws JMSException {
     message.setIntProperty("foo", 1);
 

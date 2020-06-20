@@ -103,8 +103,7 @@ public final class SpringRabbitTracing {
   final Extractor<MessageConsumerRequest> consumerExtractor;
   final Injector<MessageProducerRequest> producerInjector;
   final Injector<MessageConsumerRequest> consumerInjector;
-  final String[] propagationKeys;
-  final TraceContextOrSamplingFlags emptyExtraction;
+  final String[] traceIdHeaders;
   final SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
   final String remoteServiceName;
   final Field beforePublishPostProcessorsField;
@@ -122,12 +121,10 @@ public final class SpringRabbitTracing {
     this.consumerSampler = messagingTracing.consumerSampler();
     this.remoteServiceName = builder.remoteServiceName;
 
-    List<String> propagationKeys = new ArrayList<>(propagation.keys());
-    propagationKeys.addAll(BaggagePropagation.allKeyNames(propagation));
-    this.propagationKeys = propagationKeys.toArray(new String[0]);
-
-    // When baggage or similar is in use, the result != TraceContextOrSamplingFlags.EMPTY
-    this.emptyExtraction = propagation.extractor((c, k) -> null).extract(Boolean.TRUE);
+    // We clear the trace ID headers, so that a stale consumer span is not preferred over current
+    // listener. We intentionally don't clear BaggagePropagation.allKeyNames as doing so will
+    // application fields "user_id" or "country_code"
+    this.traceIdHeaders = propagation.keys().toArray(new String[0]);
 
     Field beforePublishPostProcessorsField = null;
     try {
@@ -220,14 +217,14 @@ public final class SpringRabbitTracing {
     return factory;
   }
 
-  <R> TraceContextOrSamplingFlags extractAndClearHeaders(
+  <R> TraceContextOrSamplingFlags extractAndClearTraceIdHeaders(
     Extractor<R> extractor, R request, Message message
   ) {
     TraceContextOrSamplingFlags extracted = extractor.extract(request);
     // Clear any propagation keys present in the headers
-    if (!extracted.equals(emptyExtraction)) {
+    if (extracted.samplingFlags() == null) { // then trace IDs were extracted
       MessageProperties properties = message.getMessageProperties();
-      if (properties != null) clearHeaders(properties.getHeaders());
+      if (properties != null) clearTraceIdHeaders(properties.getHeaders());
     }
     return extracted;
   }
@@ -246,7 +243,9 @@ public final class SpringRabbitTracing {
     return tracer.nextSpan(extracted);
   }
 
-  void clearHeaders(Map<String, Object> headers) {
-    for (String key : propagationKeys) headers.remove(key);
+  // We can't just skip clearing headers we use because we might inject B3 single, yet have stale B3
+  // multi, or visa versa.
+  void clearTraceIdHeaders(Map<String, Object> headers) {
+    for (String traceIDHeader : traceIdHeaders) headers.remove(traceIDHeader);
   }
 }

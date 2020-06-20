@@ -175,6 +175,21 @@ public class TracingMessageListenerTest extends ITJms {
     assertChildOf(testSpanHandler.takeLocalSpan(), parent);
   }
 
+  @Test public void retains_baggage_headers() throws Exception {
+    ActiveMQTextMessage message = new ActiveMQTextMessage();
+    B3Propagation.B3_STRING.injector(SETTER).inject(parent, message);
+    message.setStringProperty(BAGGAGE_FIELD_KEY, "");
+
+    onMessageConsumed(message);
+
+    assertThat(message.getProperties())
+      .hasSize(1) // clears b3
+      .containsEntry(BAGGAGE_FIELD_KEY, "");
+
+    testSpanHandler.takeRemoteSpan(CONSUMER);
+    testSpanHandler.takeLocalSpan();
+  }
+
   @Test public void continues_parent_trace_single_header() {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     setStringProperty(message, "b3", B3SingleFormat.writeB3SingleFormatWithoutParentId(parent));

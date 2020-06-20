@@ -97,7 +97,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
         ConsumerRecord<K, V> record = recordsInPartition.get(i);
         KafkaConsumerRequest request = new KafkaConsumerRequest(record);
         TraceContextOrSamplingFlags extracted =
-          kafkaTracing.extractAndClearHeaders(extractor, request, record.headers());
+          kafkaTracing.extractAndClearTraceIdHeaders(extractor, request, record.headers());
 
         // If we extracted neither a trace context, nor request-scoped data (extra),
         // and sharing trace is enabled make or reuse a span for this topic

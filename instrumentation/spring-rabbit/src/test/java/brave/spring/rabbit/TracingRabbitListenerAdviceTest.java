@@ -14,7 +14,10 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
+import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationConfig;
 import brave.handler.MutableSpan;
+import brave.propagation.B3Propagation;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.test.TestSpanHandler;
 import org.aopalliance.intercept.MethodInvocation;
@@ -25,6 +28,8 @@ import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageProperties;
 
 import static brave.Span.Kind.CONSUMER;
+import static brave.test.ITRemote.BAGGAGE_FIELD;
+import static brave.test.ITRemote.BAGGAGE_FIELD_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.junit.Assert.fail;
@@ -40,7 +45,13 @@ public class TracingRabbitListenerAdviceTest {
   StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(currentTraceContext).addSpanHandler(spans).build();
+    .currentTraceContext(currentTraceContext)
+    .addSpanHandler(spans)
+    .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+      .add(BaggagePropagationConfig.SingleBaggageField.newBuilder(BAGGAGE_FIELD)
+        .addKeyName(BAGGAGE_FIELD_KEY)
+        .build()).build())
+    .build();
 
   TracingRabbitListenerAdvice tracingRabbitListenerAdvice = new TracingRabbitListenerAdvice(
     SpringRabbitTracing.newBuilder(tracing).remoteServiceName("my-exchange").build()
@@ -140,6 +151,19 @@ public class TracingRabbitListenerAdviceTest {
       .filteredOn(span -> span.kind() == CONSUMER)
       .extracting(MutableSpan::parentId)
       .contains(SPAN_ID);
+  }
+
+  @Test public void retains_baggage_headers() throws Throwable {
+    MessageProperties props = new MessageProperties();
+    props.setHeader("b3", TRACE_ID + "-" + SPAN_ID + "-" + SAMPLED);
+    props.setHeader(BAGGAGE_FIELD_KEY, "");
+
+    Message message = MessageBuilder.withBody(new byte[0]).andProperties(props).build();
+    onMessageConsumed(message);
+
+    assertThat(message.getMessageProperties().getHeaders())
+      .hasSize(1) // clears b3
+      .containsEntry(BAGGAGE_FIELD_KEY, "");
   }
 
   @Test public void reports_span_if_consume_fails() throws Throwable {

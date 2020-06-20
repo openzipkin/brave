@@ -17,7 +17,6 @@ import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.Tracing;
-import brave.baggage.BaggagePropagation;
 import brave.messaging.MessagingRequest;
 import brave.messaging.MessagingTracing;
 import brave.propagation.B3Propagation;
@@ -133,7 +132,7 @@ public final class KafkaTracing {
   final Extractor<Headers> processorExtractor;
   final Injector<KafkaProducerRequest> producerInjector;
   final Injector<KafkaConsumerRequest> consumerInjector;
-  final Set<String> propagationKeys;
+  final Set<String> traceIdHeaders;
   final TraceContextOrSamplingFlags emptyExtraction;
   final SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
   final String remoteServiceName;
@@ -153,8 +152,10 @@ public final class KafkaTracing {
     this.remoteServiceName = builder.remoteServiceName;
     this.singleRootSpanOnReceiveBatch = builder.singleRootSpanOnReceiveBatch;
 
-    this.propagationKeys = new LinkedHashSet<>(propagation.keys());
-    this.propagationKeys.addAll(BaggagePropagation.allKeyNames(propagation));
+    // We clear the trace ID headers, so that a stale consumer span is not preferred over current
+    // listener. We intentionally don't clear BaggagePropagation.allKeyNames as doing so will
+    // application fields "user_id" or "country_code"
+    this.traceIdHeaders = new LinkedHashSet<>(propagation.keys());
 
     // When baggage or similar is in use, the result != TraceContextOrSamplingFlags.EMPTY
     this.emptyExtraction = propagation.extractor((c, k) -> null).extract(Boolean.TRUE);
@@ -192,7 +193,7 @@ public final class KafkaTracing {
     // Eventhough the type is ConsumerRecord, this is not a (remote) consumer span. Only "poll"
     // events create consumer spans. Since this is a processor span, we use the normal sampler.
     TraceContextOrSamplingFlags extracted =
-      extractAndClearHeaders(processorExtractor, record.headers(), record.headers());
+      extractAndClearTraceIdHeaders(processorExtractor, record.headers(), record.headers());
     Span result = tracer.nextSpan(extracted);
     if (extracted.context() == null && !result.isNoop()) {
       addTags(record, result);
@@ -200,13 +201,13 @@ public final class KafkaTracing {
     return result;
   }
 
-  <R> TraceContextOrSamplingFlags extractAndClearHeaders(
+  <R> TraceContextOrSamplingFlags extractAndClearTraceIdHeaders(
     Extractor<R> extractor, R request, Headers headers
   ) {
     TraceContextOrSamplingFlags extracted = extractor.extract(request);
     // Clear any propagation keys present in the headers
-    if (!extracted.equals(emptyExtraction)) {
-      clearHeaders(headers);
+    if (extracted.samplingFlags() == null) { // then trace IDs were extracted
+      clearTraceIdHeaders(headers);
     }
     return extracted;
   }
@@ -227,11 +228,11 @@ public final class KafkaTracing {
 
   // We can't just skip clearing headers we use because we might inject B3 single, yet have stale B3
   // multi, or visa versa.
-  void clearHeaders(Headers headers) {
+  void clearTraceIdHeaders(Headers headers) {
     // Headers::remove creates and consumes an iterator each time. This does one loop instead.
     for (Iterator<Header> i = headers.iterator(); i.hasNext(); ) {
       Header next = i.next();
-      if (propagationKeys.contains(next.key())) i.remove();
+      if (traceIdHeaders.contains(next.key())) i.remove();
     }
   }
 
