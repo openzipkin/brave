@@ -64,9 +64,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     client = newClient(server.getPort());
   }
 
-  /**
-   * Make sure the client you return has retries disabled.
-   */
+  /** Make sure the client you return has retries disabled. */
   protected abstract C newClient(int port) throws IOException;
 
   protected abstract void closeClient(C client) throws IOException;
@@ -77,9 +75,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
 
   protected abstract void post(C client, String pathIncludingQuery, String body) throws IOException;
 
-  /**
-   * Closes the client prior to calling {@link ITRemote#close()}
-   */
+  /** Closes the client prior to calling {@link ITRemote#close()} */
   @Override @After public void close() throws Exception {
     closeClient(client);
     super.close();
@@ -109,9 +105,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     assertSameIds(testSpanHandler.takeRemoteSpan(CLIENT), extracted);
   }
 
-  /**
-   * Unlike Brave 3, Brave 4 propagates trace ids even when unsampled
-   */
+  /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
   @Test public void propagatesUnsampledContext() throws IOException {
     server.enqueue(new MockResponse());
 
@@ -171,9 +165,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     assertThat(extract(takeRequest()).sampled()).isFalse();
   }
 
-  /**
-   * This prevents confusion as a blocking client should end before, the start of the next span.
-   */
+  /** This prevents confusion as a blocking client should end before, the start of the next span. */
   @Test public void clientTimestampAndDurationEnclosedByParent() throws IOException {
     server.enqueue(new MockResponse());
 
@@ -204,8 +196,8 @@ public abstract class ITHttpClient<C> extends ITRemote {
     get(client, "/foo");
 
     assertThat(testSpanHandler.takeRemoteSpan(CLIENT))
-      .extracting(MutableSpan::remoteIp, MutableSpan::remotePort)
-      .containsExactly("127.0.0.1", server.getPort());
+        .extracting(MutableSpan::remoteIp, MutableSpan::remotePort)
+        .containsExactly("127.0.0.1", server.getPort());
   }
 
   @Test public void defaultSpanNameIsMethodName() throws IOException {
@@ -414,8 +406,8 @@ public abstract class ITHttpClient<C> extends ITRemote {
   }
 
   /**
-   * This ensures custom span handlers can see the actual exception thrown, not just the "error" tag
-   * value.
+   * This ensures custom span handlers can see the actual exception thrown, not just the "error"
+   * tag value.
    */
   void spanHandlerSeesError(Callable<Void> get) throws IOException {
     ConcurrentLinkedDeque<Throwable> caughtThrowables = new ConcurrentLinkedDeque<>();
@@ -442,8 +434,8 @@ public abstract class ITHttpClient<C> extends ITRemote {
     checkReportsSpanOnTransportException(get);
 
     assertThat(caughtThrowables)
-      .withFailMessage("Span finished with error, but caughtThrowables empty")
-      .isNotEmpty();
+        .withFailMessage("Span finished with error, but caughtThrowables empty")
+        .isNotEmpty();
     if (caughtThrowables.size() > 1) {
       for (Throwable throwable : caughtThrowables) {
         Logger.getAnonymousLogger().log(Level.SEVERE, "multiple calls to finish", throwable);
@@ -469,9 +461,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     return "http://127.0.0.1:" + server.getPort() + pathIncludingQuery;
   }
 
-  /**
-   * Ensures a timeout receiving a request happens before the method timeout
-   */
+  /** Ensures a timeout receiving a request happens before the method timeout */
   protected RecordedRequest takeRequest() {
     try {
       return server.takeRequest(3, TimeUnit.SECONDS);
