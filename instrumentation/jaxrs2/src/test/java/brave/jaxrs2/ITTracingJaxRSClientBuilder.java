@@ -14,6 +14,7 @@
 package brave.jaxrs2;
 
 import brave.test.http.ITHttpAsyncClient;
+import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
@@ -70,6 +71,12 @@ public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
             callback.accept(null, throwable);
           }
         });
+  }
+
+  @Override protected void options(Client client, String path) throws IOException {
+    client.target(url(path))
+      .request(MediaType.TEXT_PLAIN_TYPE)
+      .options();
   }
 
   @Override

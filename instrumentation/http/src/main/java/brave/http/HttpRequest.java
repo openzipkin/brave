@@ -69,6 +69,20 @@ public abstract class HttpRequest extends Request {
    *
    * <p>{@code null} could mean not applicable to the HTTP method (ex CONNECT).
    *
+   * <h3>Implementation notes</h3>
+   * Some HTTP client abstractions, such as JAX-RS and spring-web, return the input as opposed to
+   * the absolute path. One common problem is a path requested as "", not "/". When that's the case,
+   * normalize "" to "/". This ensures values are consistent with wire-level clients and behaviour
+   * consistent with RFC 7230 Section 2.7.3.
+   *
+   * <p>Ex.
+   * <pre>{@code
+   * @Override public String path() {
+   *   String result = delegate.getURI().getPath();
+   *   return result != null && result.isEmpty() ? "/" : result;
+   * }
+   * }</pre>
+   *
    * @see #url()
    * @see HttpResponse#route()
    * @see HttpTags#PATH

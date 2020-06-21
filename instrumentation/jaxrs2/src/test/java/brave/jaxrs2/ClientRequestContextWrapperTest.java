@@ -44,6 +44,14 @@ public class ClientRequestContextWrapperTest {
     assertThat(new ClientRequestContextWrapper(request).path()).isEqualTo("/api");
   }
 
+  // NOTE: While technically possible, it is not easy to make URI.getPath() return null!
+  @Test public void path_emptyToSlash() {
+    when(request.getUri()).thenReturn(URI.create("http://localhost"));
+
+    assertThat(new ClientRequestContextWrapper(request).path())
+      .isEqualTo("/");
+  }
+
   @Test public void url() {
     when(request.getUri()).thenReturn(URI.create("http://localhost/api"));
 

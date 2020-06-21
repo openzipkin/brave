@@ -78,7 +78,8 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
     }
 
     @Override public String path() {
-      return delegate.getURI().getPath();
+      String result = delegate.getURI().getPath(); // per JavaDoc, getURI() is never null
+      return result != null && result.isEmpty() ? "/" : result;
     }
 
     @Override public String url() {

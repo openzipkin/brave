@@ -65,6 +65,11 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
     client.newCall(new Request.Builder().url(url(pathIncludingQuery)).build()).execute();
   }
 
+  @Override protected void options(Call.Factory client, String path) throws IOException {
+    client.newCall(new Request.Builder().method("OPTIONS", null).url(url(path)).build())
+      .execute();
+  }
+
   @Override protected void post(Call.Factory client, String pathIncludingQuery, String body)
     throws IOException {
     client.newCall(new Request.Builder().url(url(pathIncludingQuery))

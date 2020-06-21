@@ -13,6 +13,7 @@
  */
 package brave.httpclient;
 
+import brave.Span;
 import brave.test.http.ITHttpClient;
 import java.io.IOException;
 import java.net.URI;
@@ -20,11 +21,11 @@ import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpOptions;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.junit.Test;
-import brave.Span;
 
 import static org.apache.http.util.EntityUtils.consume;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,6 +42,11 @@ public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient
   @Override protected void get(CloseableHttpClient client, String pathIncludingQuery)
     throws IOException {
     consume(client.execute(new HttpGet(URI.create(url(pathIncludingQuery)))).getEntity());
+  }
+
+  @Override protected void options(CloseableHttpClient client, String path)
+    throws IOException {
+    consume(client.execute(new HttpOptions(URI.create(url(path)))).getEntity());
   }
 
   @Override protected void post(CloseableHttpClient client, String pathIncludingQuery, String body)

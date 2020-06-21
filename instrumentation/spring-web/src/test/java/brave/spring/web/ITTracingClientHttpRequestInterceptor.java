@@ -63,6 +63,12 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     restTemplate.getForObject(url(pathIncludingQuery), String.class);
   }
 
+  @Override protected void options(ClientHttpRequestFactory client, String path) {
+    RestTemplate restTemplate = new RestTemplate(client);
+    restTemplate.setInterceptors(Collections.singletonList(interceptor));
+    restTemplate.optionsForAllow(url(path), String.class);
+  }
+
   @Override protected void post(ClientHttpRequestFactory client, String uri, String content) {
     RestTemplate restTemplate = new RestTemplate(client);
     restTemplate.setInterceptors(Collections.singletonList(interceptor));

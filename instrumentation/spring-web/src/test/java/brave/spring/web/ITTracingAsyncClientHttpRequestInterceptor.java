@@ -70,6 +70,12 @@ public class ITTracingAsyncClientHttpRequestInterceptor
     restTemplate.getForEntity(url(pathIncludingQuery), String.class).completable().join();
   }
 
+  @Override protected void options(AsyncClientHttpRequestFactory client, String path) {
+    AsyncRestTemplate restTemplate = new AsyncRestTemplate(client);
+    restTemplate.setInterceptors(Collections.singletonList(interceptor));
+    restTemplate.optionsForAllow(url(path)).completable().join();
+  }
+
   @Override protected void post(AsyncClientHttpRequestFactory client, String uri, String content) {
     AsyncRestTemplate restTemplate = new AsyncRestTemplate(client);
     restTemplate.setInterceptors(Collections.singletonList(interceptor));
