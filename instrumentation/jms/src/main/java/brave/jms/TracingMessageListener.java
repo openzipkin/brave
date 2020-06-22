@@ -91,7 +91,7 @@ final class TracingMessageListener implements MessageListener {
     MessageConsumerRequest request = new MessageConsumerRequest(message, destination(message));
 
     TraceContextOrSamplingFlags extracted =
-      jmsTracing.extractAndClearProperties(extractor, request, message);
+      jmsTracing.extractAndClearTraceIdProperties(extractor, request, message);
     Span consumerSpan = jmsTracing.nextMessagingSpan(sampler, request, extracted);
 
     // JMS has no visibility of the incoming message, which incidentally could be local!

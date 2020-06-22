@@ -14,6 +14,9 @@
 package brave.spring.rabbit;
 
 import brave.Tracing;
+import brave.baggage.BaggagePropagation;
+import brave.baggage.BaggagePropagationConfig;
+import brave.propagation.B3Propagation;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.StrictCurrentTraceContext;
@@ -25,6 +28,8 @@ import org.junit.Test;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 
+import static brave.test.ITRemote.BAGGAGE_FIELD;
+import static brave.test.ITRemote.BAGGAGE_FIELD_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TracingMessagePostProcessorTest {
@@ -34,7 +39,13 @@ public class TracingMessagePostProcessorTest {
   StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(currentTraceContext).addSpanHandler(spans).build();
+    .currentTraceContext(currentTraceContext)
+    .addSpanHandler(spans)
+    .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
+      .add(BaggagePropagationConfig.SingleBaggageField.newBuilder(BAGGAGE_FIELD)
+        .addKeyName(BAGGAGE_FIELD_KEY)
+        .build()).build())
+    .build();
 
   TracingMessagePostProcessor tracingMessagePostProcessor = new TracingMessagePostProcessor(
     SpringRabbitTracing.newBuilder(tracing).remoteServiceName("my-exchange").build()
@@ -45,7 +56,7 @@ public class TracingMessagePostProcessorTest {
     currentTraceContext.close();
   }
 
-  @Test public void should_attempt_to_resume_headers() {
+  @Test public void should_resume_headers() {
     Message message = MessageBuilder.withBody(new byte[0]).build();
     message.getMessageProperties().setHeader("b3", B3SingleFormat.writeB3SingleFormat(parent));
 
@@ -54,6 +65,19 @@ public class TracingMessagePostProcessorTest {
     assertThat(spans.get(0).parentId()).isEqualTo(parent.spanIdString());
     Map<String, Object> headers = postProcessMessage.getMessageProperties().getHeaders();
     assertThat(headers.get("b3").toString()).endsWith("-" + spans.get(0).id() + "-1");
+  }
+
+  @Test public void should_retain_baggage() {
+    Message message = MessageBuilder.withBody(new byte[0]).build();
+    message.getMessageProperties().setHeader("b3", B3SingleFormat.writeB3SingleFormat(parent));
+    message.getMessageProperties().setHeader(BAGGAGE_FIELD_KEY, "");
+
+    Message postProcessMessage = tracingMessagePostProcessor.postProcessMessage(message);
+
+    assertThat(spans.get(0).parentId()).isEqualTo(parent.spanIdString());
+    Map<String, Object> headers = postProcessMessage.getMessageProperties().getHeaders();
+    assertThat(headers.get("b3").toString()).endsWith("-" + spans.get(0).id() + "-1");
+    assertThat(headers.get(BAGGAGE_FIELD_KEY).toString()).isEmpty();
   }
 
   @Test public void should_prefer_current_span() {

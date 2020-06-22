@@ -156,26 +156,42 @@ public interface Propagation<K> {
   }
 
   /**
-   * The propagation fields defined. If your request is reused, you should delete the fields here
-   * before calling {@link Setter#put(Object, Object, String)}.
+   * Returns the key names used for propagation of the current span. The result can be cached in the
+   * same scope as the propagation instance.
    *
-   * <p>For example, if the request is a single-use or immutable request object, you don't need to
-   * clear fields as they couldn't have been set before. If it is a mutable, retryable object,
-   * successive calls should clear these fields first.
+   * <p>This method exists to support remote propagation of trace IDs:
+   * <ul>
+   *   <li>To generate constants for all key names. ex. gRPC Metadata.Key</li>
+   *   <li>To iterate fields when missing a get field by name function. ex. OpenTracing TextMap</li>
+   *   <li>Detection of if a context is likely to be present in a request object</li>
+   *   <li>To clear trace ID fields on re-usable requests. ex. JMS message</li>
+   * </ul>
    *
-   * <p><em>Note:</em> Depending on the format, keys returned may not all be mandatory.
+   * <h3>Notes</h3>
+   * <p>Depending on the format, keys returned may not all be mandatory.
    *
-   * <p><em>Note:</em> If your implementation carries baggage, such as correlation IDs, do not
-   * return the names of those fields here. If you do, they will be deleted, which can interfere
-   * with user headers.
+   * <p>If your implementation carries baggage, such as correlation IDs, do not return the names of
+   * those fields here. If you do, they will be deleted, which can interfere with user headers.
+   * Instead, use {@link BaggagePropagation} which returns those names in {@link BaggagePropagation#allKeyNames(Propagation)}.
+   *
+   * <h3>Edge-cases</h3>
+   * When a request is a single-use or immutable request object, there are no known edge cases to
+   * consider. Mutable, retryable objects such as messaging headers should be careful about some
+   * edge cases:
+   *
+   * <p>When multiple headers are used for trace identifiers, ex {@link B3Propagation.Format#MULTI},
+   * producers should be careful to clear fields here before calling {@link TraceContext.Injector#inject(TraceContext, Object)}
+   * when the input is a new root span. Otherwise, a stale {@link TraceContext#parentIdString()}
+   * could be left in the headers and be mistaken for a missing root span.
+   *
+   * <p>Headers here should be cleared when invoking listeners in
+   * {@linkplain CurrentTraceContext.Scope scope}. Doing so prevents precedence rules that prefer
+   * the trace context in message headers from overriding the current span. Doing so would place any
+   * follow-up activity in the wrong spot in the trace tree.
    *
    * @see BaggagePropagation#allKeyNames(Propagation)
    * @since 4.0
    */
-  // The use cases of this are:
-  // * allow pre-allocation of fields, especially in systems like gRPC Metadata
-  // * allow a single-pass over an iterator (ex OpenTracing has no getter in TextMap)
-  // * detection of if a context is likely to be present in a request object
   List<K> keys();
 
   /**

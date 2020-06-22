@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -48,7 +48,7 @@ abstract class TracingConsumer<C> {
     MessageConsumerRequest request = new MessageConsumerRequest(message, destination(message));
 
     TraceContextOrSamplingFlags extracted =
-      jmsTracing.extractAndClearProperties(extractor, request, message);
+      jmsTracing.extractAndClearTraceIdProperties(extractor, request, message);
     Span span = jmsTracing.nextMessagingSpan(sampler, request, extracted);
 
     if (!span.isNoop()) {
