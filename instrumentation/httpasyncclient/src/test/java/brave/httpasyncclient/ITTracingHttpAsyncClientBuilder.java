@@ -27,6 +27,7 @@ import okhttp3.mockwebserver.RecordedRequest;
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpOptions;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.concurrent.FutureCallback;
@@ -51,10 +52,14 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     client.close();
   }
 
-  @Override protected void get(CloseableHttpAsyncClient client, String pathIncludingQuery)
-    throws IOException {
-    HttpGet get = new HttpGet(URI.create(url(pathIncludingQuery)));
-    invoke(client, get);
+  @Override
+  protected void get(CloseableHttpAsyncClient client, String pathIncludingQuery) throws IOException {
+    invoke(client, new HttpGet(URI.create(url(pathIncludingQuery))));
+  }
+
+  @Override
+  protected void options(CloseableHttpAsyncClient client, String path) throws IOException {
+    invoke(client, new HttpOptions(URI.create(url(path))));
   }
 
   @Override

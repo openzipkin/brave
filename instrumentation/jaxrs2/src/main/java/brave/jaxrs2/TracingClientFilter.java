@@ -90,7 +90,8 @@ public final class TracingClientFilter implements ClientRequestFilter, ClientRes
     }
 
     @Override public String path() {
-      return delegate.getUri().getPath();
+      String result = delegate.getUri().getPath();
+      return result != null && result.isEmpty() ? "/" : result;
     }
 
     @Override public String url() {

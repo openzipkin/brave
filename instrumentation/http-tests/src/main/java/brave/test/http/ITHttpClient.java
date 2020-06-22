@@ -69,6 +69,8 @@ public abstract class ITHttpClient<C> extends ITRemote {
 
   protected abstract void closeClient(C client) throws IOException;
 
+  protected abstract void options(C client, String path) throws IOException;
+
   protected abstract void get(C client, String pathIncludingQuery) throws IOException;
 
   protected abstract void post(C client, String pathIncludingQuery, String body) throws IOException;
@@ -335,6 +337,33 @@ public abstract class ITHttpClient<C> extends ITRemote {
 
     assertThat(initial.tags().get("http.path")).isEqualTo("/foo");
     assertThat(redirected.tags().get("http.path")).isEqualTo("/bar");
+  }
+
+  /** This tests empty path "" coerces to "/" per RFC 7230 Section 2.7.3 */
+  @Test public void emptyPath() throws IOException {
+    server.enqueue(new MockResponse());
+
+    get(client, "");
+
+    assertThat(takeRequest().getPath())
+      .isEqualTo("/");
+
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).tags())
+      .containsEntry("http.path", "/");
+  }
+
+  @Test public void options() throws IOException {
+    server.enqueue(new MockResponse().setResponseCode(204));
+
+    // Not using asterisk-form (RFC 7230 Section 5.3.4) as many clients don't support it
+    options(client, "");
+
+    assertThat(takeRequest().getMethod())
+      .isEqualTo("OPTIONS");
+
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).tags())
+      .containsEntry("http.method", "OPTIONS")
+      .containsEntry("http.path", "/");
   }
 
   @Test public void post() throws IOException {
