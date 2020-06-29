@@ -641,7 +641,7 @@
             <configuration>
               <rules>
                 <requireJavaVersion>
-                  <version>[11,14)</version>
+                  <version>[11,15)</version>
                 </requireJavaVersion>
               </rules>
             </configuration>

@@ -6,7 +6,7 @@ cache:
 
 language: java
 
-jdk: openjdk13
+jdk: openjdk14
 
 before_install:
   # Disable testcontainers checks
