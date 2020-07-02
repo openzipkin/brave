@@ -474,7 +474,7 @@
         </plugin>
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
-            <artifactId>animal-sniffer-maven-plugin</artifactId>
+          <artifactId>animal-sniffer-maven-plugin</artifactId>
           <version>1.18</version>
         </plugin>
       </plugins>
