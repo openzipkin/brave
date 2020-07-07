@@ -71,7 +71,7 @@ public abstract class Response {
    *
    * @since 5.10
    */
-  public abstract Object unwrap();
+  @Nullable public abstract Object unwrap();
 
   @Override public String toString() {
     Object unwrapped = unwrap();
