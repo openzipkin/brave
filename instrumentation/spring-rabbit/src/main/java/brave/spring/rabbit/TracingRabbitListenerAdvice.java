@@ -31,6 +31,10 @@ import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 import static brave.Span.Kind.CONSUMER;
 import static brave.spring.rabbit.SpringRabbitTracing.RABBIT_EXCHANGE;
 import static brave.spring.rabbit.SpringRabbitTracing.RABBIT_QUEUE;
@@ -72,30 +76,39 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
    * Message)}
    */
   @Override public Object invoke(MethodInvocation methodInvocation) throws Throwable {
-    Message message = (Message) methodInvocation.getArguments()[1];
-    MessageConsumerRequest request = new MessageConsumerRequest(message);
-
-    TraceContextOrSamplingFlags extracted =
-      springRabbitTracing.extractAndClearTraceIdHeaders(extractor, request, message);
-
-    // named for BlockingQueueConsumer.nextMessage, which we can't currently see
-    Span consumerSpan = springRabbitTracing.nextMessagingSpan(sampler, request, extracted);
-    Span listenerSpan = tracer.newChild(consumerSpan.context());
-
-    if (!consumerSpan.isNoop()) {
-      setConsumerSpan(consumerSpan, message.getMessageProperties());
-
-      // incur timestamp overhead only once
-      long timestamp = tracing.clock(consumerSpan.context()).currentTimeMicroseconds();
-      consumerSpan.start(timestamp);
-      long consumerFinish = timestamp + 1L; // save a clock reading
-      consumerSpan.finish(consumerFinish);
-
-      // not using scoped span as we want to start with a pre-configured time
-      listenerSpan.name("on-message").start(consumerFinish);
+    List<Message> messages = new ArrayList<>();
+    if (methodInvocation.getArguments()[1] instanceof List) {
+      messages.addAll((Collection<? extends Message>) methodInvocation.getArguments()[1]);
+    } else {
+      messages.add((Message) methodInvocation.getArguments()[1]);
     }
 
-    Tracer.SpanInScope ws = tracer.withSpanInScope(listenerSpan);
+    List<Span> listenerSpans = new ArrayList<>(messages.size());
+    for (Message message : messages) {
+      MessageConsumerRequest request = new MessageConsumerRequest(message);
+
+      TraceContextOrSamplingFlags extracted =
+        springRabbitTracing.extractAndClearTraceIdHeaders(extractor, request, message);
+
+      // named for BlockingQueueConsumer.nextMessage, which we can't currently see
+      Span consumerSpan = springRabbitTracing.nextMessagingSpan(sampler, request, extracted);
+      Span listenerSpan = tracer.newChild(consumerSpan.context());
+
+      if (!consumerSpan.isNoop()) {
+        setConsumerSpan(consumerSpan, message.getMessageProperties());
+
+        // incur timestamp overhead only once
+        long timestamp = tracing.clock(consumerSpan.context()).currentTimeMicroseconds();
+        consumerSpan.start(timestamp);
+        long consumerFinish = timestamp + 1L; // save a clock reading
+        consumerSpan.finish(consumerFinish);
+
+        // not using scoped span as we want to start with a pre-configured time
+        listenerSpan.name("on-message").start(consumerFinish);
+        listenerSpans.add(listenerSpan);
+      }
+    }
+
     Throwable error = null;
     try {
       return methodInvocation.proceed();
@@ -103,9 +116,13 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
       error = t;
       throw t;
     } finally {
-      if (error != null) listenerSpan.error(error);
-      listenerSpan.finish();
-      ws.close();
+      for (Span listenerSpan : listenerSpans) {
+        if (error != null) listenerSpan.error(error);
+        try (Tracer.SpanInScope ws = tracer.withSpanInScope(listenerSpan)) {
+        } finally {
+          listenerSpan.finish();
+        }
+      }
     }
   }
 
