@@ -204,6 +204,7 @@ public class TracingRabbitListenerAdviceTest {
   }
 
   @Test public void batch_starts_new_trace_if_none_exists() throws Throwable {
+    // non traced that listener is a new trace
     onBatchMessageConsumed(Arrays.asList(MessageBuilder.withBody(new byte[0]).build(),
       MessageBuilder.withBody(new byte[0]).build()));
 
@@ -228,13 +229,44 @@ public class TracingRabbitListenerAdviceTest {
     Message message2 = MessageBuilder.withBody(new byte[0]).andProperties(props2).build();
     onBatchMessageConsumed(Arrays.asList(message, message2));
 
-    // cleared the headers to later work doesn't try to use the old parent
-    assertThat(message.getMessageProperties().getHeaders()).isEmpty();
-
-    // continue first trace
+    // two traced that listener continues first trace but TODO we aren't handling the second.
     assertThat(spans.get(0))
       .extracting(MutableSpan::parentId)
       .isEqualTo(SPAN_ID);
+  }
+
+  @Test public void batch_continue_first_traced() throws Throwable {
+    MessageProperties props = new MessageProperties();
+    props.setHeader("X-B3-TraceId", TRACE_ID);
+    props.setHeader("X-B3-SpanId", SPAN_ID);
+    props.setHeader("X-B3-ParentSpanId", PARENT_ID);
+    props.setHeader("X-B3-Sampled", SAMPLED);
+
+    Message message = MessageBuilder.withBody(new byte[0]).andProperties(props).build();
+    Message message2 = MessageBuilder.withBody(new byte[0]).build();
+    onBatchMessageConsumed(Arrays.asList(message, message2));
+
+    // first traced that listener continues that trace
+    assertThat(spans.get(0))
+      .extracting(MutableSpan::parentId)
+      .isEqualTo(SPAN_ID);
+  }
+
+  @Test public void batch_new_trace_last_traced() throws Throwable {
+    MessageProperties props = new MessageProperties();
+    props.setHeader("X-B3-TraceId", TRACE_ID_2);
+    props.setHeader("X-B3-SpanId", SPAN_ID_2);
+    props.setHeader("X-B3-ParentSpanId", PARENT_ID_2);
+    props.setHeader("X-B3-Sampled", SAMPLED);
+
+    Message message = MessageBuilder.withBody(new byte[0]).build();
+    Message message2 = MessageBuilder.withBody(new byte[0]).andProperties(props).build();
+    onBatchMessageConsumed(Arrays.asList(message, message2));
+
+    // new trace
+    assertThat(spans.get(0))
+      .extracting(MutableSpan::parentId)
+      .isNotEqualTo(SPAN_ID);
   }
 
   void onMessageConsumed(Message message) throws Throwable {
