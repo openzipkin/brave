@@ -223,6 +223,10 @@ abstract class ITSpringRabbit extends ITRemote {
       Message message = MessageBuilder.withBody(messageBody).andProperties(properties).build();
       rabbitTemplate.send(binding.getRoutingKey(), message);
     }
+
+    void send(Message message) {
+      rabbitTemplate.send(binding.getRoutingKey(), message);
+    }
   }
 
   static class HelloWorldConsumer {
@@ -273,6 +277,12 @@ abstract class ITSpringRabbit extends ITRemote {
     HelloWorldProducer rabbitProducer =
       producerContext.getBean("tracingRabbitProducer_decorate", HelloWorldProducer.class);
     rabbitProducer.send();
+  }
+
+  void produceMessage(String exchange, Binding binding, Message message) {
+    RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+    rabbitTemplate.setExchange(exchange);
+    new HelloWorldProducer(rabbitTemplate, binding).send(message);
   }
 
   void produceUntracedMessage() {
