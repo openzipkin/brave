@@ -229,6 +229,9 @@ public class TracingRabbitListenerAdviceTest {
     Message message2 = MessageBuilder.withBody(new byte[0]).andProperties(props2).build();
     onBatchMessageConsumed(Arrays.asList(message, message2));
 
+    // cleared the headers to later work doesn't try to use the old parent
+    assertThat(message.getMessageProperties().getHeaders()).isEmpty();
+
     // two traced that listener continues first trace but TODO we aren't handling the second.
     assertThat(spans.get(0))
       .extracting(MutableSpan::parentId)
@@ -245,6 +248,9 @@ public class TracingRabbitListenerAdviceTest {
     Message message = MessageBuilder.withBody(new byte[0]).andProperties(props).build();
     Message message2 = MessageBuilder.withBody(new byte[0]).build();
     onBatchMessageConsumed(Arrays.asList(message, message2));
+
+    // cleared the headers to later work doesn't try to use the old parent
+    assertThat(message.getMessageProperties().getHeaders()).isEmpty();
 
     // first traced that listener continues that trace
     assertThat(spans.get(0))
