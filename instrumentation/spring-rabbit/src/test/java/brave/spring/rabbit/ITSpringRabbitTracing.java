@@ -16,6 +16,8 @@ package brave.spring.rabbit;
 import brave.handler.MutableSpan;
 import brave.messaging.MessagingRuleSampler;
 import brave.sampler.Sampler;
+
+import java.util.List;
 import java.util.Map;
 import org.junit.Test;
 import org.springframework.amqp.core.Message;
@@ -149,5 +151,17 @@ public class ITSpringRabbitTracing extends ITSpringRabbit {
     produceUntracedMessage();
     awaitMessageConsumed();
     // reporter rules verify nothing was reported
+  }
+
+  @Test public void batchConsumerTest() {
+    produceUntracedMessage(exchange_batch.getName(), binding_batch);
+    List<Message> messages = awaitBatchMessageConsumed();
+    Map<String, Object> headers = messages.get(0).getMessageProperties().getHeaders();
+    assertThat(headers.keySet()).containsExactly("not-zipkin-header");
+
+    assertThat(consumerSpanHandler.takeRemoteSpan(CONSUMER).name())
+      .isEqualTo("next-message");
+    assertThat(consumerSpanHandler.takeLocalSpan().name())
+      .isEqualTo("on-message");
   }
 }

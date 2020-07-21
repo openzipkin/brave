@@ -27,6 +27,9 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageProperties;
 
+import java.util.Arrays;
+import java.util.List;
+
 import static brave.Span.Kind.CONSUMER;
 import static brave.test.ITRemote.BAGGAGE_FIELD;
 import static brave.test.ITRemote.BAGGAGE_FIELD_KEY;
@@ -41,6 +44,10 @@ public class TracingRabbitListenerAdviceTest {
   static String PARENT_ID = "463ac35c9f6413ab";
   static String SPAN_ID = "48485a3953bb6124";
   static String SAMPLED = "1";
+
+  static String TRACE_ID_2 = "463ac35c9f6413ae";
+  static String PARENT_ID_2 = "463ac35c9f6413af";
+  static String SPAN_ID_2 = "48485a3953bb6125";
 
   StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   TestSpanHandler spans = new TestSpanHandler();
@@ -196,6 +203,78 @@ public class TracingRabbitListenerAdviceTest {
       .containsExactly(error);
   }
 
+  @Test public void batch_starts_new_trace_if_none_exists() throws Throwable {
+    // non traced that listener is a new trace
+    onBatchMessageConsumed(Arrays.asList(MessageBuilder.withBody(new byte[0]).build(),
+      MessageBuilder.withBody(new byte[0]).build()));
+
+    assertThat(spans)
+      .extracting(MutableSpan::kind)
+      .containsExactly(CONSUMER, null);
+  }
+
+  @Test public void batch_continue_parent_trace() throws Throwable {
+    MessageProperties props = new MessageProperties();
+    props.setHeader("X-B3-TraceId", TRACE_ID);
+    props.setHeader("X-B3-SpanId", SPAN_ID);
+    props.setHeader("X-B3-ParentSpanId", PARENT_ID);
+    props.setHeader("X-B3-Sampled", SAMPLED);
+
+    Message message = MessageBuilder.withBody(new byte[0]).andProperties(props).build();
+    MessageProperties props2 = new MessageProperties();
+    props2.setHeader("X-B3-TraceId", TRACE_ID_2);
+    props2.setHeader("X-B3-SpanId", SPAN_ID_2);
+    props2.setHeader("X-B3-ParentSpanId", PARENT_ID_2);
+    props2.setHeader("X-B3-Sampled", SAMPLED);
+    Message message2 = MessageBuilder.withBody(new byte[0]).andProperties(props2).build();
+    onBatchMessageConsumed(Arrays.asList(message, message2));
+
+    // cleared the headers to later work doesn't try to use the old parent
+    assertThat(message.getMessageProperties().getHeaders()).isEmpty();
+
+    // two traced that listener continues first trace but TODO we aren't handling the second.
+    assertThat(spans.get(0))
+      .extracting(MutableSpan::parentId)
+      .isEqualTo(SPAN_ID);
+  }
+
+  @Test public void batch_continue_first_traced() throws Throwable {
+    MessageProperties props = new MessageProperties();
+    props.setHeader("X-B3-TraceId", TRACE_ID);
+    props.setHeader("X-B3-SpanId", SPAN_ID);
+    props.setHeader("X-B3-ParentSpanId", PARENT_ID);
+    props.setHeader("X-B3-Sampled", SAMPLED);
+
+    Message message = MessageBuilder.withBody(new byte[0]).andProperties(props).build();
+    Message message2 = MessageBuilder.withBody(new byte[0]).build();
+    onBatchMessageConsumed(Arrays.asList(message, message2));
+
+    // cleared the headers to later work doesn't try to use the old parent
+    assertThat(message.getMessageProperties().getHeaders()).isEmpty();
+
+    // first traced that listener continues that trace
+    assertThat(spans.get(0))
+      .extracting(MutableSpan::parentId)
+      .isEqualTo(SPAN_ID);
+  }
+
+  @Test public void batch_new_trace_last_traced() throws Throwable {
+    MessageProperties props = new MessageProperties();
+    props.setHeader("X-B3-TraceId", TRACE_ID_2);
+    props.setHeader("X-B3-SpanId", SPAN_ID_2);
+    props.setHeader("X-B3-ParentSpanId", PARENT_ID_2);
+    props.setHeader("X-B3-Sampled", SAMPLED);
+
+    Message message = MessageBuilder.withBody(new byte[0]).build();
+    Message message2 = MessageBuilder.withBody(new byte[0]).andProperties(props).build();
+    onBatchMessageConsumed(Arrays.asList(message, message2));
+
+    // new trace
+    assertThat(spans.get(0))
+      .extracting(MutableSpan::parentId)
+      .isNotEqualTo(SPAN_ID);
+  }
+
   void onMessageConsumed(Message message) throws Throwable {
     when(methodInvocation.getArguments()).thenReturn(new Object[] {
       null, // AMQPChannel - doesn't matter
@@ -219,4 +298,30 @@ public class TracingRabbitListenerAdviceTest {
     } catch (RuntimeException ex) {
     }
   }
+
+
+  void onBatchMessageConsumed(List<Message> messages) throws Throwable {
+    when(methodInvocation.getArguments()).thenReturn(new Object[] {
+      null, // AMQPChannel - doesn't matter
+      messages
+    });
+    when(methodInvocation.proceed()).thenReturn("doesn't matter");
+
+    tracingRabbitListenerAdvice.invoke(methodInvocation);
+  }
+
+  void onBatchMessageConsumeFailed(List<Message> messages, Throwable throwable) throws Throwable {
+    when(methodInvocation.getArguments()).thenReturn(new Object[] {
+      null, // AMQPChannel - doesn't matter
+      messages
+    });
+    when(methodInvocation.proceed()).thenThrow(throwable);
+
+    try {
+      tracingRabbitListenerAdvice.invoke(methodInvocation);
+      fail("should have thrown exception");
+    } catch (RuntimeException ex) {
+    }
+  }
+
 }

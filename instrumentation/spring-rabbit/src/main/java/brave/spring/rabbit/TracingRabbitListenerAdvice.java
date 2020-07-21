@@ -31,6 +31,8 @@ import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 
+import java.util.List;
+
 import static brave.Span.Kind.CONSUMER;
 import static brave.spring.rabbit.SpringRabbitTracing.RABBIT_EXCHANGE;
 import static brave.spring.rabbit.SpringRabbitTracing.RABBIT_QUEUE;
@@ -72,7 +74,12 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
    * Message)}
    */
   @Override public Object invoke(MethodInvocation methodInvocation) throws Throwable {
-    Message message = (Message) methodInvocation.getArguments()[1];
+    Message message = null;
+    if (methodInvocation.getArguments()[1] instanceof List) {
+      message = ((List<? extends Message>) methodInvocation.getArguments()[1]).get(0);
+    } else {
+      message = (Message) methodInvocation.getArguments()[1];
+    }
     MessageConsumerRequest request = new MessageConsumerRequest(message);
 
     TraceContextOrSamplingFlags extracted =

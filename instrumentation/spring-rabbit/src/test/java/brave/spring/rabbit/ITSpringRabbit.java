@@ -20,6 +20,8 @@ import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
 import brave.test.ITRemote;
 import brave.test.IntegrationTestSpanHandler;
+
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
@@ -55,6 +57,12 @@ abstract class ITSpringRabbit extends ITRemote {
   static final Queue queue = new Queue(TEST_QUEUE);
   static final Binding binding = bind(queue).to(exchange).with("test.binding").noargs();
 
+  // for batch
+  static final String TEST_QUEUE_BATCH = "test-queue-1";
+  static final Exchange exchange_batch = topicExchange("test-exchange-1").durable(true).build();
+  static final Queue queue_batch = new Queue(TEST_QUEUE_BATCH);
+  static final Binding binding_batch = bind(queue_batch).to(exchange_batch).with("test.binding.1").noargs();
+
   static RabbitMQContainer rabbit = new RabbitMQContainer();
 
   @BeforeClass public static void startRabbit() {
@@ -66,6 +74,10 @@ abstract class ITSpringRabbit extends ITRemote {
       amqpAdmin.declareExchange(exchange);
       amqpAdmin.declareQueue(queue);
       amqpAdmin.declareBinding(binding);
+
+      amqpAdmin.declareExchange(exchange_batch);
+      amqpAdmin.declareQueue(queue_batch);
+      amqpAdmin.declareBinding(binding_batch);
     } finally {
       connectionFactory.destroy();
     }
@@ -105,12 +117,14 @@ abstract class ITSpringRabbit extends ITRemote {
     producerContext.registerBean(CachingConnectionFactory.class, () -> connectionFactory);
     producerContext.registerBean(Binding.class, () -> binding);
     producerContext.register(RabbitProducerConfig.class);
+    producerContext.registerBean("binding_batch", Binding.class, () -> binding_batch);
     producerContext.refresh();
 
     consumerContext.registerBean(SpringRabbitTracing.class, () -> consumerTracing);
     consumerContext.registerBean(CachingConnectionFactory.class, () -> connectionFactory);
     consumerContext.registerBean(Binding.class, () -> binding);
     consumerContext.register(RabbitConsumerConfig.class);
+    consumerContext.registerBean("binding_batch", Binding.class, () -> binding_batch);
     consumerContext.refresh();
   }
 
@@ -172,6 +186,25 @@ abstract class ITSpringRabbit extends ITRemote {
     @Bean HelloWorldConsumer helloWorldRabbitConsumer() {
       return new HelloWorldConsumer();
     }
+
+    @Bean SimpleRabbitListenerContainerFactory consumerBatchContainerFactory(
+      ConnectionFactory connectionFactory,
+      SpringRabbitTracing springRabbitTracing
+    ) {
+      SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory =
+        new SimpleRabbitListenerContainerFactory();
+      rabbitListenerContainerFactory.setConnectionFactory(connectionFactory);
+      rabbitListenerContainerFactory.setConsumerBatchEnabled(true);
+      rabbitListenerContainerFactory.setBatchListener(true);
+      rabbitListenerContainerFactory.setBatchSize(3);
+      return springRabbitTracing.decorateSimpleRabbitListenerContainerFactory(
+        rabbitListenerContainerFactory
+      );
+    }
+
+    @Bean BatchConsumer batchRabbitConsumer() {
+      return new BatchConsumer();
+    }
   }
 
   static class HelloWorldProducer {
@@ -188,6 +221,10 @@ abstract class ITSpringRabbit extends ITRemote {
       MessageProperties properties = new MessageProperties();
       properties.setHeader("not-zipkin-header", "fakeValue");
       Message message = MessageBuilder.withBody(messageBody).andProperties(properties).build();
+      rabbitTemplate.send(binding.getRoutingKey(), message);
+    }
+
+    void send(Message message) {
       rabbitTemplate.send(binding.getRoutingKey(), message);
     }
   }
@@ -211,6 +248,25 @@ abstract class ITSpringRabbit extends ITRemote {
     }
   }
 
+  static class BatchConsumer {
+    CountDownLatch countDownLatch;
+    List<Message> capturedMessages;
+
+    BatchConsumer() {
+      this.countDownLatch = new CountDownLatch(1);
+    }
+
+    @RabbitListener(queues = TEST_QUEUE_BATCH, containerFactory = "consumerBatchContainerFactory")
+    void testReceiveRabbit(List<Message> messages) {
+      this.capturedMessages = messages;
+      this.countDownLatch.countDown();
+    }
+
+    CountDownLatch getCountDownLatch() {
+      return countDownLatch;
+    }
+  }
+
   void produceMessage() {
     HelloWorldProducer rabbitProducer =
       producerContext.getBean("tracingRabbitProducer_new", HelloWorldProducer.class);
@@ -223,9 +279,19 @@ abstract class ITSpringRabbit extends ITRemote {
     rabbitProducer.send();
   }
 
-  void produceUntracedMessage() {
+  void produceMessage(String exchange, Binding binding, Message message) {
     RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
-    rabbitTemplate.setExchange(exchange.getName());
+    rabbitTemplate.setExchange(exchange);
+    new HelloWorldProducer(rabbitTemplate, binding).send(message);
+  }
+
+  void produceUntracedMessage() {
+    produceUntracedMessage(exchange.getName(), binding);
+  }
+
+  void produceUntracedMessage(String exchange, Binding binding) {
+    RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+    rabbitTemplate.setExchange(exchange);
     new HelloWorldProducer(rabbitTemplate, binding).send();
   }
 
@@ -238,5 +304,16 @@ abstract class ITSpringRabbit extends ITRemote {
       throw new AssertionError(e);
     }
     return consumer.capturedMessage;
+  }
+
+  List<Message> awaitBatchMessageConsumed() {
+    BatchConsumer consumer = consumerContext.getBean(BatchConsumer.class);
+    try {
+      consumer.getCountDownLatch().await(3, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new AssertionError(e);
+    }
+    return consumer.capturedMessages;
   }
 }
