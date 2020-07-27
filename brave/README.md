@@ -281,7 +281,7 @@ Note: the above is the basis for the built-in [http sampler](../instrumentation/
 Sometimes you need to propagate additional fields, such as a request ID or an alternate trace
 context.
 
-For example, if you have a need to know the a specific request's country code, you can
+For example, if you have a need to know a specific request's country code, you can
 propagate it through the trace as an HTTP header with the same name:
 ```java
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
