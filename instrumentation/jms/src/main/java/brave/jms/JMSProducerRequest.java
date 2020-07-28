@@ -83,6 +83,10 @@ final class JMSProducerRequest extends ProducerRequest {
     return MessageParser.channelName(destination);
   }
 
+  @Override public String messageId() {
+    return null; // message ID not available from JMSProducer
+  }
+
   @Nullable String getStringProperty(String name) {
     try {
       return delegate.getStringProperty(name);

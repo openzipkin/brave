@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,6 +15,8 @@ package brave.jms;
 
 import brave.Span;
 import brave.Tracer.SpanInScope;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.CurrentTraceContext.Scope;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Set;
@@ -96,12 +98,12 @@ import static brave.internal.Throwables.propagateIfFatal;
   }
 
   void send(Send send, Destination destination, Object message) {
-    Span span = createAndStartProducerSpan(new JMSProducerRequest(this, destination));
-    final CompletionListener oldCompletionListener = getAsync();
-    if (oldCompletionListener != null) {
-      delegate.setAsync(TracingCompletionListener.create(oldCompletionListener, span, current));
+    Span span = createAndStartProducerSpan(new JMSProducerRequest(delegate, destination));
+    Scope ws = current.newScope(span.context());
+    final CompletionListener async = getAsync();
+    if (async != null) {
+      delegate.setAsync(TracingCompletionListener.create(async, destination, span, current));
     }
-    SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
       send.apply(delegate, destination, message);
@@ -110,12 +112,13 @@ import static brave.internal.Throwables.propagateIfFatal;
       error = t;
       throw t;
     } finally {
-      if (oldCompletionListener != null) {
-        delegate.setAsync(oldCompletionListener);
-      } else if (error == null) {
-        span.finish();
+      if (error != null) {
+        span.error(error).finish(); // An error can happen regardless of async.
+      } else if (async != null) {
+        delegate.setAsync(async); // Revert the message-scoped tracing listener
+      } else {
+        span.finish(); // handle success synchronous send
       }
-      if (error != null) span.error(error).finish();
       ws.close();
     }
   }

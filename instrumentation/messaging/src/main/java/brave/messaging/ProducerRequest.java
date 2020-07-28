@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,6 +13,8 @@
  */
 package brave.messaging;
 
+import brave.Span;
+
 /**
  * Marks an interface for use in injection and {@link MessagingRuleSampler}. This gives a standard
  * type to consider when parsing an outgoing context.
@@ -20,4 +22,7 @@ package brave.messaging;
  * @since 5.9
  */
 public abstract class ProducerRequest extends MessagingRequest {
+  @Override public Span.Kind spanKind() {
+    return Span.Kind.PRODUCER;
+  }
 }
