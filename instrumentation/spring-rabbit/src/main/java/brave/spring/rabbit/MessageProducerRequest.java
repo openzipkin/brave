@@ -79,9 +79,4 @@ final class MessageProducerRequest extends ProducerRequest {
     MessageProperties properties = delegate.getMessageProperties();
     return properties != null ? properties.getConsumerQueue() : null;
   }
-
-  @Override public String messageId() {
-    MessageProperties properties = delegate.getMessageProperties();
-    return properties != null ? properties.getMessageId() : null;
-  }
 }

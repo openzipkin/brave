@@ -36,16 +36,6 @@ final class MessageParser {
     return null;
   }
 
-  @Nullable  static String messageId(Message message) {
-    try {
-      return message.getJMSMessageID();
-    } catch (Throwable t) {
-      propagateIfFatal(t);
-      log(t, "error getting getJMSMessageID of message {0}", message, null);
-    }
-    return null;
-  }
-
   @Nullable static String channelKind(@Nullable Destination destination) {
     if (destination == null) return null;
     return isQueue(destination) ? "queue" : "topic";

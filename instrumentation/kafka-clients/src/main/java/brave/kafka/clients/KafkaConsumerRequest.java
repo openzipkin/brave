@@ -14,7 +14,6 @@
 package brave.kafka.clients;
 
 import brave.Span.Kind;
-import brave.internal.Nullable;
 import brave.messaging.ConsumerRequest;
 import brave.propagation.Propagation.RemoteGetter;
 import brave.propagation.Propagation.RemoteSetter;
@@ -79,10 +78,5 @@ final class KafkaConsumerRequest extends ConsumerRequest {
 
   @Override public String channelName() {
     return delegate.topic();
-  }
-
-  @Nullable @Override public String messageId() {
-    // Kafka has no message ID, but an offset/sequence field will soon be a standard field
-    return null;
   }
 }

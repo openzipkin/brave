@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2019 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -48,7 +48,7 @@ public abstract class MessagingRequest extends Request {
   /**
    * Type of channel, e.g. "queue" or "topic". {@code null} if unreadable.
    *
-   * <p>Conventionally associated with the tag "messaging.channel_kind"
+   * <p>Conventionally associated with the key "messaging.channel_kind"
    *
    * @see #channelName()
    * @since 5.9
@@ -59,31 +59,12 @@ public abstract class MessagingRequest extends Request {
   /**
    * Messaging channel name, e.g. "hooks" or "complaints". {@code null} if unreadable.
    *
-   * <p>Conventionally associated with the tag "messaging.channel_name"
+   * <p>Conventionally associated with the key "messaging.channel_name"
    *
    * @see #channelKind()
    * @since 5.9
    */
   @Nullable public abstract String channelName();
-
-  /**
-   * The possibly system generated value that identifies this message across one or more links. Ex
-   * "ID:10.77.42.209-4280-1477454185311-1:1:1391:1:1". Return {@code null} if the ID was unreadable
-   * or the transport has no canonical message ID.
-   *
-   * <p>This is conventionally associated with the tag "messaging.id"
-   *
-   * <h3>Notes</h3>
-   * Most commonly, a consumer can read this value at request time, but a producer cannot until
-   * response time. Sometimes the values seen by either side are different.
-   *
-   * <p>When there's no field named "message ID", there could be an offset or sequence ID.
-   *
-   * @since 5.13
-   */
-  @Nullable public String messageId() {
-    return null; // as added late
-  }
 
   MessagingRequest() { // sealed type: only producer and consumer
   }

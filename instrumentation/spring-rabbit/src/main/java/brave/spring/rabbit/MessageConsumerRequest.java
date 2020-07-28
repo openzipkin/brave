@@ -14,7 +14,6 @@
 package brave.spring.rabbit;
 
 import brave.Span.Kind;
-import brave.internal.Nullable;
 import brave.messaging.ConsumerRequest;
 import brave.propagation.Propagation.RemoteGetter;
 import brave.propagation.Propagation.RemoteSetter;
@@ -79,10 +78,5 @@ final class MessageConsumerRequest extends ConsumerRequest {
   @Override public String channelName() {
     MessageProperties properties = delegate.getMessageProperties();
     return properties != null ? properties.getConsumerQueue() : null;
-  }
-
-  @Override public String messageId() {
-    MessageProperties properties = delegate.getMessageProperties();
-    return properties != null ? properties.getMessageId() : null;
   }
 }

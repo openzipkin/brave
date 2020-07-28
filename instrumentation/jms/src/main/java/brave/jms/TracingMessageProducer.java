@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2019 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -217,12 +217,11 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
   /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
   @JMS2_0
   public void send(Message message, CompletionListener completionListener) throws JMSException {
-    Destination destination = destination(message);
-    Span span = createAndStartProducerSpan(message, destination);
+    Span span = createAndStartProducerSpan(message, destination(message));
     SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
     Throwable error = null;
     try {
-      delegate.send(message, TracingCompletionListener.create(completionListener, destination, span, current));
+      delegate.send(message, TracingCompletionListener.create(completionListener, span, current));
     } catch (Throwable t) {
       propagateIfFatal(t);
       error = t;
@@ -236,9 +235,8 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
   /* @Override JMS 2.0 method: Intentionally no override to ensure JMS 1.1 works! */
   @JMS2_0 public void send(Message message, int deliveryMode, int priority, long timeToLive,
     CompletionListener completionListener) throws JMSException {
-    Destination destination = destination(message);
-    Span span = createAndStartProducerSpan(message, destination);
-    completionListener = TracingCompletionListener.create(completionListener, destination, span, current);
+    Span span = createAndStartProducerSpan(message, destination(message));
+    completionListener = TracingCompletionListener.create(completionListener, span, current);
     SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
     Throwable error = null;
     try {
@@ -257,7 +255,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
   @JMS2_0 public void send(Destination destination, Message message,
     CompletionListener completionListener) throws JMSException {
     Span span = createAndStartProducerSpan(message, destination);
-    completionListener = TracingCompletionListener.create(completionListener, destination, span, current);
+    completionListener = TracingCompletionListener.create(completionListener, span, current);
     SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
@@ -276,7 +274,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
   @JMS2_0 public void send(Destination destination, Message message, int deliveryMode, int priority,
     long timeToLive, CompletionListener completionListener) throws JMSException {
     Span span = createAndStartProducerSpan(message, destination);
-    completionListener = TracingCompletionListener.create(completionListener, destination, span, current);
+    completionListener = TracingCompletionListener.create(completionListener, span, current);
     SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
