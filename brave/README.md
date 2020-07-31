@@ -475,7 +475,7 @@ sharing span IDs between a client and a server.
 A normal instrumentation pattern is creating a span representing the server
 side of an RPC. `Extractor.extract` might return a complete trace context when
 applied to an incoming client request. `Tracer.joinSpan` attempts to continue
-the this trace, using the same span ID if supported, or creating a child span
+this trace, using the same span ID if supported, or creating a child span
 if not. When span ID is shared, data reported includes a flag saying so.
 
 Here's an example of B3 propagation:
