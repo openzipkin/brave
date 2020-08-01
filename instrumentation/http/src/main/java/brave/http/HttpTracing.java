@@ -93,7 +93,7 @@ public class HttpTracing implements Closeable {
    *
    * For example:
    * <pre>{@code
-   * github = TracingHttpClientBuilder.create(httpTracing.serverName("github"));
+   * github = TracingHttpClientBuilder.create(httpTracing.clientOf("github"));
    * }</pre>
    *
    * @see HttpClientHandler
