@@ -78,8 +78,8 @@
     <errorprone.version>2.4.0</errorprone.version>
 
     <!-- use the same values in bom/pom.xml -->
-    <zipkin.version>2.21.1</zipkin.version>
-    <zipkin-reporter.version>2.15.0</zipkin-reporter.version>
+    <zipkin.version>2.21.7</zipkin.version>
+    <zipkin-reporter.version>2.15.1</zipkin-reporter.version>
 
     <!-- Ensure older versions of spring still work -->
     <spring5.version>5.2.7.RELEASE</spring5.version>
@@ -129,7 +129,7 @@
     <maven-failsafe-plugin.version>3.0.0-M4</maven-failsafe-plugin.version>
     <maven-invoker-plugin.version>3.2.1</maven-invoker-plugin.version>
     <maven-enforcer-plugin.version>3.0.0-M3</maven-enforcer-plugin.version>
-    <maven-bundle-plugin.version>4.2.1</maven-bundle-plugin.version>
+    <maven-bundle-plugin.version>5.1.1</maven-bundle-plugin.version>
     <license-maven-plugin.version>3.0</license-maven-plugin.version>
   </properties>
 

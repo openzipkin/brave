@@ -276,7 +276,7 @@ public final class BaggagePropagation<K> implements Propagation<K> {
     if (propagation == null) throw new NullPointerException("propagation == null");
     // When baggage or similar is in use, the result != TraceContextOrSamplingFlags.EMPTY
     TraceContextOrSamplingFlags emptyExtraction =
-        propagation.extractor((c, k) -> null).extract(Boolean.TRUE);
+      propagation.extractor(NoopGetter.INSTANCE).extract(Boolean.TRUE);
     List<String> baggageKeyNames = getAllKeyNames(emptyExtraction);
     if (baggageKeyNames.isEmpty()) return propagation.keys();
 
@@ -284,6 +284,16 @@ public final class BaggagePropagation<K> implements Propagation<K> {
     result.addAll(propagation.keys());
     result.addAll(baggageKeyNames);
     return Collections.unmodifiableList(result);
+  }
+
+  // Not lambda as Retrolambda creates an OSGi dependency on jdk.internal.vm.annotation with JDK 14
+  // See https://github.com/luontola/retrolambda/issues/160
+  enum NoopGetter implements Getter<Boolean, String> {
+    INSTANCE;
+
+    @Override public String get(Boolean request, String key) {
+      return null;
+    }
   }
 
   static List<String> getAllKeyNames(TraceContextOrSamplingFlags extracted) {
