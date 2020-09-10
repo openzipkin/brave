@@ -16,6 +16,7 @@ package brave;
 import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
+import brave.internal.Platform;
 import brave.propagation.B3SinglePropagation;
 import brave.propagation.Propagation;
 import brave.propagation.StrictCurrentTraceContext;
@@ -68,6 +69,14 @@ public class TracingTest {
     }
 
     assertThat(spans).isEmpty();
+  }
+
+  @Test public void localEndpointDefaults() {
+    Tracing tracing = Tracing.newBuilder().build();
+    assertThat(tracing).extracting("tracer.pendingSpans.defaultSpan.localServiceName")
+      .isEqualTo("unknown");
+    assertThat(tracing).extracting("tracer.pendingSpans.defaultSpan.localIp")
+      .isEqualTo(Platform.get().linkLocalIp());
   }
 
   @Test public void localServiceNamePreservesCase() {
