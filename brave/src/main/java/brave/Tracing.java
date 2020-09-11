@@ -475,6 +475,10 @@ public abstract class Tracing implements Closeable {
       this.noop = new AtomicBoolean();
 
       MutableSpan defaultSpan = new MutableSpan(builder.defaultSpan); // safe copy
+      // Lazy add localEndpoint.ip if not yet set
+      if (defaultSpan.localIp() == null) {
+        defaultSpan.localIp(Platform.get().linkLocalIp());
+      }
 
       Set<SpanHandler> spanHandlers = new LinkedHashSet<>(builder.spanHandlers);
       // When present, the Zipkin handler is invoked after the user-supplied ones.
