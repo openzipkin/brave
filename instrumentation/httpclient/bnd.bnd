@@ -1,4 +1,4 @@
-# We use brave.internal.Nullable, but nothing else internal.
+# We use brave.internal.Nullable, but it is not used at runtime.
 Import-Package: \
   !brave.internal*,\
   *
