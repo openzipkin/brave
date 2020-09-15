@@ -34,7 +34,7 @@
     <main.java.version>1.6</main.java.version>
     <main.signature.artifact>java16</main.signature.artifact>
 
-    <mongodb-driver.version>3.12.5</mongodb-driver.version>
+    <mongodb-driver.version>3.12.7</mongodb-driver.version>
   </properties>
 
   <dependencies>

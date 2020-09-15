@@ -59,11 +59,12 @@
   </developers>
 
   <properties>
+    <main.basedir>${project.basedir}</main.basedir>
+
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
     <project.build.outputEncoding>UTF-8</project.build.outputEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    <main.basedir>${project.basedir}</main.basedir>
 
     <!-- default bytecode version for src/main -->
     <main.java.version>1.7</main.java.version>
@@ -82,7 +83,7 @@
     <zipkin-reporter.version>2.15.2</zipkin-reporter.version>
 
     <!-- Ensure older versions of spring still work -->
-    <spring5.version>5.2.7.RELEASE</spring5.version>
+    <spring5.version>5.2.8.RELEASE</spring5.version>
     <spring.version>3.2.18.RELEASE</spring.version>
 
     <!-- Apis used, but not in Jetty 7.6* imply duplication in servlet25 test fixtures -->
@@ -90,47 +91,50 @@
     <jetty.version>9.4.30.v20200611</jetty.version>
     <jetty-servlet25.version>7.6.21.v20160908</jetty-servlet25.version>
     <!-- Note: 3.1.x requires Java 8; 3.0.20.Final is broken -->
-    <resteasy.version>3.12.1.Final</resteasy.version>
+    <resteasy.version>3.13.1.Final</resteasy.version>
 
-    <kafka.version>2.5.0</kafka.version>
-    <!-- must align with kafka version https://github.com/charithe/kafka-junit -->
-    <kafka-junit.version>4.1.9</kafka-junit.version>
+    <kafka.version>2.6.0</kafka.version>
     <activemq.version>5.16.0</activemq.version>
-    <spring-rabbit.version>2.2.8.RELEASE</spring-rabbit.version>
+    <spring-rabbit.version>2.2.10.RELEASE</spring-rabbit.version>
 
-    <finagle.version>20.6.0</finagle.version>
+    <finagle.version>20.8.1</finagle.version>
     <log4j.version>2.13.3</log4j.version>
-    <okhttp.version>4.7.2</okhttp.version>
+    <okhttp.version>4.9.0</okhttp.version>
     <httpclient.version>4.5.12</httpclient.version>
 
-    <grpc.version>1.30.2</grpc.version>
+    <grpc.version>1.32.1</grpc.version>
+    <protobuf.version>3.12.0</protobuf.version>
     <!-- prefer grpc's version of netty -->
-    <netty.version>4.1.48.Final</netty.version>
+    <netty.version>4.1.51.Final</netty.version>
 
     <sparkjava.version>2.9.2</sparkjava.version>
+
+    <!-- Test only dependencies -->
     <junit.version>4.13</junit.version>
-    <assertj.version>3.16.1</assertj.version>
+    <assertj.version>3.17.2</assertj.version>
     <powermock.version>2.0.7</powermock.version>
-    <mockito.version>3.3.3</mockito.version>
+    <mockito.version>3.5.10</mockito.version>
     <jersey.version>2.31</jersey.version>
-    <jmh.version>1.23</jmh.version>
+    <!-- must align with kafka version https://github.com/charithe/kafka-junit -->
+    <kafka-junit.version>4.1.10</kafka-junit.version>
     <testcontainers.version>1.14.3</testcontainers.version>
 
+    <animal-sniffer-maven-plugin.version>1.19</animal-sniffer-maven-plugin.version>
+    <!-- TODO: cleanup any redundant ignores now also in the 4.0 release (once final) -->
+    <license-maven-plugin.version>4.0.rc2</license-maven-plugin.version>
+    <maven-bundle-plugin.version>5.1.1</maven-bundle-plugin.version>
     <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
-    <maven-install-plugin.version>3.0.0-M1</maven-install-plugin.version>
     <maven-deploy-plugin.version>3.0.0-M1</maven-deploy-plugin.version>
-    <maven-release-plugin.version>3.0.0-M1</maven-release-plugin.version>
-    <maven-source-plugin.version>3.2.1</maven-source-plugin.version>
+    <maven-enforcer-plugin.version>3.0.0-M3</maven-enforcer-plugin.version>
+    <!-- 3.0.0-M5 breaks the build: https://github.com/openzipkin/zipkin/issues/3159 -->
+    <maven-failsafe-plugin.version>3.0.0-M4</maven-failsafe-plugin.version>
+    <maven-install-plugin.version>3.0.0-M1</maven-install-plugin.version>
+    <maven-invoker-plugin.version>3.2.1</maven-invoker-plugin.version>
     <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
     <maven-jar-plugin.version>3.2.0</maven-jar-plugin.version>
+    <maven-release-plugin.version>3.0.0-M1</maven-release-plugin.version>
     <maven-shade-plugin.version>3.2.4</maven-shade-plugin.version>
-    <!-- 3.0.0-M5 breaks running brave-tests ITRemoteTest.tracer_includesClassName:26
-          NoClassDefFound brave/propagation/CurrentTraceContext$Builder -->
-    <maven-failsafe-plugin.version>3.0.0-M4</maven-failsafe-plugin.version>
-    <maven-invoker-plugin.version>3.2.1</maven-invoker-plugin.version>
-    <maven-enforcer-plugin.version>3.0.0-M3</maven-enforcer-plugin.version>
-    <maven-bundle-plugin.version>5.1.1</maven-bundle-plugin.version>
-    <license-maven-plugin.version>3.0</license-maven-plugin.version>
+    <maven-source-plugin.version>3.2.1</maven-source-plugin.version>
   </properties>
 
   <modules>
@@ -475,7 +479,7 @@
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>animal-sniffer-maven-plugin</artifactId>
-          <version>1.18</version>
+          <version>${animal-sniffer-maven-plugin.version}</version>
         </plugin>
       </plugins>
     </pluginManagement>
@@ -549,6 +553,7 @@
             <artifactId>${main.signature.artifact}</artifactId>
             <version>1.0</version>
           </signature>
+          <checkTestClasses>false</checkTestClasses>
         </configuration>
         <executions>
           <execution>

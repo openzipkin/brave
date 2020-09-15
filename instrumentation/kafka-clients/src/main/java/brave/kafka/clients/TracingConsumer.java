@@ -313,6 +313,11 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     return delegate.groupMetadata();
   }
 
+  // Do not use @Override annotation to avoid compatibility issue version < 2.6
+  public void enforceRebalance() {
+    delegate.enforceRebalance();
+  }
+
   @Override public void close() {
     delegate.close();
   }

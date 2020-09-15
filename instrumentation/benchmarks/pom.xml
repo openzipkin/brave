@@ -28,7 +28,8 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
     <main.java.version>1.8</main.java.version>
     <main.signature.artifact>java18</main.signature.artifact>
-    <undertow.version>2.1.3.Final</undertow.version>
+    <jmh.version>1.25.2</jmh.version>
+    <undertow.version>2.2.0.Final</undertow.version>
     <spring.version>${spring5.version}</spring.version>
   </properties>
 

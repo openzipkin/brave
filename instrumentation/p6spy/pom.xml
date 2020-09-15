@@ -33,7 +33,7 @@
     <main.java.version>1.6</main.java.version>
     <main.signature.artifact>java16</main.signature.artifact>
 
-    <p6spy.version>3.9.0</p6spy.version>
+    <p6spy.version>3.9.1</p6spy.version>
     <derby.version>10.15.2.0</derby.version>
   </properties>
 
