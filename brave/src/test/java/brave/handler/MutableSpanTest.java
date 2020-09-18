@@ -18,6 +18,7 @@ import brave.internal.InternalPropagation;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -578,7 +579,7 @@ public class MutableSpanTest {
         MutableSpan other = otherConstructor.get();
         assertThat(span).isNotSameAs(other); // sanity
         assertNeitherEqualNorShareHashCode(span, other);
-        assertThat(span).usingRecursiveComparison().isNotEqualTo(other); // double check our impl
+        assertThat(Objects.deepEquals(span, other)).isFalse(); // double check our impl
       }
     }
   }

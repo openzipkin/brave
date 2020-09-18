@@ -61,11 +61,13 @@ final class TraceMongoCommandListener implements CommandListener {
    * all callbacks happen on the same thread.
    */
   @Override public void commandStarted(CommandStartedEvent event) {
+    String databaseName = event.getDatabaseName();
+    if ("admin".equals(databaseName)) return; // don't trace commands like "endSessions"
+
     Span span = threadLocalSpan.next();
     if (span == null || span.isNoop()) return;
 
     String commandName = event.getCommandName();
-    String databaseName = event.getDatabaseName();
     BsonDocument command = event.getCommand();
     String collectionName = getCollectionName(command, commandName);
 

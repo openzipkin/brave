@@ -20,15 +20,18 @@ import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
 import brave.test.ITRemote;
 import brave.test.IntegrationTestSpanHandler;
-
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.AssumptionViolatedException;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.Exchange;
 import org.springframework.amqp.core.Message;
@@ -46,12 +49,15 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.testcontainers.containers.RabbitMQContainer;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 
 import static org.springframework.amqp.core.BindingBuilder.bind;
 import static org.springframework.amqp.core.ExchangeBuilder.topicExchange;
 
 abstract class ITSpringRabbit extends ITRemote {
+  static final Logger LOGGER = LoggerFactory.getLogger(ITSpringRabbit.class);
+
   static final String TEST_QUEUE = "test-queue";
   static final Exchange exchange = topicExchange("test-exchange").durable(true).build();
   static final Queue queue = new Queue(TEST_QUEUE);
@@ -61,14 +67,41 @@ abstract class ITSpringRabbit extends ITRemote {
   static final String TEST_QUEUE_BATCH = "test-queue-1";
   static final Exchange exchange_batch = topicExchange("test-exchange-1").durable(true).build();
   static final Queue queue_batch = new Queue(TEST_QUEUE_BATCH);
-  static final Binding binding_batch = bind(queue_batch).to(exchange_batch).with("test.binding.1").noargs();
+  static final Binding binding_batch =
+    bind(queue_batch).to(exchange_batch).with("test.binding.1").noargs();
 
-  static RabbitMQContainer rabbit = new RabbitMQContainer();
+  static final String IMAGE = "rabbitmq:3.8-management-alpine";
+  static final int RABBIT_PORT = 5672;
+
+  static final class RabbitMQContainer extends GenericContainer<RabbitMQContainer> {
+    RabbitMQContainer(String image) {
+      super(image);
+      addExposedPorts(RABBIT_PORT);
+      this.waitStrategy = Wait.forLogMessage(".*Server startup complete.*", 1)
+        .withStartupTimeout(Duration.ofSeconds(60));
+    }
+  }
+
+  static RabbitMQContainer rabbit;
 
   @BeforeClass public static void startRabbit() {
-    rabbit.start();
-    CachingConnectionFactory connectionFactory =
-      new CachingConnectionFactory(rabbit.getContainerIpAddress(), rabbit.getAmqpPort());
+    if ("true".equals(System.getProperty("docker.skip"))) {
+      throw new AssumptionViolatedException("Skipping startup of docker " + IMAGE);
+    }
+
+    try {
+      LOGGER.info("Starting docker image " + IMAGE);
+      rabbit = new RabbitMQContainer(IMAGE);
+      rabbit.start();
+    } catch (Throwable e) {
+      throw new AssumptionViolatedException(
+        "Couldn't start docker image " + IMAGE + ": " + e.getMessage(), e);
+    }
+
+    CachingConnectionFactory connectionFactory = new CachingConnectionFactory(
+      rabbit.getContainerIpAddress(),
+      rabbit.getMappedPort(RABBIT_PORT)
+    );
     try {
       RabbitAdmin amqpAdmin = new RabbitAdmin(connectionFactory);
       amqpAdmin.declareExchange(exchange);
@@ -84,7 +117,7 @@ abstract class ITSpringRabbit extends ITRemote {
   }
 
   @AfterClass public static void kiwwTheWabbit() {
-    rabbit.stop();
+    if (rabbit != null) rabbit.stop();
   }
 
   @Rule public IntegrationTestSpanHandler producerSpanHandler = new IntegrationTestSpanHandler();
@@ -108,7 +141,7 @@ abstract class ITSpringRabbit extends ITRemote {
   );
 
   CachingConnectionFactory connectionFactory =
-    new CachingConnectionFactory(rabbit.getContainerIpAddress(), rabbit.getAmqpPort());
+    new CachingConnectionFactory(rabbit.getContainerIpAddress(), rabbit.getMappedPort(RABBIT_PORT));
   AnnotationConfigApplicationContext producerContext = new AnnotationConfigApplicationContext();
   AnnotationConfigApplicationContext consumerContext = new AnnotationConfigApplicationContext();
 

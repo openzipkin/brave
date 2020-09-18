@@ -35,7 +35,7 @@ public abstract class ITMongoDB extends ITRemote { // public because of ClassRul
   static final int MONGODB_PORT = 27017;
 
   @ClassRule
-  public static GenericContainer<?> mongo = new GenericContainer<>("mongo:4.0")
+  public static GenericContainer<?> mongo = new GenericContainer<>("mongo:4.4")
     .withExposedPorts(MONGODB_PORT);
 
   @BeforeClass public static void initCollection() {

@@ -180,8 +180,9 @@ public abstract class PropagationTest {
       Map<Object, String> map = new LinkedHashMap<>();
       injector.inject(ctx, map);
 
-      assertThat(extractor.extract(map).context())
-        .isEqualToIgnoringGivenFields(ctx, "traceIdString", "spanIdString");
+      TraceContext extracted = extractor.extract(map).context();
+      assertThat(extracted.traceIdString()).isEqualTo(ctx.traceIdString());
+      assertThat(extracted.spanIdString()).isEqualTo(ctx.spanIdString());
     }
   }
 }
