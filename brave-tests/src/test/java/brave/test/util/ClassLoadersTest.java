@@ -48,8 +48,7 @@ public class ClassLoadersTest {
   static class AbsentThreadLocalWithApplicationType implements Runnable {
     ThreadLocal<ClassLoadersTest> local = new ThreadLocal<>();
 
-    @Override public void run() {
-    }
+   
   }
 
   @Test public void assertRunIsUnloadable_absentThreadLocalWithOurClassIsUnloadable() {
