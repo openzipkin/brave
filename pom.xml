@@ -83,41 +83,41 @@
     <zipkin-reporter.version>2.15.2</zipkin-reporter.version>
 
     <!-- Ensure older versions of spring still work -->
-    <spring5.version>5.2.8.RELEASE</spring5.version>
+    <spring5.version>5.2.9.RELEASE</spring5.version>
     <spring.version>3.2.18.RELEASE</spring.version>
 
     <!-- Apis used, but not in Jetty 7.6* imply duplication in servlet25 test fixtures -->
     <!-- prefer sparkjava's jetty to reduce downloads -->
-    <jetty.version>9.4.30.v20200611</jetty.version>
+    <jetty.version>9.4.32.v20200930</jetty.version>
     <jetty-servlet25.version>7.6.21.v20160908</jetty-servlet25.version>
     <!-- Note: 3.1.x requires Java 8; 3.0.20.Final is broken -->
     <resteasy.version>3.13.1.Final</resteasy.version>
 
     <kafka.version>2.6.0</kafka.version>
     <activemq.version>5.16.0</activemq.version>
-    <spring-rabbit.version>2.2.10.RELEASE</spring-rabbit.version>
+    <spring-rabbit.version>2.2.11.RELEASE</spring-rabbit.version>
 
-    <finagle.version>20.8.1</finagle.version>
+    <finagle.version>20.9.0</finagle.version>
     <log4j.version>2.13.3</log4j.version>
     <okhttp.version>4.9.0</okhttp.version>
-    <httpclient.version>4.5.12</httpclient.version>
+    <httpclient.version>4.5.13</httpclient.version>
 
-    <grpc.version>1.32.1</grpc.version>
+    <grpc.version>1.32.2</grpc.version>
     <protobuf.version>3.12.0</protobuf.version>
     <!-- prefer grpc's version of netty -->
     <netty.version>4.1.51.Final</netty.version>
 
-    <sparkjava.version>2.9.2</sparkjava.version>
+    <sparkjava.version>2.9.3</sparkjava.version>
 
     <!-- Test only dependencies -->
-    <junit.version>4.13</junit.version>
+    <junit.version>4.13.1</junit.version>
     <assertj.version>3.17.2</assertj.version>
     <powermock.version>2.0.7</powermock.version>
-    <mockito.version>3.5.10</mockito.version>
-    <jersey.version>2.31</jersey.version>
+    <mockito.version>3.5.13</mockito.version>
+    <jersey.version>2.32</jersey.version>
     <!-- must align with kafka version https://github.com/charithe/kafka-junit -->
     <kafka-junit.version>4.1.10</kafka-junit.version>
-    <testcontainers.version>1.14.3</testcontainers.version>
+    <testcontainers.version>1.15.0-rc2</testcontainers.version>
 
     <animal-sniffer-maven-plugin.version>1.19</animal-sniffer-maven-plugin.version>
     <!-- TODO: cleanup any redundant ignores now also in the 4.0 release (once final) -->
@@ -126,8 +126,7 @@
     <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
     <maven-deploy-plugin.version>3.0.0-M1</maven-deploy-plugin.version>
     <maven-enforcer-plugin.version>3.0.0-M3</maven-enforcer-plugin.version>
-    <!-- 3.0.0-M5 breaks the build: https://github.com/openzipkin/zipkin/issues/3159 -->
-    <maven-failsafe-plugin.version>3.0.0-M4</maven-failsafe-plugin.version>
+    <maven-failsafe-plugin.version>3.0.0-M5</maven-failsafe-plugin.version>
     <maven-install-plugin.version>3.0.0-M1</maven-install-plugin.version>
     <maven-invoker-plugin.version>3.2.1</maven-invoker-plugin.version>
     <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
@@ -581,6 +580,8 @@
         <configuration>
           <!-- Try to prevent flakes in CI -->
           <reuseForks>false</reuseForks>
+          <!-- workaround to SUREFIRE-1831 -->
+          <useModulePath>false</useModulePath>
           <systemPropertyVariables>
             <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager
             </java.util.logging.manager>
@@ -648,6 +649,8 @@
             <configuration>
               <rules>
                 <requireJavaVersion>
+                  <!-- Cannot use JDK 15 until Retrolambda supports it
+                       https://github.com/luontola/retrolambda/issues/161 -->
                   <version>[11,15)</version>
                 </requireJavaVersion>
               </rules>
