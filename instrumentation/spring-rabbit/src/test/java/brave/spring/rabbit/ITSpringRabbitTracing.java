@@ -16,11 +16,12 @@ package brave.spring.rabbit;
 import brave.handler.MutableSpan;
 import brave.messaging.MessagingRuleSampler;
 import brave.sampler.Sampler;
-
-import java.util.List;
-import java.util.Map;
 import org.junit.Test;
 import org.springframework.amqp.core.Message;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 import static brave.Span.Kind.CONSUMER;
 import static brave.Span.Kind.PRODUCER;
@@ -163,5 +164,33 @@ public class ITSpringRabbitTracing extends ITSpringRabbit {
       .isEqualTo("next-message");
     assertThat(consumerSpanHandler.takeLocalSpan().name())
       .isEqualTo("on-message");
+  }
+
+  @Test
+  public void tracingIsPreservedInReply() {
+    produceRequestMessage();
+    awaitReplyMessageConsumed();
+
+    MutableSpan producerSpan = producerSpanHandler.takeRemoteSpan(PRODUCER);
+    MutableSpan requestConsumerRemoteSpan = consumerSpanHandler.takeRemoteSpan(CONSUMER);
+    MutableSpan requestConsumerLocalSpan = consumerSpanHandler.takeLocalSpan();
+    MutableSpan replyProducerRemoteSpan = consumerSpanHandler.takeRemoteSpan(PRODUCER);
+    MutableSpan replyConsumerRemoteSpan = consumerSpanHandler.takeRemoteSpan(CONSUMER);
+    MutableSpan replyConsumerLocalSpan = consumerSpanHandler.takeLocalSpan();
+
+    assertThat(producerSpan.parentId()).isNull();
+    assertThat(requestConsumerRemoteSpan.parentId()).isEqualTo(producerSpan.id());
+    assertThat(requestConsumerLocalSpan.parentId()).isEqualTo(requestConsumerRemoteSpan.id());
+    assertThat(replyProducerRemoteSpan.parentId()).isEqualTo(producerSpan.id());
+    assertThat(replyConsumerRemoteSpan.parentId()).isEqualTo(replyProducerRemoteSpan.id());
+    assertThat(replyConsumerLocalSpan.parentId()).isEqualTo(replyConsumerRemoteSpan.id());
+
+    assertThat(Arrays.asList(
+      requestConsumerRemoteSpan,
+      requestConsumerLocalSpan,
+      replyProducerRemoteSpan,
+      replyConsumerRemoteSpan,
+      replyConsumerLocalSpan
+    )).extracting(MutableSpan::traceId).isEqualTo(producerSpan.traceId());
   }
 }

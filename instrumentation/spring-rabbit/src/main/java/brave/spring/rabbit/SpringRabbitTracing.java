@@ -16,7 +16,6 @@ package brave.spring.rabbit;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracing;
-import brave.baggage.BaggagePropagation;
 import brave.messaging.MessagingRequest;
 import brave.messaging.MessagingTracing;
 import brave.propagation.B3Propagation;
@@ -25,11 +24,6 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.SamplerFunction;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
 import org.aopalliance.aop.Advice;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessagePostProcessor;
@@ -37,6 +31,12 @@ import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Factory for Brave instrumented Spring Rabbit classes.
@@ -186,6 +186,7 @@ public final class SpringRabbitTracing {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
     factory.setConnectionFactory(connectionFactory);
     factory.setAdviceChain(new TracingRabbitListenerAdvice(this));
+    factory.setBeforeSendReplyPostProcessors(new TracingMessagePostProcessor(this));
     return factory;
   }
 
@@ -193,6 +194,7 @@ public final class SpringRabbitTracing {
   public SimpleRabbitListenerContainerFactory decorateSimpleRabbitListenerContainerFactory(
     SimpleRabbitListenerContainerFactory factory
   ) {
+    factory.setBeforeSendReplyPostProcessors(new TracingMessagePostProcessor(this));
     Advice[] chain = factory.getAdviceChain();
 
     TracingRabbitListenerAdvice tracingAdvice = new TracingRabbitListenerAdvice(this);
