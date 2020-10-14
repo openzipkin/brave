@@ -1,0 +1,1 @@
+memberSearchIndex = [{"p":"brave.vertx.web","c":"VertxWebTracing","l":"create(HttpTracing)","url":"create(brave.http.HttpTracing)"},{"p":"brave.vertx.web","c":"VertxWebTracing","l":"create(Tracing)","url":"create(brave.Tracing)"},{"p":"brave.vertx.web","c":"VertxWebTracing","l":"routingContextHandler()"}]
