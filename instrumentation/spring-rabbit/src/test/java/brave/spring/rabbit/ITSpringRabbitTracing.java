@@ -16,12 +16,12 @@ package brave.spring.rabbit;
 import brave.handler.MutableSpan;
 import brave.messaging.MessagingRuleSampler;
 import brave.sampler.Sampler;
-import org.junit.Test;
-import org.springframework.amqp.core.Message;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import org.junit.Test;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import static brave.Span.Kind.CONSUMER;
 import static brave.Span.Kind.PRODUCER;
@@ -166,31 +166,27 @@ public class ITSpringRabbitTracing extends ITSpringRabbit {
       .isEqualTo("on-message");
   }
 
-  @Test
-  public void tracingIsPreservedInReply() {
-    produceRequestMessage();
+  @Test public void traceContinuesToReply() {
+    produceUntracedMessage(TEST_EXCHANGE_REQUEST_REPLY, binding_request);
     awaitReplyMessageConsumed();
 
-    MutableSpan producerSpan = producerSpanHandler.takeRemoteSpan(PRODUCER);
-    MutableSpan requestConsumerRemoteSpan = consumerSpanHandler.takeRemoteSpan(CONSUMER);
-    MutableSpan requestConsumerLocalSpan = consumerSpanHandler.takeLocalSpan();
-    MutableSpan replyProducerRemoteSpan = consumerSpanHandler.takeRemoteSpan(PRODUCER);
-    MutableSpan replyConsumerRemoteSpan = consumerSpanHandler.takeRemoteSpan(CONSUMER);
-    MutableSpan replyConsumerLocalSpan = consumerSpanHandler.takeLocalSpan();
+    MutableSpan requestConsumerSpan = consumerSpanHandler.takeRemoteSpan(CONSUMER);
+    MutableSpan replyProducerSpan = consumerSpanHandler.takeRemoteSpan(PRODUCER);
+    MutableSpan requestListenerSpan = consumerSpanHandler.takeLocalSpan();
+    MutableSpan replyConsumerSpan = consumerSpanHandler.takeRemoteSpan(CONSUMER);
+    MutableSpan replyListenerSpan = consumerSpanHandler.takeLocalSpan();
 
-    assertThat(producerSpan.parentId()).isNull();
-    assertThat(requestConsumerRemoteSpan.parentId()).isEqualTo(producerSpan.id());
-    assertThat(requestConsumerLocalSpan.parentId()).isEqualTo(requestConsumerRemoteSpan.id());
-    assertThat(replyProducerRemoteSpan.parentId()).isEqualTo(producerSpan.id());
-    assertThat(replyConsumerRemoteSpan.parentId()).isEqualTo(replyProducerRemoteSpan.id());
-    assertThat(replyConsumerLocalSpan.parentId()).isEqualTo(replyConsumerRemoteSpan.id());
+    assertThat(requestConsumerSpan.parentId()).isNull();
+    assertThat(requestListenerSpan.parentId()).isEqualTo(requestConsumerSpan.id());
+    assertThat(replyProducerSpan.parentId()).isEqualTo(requestListenerSpan.id());
+    assertThat(replyConsumerSpan.parentId()).isEqualTo(replyProducerSpan.id());
+    assertThat(replyListenerSpan.parentId()).isEqualTo(replyConsumerSpan.id());
 
     assertThat(Arrays.asList(
-      requestConsumerRemoteSpan,
-      requestConsumerLocalSpan,
-      replyProducerRemoteSpan,
-      replyConsumerRemoteSpan,
-      replyConsumerLocalSpan
-    )).extracting(MutableSpan::traceId).isEqualTo(producerSpan.traceId());
+      requestListenerSpan,
+      replyProducerSpan,
+      replyConsumerSpan,
+      replyListenerSpan
+    )).extracting(MutableSpan::traceId).containsOnly(requestConsumerSpan.traceId());
   }
 }

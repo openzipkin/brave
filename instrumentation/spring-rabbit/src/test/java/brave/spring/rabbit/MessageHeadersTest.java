@@ -26,21 +26,21 @@ public class MessageHeadersTest {
     message = new Message(new byte[0], null);
 
     assertThat(MessageHeaders.getHeaderIfString(message, "b3"))
-        .isNull();
+      .isNull();
   }
 
   @Test public void getHeaderIfString() {
     message.getMessageProperties().setHeader("b3", "1");
 
     assertThat(MessageHeaders.getHeaderIfString(message, "b3"))
-        .isEqualTo("1");
+      .isEqualTo("1");
   }
 
   @Test public void getHeaderIfString_notString() {
     message.getMessageProperties().setHeader("b3", (byte) 0);
 
     assertThat(MessageHeaders.getHeaderIfString(message, "b3"))
-        .isNull();
+      .isNull();
   }
 
   @Test public void getHeaderIfString_null() {
@@ -57,7 +57,7 @@ public class MessageHeadersTest {
     MessageHeaders.setHeader(message, "b3", "1");
 
     assertThat((String) message.getMessageProperties().getHeader("b3"))
-        .isEqualTo("1");
+      .isEqualTo("1");
   }
 
   @Test public void setHeader_replace() {
@@ -65,6 +65,6 @@ public class MessageHeadersTest {
     MessageHeaders.setHeader(message, "b3", "1");
 
     assertThat((String) message.getMessageProperties().getHeader("b3"))
-        .isEqualTo("1");
+      .isEqualTo("1");
   }
 }

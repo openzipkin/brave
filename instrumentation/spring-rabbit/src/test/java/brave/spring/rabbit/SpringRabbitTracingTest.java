@@ -18,12 +18,15 @@ import java.util.Collection;
 import java.util.List;
 import org.junit.After;
 import org.junit.Test;
+import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.postprocessor.UnzipPostProcessor;
 import org.springframework.cache.interceptor.CacheInterceptor;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.InstanceOfAssertFactories.array;
+import static org.assertj.core.api.InstanceOfAssertFactories.iterable;
 
 public class SpringRabbitTracingTest {
   Tracing tracing = Tracing.newBuilder().build();
@@ -33,7 +36,7 @@ public class SpringRabbitTracingTest {
     tracing.close();
   }
 
-  @Test public void decorateRabbitTemplate_adds_by_default() {
+  @Test public void decorateRabbitTemplate_adds_TracingMessagePostProcessor() {
     RabbitTemplate template = new RabbitTemplate();
     assertThat(rabbitTracing.decorateRabbitTemplate(template))
       .extracting("beforePublishPostProcessors")
@@ -42,7 +45,7 @@ public class SpringRabbitTracingTest {
       ));
   }
 
-  @Test public void decorateRabbitTemplate_skips_when_present() {
+  @Test public void decorateRabbitTemplate_skips_TracingMessagePostProcessor_when_present() {
     RabbitTemplate template = new RabbitTemplate();
     template.setBeforePublishPostProcessors(new TracingMessagePostProcessor(rabbitTracing));
 
@@ -51,15 +54,14 @@ public class SpringRabbitTracingTest {
       .satisfies(l -> assertThat((List<?>) l).hasSize(1));
   }
 
-  @Test public void decorateRabbitTemplate_appends_when_absent() {
+  @Test public void decorateRabbitTemplate_prepends_TracingMessagePostProcessor_when_absent() {
     RabbitTemplate template = new RabbitTemplate();
     template.setBeforePublishPostProcessors(new UnzipPostProcessor());
 
     assertThat(rabbitTracing.decorateRabbitTemplate(template))
       .extracting("beforePublishPostProcessors")
-      .satisfies(postProcessors -> assertThat(((Collection) postProcessors)).anyMatch(
-        postProcessor -> postProcessor instanceof TracingMessagePostProcessor
-      ));
+      .asInstanceOf(iterable(MessagePostProcessor.class))
+      .anyMatch(postProcessor -> postProcessor instanceof TracingMessagePostProcessor);
   }
 
   @Test public void decorateSimpleRabbitListenerContainerFactory_adds_by_default() {
@@ -77,7 +79,7 @@ public class SpringRabbitTracingTest {
       .hasSize(1);
   }
 
-  @Test public void decorateSimpleRabbitListenerContainerFactory_appends_as_first_when_absent() {
+  @Test public void decorateSimpleRabbitListenerContainerFactory_prepends_as_first_when_absent() {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
     factory.setAdviceChain(new CacheInterceptor());
 
@@ -85,5 +87,36 @@ public class SpringRabbitTracingTest {
     assertThat(rabbitTracing.decorateSimpleRabbitListenerContainerFactory(factory).getAdviceChain())
       .hasSize(2)
       .matches(adviceArray -> adviceArray[0] instanceof TracingRabbitListenerAdvice);
+  }
+
+  @Test
+  public void decorateSimpleRabbitListenerContainerFactory_adds_TracingMessagePostProcessor() {
+    SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+    assertThat(rabbitTracing.decorateSimpleRabbitListenerContainerFactory(factory))
+      .extracting("beforeSendReplyPostProcessors")
+      .asInstanceOf(array(MessagePostProcessor[].class))
+      .allMatch(postProcessor -> postProcessor instanceof TracingMessagePostProcessor);
+  }
+
+  @Test
+  public void decorateSimpleRabbitListenerContainerFactory_skips_TracingMessagePostProcessor_when_present() {
+    SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+    factory.setBeforeSendReplyPostProcessors(new TracingMessagePostProcessor(rabbitTracing));
+
+    assertThat(rabbitTracing.decorateSimpleRabbitListenerContainerFactory(factory))
+      .extracting("beforeSendReplyPostProcessors")
+      .asInstanceOf(array(MessagePostProcessor[].class))
+      .hasSize(1);
+  }
+
+  @Test
+  public void decorateSimpleRabbitListenerContainerFactory_appends_TracingMessagePostProcessor_when_absent() {
+    SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+    factory.setBeforeSendReplyPostProcessors(new UnzipPostProcessor());
+
+    assertThat(rabbitTracing.decorateSimpleRabbitListenerContainerFactory(factory))
+      .extracting("beforeSendReplyPostProcessors")
+      .asInstanceOf(array(MessagePostProcessor[].class))
+      .matches(adviceArray -> adviceArray[1] instanceof TracingMessagePostProcessor);
   }
 }
