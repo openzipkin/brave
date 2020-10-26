@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 class TestServer {
   static final Key<String> CUSTOM_KEY = Key.of("custom", Metadata.ASCII_STRING_MARSHALLER);
   final BlockingQueue<Long> delayQueue = new LinkedBlockingQueue<>();
+  final BlockingQueue<Metadata> headers = new LinkedBlockingQueue<>();
   final BlockingQueue<TraceContextOrSamplingFlags> requests = new LinkedBlockingQueue<>();
   final Extractor<GrpcServerRequest> extractor;
   final Server server;
@@ -57,6 +58,7 @@ class TestServer {
                     throw new AssertionError("interrupted sleeping " + delay);
                   }
                 }
+                TestServer.this.headers.add(headers);
                 requests.add(extractor.extract(new GrpcServerRequest(nameToKey, call, headers)));
                 return next.startCall(new SimpleForwardingServerCall<ReqT, RespT>(call) {
                   @Override public void sendHeaders(Metadata headers) {

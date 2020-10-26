@@ -69,7 +69,7 @@ public final class RpcClientHandler extends RpcHandler<RpcClientRequest, RpcClie
   RpcClientHandler(RpcTracing rpcTracing) {
     super(rpcTracing.clientRequestParser(), rpcTracing.clientResponseParser());
     this.tracer = rpcTracing.tracing().tracer();
-    this.injector = rpcTracing.tracing.propagation().injector(RpcClientRequest.SETTER);
+    this.injector = rpcTracing.propagation().injector(RpcClientRequest.SETTER);
     this.sampler = rpcTracing.clientSampler();
   }
 

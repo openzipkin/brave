@@ -15,7 +15,10 @@ package brave.rpc;
 
 import brave.Span;
 import brave.Tracing;
+import brave.baggage.BaggagePropagation;
 import brave.internal.Nullable;
+import brave.propagation.B3Propagation;
+import brave.propagation.Propagation;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
 import java.io.Closeable;
@@ -118,6 +121,43 @@ public class RpcTracing implements Closeable {
     return serverSampler;
   }
 
+  /**
+   * Returns the propagation component used by RPC instrumentation.
+   *
+   * <p>Typically, this is the same as {@link Tracing#propagation()}. Overrides will apply to all
+   * RPC instrumentation in use. For example, Dubbo and also gRPC. If only trying to change B3
+   * related headers, use the more efficient {@link B3Propagation.FactoryBuilder#injectFormat(Span.Kind,
+   * B3Propagation.Format)} instead.
+   *
+   * <h3>Use caution when overriding</h3>
+   * If overriding this via {@link Builder#propagation(Propagation)}, take care to also delegate to
+   * {@link Tracing#propagation()}. Otherwise, you can break features something else may have set,
+   * such as {@link BaggagePropagation}.
+   *
+   * <h3>Library-specific formats</h3>
+   * RPC instrumentation can localize propagation changes by calling {@link #toBuilder()}, then
+   * {@link Builder#propagation(Propagation)}. This allows library-specific formats.
+   *
+   * <p>For example, gRPC has an undocumented format "grpc-trace-bin". Brave's implementation of
+   * {@code GrpcTracing} internally does the following to override, but only for this library:
+   *
+   * <p><pre>{@code
+   * if (grpcPropagationFormatEnabled) {
+   *   rpcTracing = builder.rpcTracing.toBuilder()
+   *     .propagation(GrpcPropagation.create(builder.rpcTracing.propagation()))
+   *     .build();
+   * } else {
+   *   rpcTracing = builder.rpcTracing;
+   * }
+   * }</pre>
+   *
+   * @see Tracing#propagation()
+   * @since 5.13
+   */
+  public Propagation<String> propagation() {
+    return propagation;
+  }
+
   public Builder toBuilder() {
     return new Builder(this);
   }
@@ -126,6 +166,7 @@ public class RpcTracing implements Closeable {
   final RpcRequestParser clientRequestParser, serverRequestParser;
   final RpcResponseParser clientResponseParser, serverResponseParser;
   final SamplerFunction<RpcRequest> clientSampler, serverSampler;
+  final Propagation<String> propagation;
 
   RpcTracing(Builder builder) {
     this.tracing = builder.tracing;
@@ -135,6 +176,7 @@ public class RpcTracing implements Closeable {
     this.serverResponseParser = builder.serverResponseParser;
     this.clientSampler = builder.clientSampler;
     this.serverSampler = builder.serverSampler;
+    this.propagation = builder.propagation;
     // assign current IFF there's no instance already current
     CURRENT.compareAndSet(null, this);
   }
@@ -144,10 +186,12 @@ public class RpcTracing implements Closeable {
     RpcRequestParser clientRequestParser, serverRequestParser;
     RpcResponseParser clientResponseParser, serverResponseParser;
     SamplerFunction<RpcRequest> clientSampler, serverSampler;
+    Propagation<String> propagation;
 
     Builder(Tracing tracing) {
       if (tracing == null) throw new NullPointerException("tracing == null");
       this.tracing = tracing;
+      this.propagation = tracing.propagation();
       this.clientRequestParser = this.serverRequestParser = RpcRequestParser.DEFAULT;
       this.clientResponseParser = this.serverResponseParser = RpcResponseParser.DEFAULT;
       this.clientSampler = SamplerFunctions.deferDecision();
@@ -156,6 +200,7 @@ public class RpcTracing implements Closeable {
 
     Builder(RpcTracing source) {
       this.tracing = source.tracing;
+      this.propagation = source.propagation;
       this.clientRequestParser = source.clientRequestParser;
       this.serverRequestParser = source.serverRequestParser;
       this.clientResponseParser = source.clientResponseParser;
@@ -238,6 +283,13 @@ public class RpcTracing implements Closeable {
     public Builder serverSampler(SamplerFunction<RpcRequest> serverSampler) {
       if (serverSampler == null) throw new NullPointerException("serverSampler == null");
       this.serverSampler = serverSampler;
+      return this;
+    }
+
+    /** @see RpcTracing#serverSampler() */
+    public Builder propagation(Propagation<String> propagation) {
+      if (propagation == null) throw new NullPointerException("propagation == null");
+      this.propagation = propagation;
       return this;
     }
 

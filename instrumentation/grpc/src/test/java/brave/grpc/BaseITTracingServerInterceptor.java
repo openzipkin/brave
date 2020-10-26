@@ -62,11 +62,13 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
+import static brave.grpc.GrpcPropagation.GRPC_TRACE_BIN;
 import static brave.rpc.RpcRequestMatchers.methodEquals;
 import static brave.rpc.RpcRequestMatchers.serviceEquals;
 import static brave.sampler.Sampler.ALWAYS_SAMPLE;
 import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
+import static io.grpc.stub.MetadataUtils.attachHeaders;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -253,6 +255,22 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote {
     assertThat(replies).toIterable().hasSize(10);
     // all response messages are tagged to the same span
     assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER).tags()).hasSize(10);
+  }
+
+  @Test public void deprecated_grpcPropagationFormatEnabled() throws IOException {
+    grpcTracing = grpcTracing.toBuilder().grpcPropagationFormatEnabled(true).build();
+    init();
+
+    TraceContext context = newTraceContext(SamplingFlags.SAMPLED);
+
+    // Add gRPC-encoded headers to the request
+    Metadata headers = new Metadata();
+    headers.put(GRPC_TRACE_BIN, TraceContextBinaryFormat.toBytes(context));
+    attachHeaders(GreeterGrpc.newBlockingStub(client), headers).sayHello(HELLO_REQUEST);
+
+    // Ensure that trace was continued
+    assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER).traceId())
+      .isEqualTo(context.traceIdString());
   }
 
   // Make sure we work well with bad user interceptors.

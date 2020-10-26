@@ -14,6 +14,8 @@
 package brave.rpc;
 
 import brave.Tracing;
+import brave.propagation.B3Propagation;
+import brave.propagation.Propagation;
 import org.junit.Test;
 
 import static brave.sampler.SamplerFunctions.deferDecision;
@@ -43,5 +45,25 @@ public class RpcTracingTest {
     assertThat(rpcTracing.toBuilder().clientSampler(neverSample()).build())
         .usingRecursiveComparison()
         .isEqualTo(RpcTracing.newBuilder(tracing).clientSampler(neverSample()).build());
+  }
+
+  @Test public void canOverridePropagation() {
+    Propagation<String> propagation = B3Propagation.newFactoryBuilder()
+      .injectFormat(B3Propagation.Format.SINGLE)
+      .build().get();
+
+    RpcTracing rpcTracing = RpcTracing.newBuilder(tracing)
+      .propagation(propagation)
+      .build();
+
+    assertThat(rpcTracing.propagation())
+      .isSameAs(propagation);
+
+    rpcTracing = RpcTracing.create(tracing).toBuilder()
+      .propagation(propagation)
+      .build();
+
+    assertThat(rpcTracing.propagation())
+      .isSameAs(propagation);
   }
 }
