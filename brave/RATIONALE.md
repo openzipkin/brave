@@ -19,7 +19,7 @@ Rationale here should be limited to impactful designs, and aspects non-obvious,
 non-conventional or subtle.
 
 ## Java conventions
-Brave 4's public namespace is more defensive that the past, using a package
+Brave 4's public namespace is more defensive than the past, using a package
 accessor design from [OkHttp](https://github.com/square/okhttp).
 
 We only expose types public internally or after significant demand. This keeps
@@ -34,7 +34,7 @@ utilities.
 Brave is a library with embedded use cases, such as inside Java agents or
 Android code.
 
-For example, Android has a []hard limit on total methods in an application](https://developer.android.com/studio/build/multidex#avoid).
+For example, Android has a [hard limit on total methods in an application](https://developer.android.com/studio/build/multidex#avoid).
 Fields marked private imply accessors in order to share state in the same
 package. We routinely share state, such as sampling flag internals inside a
 package. If we marked fields private, we'd count against that limit without
@@ -53,12 +53,22 @@ do support an "always share inside a package" in our repository. In other
 words, we trust our developers to proceed with caution. In the first seven
 years of project history, we have had no issues raised with this policy.
 
+### Java 1.6
+Brave is a telemetry library and can only trace applications in JREs that
+support its bytecode. Java 1.6 is still a traced technology of August 2020.
+Here's a quote from Fabian Lange of Instana, a tracing vendor, at that time:
+
+> We have 1.6 / 1.7 customers and we happily support them with our auto instrumentation.
+
+While other modules in this project are higher Java levels, the core library
+remains at 1.6. This allows the highest applicability at the cost of
+inconvenience to core library maintainers.
+
 ### Zero dependency policy
 Brave is a telemetry library, which means it is used inside other low-level
-libraries. We are unable to predict the version ranges of those libraries, and
-attempting to do that would limit the applicability of Brave, which is an anti-
-goal. Instead, we choose to use nothing except floor Java version features,
-currently Java 6.
+libraries. Attempting to do that would limit the applicability of Brave, which
+is an anti-goal. Instead, we choose to use nothing except floor Java version
+features, currently Java 6.
 
 Here's an example of when things that seem right aren't. We once dropped our
 internal `@Nullable` annotation (which is source retention), in favor of JSR
