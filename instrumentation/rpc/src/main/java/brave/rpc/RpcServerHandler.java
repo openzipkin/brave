@@ -68,7 +68,7 @@ public final class RpcServerHandler extends RpcHandler<RpcServerRequest, RpcServ
   RpcServerHandler(RpcTracing rpcTracing) {
     super(rpcTracing.serverRequestParser(), rpcTracing.serverResponseParser());
     this.tracer = rpcTracing.tracing().tracer();
-    this.extractor = rpcTracing.tracing().propagation().extractor(RpcServerRequest.GETTER);
+    this.extractor = rpcTracing.propagation().extractor(RpcServerRequest.GETTER);
     this.sampler = rpcTracing.serverSampler();
   }
 

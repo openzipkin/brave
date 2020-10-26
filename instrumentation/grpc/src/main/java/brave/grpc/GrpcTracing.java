@@ -14,7 +14,6 @@
 package brave.grpc;
 
 import brave.Tracing;
-import brave.propagation.Propagation;
 import brave.rpc.RpcRequestParser;
 import brave.rpc.RpcResponseParser;
 import brave.rpc.RpcTracing;
@@ -109,8 +108,11 @@ public final class GrpcTracing {
      *
      * <p>Warning: the format of both "grpc-trace-bin" is version 0. As such,
      * consider this feature experimental.
+     *
+     * @deprecated The only user of this format was Census, which was removed from gRPC in version
+     * v1.27.
      */
-    public Builder grpcPropagationFormatEnabled(boolean grpcPropagationFormatEnabled) {
+    @Deprecated public Builder grpcPropagationFormatEnabled(boolean grpcPropagationFormatEnabled) {
       this.grpcPropagationFormatEnabled = grpcPropagationFormatEnabled;
       return this;
     }
@@ -121,7 +123,6 @@ public final class GrpcTracing {
   }
 
   final RpcTracing rpcTracing;
-  final Propagation<String> propagation;
   final Map<String, Metadata.Key<String>> nameToKey;
   final boolean grpcPropagationFormatEnabled;
 
@@ -129,14 +130,18 @@ public final class GrpcTracing {
   final MessageProcessor clientMessageProcessor, serverMessageProcessor;
 
   GrpcTracing(Builder builder) { // intentionally hidden constructor
-    rpcTracing = builder.rpcTracing;
     grpcPropagationFormatEnabled = builder.grpcPropagationFormatEnabled;
+
+    // Decorate so that grpc-specific formats are sent downstream
     if (grpcPropagationFormatEnabled) {
-      propagation = GrpcPropagation.create(rpcTracing.tracing().propagation());
+      rpcTracing = builder.rpcTracing.toBuilder()
+        .propagation(GrpcPropagation.create(builder.rpcTracing.propagation()))
+        .build();
     } else {
-      propagation = rpcTracing.tracing().propagation();
+      rpcTracing = builder.rpcTracing;
     }
-    nameToKey = GrpcPropagation.nameToKey(propagation);
+
+    nameToKey = GrpcPropagation.nameToKey(rpcTracing.propagation());
     clientMessageProcessor = builder.clientMessageProcessor;
     serverMessageProcessor = builder.serverMessageProcessor;
   }

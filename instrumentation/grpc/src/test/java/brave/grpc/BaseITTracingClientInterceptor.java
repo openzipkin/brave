@@ -58,6 +58,7 @@ import org.junit.Test;
 
 import static brave.Span.Kind.CLIENT;
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
+import static brave.grpc.GrpcPropagation.GRPC_TRACE_BIN;
 import static brave.rpc.RpcRequestMatchers.methodEquals;
 import static brave.rpc.RpcRequestMatchers.serviceEquals;
 import static brave.sampler.Sampler.ALWAYS_SAMPLE;
@@ -68,7 +69,7 @@ import static org.junit.Assume.assumeTrue;
 
 public abstract class BaseITTracingClientInterceptor extends ITRemote {
   GrpcTracing grpcTracing = GrpcTracing.create(tracing);
-  TestServer server = new TestServer(grpcTracing.nameToKey, grpcTracing.propagation);
+  TestServer server = new TestServer(grpcTracing.nameToKey, grpcTracing.rpcTracing.propagation());
   ManagedChannel client;
 
   @Before public void setup() throws IOException {
@@ -309,6 +310,22 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
         "grpc.message_received.visible", "grpc.message_sent.visible"
     );
     testSpanHandler.takeLocalSpan();
+  }
+
+  @Test public void deprecated_grpcPropagationFormatEnabled() {
+    closeClient(client);
+    grpcTracing = grpcTracing.toBuilder().grpcPropagationFormatEnabled(true).build();
+    client = newClient();
+
+    GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
+
+    // Check the grpc-trace-bin header was sent and equal to the one encoded with B3
+    Metadata headers = server.headers.poll();
+    byte[] traceBin = headers.get(GRPC_TRACE_BIN);
+    assertThat(TraceContextBinaryFormat.parseBytes(traceBin, null))
+      .isEqualTo(server.requests.poll().context());
+
+    testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
   @Test public void deprecated_clientParserTestStreamingResponse() {
