@@ -14,6 +14,8 @@
 package brave.http;
 
 import brave.Tracing;
+import brave.propagation.B3Propagation;
+import brave.propagation.Propagation;
 import org.junit.Test;
 
 import static brave.sampler.SamplerFunctions.deferDecision;
@@ -25,23 +27,43 @@ public class HttpTracingTest {
   Tracing tracing = mock(Tracing.class);
 
   @Test public void defaultSamplersDefer() {
-    HttpTracing rpcTracing = HttpTracing.newBuilder(tracing).build();
+    HttpTracing httpTracing = HttpTracing.newBuilder(tracing).build();
 
-    assertThat(rpcTracing.clientRequestSampler())
+    assertThat(httpTracing.clientRequestSampler())
       .isSameAs(deferDecision());
-    assertThat(rpcTracing.serverRequestSampler())
+    assertThat(httpTracing.serverRequestSampler())
       .isSameAs(deferDecision());
   }
 
   @Test public void toBuilder() {
-    HttpTracing rpcTracing = HttpTracing.newBuilder(tracing).build();
+    HttpTracing httpTracing = HttpTracing.newBuilder(tracing).build();
 
-    assertThat(rpcTracing.toBuilder().build())
+    assertThat(httpTracing.toBuilder().build())
       .usingRecursiveComparison()
-      .isEqualTo(rpcTracing);
+      .isEqualTo(httpTracing);
 
-    assertThat(rpcTracing.toBuilder().clientSampler(neverSample()).build())
+    assertThat(httpTracing.toBuilder().clientSampler(neverSample()).build())
       .usingRecursiveComparison()
       .isEqualTo(HttpTracing.newBuilder(tracing).clientSampler(neverSample()).build());
+  }
+
+  @Test public void canOverridePropagation() {
+    Propagation<String> propagation = B3Propagation.newFactoryBuilder()
+      .injectFormat(B3Propagation.Format.SINGLE)
+      .build().get();
+
+    HttpTracing httpTracing = HttpTracing.newBuilder(tracing)
+      .propagation(propagation)
+      .build();
+
+    assertThat(httpTracing.propagation())
+      .isSameAs(propagation);
+
+    httpTracing = httpTracing.create(tracing).toBuilder()
+      .propagation(propagation)
+      .build();
+
+    assertThat(httpTracing.propagation())
+      .isSameAs(propagation);
   }
 }

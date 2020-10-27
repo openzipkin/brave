@@ -15,7 +15,10 @@ package brave.http;
 
 import brave.Span;
 import brave.Tracing;
+import brave.baggage.BaggagePropagation;
 import brave.internal.Nullable;
+import brave.propagation.B3Propagation;
+import brave.propagation.Propagation;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
 import java.io.Closeable;
@@ -82,7 +85,7 @@ public class HttpTracing implements Closeable {
 
   /**
    * Used by http clients to indicate the name of the destination service.
-   *
+   * <p>
    * Defaults to "", which will not show in the zipkin UI or end up in the dependency graph.
    *
    * <p>When present, a link from {@link Tracing.Builder#localServiceName(String)} to this name
@@ -90,7 +93,7 @@ public class HttpTracing implements Closeable {
    *
    * <p>As this is endpoint-specific, it is typical to create a scoped instance of {@linkplain
    * HttpTracing} to assign this value.
-   *
+   * <p>
    * For example:
    * <pre>{@code
    * github = TracingHttpClientBuilder.create(httpTracing.clientOf("github"));
@@ -187,6 +190,35 @@ public class HttpTracing implements Closeable {
     return serverSampler;
   }
 
+  /**
+   * Returns the propagation component used by HTTP instrumentation.
+   *
+   * <p>Typically, this is the same as {@link Tracing#propagation()}. Overrides will apply to all
+   * HTTP instrumentation in use. For example, Servlet and also OkHttp. If only trying to change B3
+   * related headers, use the more efficient {@link B3Propagation.FactoryBuilder#injectFormat(Span.Kind,
+   * B3Propagation.Format)} instead.
+   *
+   * <h3>Use caution when overriding</h3>
+   * If overriding this via {@link Builder#propagation(Propagation)}, take care to also delegate to
+   * {@link Tracing#propagation()}. Otherwise, you can break features something else may have set,
+   * such as {@link BaggagePropagation}.
+   *
+   * <h3>Library-specific formats</h3>
+   * HTTP instrumentation can localize propagation changes by calling {@link #toBuilder()}, then
+   * {@link Builder#propagation(Propagation)}. This allows library-specific formats.
+   *
+   * <p>For example, cloud SDKs often use HTTP (or REST) APIs for communication. These endpoints
+   * may hemselves be traceable, in a cloud-specific or otherwise different format than what general
+   * applications use. SDK instrumentation can override the propagation component to solely use
+   * their format, and drop any {@link BaggagePropagation baggage}.
+   *
+   * @see Tracing#propagation()
+   * @since 5.13
+   */
+  public Propagation<String> propagation() {
+    return propagation;
+  }
+
   public Builder toBuilder() {
     return new Builder(this);
   }
@@ -195,6 +227,7 @@ public class HttpTracing implements Closeable {
   final HttpRequestParser clientRequestParser, serverRequestParser;
   final HttpResponseParser clientResponseParser, serverResponseParser;
   final SamplerFunction<HttpRequest> clientSampler, serverSampler;
+  final Propagation<String> propagation;
   final String serverName;
 
   HttpTracing(Builder builder) {
@@ -205,6 +238,7 @@ public class HttpTracing implements Closeable {
     this.serverResponseParser = builder.serverResponseParser;
     this.clientSampler = builder.clientSampler;
     this.serverSampler = builder.serverSampler;
+    this.propagation = builder.propagation;
     this.serverName = builder.serverName;
     // assign current IFF there's no instance already current
     CURRENT.compareAndSet(null, this);
@@ -215,15 +249,17 @@ public class HttpTracing implements Closeable {
     HttpRequestParser clientRequestParser, serverRequestParser;
     HttpResponseParser clientResponseParser, serverResponseParser;
     SamplerFunction<HttpRequest> clientSampler, serverSampler;
+    Propagation<String> propagation;
     String serverName;
 
     Builder(Tracing tracing) {
       if (tracing == null) throw new NullPointerException("tracing == null");
       this.tracing = tracing;
-      this.serverName = "";
       this.clientRequestParser = this.serverRequestParser = HttpRequestParser.DEFAULT;
       this.clientResponseParser = this.serverResponseParser = HttpResponseParser.DEFAULT;
       this.clientSampler = this.serverSampler = SamplerFunctions.deferDecision();
+      this.propagation = tracing.propagation();
+      this.serverName = "";
     }
 
     Builder(HttpTracing source) {
@@ -234,6 +270,7 @@ public class HttpTracing implements Closeable {
       this.serverResponseParser = source.serverResponseParser;
       this.clientSampler = source.clientSampler;
       this.serverSampler = source.serverSampler;
+      this.propagation = source.propagation;
       this.serverName = source.serverName;
     }
 
@@ -363,6 +400,13 @@ public class HttpTracing implements Closeable {
     public Builder serverSampler(SamplerFunction<HttpRequest> serverSampler) {
       if (serverSampler == null) throw new NullPointerException("serverSampler == null");
       this.serverSampler = toHttpRequestSampler(serverSampler);
+      return this;
+    }
+
+    /** @see HttpTracing#propagation() */
+    public Builder propagation(Propagation<String> propagation) {
+      if (propagation == null) throw new NullPointerException("propagation == null");
+      this.propagation = propagation;
       return this;
     }
 

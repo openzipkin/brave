@@ -94,7 +94,7 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
     this.sampler = httpTracing.serverRequestSampler();
     // The following allows us to add the method: handleReceive(HttpServerRequest request) without
     // duplicating logic from the superclass or deprecated handleReceive methods.
-    this.defaultExtractor = httpTracing.tracing().propagation().extractor(HttpServerRequest.GETTER);
+    this.defaultExtractor = httpTracing.propagation().extractor(HttpServerRequest.GETTER);
   }
 
   /**
