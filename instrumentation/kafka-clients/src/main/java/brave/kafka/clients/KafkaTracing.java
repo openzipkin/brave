@@ -141,7 +141,7 @@ public final class KafkaTracing {
   KafkaTracing(Builder builder) { // intentionally hidden constructor
     this.messagingTracing = builder.messagingTracing;
     this.tracer = builder.messagingTracing.tracing().tracer();
-    Propagation<String> propagation = messagingTracing.tracing().propagation();
+    Propagation<String> propagation = messagingTracing.propagation();
     this.producerExtractor = propagation.extractor(KafkaProducerRequest.GETTER);
     this.consumerExtractor = propagation.extractor(KafkaConsumerRequest.GETTER);
     this.processorExtractor = propagation.extractor(GETTER);
