@@ -144,7 +144,7 @@ public final class JmsTracing {
   JmsTracing(Builder builder) { // intentionally hidden constructor
     this.tracing = builder.messagingTracing.tracing();
     this.tracer = tracing.tracer();
-    Propagation<String> propagation = tracing.propagation();
+    Propagation<String> propagation = builder.messagingTracing.propagation();
     if (JmsTypes.HAS_JMS_PRODUCER) {
       this.jmsProducerExtractor = propagation.extractor(JMSProducerRequest.GETTER);
       this.jmsProducerInjector = propagation.injector(JMSProducerRequest.SETTER);
@@ -156,11 +156,11 @@ public final class JmsTracing {
     this.messageProducerInjector = propagation.injector(MessageProducerRequest.SETTER);
     this.messageConsumerExtractor = propagation.extractor(MessageConsumerRequest.GETTER);
     this.messageConsumerInjector = propagation.injector(MessageConsumerRequest.SETTER);
-    this.processorExtractor = tracing.propagation().extractor(GETTER);
+    this.processorExtractor = propagation.extractor(GETTER);
     this.producerSampler = builder.messagingTracing.producerSampler();
     this.consumerSampler = builder.messagingTracing.consumerSampler();
     this.remoteServiceName = builder.remoteServiceName;
-    this.traceIdProperties = new LinkedHashSet<>(tracing.propagation().keys());
+    this.traceIdProperties = new LinkedHashSet<>(propagation.keys());
   }
 
   public Connection connection(Connection connection) {

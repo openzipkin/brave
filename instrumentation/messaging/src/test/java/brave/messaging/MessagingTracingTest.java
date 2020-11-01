@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,6 +14,8 @@
 package brave.messaging;
 
 import brave.Tracing;
+import brave.propagation.B3Propagation;
+import brave.propagation.Propagation;
 import org.junit.Test;
 
 import static brave.sampler.SamplerFunctions.deferDecision;
@@ -43,5 +45,25 @@ public class MessagingTracingTest {
     assertThat(messagingTracing.toBuilder().producerSampler(neverSample()).build())
       .usingRecursiveComparison()
       .isEqualTo(MessagingTracing.newBuilder(tracing).producerSampler(neverSample()).build());
+  }
+
+  @Test public void canOverridePropagation() {
+    Propagation<String> propagation = B3Propagation.newFactoryBuilder()
+      .injectFormat(B3Propagation.Format.SINGLE)
+      .build().get();
+
+    MessagingTracing messagingTracing = MessagingTracing.newBuilder(tracing)
+      .propagation(propagation)
+      .build();
+
+    assertThat(messagingTracing.propagation())
+      .isSameAs(propagation);
+
+    messagingTracing = MessagingTracing.create(tracing).toBuilder()
+      .propagation(propagation)
+      .build();
+
+    assertThat(messagingTracing.propagation())
+      .isSameAs(propagation);
   }
 }

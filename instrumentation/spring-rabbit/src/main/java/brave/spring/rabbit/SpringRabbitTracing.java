@@ -113,7 +113,7 @@ public final class SpringRabbitTracing {
     this.tracing = builder.messagingTracing.tracing();
     this.tracer = tracing.tracer();
     MessagingTracing messagingTracing = builder.messagingTracing;
-    Propagation<String> propagation = tracing.propagation();
+    Propagation<String> propagation = messagingTracing.propagation();
     this.producerExtractor = propagation.extractor(MessageProducerRequest.GETTER);
     this.consumerExtractor = propagation.extractor(MessageConsumerRequest.GETTER);
     this.producerInjector = propagation.injector(MessageProducerRequest.SETTER);

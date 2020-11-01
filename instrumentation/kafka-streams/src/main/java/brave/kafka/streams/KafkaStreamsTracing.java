@@ -61,7 +61,7 @@ public final class KafkaStreamsTracing {
       .singleRootSpanOnReceiveBatch(builder.singleRootSpanOnReceiveBatch)
       .build();
     this.tracer = kafkaTracing.messagingTracing().tracing().tracer();
-    Propagation<String> propagation = kafkaTracing.messagingTracing().tracing().propagation();
+    Propagation<String> propagation = kafkaTracing.messagingTracing().propagation();
     this.extractor = propagation.extractor(KafkaStreamsPropagation.GETTER);
     this.injector = propagation.injector(KafkaStreamsPropagation.SETTER);
     this.propagationKeys = new LinkedHashSet<>(propagation.keys());
@@ -96,7 +96,7 @@ public final class KafkaStreamsTracing {
   /**
    * Provides a {@link KafkaClientSupplier} with tracing enabled, hence Producer and Consumer
    * operations will be traced.
-   *
+   * <p>
    * This is mean to be used in scenarios {@link KafkaStreams} creation is not controlled by the
    * user but framework (e.g. Spring Kafka Streams) creates it, and {@link KafkaClientSupplier} is
    * accepted.
@@ -109,7 +109,7 @@ public final class KafkaStreamsTracing {
    * Creates a {@link KafkaStreams} instance with a tracing-enabled {@link KafkaClientSupplier}. All
    * Topology Sources and Sinks (including internal Topics) will create Spans on records processed
    * (i.e. send or consumed).
-   *
+   * <p>
    * Use this instead of {@link KafkaStreams} constructor.
    *
    * <p>Simple example:
@@ -237,7 +237,7 @@ public final class KafkaStreamsTracing {
   /**
    * Create a mark transformer, similar to {@link KStream#peek(ForeachAction)}, but no action is
    * executed. Instead, only a span is created to represent an event as part of the stream process.
-   *
+   * <p>
    * A common scenario for this transformer is to mark the beginning and end of a step (or set of
    * steps) in a stream process.
    *
@@ -309,11 +309,11 @@ public final class KafkaStreamsTracing {
 
   /**
    * Create a filter transformer.
-   *
+   * <p>
    * WARNING: this filter implementation uses the Streams transform API, meaning that
    * re-partitioning can occur if a key modifying operation like grouping or joining operation is
    * applied after this filter.
-   *
+   * <p>
    * In that case, consider using {@link #markAsFiltered(String, Predicate)} instead which uses
    * {@link ValueTransformerWithKey} API instead.
    *
@@ -332,7 +332,7 @@ public final class KafkaStreamsTracing {
 
   /**
    * Create a filterNot transformer.
-   *
+   * <p>
    * WARNING: this filter implementation uses the Streams transform API, meaning that
    * re-partitioning can occur if a key modifying operation like grouping or joining operation is
    * applied after this filter. In that case, consider using {@link #markAsNotFiltered(String,
@@ -353,12 +353,12 @@ public final class KafkaStreamsTracing {
 
   /**
    * Create a markAsFiltered valueTransformer.
-   *
+   * <p>
    * Instead of filtering, and not emitting values downstream as {@code filter} does; {@code
    * markAsFiltered} creates a span, marking it as filtered or not. If filtered, value returned will
    * be {@code null} and will require an additional non-null value filter to complete the
    * filtering.
-   *
+   * <p>
    * This operation is offered as lack of a processor that allows to continue conditionally with the
    * processing without risk of accidental re-partitioning.
    *
@@ -378,12 +378,12 @@ public final class KafkaStreamsTracing {
 
   /**
    * Create a markAsNotFiltered valueTransformer.
-   *
+   * <p>
    * Instead of filtering, and not emitting values downstream as {@code filterNot} does; {@code
    * markAsNotFiltered} creates a span, marking it as filtered or not. If filtered, value returned
    * will be {@code null} and will require an additional non-null value filter to complete the
    * filtering.
-   *
+   * <p>
    * This operation is offered as lack of a processor that allows to continue conditionally with the
    * processing without risk of accidental re-partitioning.
    *

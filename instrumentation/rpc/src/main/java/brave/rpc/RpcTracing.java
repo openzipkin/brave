@@ -286,7 +286,7 @@ public class RpcTracing implements Closeable {
       return this;
     }
 
-    /** @see RpcTracing#serverSampler() */
+    /** @see RpcTracing#propagation() */
     public Builder propagation(Propagation<String> propagation) {
       if (propagation == null) throw new NullPointerException("propagation == null");
       this.propagation = propagation;
