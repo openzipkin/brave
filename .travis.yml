@@ -19,8 +19,7 @@ cache:
 before_install:
   - |
     # Intentionally don't use "jdk" Travis apt key as it is coupled to jdk.java.net availability.
-    # Use JDK 11, so we can release Java 6 bytecode
-    OPENJDK_VERSION=11
+    OPENJDK_VERSION=14
     sudo apt-get -y install openjdk-${OPENJDK_VERSION}-jdk
     export JAVA_HOME=/usr/lib/jvm/java-${OPENJDK_VERSION}-openjdk-${TRAVIS_CPU_ARCH}/
     ./mvnw -version
