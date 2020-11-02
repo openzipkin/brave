@@ -36,6 +36,8 @@
     <!-- use the same values in ../pom.xml -->
     <zipkin.version>2.22.1</zipkin.version>
     <zipkin-reporter.version>2.15.4</zipkin-reporter.version>
+
+    <nexus-staging-maven-plugin.version>1.6.8</nexus-staging-maven-plugin.version>
   </properties>
 
   <organization>
