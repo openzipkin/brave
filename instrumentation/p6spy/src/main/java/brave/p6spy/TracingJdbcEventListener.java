@@ -29,8 +29,9 @@ import static brave.Span.Kind.CLIENT;
 
 final class TracingJdbcEventListener extends SimpleJdbcEventListener {
 
+  // Captures all the characters between = and either the next & or the end of the string.
   private static final Pattern URL_SERVICE_NAME_FINDER =
-    Pattern.compile("zipkinServiceName=(\\w*)");
+    Pattern.compile("zipkinServiceName=(.*?)(?:&|$)");
 
   @Nullable final String remoteServiceName;
   final boolean includeParameterValues;
