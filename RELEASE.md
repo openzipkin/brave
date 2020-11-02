@@ -187,4 +187,4 @@ Note that
 * The `fromVersion` and `toVersion` reflect the latest patch version of each release.
 * The output directory does not include the patch version number.
 * The `-p` parameter specifies the packages to include in the jdiff report,
-you can look at [bnd.bnd](zipkin/bnd.bnd) to see which packages we export. This rarely changes.
+you can look at [bnd.bnd](brave/bnd.bnd) to see which packages we export. This rarely changes.
