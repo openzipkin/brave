@@ -19,12 +19,6 @@ services:
 
 before_install:
   - |
-    # Intentionally don't use "jdk" Travis apt key as it is coupled to jdk.java.net availability.
-    OPENJDK_VERSION=14
-    sudo apt-get -y install openjdk-${OPENJDK_VERSION}-jdk
-    export JAVA_HOME=/usr/lib/jvm/java-${OPENJDK_VERSION}-openjdk-${TRAVIS_CPU_ARCH}/
-    ./mvnw -version
-  - |
     # Cache as help:evaluate is not quick
     export POM_VERSION=$(./mvnw help:evaluate -N -Dexpression=project.version -q -DforceStdout)
 
