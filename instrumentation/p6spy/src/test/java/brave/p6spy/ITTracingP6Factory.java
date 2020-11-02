@@ -44,7 +44,7 @@ public class ITTracingP6Factory {
   StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing = Tracing.newBuilder()
-      .currentTraceContext(currentTraceContext).addSpanHandler(spans).build();
+    .currentTraceContext(currentTraceContext).addSpanHandler(spans).build();
   Connection connection;
 
   @Before
