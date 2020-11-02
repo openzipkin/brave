@@ -261,10 +261,10 @@ public final class KafkaTracing {
    * <p>Ex.
    * <pre>{@code
    * try {
-   *    return message.getStringProperty(name);
-   *  } catch (Throwable t) {
+   *    tracePropagationThatMayThrow(record);
+   *  } catch (Throwable e) {
    *    Call.propagateIfFatal(e);
-   *    log(e, "error getting property {0} from message {1}", name, message);
+   *    log(e, "error adding propagation information to {0}", record, null);
    *    return null;
    *  }
    * }</pre>
