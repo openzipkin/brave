@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 import org.apache.kafka.clients.producer.MockProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.Test;
 
 import static brave.Span.Kind.PRODUCER;
@@ -125,5 +126,11 @@ public class TracingProducerTest extends KafkaTest {
     assertThat(producerSpan.kind()).isEqualTo(PRODUCER);
     assertThat(producerSpan.tags())
       .containsOnly(entry("kafka.topic", TEST_TOPIC));
+  }
+
+  @Test public void should_not_error_if_headers_are_read_only() {
+    final ProducerRecord<Object, String> record = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
+    ((RecordHeaders) record.headers()).setReadOnly();
+    tracingProducer.send(record);
   }
 }

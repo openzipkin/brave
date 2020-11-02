@@ -14,6 +14,7 @@
 package brave.kafka.clients;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,5 +46,10 @@ public class KafkaHeadersTest {
 
     assertThat(record.headers().lastHeader("b3").value())
         .containsExactly('1');
+  }
+
+  @Test public void replaceHeader_readonly() {
+    ((RecordHeaders) record.headers()).setReadOnly();
+    KafkaHeaders.replaceHeader(record.headers(), "b3", "1");
   }
 }

@@ -17,12 +17,17 @@ import brave.internal.Nullable;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 
+import static brave.kafka.clients.KafkaTracing.log;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 final class KafkaHeaders {
   static void replaceHeader(Headers headers, String key, String value) {
-    headers.remove(key);
-    headers.add(key, value.getBytes(UTF_8));
+    try {
+      headers.remove(key);
+      headers.add(key, value.getBytes(UTF_8));
+    } catch (IllegalStateException e) {
+      log(e, "error setting header {0} in headers {1}", key, headers);
+    }
   }
 
   @Nullable static String lastStringHeader(Headers headers, String key) {

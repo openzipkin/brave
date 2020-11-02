@@ -17,6 +17,7 @@ import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.Tracing;
+import brave.internal.Nullable;
 import brave.messaging.MessagingRequest;
 import brave.messaging.MessagingTracing;
 import brave.propagation.B3Propagation;
@@ -29,6 +30,10 @@ import brave.sampler.SamplerFunction;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
+
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.Producer;
@@ -49,6 +54,10 @@ public final class KafkaTracing {
       return "Headers::lastHeader";
     }
   };
+  // Use nested class to ensure logger isn't initialized unless it is accessed once.
+  private static final class LoggerHolder {
+    static final Logger LOG = Logger.getLogger(KafkaTracing.class.getName());
+  }
 
   public static KafkaTracing create(Tracing tracing) {
     return newBuilder(tracing).build();
@@ -242,5 +251,36 @@ public final class KafkaTracing {
       result.tag(KafkaTags.KAFKA_KEY_TAG, record.key().toString());
     }
     result.tag(KafkaTags.KAFKA_TOPIC_TAG, record.topic());
+  }
+
+
+  /**
+   * Avoids array allocation when logging a parameterized message when fine level is disabled. The
+   * second parameter is optional.
+   *
+   * <p>Ex.
+   * <pre>{@code
+   * try {
+   *    tracePropagationThatMayThrow(record);
+   *  } catch (Throwable e) {
+   *    Call.propagateIfFatal(e);
+   *    log(e, "error adding propagation information to {0}", record, null);
+   *    return null;
+   *  }
+   * }</pre>
+   *
+   * @param thrown the exception that was caught
+   * @param msg the format string
+   * @param zero will end up as {@code {0}} in the format string
+   * @param one if present, will end up as {@code {1}} in the format string
+   */
+  static void log(Throwable thrown, String msg, Object zero, @Nullable Object one) {
+    Logger logger = LoggerHolder.LOG;
+    if (!logger.isLoggable(Level.FINE)) return; // fine level to not fill logs
+    LogRecord lr = new LogRecord(Level.FINE, msg);
+    Object[] params = one != null ? new Object[] {zero, one} : new Object[] {zero};
+    lr.setParameters(params);
+    lr.setThrown(thrown);
+    logger.log(lr);
   }
 }
