@@ -118,8 +118,7 @@ public class TracingProducerTest extends KafkaTest {
       .containsOnly(entry("kafka.topic", TEST_TOPIC));
   }
 
-  @Test
-  public void send_shouldnt_tag_binary_key() {
+  @Test public void send_shouldnt_tag_binary_key() {
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, new byte[1], TEST_VALUE));
     mockProducer.completeNext();
 
@@ -129,8 +128,7 @@ public class TracingProducerTest extends KafkaTest {
       .containsOnly(entry("kafka.topic", TEST_TOPIC));
   }
 
-  @Test
-  public void should_not_error_if_headers_are_read_only() {
+  @Test public void should_not_error_if_headers_are_read_only() {
     final ProducerRecord<Object, String> record = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
     ((RecordHeaders) record.headers()).setReadOnly();
     tracingProducer.send(record);
