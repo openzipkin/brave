@@ -14,6 +14,7 @@
 package brave.spring.beans;
 
 import brave.Tracing;
+import brave.propagation.Propagation;
 import brave.rpc.RpcRequest;
 import brave.rpc.RpcRequestParser;
 import brave.rpc.RpcResponseParser;
@@ -29,6 +30,7 @@ public class RpcTracingFactoryBean implements FactoryBean {
   SamplerFunction<RpcRequest> clientSampler, serverSampler;
   RpcRequestParser clientRequestParser, serverRequestParser;
   RpcResponseParser clientResponseParser, serverResponseParser;
+  Propagation<String> propagation;
   List<RpcTracingCustomizer> customizers;
 
   @Override public RpcTracing getObject() {
@@ -39,6 +41,7 @@ public class RpcTracingFactoryBean implements FactoryBean {
     if (serverResponseParser != null) builder.serverResponseParser(serverResponseParser);
     if (clientSampler != null) builder.clientSampler(clientSampler);
     if (serverSampler != null) builder.serverSampler(serverSampler);
+    if (propagation != null) builder.propagation(propagation);
     if (customizers != null) {
       for (RpcTracingCustomizer customizer : customizers) customizer.customize(builder);
     }
@@ -79,6 +82,10 @@ public class RpcTracingFactoryBean implements FactoryBean {
 
   public void setServerSampler(SamplerFunction<RpcRequest> serverSampler) {
     this.serverSampler = serverSampler;
+  }
+
+  public void setPropagation(Propagation<String> propagation) {
+    this.propagation = propagation;
   }
 
   public void setCustomizers(List<RpcTracingCustomizer> customizers) {
