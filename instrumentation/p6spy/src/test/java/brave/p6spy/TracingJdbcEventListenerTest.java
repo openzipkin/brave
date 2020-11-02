@@ -155,8 +155,7 @@ public class TracingJdbcEventListenerTest {
     @Parameterized.Parameter(0) public String queryString;
     @Parameterized.Parameter(1) public String remoteServiceName;
 
-    @Test
-    public void parseServerIpAndPort_overridesRemoteServiceNameFromUrlParameter()
+    @Test public void parseServerIpAndPort_overridesRemoteServiceNameFromUrlParameter()
       throws SQLException {
       when(connection.getMetaData()).thenReturn(metaData);
       when(metaData.getURL()).thenReturn("jdbc:mysql://1.2.3.4:5555/mydatabase" + queryString);
