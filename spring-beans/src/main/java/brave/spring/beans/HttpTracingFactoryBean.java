@@ -21,6 +21,7 @@ import brave.http.HttpResponseParser;
 import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
 import brave.http.HttpTracingCustomizer;
+import brave.propagation.Propagation;
 import brave.sampler.SamplerFunction;
 import java.util.List;
 import org.apache.commons.logging.Log;
@@ -38,6 +39,7 @@ public class HttpTracingFactoryBean implements FactoryBean {
   HttpRequestParser clientRequestParser, serverRequestParser;
   HttpResponseParser clientResponseParser, serverResponseParser;
   SamplerFunction<HttpRequest> clientSampler, serverSampler;
+  Propagation<String> propagation;
   List<HttpTracingCustomizer> customizers;
 
   @Override public HttpTracing getObject() {
@@ -50,6 +52,7 @@ public class HttpTracingFactoryBean implements FactoryBean {
     if (serverParser != null) builder.serverParser(serverParser);
     if (clientSampler != null) builder.clientSampler(clientSampler);
     if (serverSampler != null) builder.serverSampler(serverSampler);
+    if (propagation != null) builder.propagation(propagation);
     if (customizers != null) {
       for (HttpTracingCustomizer customizer : customizers) customizer.customize(builder);
     }
@@ -70,7 +73,7 @@ public class HttpTracingFactoryBean implements FactoryBean {
 
   @Deprecated public void setClientParser(HttpClientParser clientParser) {
     logger.warn("The property 'setClientParser' will be removed in a future release.\n"
-        + "Use the property 'clientRequestParser' or 'clientResponseParser' instead");
+      + "Use the property 'clientRequestParser' or 'clientResponseParser' instead");
     this.clientParser = clientParser;
   }
 
@@ -92,7 +95,7 @@ public class HttpTracingFactoryBean implements FactoryBean {
 
   @Deprecated public void setServerParser(HttpServerParser serverParser) {
     logger.warn("The property 'setServerParser' will be removed in a future release.\n"
-        + "Use the property 'serverRequestParser' or 'serverResponseParser' instead");
+      + "Use the property 'serverRequestParser' or 'serverResponseParser' instead");
     this.serverParser = serverParser;
   }
 
@@ -102,6 +105,10 @@ public class HttpTracingFactoryBean implements FactoryBean {
 
   public void setServerSampler(SamplerFunction<HttpRequest> serverSampler) {
     this.serverSampler = serverSampler;
+  }
+
+  public void setPropagation(Propagation<String> propagation) {
+    this.propagation = propagation;
   }
 
   public void setCustomizers(List<HttpTracingCustomizer> customizers) {

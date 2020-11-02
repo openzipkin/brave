@@ -16,6 +16,7 @@ package brave.spring.beans;
 import brave.Tracing;
 import brave.messaging.MessagingTracing;
 import brave.messaging.MessagingTracingCustomizer;
+import brave.propagation.Propagation;
 import brave.sampler.SamplerFunctions;
 import org.junit.After;
 import org.junit.Test;
@@ -28,6 +29,7 @@ import static org.mockito.Mockito.verify;
 public class MessagingTracingFactoryBeanTest {
 
   public static Tracing TRACING = mock(Tracing.class);
+  public static Propagation<String> PROPAGATION = mock(Propagation.class);
 
   XmlBeans context;
 
@@ -79,6 +81,22 @@ public class MessagingTracingFactoryBeanTest {
 
     assertThat(context.getBean("messagingTracing", MessagingTracing.class).consumerSampler())
       .isEqualTo(SamplerFunctions.neverSample());
+  }
+
+  @Test public void propagation() {
+    context = new XmlBeans(""
+      + "<bean id=\"messagingTracing\" class=\"brave.spring.beans.MessagingTracingFactoryBean\">\n"
+      + "  <property name=\"tracing\">\n"
+      + "    <util:constant static-field=\"" + getClass().getName() + ".TRACING\"/>\n"
+      + "  </property>\n"
+      + "  <property name=\"propagation\">\n"
+      + "    <util:constant static-field=\"" + getClass().getName() + ".PROPAGATION\"/>\n"
+      + "  </property>\n"
+      + "</bean>"
+    );
+
+    assertThat(context.getBean("messagingTracing", MessagingTracing.class).propagation())
+      .isEqualTo(PROPAGATION);
   }
 
   public static final MessagingTracingCustomizer CUSTOMIZER_ONE =

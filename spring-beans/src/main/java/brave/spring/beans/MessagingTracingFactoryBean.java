@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,6 +17,7 @@ import brave.Tracing;
 import brave.messaging.MessagingRequest;
 import brave.messaging.MessagingTracing;
 import brave.messaging.MessagingTracingCustomizer;
+import brave.propagation.Propagation;
 import brave.sampler.SamplerFunction;
 import java.util.List;
 import org.springframework.beans.factory.FactoryBean;
@@ -25,12 +26,14 @@ import org.springframework.beans.factory.FactoryBean;
 public class MessagingTracingFactoryBean implements FactoryBean {
   Tracing tracing;
   SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
+  Propagation<String> propagation;
   List<MessagingTracingCustomizer> customizers;
 
   @Override public MessagingTracing getObject() {
     MessagingTracing.Builder builder = MessagingTracing.newBuilder(tracing);
     if (producerSampler != null) builder.producerSampler(producerSampler);
     if (consumerSampler != null) builder.consumerSampler(consumerSampler);
+    if (propagation != null) builder.propagation(propagation);
     if (customizers != null) {
       for (MessagingTracingCustomizer customizer : customizers) customizer.customize(builder);
     }
@@ -55,6 +58,10 @@ public class MessagingTracingFactoryBean implements FactoryBean {
 
   public void setConsumerSampler(SamplerFunction<MessagingRequest> consumerSampler) {
     this.consumerSampler = consumerSampler;
+  }
+
+  public void setPropagation(Propagation<String> propagation) {
+    this.propagation = propagation;
   }
 
   public void setCustomizers(List<MessagingTracingCustomizer> customizers) {
