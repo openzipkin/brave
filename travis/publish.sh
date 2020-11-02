@@ -13,8 +13,7 @@
 # the License.
 #
 
-set -euo pipefail
-set -x
+set -euxo pipefail
 
 build_started_by_tag() {
   if [ "${TRAVIS_TAG}" == "" ]; then
@@ -73,10 +72,12 @@ check_release_tag() {
 }
 
 print_project_version() {
-  ./mvnw help:evaluate -N -Dexpression=project.version|sed -n '/^[0-9]/p'
+  # Cache as help:evaluate is not quick
+  export POM_VERSION=${POM_VERSION:-$(mvn help:evaluate -N -Dexpression=project.version -q -DforceStdout)}
+  echo "${POM_VERSION}"
 }
 
-is_release_commit() {
+is_release_version() {
   project_version="$(print_project_version)"
   if [[ "$project_version" =~ ^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+$ ]]; then
     echo "Build started by release commit $project_version. Will synchronize to maven central."
@@ -87,7 +88,7 @@ is_release_commit() {
 }
 
 release_version() {
-    echo "${TRAVIS_TAG}" | sed 's/^release-//'
+  echo "${TRAVIS_TAG}" | sed 's/^release-//'
 }
 
 safe_checkout_master() {
@@ -157,11 +158,13 @@ if ! is_pull_request && build_started_by_tag; then
 fi
 
 # During a release upload, don't run tests as they can flake or overrun the max time allowed by Travis.
-# skip license on travis due to #1512
-if is_release_commit; then
+if is_release_version; then
   true
 else
-  ./mvnw verify -nsu -Dlicense.skip=true
+  # verify runs both tests and integration tests (Docker tests included)
+  # MYSQL_USER=travis because MySQL tests currently use OS managed mysql
+  # -Dlicense.skip=true skips license on Travis due to #1512
+  MYSQL_USER=travis ./mvnw verify -nsu -Dlicense.skip=true
 fi
 
 # If we are on a pull request, our only job is to run tests, which happened above via ./mvnw install
@@ -169,14 +172,20 @@ if is_pull_request; then
   true
 
 # If we are on master, we will deploy the latest snapshot or release version
-#   - If a release commit fails to deploy for a transient reason, delete the broken version from bintray and click rebuild
+#  * If a release commit fails to deploy for a transient reason, drop to staging repository in
+#    Sonatype and try again: https://oss.sonatype.org/#stagingRepositories
 elif is_travis_branch_master; then
-  ./mvnw --batch-mode -s ./.settings.xml -Prelease -nsu -DskipTests -Dlicense.skip=true deploy
+  # -Prelease ensures the core jar ends up JRE 1.6 compatible
+  DEPLOY="./mvnw --batch-mode -s ./.settings.xml -Prelease -nsu -DskipTests -Dlicense.skip=true deploy"
 
-  # If the deployment succeeded, sync it to Maven Central. Note: this needs to be done once per project, not module, hence -N
-  if is_release_commit; then
-    ./mvnw --batch-mode -s ./.settings.xml -nsu -N io.zipkin.centralsync-maven-plugin:centralsync-maven-plugin:sync
+  # Deploy the Bill of Materials (BOM) separately as it is unhooked from the main project intentionally
+  $DEPLOY -pl -:brave-bom
+  $DEPLOY -f bom/pom.xml
+
+  if is_release_version; then
     javadoc_to_gh_pages
+    # cleanup the release trigger, but don't fail if it was already there
+    git push origin :"release-$(print_project_version)" || true
   fi
 
 # If we are on a release tag, the following will update any version references and push a version tag for deployment.

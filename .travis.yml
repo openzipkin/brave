@@ -4,22 +4,49 @@ cache:
   directories:
     - $HOME/.m2
 
+# Don't do a shallow clone to allow license plugin to correctly read git history.
+git:
+  depth: false
+
 language: java
 
 jdk: openjdk14
 
-before_install:
-  # Disable testcontainers checks
-  - echo checks.disable=true > ~/.testcontainers.properties
-  # allocate commits to CI, not the owner of the deploy key
-  - git config user.name "zipkinci"
-  - git config user.email "zipkinci+zipkin-dev@googlegroups.com"
-  # setup https authentication credentials, used by ./mvnw release:prepare
-  - git config credential.helper "store --file=.git/credentials"
-  - echo "https://$GH_TOKEN:@github.com" > .git/credentials
+services:
+  - docker
+  # MySQL tests currently use OS managed mysql
+  - mysql
 
-# Override default travis to use the maven wrapper; skip license on travis due to #1512
-install: ./mvnw install -DskipTests=true -Dlicense.skip=true -Dmaven.javadoc.skip=true -B -V
+before_install:
+  - |
+    # Cache as help:evaluate is not quick
+    export POM_VERSION=$(./mvnw help:evaluate -N -Dexpression=project.version -q -DforceStdout)
+
+    # Disable testcontainers checks
+    echo checks.disable=true > ~/.testcontainers.properties
+  - |
+    # Credentials entered into https://travis-ci.org/github/openzipkin/${REPO}/settings are access
+    # controlled by branch (typically only master). Check to see if a well-known env is available
+    # before attempting to log in.
+    if [[ -n "$SONATYPE_USER" ]]; then
+      # allocate commits to CI, not the owner of the deploy key
+      git config user.name "zipkinci"
+      git config user.email "zipkinci+zipkin-dev@googlegroups.com"
+
+      # setup https authentication credentials, used by ./mvnw release:prepare
+      git config credential.helper "store --file=.git/credentials"
+      echo "https://$GH_TOKEN:@github.com" > .git/credentials
+
+      # ensure GPG commands work non-interactively
+      export GPG_TTY=$(tty)
+      # import signing key used for jar files
+      echo ${GPG_SIGNING_KEY} | base64 --decode | gpg --batch --passphrase ${GPG_PASSPHRASE} --import
+    fi
+
+install:
+  - |
+    # use a go-offline that properly works with multi-module builds
+    ./mvnw -q --batch-mode -nsu -Prelease de.qaware.maven:go-offline-maven-plugin:resolve-dependencies
 script: ./travis/publish.sh
 
 # Don't build release tags. This avoids publish conflicts because the version commit exists both on master and the release tag.
@@ -32,19 +59,29 @@ notifications:
   webhooks:
     urls:
       - https://webhooks.gitter.im/e/ead3c37d57527214e9f2
-      - https://webhooks.gitter.im/e/e57478303f87ecd7bffc
+      - https://webhooks.gitter.im/e/9f1ee2f315d32956f8d6
     on_success: change
     on_failure: always
 
-env:
-  global:
-    # Ex. travis encrypt BINTRAY_USER=your_github_account
-    - secure: "Xg7ERaJ+8TFkg/lBG6KSKwpQ/Wmw8/TdvyHagphCpGtlp8uAM92igOvXAWvzgnnQxmcPh9Ks0Z5/dJuSVTtxydIqKkac3LXa4AucHe7sxJSHBwFSy0WuWN4Apuvp3uglantjwxc+OEKF9LYI5IgEWW3IS7UD7zvlXPuJ0AjdeP0="
-    # Ex. travis encrypt BINTRAY_KEY=xxx-https://bintray.com/profile/edit-xxx --add
-    - secure: "ipXMdXTjN7Ilg+bxjYFXixrBVT5dr/TFKIMH54vCuirrPXkvccCXaMCndk+eN+pprlgjcNBqtb0j/TGAfasdX0jSxOeyAUv5E0hxuXDURZ/OQUEpo7YMjLXrAT1/lg8f343TLJnjujeyuabvMdmFcY9o6HWc+MqB4ZGzNgYNiQo="
-    # Ex. travis encrypt GH_TOKEN=XXX-https://github.com/settings/tokens-XXX --add
-    - secure: "PpQs4Eje8IYrCzLBWEv5nc2RL7XPubwhlFps4MO/LUvDg05cJpX4/rj5D0C99O9X9V9RnkDrvDkGxG02dwxZ6E1ciPheL7sGVDYlG75yDNipdSFGErNNH1W1wy4Q4PFbNg0i+vOB7MZas+MyGTZi7aZieX2f/ikVZvieCYoWwh8="
-    # Ex. travis encrypt SONATYPE_USER=your_sonatype_account
-    - secure: "Z6aQmONN3znLNtaMdt4ycoyHGdVqSC9W8N3FluZZFFYcoqhtR+p4RMWjpgloQHPZadLLuJIUijQgCYELCAFFkaIcanytIxWnVgK5/qpdfv7Vx52d5mwyCGq3jFtreVRNsd/4g6vkStr4nRf0+dZcDA4Y10CAlsZloF9ETPqQmco="
-    # Ex. travis encrypt SONATYPE_PASSWORD=your_sonatype_password
-    - secure: "GY48c/XSiQ87QC7HadzzdXKeymnLYdkwrWliaZzD2djSOv2pgmDMrW05jxIN+81B4w9CcM8R18KsUjpkATWKIctl/+/9sXMlQcvRMdM3EFA66RJA7tg4BjRjRwSv7YQ+935dbCHB/C8Zw05TkUQMpbqtGzjpckGIhNViyOJWYIU="
+# Secure variables needed for release and publication
+#
+# When Travis, add to https://travis-ci.org/github/openzipkin/${REPO}/settings
+#
+# GH_TOKEN=XXX-https://github.com/settings/tokens-XXX
+#   - makes release commits and tags, also writes to GHCR if Docker
+#   - needs repo:status, public_repo and if Docker write:packages, delete:packages
+#   - referenced in .settings.xml
+#   - store like this: echo "https://$GH_TOKEN:@github.com" > .git/credentials
+# GPG_SIGNING_KEY=$(gpg -a --export-secret-keys zipkin-admin@googlegroups.com |base64)
+#   - used to sign jars in release commands
+#   - sent to keyserver.ubuntu.com
+#   - import like this: echo ${GPG_SIGNING_KEY} | base64 --decode | gpg --batch --passphrase ${GPG_PASSPHRASE} --import
+# GPG_PASSPHRASE=passphrase_for_GPG_SIGNING_KEY
+#   - referenced in .settings.xml
+# SONATYPE_USER=your_sonatype_account_token
+#   - used to publish to Maven Central via https://oss.sonatype.org/#stagingRepositories
+#   - needs access to io.zipkin via https://issues.sonatype.org/browse/OSSRH-16669
+#   - generate via https://oss.sonatype.org/#profile;User%20Token
+#   - referenced in .settings.xml
+# SONATYPE_PASSWORD=password_to_SONATYPE_USER
+#   - referenced in .settings.xml

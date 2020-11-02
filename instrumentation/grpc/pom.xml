@@ -41,6 +41,8 @@
 
     <!-- disable mutability warning as TagContextBinaryMarshaller intentionally returns mixed -->
     <errorprone.args>-Xep:MixedMutabilityReturnType:OFF</errorprone.args>
+
+    <maven-dependency-plugin.version>3.1.2</maven-dependency-plugin.version>
   </properties>
 
   <dependencies>
@@ -111,6 +113,7 @@
            end up with the dependencies it needs. -->
       <plugin>
         <artifactId>maven-dependency-plugin</artifactId>
+        <version>${maven-dependency-plugin.version}</version>
         <executions>
           <execution>
             <id>get-old-grpc</id>

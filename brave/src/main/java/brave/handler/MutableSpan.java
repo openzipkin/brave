@@ -18,6 +18,7 @@ import brave.SpanCustomizer;
 import brave.Tags;
 import brave.handler.MutableSpanBytesEncoder.ZipkinJsonV2;
 import brave.internal.Nullable;
+import brave.internal.RecyclableBuffers;
 import brave.internal.codec.IpLiteral;
 import brave.internal.collect.UnsafeArrayMap;
 import brave.propagation.TraceContext;
@@ -25,7 +26,6 @@ import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
-import zipkin2.internal.Platform;
 
 import static brave.internal.InternalPropagation.FLAG_DEBUG;
 import static brave.internal.InternalPropagation.FLAG_SHARED;
@@ -47,8 +47,9 @@ import static brave.internal.codec.JsonWriter.UTF_8;
  * thread, use the {@linkplain #MutableSpan(MutableSpan) copy constructor}.
  *
  * <h3>MutableSpan.error() vs MutableSpan.tag("error")</h3>
- * If {@link #tag(String)} returns a result for "error", it was from a layered api, instrumentation or the user.
- * {@link #error()} is usually an uncaught exception and does not imply there's a tag "error".
+ * If {@link #tag(String)} returns a result for "error", it was from a layered api, instrumentation
+ * or the user. {@link #error()} is usually an uncaught exception and does not imply there's a tag
+ * "error".
  *
  * <p>Here are examples of a span with {@link #error()}, but no "error" tag:
  * <ul>
@@ -67,7 +68,7 @@ import static brave.internal.codec.JsonWriter.UTF_8;
  *   <li>{@code brave.SpanCustomizer.tag("error", "") -> MutableSpan.tag("error", "")}</li>
  *   <li>{@code brave.Span.tag("error", "CANCELLED") -> MutableSpan.tag("error", "CANCELLED")}</li>
  * </ul>
-
+ *
  * <p>The above examples are using in-band apis in Brave. {@link SpanHandler} is after the fact.
  * Since there is no default "error" tag, span handlers here can tell the difference between
  * explicitly set error messages, and what's needed by their format. For example, those only looking
@@ -80,7 +81,7 @@ import static brave.internal.codec.JsonWriter.UTF_8;
  *   <li>{@code MutableSpan.error() -> MutableSpan.tag("exception", normalized)} to match metrics dimension</li>
  *   <li>{@code MutableSpan.error() -> CustomFormat.stackTrace} for sophisticated trace formats</li>
  * </ul>
- *
+ * <p>
  * In summary, Brave intentionally does not default an "error" {@link #tag(String)} from
  * {@link #error()}. This allows {@link SpanHandler} instances that report data be as simple as an
  * error bit, or advanced enough to keep a stacktrace and also a user tag.
@@ -719,7 +720,7 @@ public final class MutableSpan implements Cloneable {
     if (value == null) throw new NullPointerException("value == null");
     if (timestamp == 0L) return; // silently ignore data Zipkin would drop
     annotations =
-        add(annotations, annotationCount * 2, timestamp, value); // Annotations are always add.
+      add(annotations, annotationCount * 2, timestamp, value); // Annotations are always add.
     annotationCount++;
   }
 
@@ -942,23 +943,23 @@ public final class MutableSpan implements Cloneable {
 
     MutableSpan that = (MutableSpan) o;
     return equal(traceId, that.traceId)
-        && equal(localRootId, that.localRootId)
-        && equal(parentId, that.parentId)
-        && equal(id, that.id)
-        && kind == that.kind
-        && flags == that.flags
-        && startTimestamp == that.startTimestamp
-        && finishTimestamp == that.finishTimestamp
-        && equal(name, that.name)
-        && equal(localServiceName, that.localServiceName)
-        && equal(localIp, that.localIp)
-        && localPort == that.localPort
-        && equal(remoteServiceName, that.remoteServiceName)
-        && equal(remoteIp, that.remoteIp)
-        && remotePort == that.remotePort
-        && entriesEqual(tags, tagCount, that.tags, that.tagCount)
-        && entriesEqual(annotations, annotationCount, that.annotations, that.annotationCount)
-        && equal(error, that.error);
+      && equal(localRootId, that.localRootId)
+      && equal(parentId, that.parentId)
+      && equal(id, that.id)
+      && kind == that.kind
+      && flags == that.flags
+      && startTimestamp == that.startTimestamp
+      && finishTimestamp == that.finishTimestamp
+      && equal(name, that.name)
+      && equal(localServiceName, that.localServiceName)
+      && equal(localIp, that.localIp)
+      && localPort == that.localPort
+      && equal(remoteServiceName, that.remoteServiceName)
+      && equal(remoteIp, that.remoteIp)
+      && remotePort == that.remotePort
+      && entriesEqual(tags, tagCount, that.tags, that.tagCount)
+      && entriesEqual(annotations, annotationCount, that.annotations, that.annotationCount)
+      && equal(error, that.error);
   }
 
   static Object[] add(Object[] input, int i, Object key, Object value) {
@@ -1063,7 +1064,7 @@ public final class MutableSpan implements Cloneable {
     int length = id.length();
     int remainingPadding = desiredLength < length ? 0 : desiredLength - length - existingPadding;
 
-    char[] data = Platform.shortStringBuffer();
+    char[] data = RecyclableBuffers.parseBuffer();
     THIRTY_TWO_ZEROS.getChars(0, desiredLength, data, 0);
     id.getChars(existingPadding, length - existingPadding, data, remainingPadding);
 

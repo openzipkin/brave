@@ -70,8 +70,7 @@ public class HttpTracingFactoryBeanTest {
       + "</bean>"
     );
 
-    assertThat(context.getBean("httpTracing", HttpTracing.class))
-      .extracting("clientParser")
+    assertThat(context.getBean("httpTracing", HttpTracing.class).clientParser())
       .isEqualTo(CLIENT_PARSER);
   }
 
@@ -121,8 +120,7 @@ public class HttpTracingFactoryBeanTest {
       + "</bean>"
     );
 
-    assertThat(context.getBean("httpTracing", HttpTracing.class))
-      .extracting("serverParser")
+    assertThat(context.getBean("httpTracing", HttpTracing.class).serverParser())
       .isEqualTo(SERVER_PARSER);
   }
 
@@ -174,6 +172,7 @@ public class HttpTracingFactoryBeanTest {
 
     assertThat(context.getBean("httpTracing", HttpTracing.class))
       .extracting("clientSampler")
+      .usingRecursiveComparison()
       .isEqualTo(HttpSampler.NEVER_SAMPLE);
   }
 
@@ -205,8 +204,7 @@ public class HttpTracingFactoryBeanTest {
       + "</bean>"
     );
 
-    assertThat(context.getBean("httpTracing", HttpTracing.class))
-      .extracting("serverSampler")
+    assertThat(context.getBean("httpTracing", HttpTracing.class).serverSampler())
       .isEqualTo(HttpSampler.NEVER_SAMPLE);
   }
 

@@ -34,8 +34,8 @@
     <main.basedir>${project.basedir}/..</main.basedir>
 
     <!-- use the same values in ../pom.xml -->
-    <zipkin.version>2.21.7</zipkin.version>
-    <zipkin-reporter.version>2.15.2</zipkin-reporter.version>
+    <zipkin.version>2.22.1</zipkin.version>
+    <zipkin-reporter.version>2.15.4</zipkin-reporter.version>
   </properties>
 
   <organization>
@@ -68,14 +68,14 @@
   </developers>
 
   <distributionManagement>
-    <repository>
-      <id>bintray</id>
-      <url>https://api.bintray.com/maven/openzipkin/maven/brave/;publish=1</url>
-    </repository>
     <snapshotRepository>
-      <id>jfrog-snapshots</id>
-      <url>https://oss.jfrog.org/artifactory/oss-snapshot-local</url>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
     </snapshotRepository>
+    <repository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
   </distributionManagement>
 
   <issueManagement>
