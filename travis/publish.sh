@@ -162,8 +162,9 @@ if is_release_version; then
   true
 else
   # verify runs both tests and integration tests (Docker tests included)
+  # MYSQL_USER=travis because MySQL tests currently use OS managed mysql
   # -Dlicense.skip=true skips license on Travis due to #1512
-  ./mvnw verify -nsu -Dlicense.skip=true
+  MYSQL_USER=travis ./mvnw verify -nsu -Dlicense.skip=true
 fi
 
 # If we are on a pull request, our only job is to run tests, which happened above via ./mvnw install

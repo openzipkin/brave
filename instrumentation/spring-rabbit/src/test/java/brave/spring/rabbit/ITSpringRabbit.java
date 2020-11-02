@@ -52,6 +52,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.utility.DockerImageName;
 
 import static org.springframework.amqp.core.BindingBuilder.bind;
 import static org.springframework.amqp.core.ExchangeBuilder.topicExchange;
@@ -84,11 +85,13 @@ abstract class ITSpringRabbit extends ITRemote {
   static final Binding binding_reply =
     bind(queue_reply).to(exchange_request_reply).with("test.binding.reply").noargs();
 
-  static final String IMAGE = "rabbitmq:3.8-management-alpine";
+  // Use a ghcr.io mirror to prevent build outages due to Docker Hub pull quotas
+  static final DockerImageName IMAGE =
+    DockerImageName.parse("ghcr.io/openzipkin/rabbitmq-management-alpine:latest");
   static final int RABBIT_PORT = 5672;
 
   static final class RabbitMQContainer extends GenericContainer<RabbitMQContainer> {
-    RabbitMQContainer(String image) {
+    RabbitMQContainer(DockerImageName image) {
       super(image);
       addExposedPorts(RABBIT_PORT);
       this.waitStrategy = Wait.forLogMessage(".*Server startup complete.*", 1)

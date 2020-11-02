@@ -1,10 +1,8 @@
 # Run `travis lint` when changing this file to avoid breaking the build.
 
-# We need a full VM so that testcontainers can use Docker
-# See https://docs.travis-ci.com/user/reference/overview/#for-a-particular-travisyml-configuration
-arch: amd64           # arm64 is LXD containers which we can't use because we run Docker tests
-os: linux             # required for arch different than amd64
-dist: focal           # newest available distribution
+cache:
+  directories:
+    - $HOME/.m2
 
 # Don't do a shallow clone to allow license plugin to correctly read git history.
 git:
@@ -12,9 +10,12 @@ git:
 
 language: java
 
-cache:
-  directories:
-    - $HOME/.m2
+jdk: openjdk14
+
+services:
+  - docker
+  # MySQL tests currently use OS managed mysql
+  - mysql
 
 before_install:
   - |

@@ -25,6 +25,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import static brave.Span.Kind.CLIENT;
@@ -32,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.junit.Assume.assumeTrue;
 
+@Ignore("WrongArgumentException: Unable to load authentication plugin 'caching_sha2_password'")
 public class ITTracingStatementInterceptor {
   static final String QUERY = "select 'hello world'";
 

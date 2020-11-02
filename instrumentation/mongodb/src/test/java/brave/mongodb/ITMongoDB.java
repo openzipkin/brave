@@ -25,6 +25,7 @@ import org.bson.Document;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.utility.DockerImageName;
 
 import static java.util.Collections.singletonList;
 
@@ -35,7 +36,9 @@ public abstract class ITMongoDB extends ITRemote { // public because of ClassRul
   static final int MONGODB_PORT = 27017;
 
   @ClassRule
-  public static GenericContainer<?> mongo = new GenericContainer<>("mongo:4.4")
+  public static GenericContainer<?> mongo = new GenericContainer<>(
+    // Use a quay.io mirror to prevent build outages due to Docker Hub pull quotas
+    DockerImageName.parse("quay.io/bitnami/mongodb:4.4.1"))
     .withExposedPorts(MONGODB_PORT);
 
   @BeforeClass public static void initCollection() {
