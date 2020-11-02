@@ -159,6 +159,7 @@ public class ExtraFieldPropagationTest {
     TraceContext extractedContext = extractor.extract(request).context();
     assertThat(extractedContext)
       .usingRecursiveComparison()
+      .ignoringFields("spanIdString", "traceIdString")
       .isEqualTo(context);
   }
 

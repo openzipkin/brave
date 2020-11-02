@@ -369,13 +369,13 @@ public class TraceContextTest {
 
   @Test public void withExtra_notEmpty() {
     assertThat(context.withExtra(Arrays.asList(1L)))
-      .extracting("extra")
+      .extracting("extraList")
       .isEqualTo(Arrays.asList(1L));
   }
 
   @Test public void withExtra_empty() {
     assertThat(context.toBuilder().extra(Arrays.asList(1L)).build().withExtra(emptyList()))
-      .extracting("extra")
+      .extracting("extraList")
       .isEqualTo(emptyList());
   }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -23,7 +23,6 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import java.util.logging.LogManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -82,11 +81,6 @@ public final class ClassLoaders {
 
   /** Runs the type in a new classloader that recreates brave classes */
   public static void assertRunIsUnloadable(Class<? extends Runnable> runnable, ClassLoader parent) {
-    // We can't use log4j2's log manager. More importantly, we want to make sure loggers don't hold
-    // our test classloader from being collected.
-    System.setProperty("java.util.logging.manager", LogManager.class.getName());
-    assertThat(LogManager.getLogManager().getClass()).isSameAs(LogManager.class);
-
     WeakReference<ClassLoader> loader;
     try {
       loader = invokeRunFromNewClassLoader(runnable, parent);
