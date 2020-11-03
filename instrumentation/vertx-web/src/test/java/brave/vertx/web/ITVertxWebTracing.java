@@ -31,11 +31,13 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Response;
 import org.junit.After;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
+@Ignore("Run manually until openzipkin/brave#1270")
 public class ITVertxWebTracing extends ITHttpServer {
   Vertx vertx;
   HttpServer server;
