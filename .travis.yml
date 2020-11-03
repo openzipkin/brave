@@ -4,7 +4,7 @@
 # See https://docs.travis-ci.com/user/reference/overview/#for-a-particular-travisyml-configuration
 arch: amd64           # arm64 is LXD containers which we can't use because we run Docker tests
 os: linux             # required for arch different than amd64
-dist: bionic          # vertx-web failed last time we tested focal
+dist: trusty          # vertx-web failed last time we tested bionic or focal
 
 cache:
   directories:
@@ -23,7 +23,14 @@ services:
   # MySQL tests currently use OS managed mysql
   - mysql
 
+addons:
+  apt:
+    update: true
+
 before_install:
+  - |
+    # update GPG as trusty's doesn't support --pinentry-mode
+    sudo apt-get -y install gpg
   - |
     # Cache as help:evaluate is not quick
     export POM_VERSION=$(./mvnw help:evaluate -N -Dexpression=project.version -q -DforceStdout)
