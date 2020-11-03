@@ -4,7 +4,7 @@
 # See https://docs.travis-ci.com/user/reference/overview/#for-a-particular-travisyml-configuration
 arch: amd64           # arm64 is LXD containers which we can't use because we run Docker tests
 os: linux             # required for arch different than amd64
-dist: trusty          # vertx-web failed last time we tested bionic or focal
+dist: trusty          # Pinned until we figure out https://github.com/openzipkin/brave/issues/1270
 
 cache:
   directories:
@@ -30,7 +30,7 @@ addons:
 before_install:
   - |
     # update GPG as trusty's doesn't support --pinentry-mode
-    sudo apt-get -y install gpg
+    sudo apt-get -y install gnupg2 && gpg --version
   - |
     # Cache as help:evaluate is not quick
     export POM_VERSION=$(./mvnw help:evaluate -N -Dexpression=project.version -q -DforceStdout)
