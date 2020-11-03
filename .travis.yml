@@ -29,8 +29,9 @@ addons:
 
 before_install:
   - |
-    # update GPG as trusty's doesn't support --pinentry-mode
-    sudo apt-get -y install gnupg2 && gpg --version
+    # trusty doesn't use gpg2 by default, so it doesn't support --pinentry-mode
+    export GPG=gpg2
+    sudo apt-get -y install gnupg2 && ${GPG} --version
   - |
     # Cache as help:evaluate is not quick
     export POM_VERSION=$(./mvnw help:evaluate -N -Dexpression=project.version -q -DforceStdout)
@@ -52,8 +53,9 @@ before_install:
 
       # ensure GPG commands work non-interactively
       export GPG_TTY=$(tty)
+      export MAVEN_OPTS="${MAVEN_OPTS} -Dgpg.executable=${GPG}"
       # import signing key used for jar files
-      echo ${GPG_SIGNING_KEY} | base64 --decode | gpg --batch --passphrase ${GPG_PASSPHRASE} --import
+      echo ${GPG_SIGNING_KEY} | base64 --decode | ${GPG} --batch --passphrase ${GPG_PASSPHRASE} --import
     fi
 
 install:
