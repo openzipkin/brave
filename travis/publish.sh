@@ -180,7 +180,7 @@ elif is_travis_branch_master; then
 
   # Deploy the Bill of Materials (BOM) separately as it is unhooked from the main project intentionally
   $DEPLOY -pl -:brave-bom
-  $DEPLOY -f bom/pom.xml
+  $DEPLOY -f brave-bom/pom.xml
 
   if is_release_version; then
     javadoc_to_gh_pages
