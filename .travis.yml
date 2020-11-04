@@ -6,7 +6,8 @@ arch: amd64           # arm64 is LXD containers which we can't use because we ru
 os: linux             # required for arch different than amd64
 dist: focal           # newest available distribution
 
-# Don't do a shallow clone to allow license plugin to correctly read git history.
+# license-maven-plugin needs the full history to generate copyright year range. Ex. 2013-2020
+# Don't do a shallow clone, as it interferes with this.
 git:
   depth: false
 
