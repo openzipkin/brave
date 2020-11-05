@@ -30,8 +30,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilder {
   @Override
   protected CloseableHttpClient newClient(int port) {
-    return HttpClient5Tracing.create(httpTracing,
-      CachingHttpClientBuilder.create().disableAutomaticRetries());
+    return HttpClient5Tracing.newBuilder(httpTracing)
+      .create(CachingHttpClientBuilder.create().disableAutomaticRetries());
   }
 
   /**

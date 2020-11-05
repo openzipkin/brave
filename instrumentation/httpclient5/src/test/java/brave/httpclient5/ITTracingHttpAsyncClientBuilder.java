@@ -53,8 +53,8 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
   @Override
   protected CloseableHttpAsyncClient newClient(int port) {
     CloseableHttpAsyncClient result =
-      HttpClient5Tracing.create(httpTracing,
-        HttpAsyncClientBuilder.create().disableAutomaticRetries());
+      HttpClient5Tracing.newBuilder(httpTracing)
+        .create(HttpAsyncClientBuilder.create().disableAutomaticRetries());
     result.start();
     return result;
   }
@@ -110,9 +110,8 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     server.enqueue(new MockResponse());
     closeClient(client);
 
-    client = HttpClient5Tracing.create(
-      httpTracing,
-      HttpAsyncClientBuilder
+    client = HttpClient5Tracing.newBuilder(httpTracing)
+      .create(HttpAsyncClientBuilder
         .create()
         .addRequestInterceptorFirst(
           (httpRequest, entityDetails, httpContext) ->
@@ -156,9 +155,8 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
   public void failedRequestInterceptorRemovesScope() {
     assertThat(currentTraceContext.get()).isNull();
     RuntimeException error = new RuntimeException("Test");
-    client = HttpClient5Tracing.create(
-      httpTracing,
-      HttpAsyncClientBuilder
+    client = HttpClient5Tracing.newBuilder(httpTracing)
+      .create(HttpAsyncClientBuilder
         .create()
         .addRequestInterceptorLast((httpRequest, entityDetails, httpContext) -> {
           throw error;
@@ -180,9 +178,8 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     closeClient(client);
 
     RuntimeException error = new RuntimeException("Test");
-    client = HttpClient5Tracing.create(
-      httpTracing,
-      HttpAsyncClientBuilder
+    client = HttpClient5Tracing.newBuilder(httpTracing)
+      .create(HttpAsyncClientBuilder
         .create()
         .addResponseInterceptorLast((httpResponse, entityDetails, httpContext) -> {
           throw error;

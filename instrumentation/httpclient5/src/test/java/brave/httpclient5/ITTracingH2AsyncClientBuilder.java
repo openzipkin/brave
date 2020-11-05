@@ -20,8 +20,8 @@ public class ITTracingH2AsyncClientBuilder extends ITTracingHttpAsyncClientBuild
   @Override
   protected CloseableHttpAsyncClient newClient(int port) {
     CloseableHttpAsyncClient result =
-      HttpClient5Tracing.create(httpTracing,
-        H2AsyncClientBuilder.create().disableAutomaticRetries());
+      HttpClient5Tracing.newBuilder(httpTracing)
+        .create(H2AsyncClientBuilder.create().disableAutomaticRetries());
     result.start();
     return result;
   }

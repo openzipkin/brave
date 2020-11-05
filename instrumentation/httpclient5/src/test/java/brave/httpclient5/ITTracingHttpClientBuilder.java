@@ -20,8 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient> {
   @Override
   protected CloseableHttpClient newClient(int port) {
-    return HttpClient5Tracing.create(httpTracing,
-      HttpClientBuilder.create().disableAutomaticRetries());
+    return HttpClient5Tracing.newBuilder(httpTracing)
+      .create(HttpClientBuilder.create().disableAutomaticRetries());
   }
 
   @Override
@@ -52,9 +52,8 @@ public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient
     server.enqueue(new MockResponse());
     closeClient(client);
 
-    client = HttpClient5Tracing.create(
-      httpTracing,
-      HttpClientBuilder.create()
+    client = HttpClient5Tracing.newBuilder(httpTracing)
+      .create(HttpClientBuilder.create()
         .disableAutomaticRetries()
         .addRequestInterceptorFirst(
           (request, entity, context) ->

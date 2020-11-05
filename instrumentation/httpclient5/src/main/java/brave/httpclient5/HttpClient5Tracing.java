@@ -28,22 +28,22 @@ import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import static org.apache.hc.client5.http.impl.ChainElement.PROTOCOL;
 
 public class HttpClient5Tracing {
-  public static CloseableHttpClient create(Tracing tracing, HttpClientBuilder httpClientBuilder) {
-    return create(HttpTracing.create(tracing), httpClientBuilder);
+
+  final HttpTracing httpTracing;
+
+  public static HttpClient5Tracing newBuilder(Tracing tracing) {
+    return new HttpClient5Tracing(HttpTracing.create(tracing));
   }
 
-  public static CloseableHttpAsyncClient create(Tracing tracing,
-    HttpAsyncClientBuilder httpAsyncClientBuilder) {
-    return create(HttpTracing.create(tracing), httpAsyncClientBuilder);
+  public static HttpClient5Tracing newBuilder(HttpTracing httpTracing) {
+    return new HttpClient5Tracing(httpTracing);
   }
 
-  public static CloseableHttpAsyncClient create(Tracing tracing,
-    H2AsyncClientBuilder h2AsyncClientBuilder) {
-    return create(HttpTracing.create(tracing), h2AsyncClientBuilder);
+  HttpClient5Tracing(HttpTracing httpTracing) {
+    this.httpTracing = httpTracing;
   }
 
-  public static CloseableHttpClient create(HttpTracing httpTracing,
-    HttpClientBuilder httpClientBuilder) {
+  public CloseableHttpClient create(HttpClientBuilder httpClientBuilder) {
     httpClientBuilder.addExecInterceptorBefore(ChainElement.MAIN_TRANSPORT.name(),
       HandleSendHandler.class.getName(),
       new HandleSendHandler(httpTracing));
@@ -53,8 +53,7 @@ public class HttpClient5Tracing {
     return httpClientBuilder.build();
   }
 
-  public static CloseableHttpAsyncClient create(HttpTracing httpTracing,
-    HttpAsyncClientBuilder httpAsyncClientBuilder) {
+  public CloseableHttpAsyncClient create(HttpAsyncClientBuilder httpAsyncClientBuilder) {
     final CurrentTraceContext currentTraceContext = httpTracing.tracing().currentTraceContext();
     httpAsyncClientBuilder.addExecInterceptorBefore(PROTOCOL.name(),
       AsyncHandleSendHandler.class.getName(),
@@ -72,8 +71,7 @@ public class HttpClient5Tracing {
     return new TracingHttpAsyncClient(httpAsyncClientBuilder.build(), currentTraceContext);
   }
 
-  public static CloseableHttpAsyncClient create(HttpTracing httpTracing,
-    H2AsyncClientBuilder h2AsyncClientBuilder) {
+  public CloseableHttpAsyncClient create(H2AsyncClientBuilder h2AsyncClientBuilder) {
     final CurrentTraceContext currentTraceContext = httpTracing.tracing().currentTraceContext();
     h2AsyncClientBuilder.addExecInterceptorBefore(PROTOCOL.name(),
       AsyncHandleSendHandler.class.getName(),
