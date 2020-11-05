@@ -38,6 +38,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-messaging</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <!-- spring-aop is required for the consumer side instrumentation point -->
     <dependency>
@@ -65,6 +66,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-tests</artifactId>
+      <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>

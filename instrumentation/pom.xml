@@ -32,7 +32,6 @@
   </properties>
 
   <modules>
-    <module>benchmarks</module>
     <module>http</module>
     <module>http-tests</module>
     <module>dubbo</module>
@@ -88,6 +87,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave</artifactId>
+      <version>${project.version}</version>
     </dependency>
   </dependencies>
 </project>

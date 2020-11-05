@@ -38,6 +38,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-http</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <!-- compile dep on 3.1.0 runtime on 2.5 -->
     <dependency>
@@ -50,6 +51,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-http-tests</artifactId>
+      <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>

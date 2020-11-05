@@ -38,10 +38,12 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-http</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>javax.ws.rs</groupId>
       <artifactId>javax.ws.rs-api</artifactId>
+      <version>2.0.1</version>
       <scope>provided</scope>
     </dependency>
     <!-- For Priority -->
@@ -49,7 +51,7 @@
       <groupId>javax.annotation</groupId>
       <artifactId>javax.annotation-api</artifactId>
       <scope>provided</scope>
-      <version>1.3.2</version>
+      <version>${javax-annotation-api.version}</version>
     </dependency>
     <!-- For Inject -->
     <dependency>
@@ -61,17 +63,14 @@
 
     <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>brave-tests</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-http-tests</artifactId>
+      <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-servlet</artifactId>
+      <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -83,6 +82,7 @@
     <dependency>
       <groupId>org.jboss.resteasy</groupId>
       <artifactId>resteasy-client</artifactId>
+      <version>${resteasy.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -91,11 +91,11 @@
       <version>${resteasy.version}</version>
       <scope>test</scope>
     </dependency>
-    <!-- to test the inject annotations -->
+    <!-- to test @Inject annotations -->
     <dependency>
       <groupId>com.google.inject</groupId>
       <artifactId>guice</artifactId>
-      <version>4.2.3</version>
+      <version>${guice.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

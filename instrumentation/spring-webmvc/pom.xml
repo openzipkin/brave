@@ -38,11 +38,13 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-servlet</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <!-- implicitly servlet 3.1.0 -->
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-webmvc</artifactId>
+      <version>${spring5.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -55,6 +57,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-http-tests</artifactId>
+      <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>

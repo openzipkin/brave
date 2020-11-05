@@ -47,6 +47,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-tests</artifactId>
+      <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>

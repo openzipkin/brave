@@ -49,6 +49,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-rpc</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>io.grpc</groupId>
@@ -60,17 +61,20 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-tests</artifactId>
+      <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-context-log4j2</artifactId>
+      <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
     <!-- for Generated annotation in tests -->
     <dependency>
       <groupId>javax.annotation</groupId>
       <artifactId>javax.annotation-api</artifactId>
+      <version>${javax-annotation-api.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

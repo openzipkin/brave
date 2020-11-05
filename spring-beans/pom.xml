@@ -39,6 +39,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
@@ -48,10 +49,12 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-messaging</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-rpc</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>io.zipkin.reporter2</groupId>

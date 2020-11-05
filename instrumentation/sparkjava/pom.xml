@@ -38,6 +38,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-servlet</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>com.sparkjava</groupId>
@@ -49,6 +50,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-http-tests</artifactId>
+      <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
