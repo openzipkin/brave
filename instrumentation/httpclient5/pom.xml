@@ -29,11 +29,12 @@
 
   <properties>
     <!-- Matches Export-Package in bnd.bnd -->
-    <module.name>brave.httpclient</module.name>
+    <module.name>brave.httpclient5</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
-    <main.java.version>1.6</main.java.version>
-    <main.signature.artifact>java16</main.signature.artifact>
+    <main.java.version>1.7</main.java.version>
+    <main.signature.artifact>java17</main.signature.artifact>
+    <httpclient5.version>5.0.3</httpclient5.version>
   </properties>
 
   <dependencies>
@@ -44,14 +45,15 @@
     <dependency>
       <groupId>org.apache.httpcomponents.client5</groupId>
       <artifactId>httpclient5</artifactId>
+      <version>${httpclient5.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.httpcomponents.client5</groupId>
       <artifactId>httpclient5-cache</artifactId>
+      <version>${httpclient5.version}</version>
       <optional>true</optional>
     </dependency>
-
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-tests</artifactId>

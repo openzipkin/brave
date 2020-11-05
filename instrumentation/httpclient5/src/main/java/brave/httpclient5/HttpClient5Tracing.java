@@ -27,7 +27,7 @@ import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 
 import static org.apache.hc.client5.http.impl.ChainElement.PROTOCOL;
 
-public class TracingHttpClients {
+public class HttpClient5Tracing {
   public static CloseableHttpClient create(Tracing tracing, HttpClientBuilder httpClientBuilder) {
     return create(HttpTracing.create(tracing), httpClientBuilder);
   }

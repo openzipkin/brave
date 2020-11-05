@@ -30,13 +30,12 @@ import org.apache.hc.core5.http.HttpException;
 
 import static brave.httpclient5.HttpClientUtils.parseTargetAddress;
 
-public class HandleSendHandler implements ExecChainHandler {
+class HandleSendHandler implements ExecChainHandler {
 
-  private final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
-  @Nullable
-  private final String serverName;
+  final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
+  @Nullable final String serverName;
 
-  public HandleSendHandler(HttpTracing httpTracing) {
+  HandleSendHandler(HttpTracing httpTracing) {
     this.serverName = "".equals(httpTracing.serverName()) ? null : httpTracing.serverName();
     this.handler = HttpClientHandler.create(httpTracing);
   }

@@ -33,10 +33,10 @@ import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.HttpException;
 import org.apache.hc.core5.http.HttpHost;
 
-public class HandleReceiveHandler implements ExecChainHandler {
-  private final Tracer tracer;
-  private final SamplerFunction<HttpRequest> httpSampler;
-  private final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
+class HandleReceiveHandler implements ExecChainHandler {
+  final Tracer tracer;
+  final SamplerFunction<HttpRequest> httpSampler;
+  final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
 
   HandleReceiveHandler(HttpTracing httpTracing) {
     this.tracer = httpTracing.tracing().tracer();

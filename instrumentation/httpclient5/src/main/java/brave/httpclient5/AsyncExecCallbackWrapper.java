@@ -14,11 +14,11 @@ import org.apache.hc.core5.http.nio.AsyncDataConsumer;
 
 class AsyncExecCallbackWrapper implements AsyncExecCallback {
 
-  private final AsyncExecCallback asyncExecCallback;
-  private final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
-  private final Span span;
-  private final HttpRequestWrapper requestWrapper;
-  private final HttpClientContext context;
+  final AsyncExecCallback asyncExecCallback;
+  final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
+  final Span span;
+  final HttpRequestWrapper requestWrapper;
+  final HttpClientContext context;
 
   AsyncExecCallbackWrapper(
     final AsyncExecCallback asyncExecCallback, HttpRequestWrapper requestWrapper,

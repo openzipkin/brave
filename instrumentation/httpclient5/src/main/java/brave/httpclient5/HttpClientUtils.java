@@ -8,7 +8,7 @@ import org.apache.hc.client5.http.cache.HttpCacheContext;
 import org.apache.hc.core5.http.HttpHost;
 import org.apache.hc.core5.http.protocol.HttpContext;
 
-public class HttpClientUtils {
+class HttpClientUtils {
 
   static void openScope(HttpContext httpContext, CurrentTraceContext currentTraceContext) {
     Span span = (Span) httpContext.getAttribute(Span.class.getName());

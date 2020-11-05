@@ -18,10 +18,8 @@ import brave.test.util.AssertableCallback;
 import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -44,33 +42,18 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     blockOnFuture(future);
   }
 
-  /**
-   * Ensures we don't wrap exception messages.
-   */
   static <V> V blockOnFuture(Future<V> future) throws IOException {
     try {
       return future.get(3, TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new AssertionError(e);
-    } catch (ExecutionException e) {
-      Throwable er = e.getCause();
-      if (er instanceof RuntimeException) {
-        throw (RuntimeException) er;
-      }
-      if (er instanceof IOException) {
-        throw (IOException) er;
-      }
-      throw new AssertionError(e);
-    } catch (TimeoutException e) {
-      throw new AssertionError(e);
+    } catch (Exception e) {
+      throw new IOException(e);
     }
   }
 
   @Override
   protected CloseableHttpAsyncClient newClient(int port) {
     CloseableHttpAsyncClient result =
-      TracingHttpClients.create(httpTracing,
+      HttpClient5Tracing.create(httpTracing,
         HttpAsyncClientBuilder.create().disableAutomaticRetries());
     result.start();
     return result;
@@ -127,7 +110,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     server.enqueue(new MockResponse());
     closeClient(client);
 
-    client = TracingHttpClients.create(
+    client = HttpClient5Tracing.create(
       httpTracing,
       HttpAsyncClientBuilder
         .create()
@@ -173,7 +156,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
   public void failedRequestInterceptorRemovesScope() {
     assertThat(currentTraceContext.get()).isNull();
     RuntimeException error = new RuntimeException("Test");
-    client = TracingHttpClients.create(
+    client = HttpClient5Tracing.create(
       httpTracing,
       HttpAsyncClientBuilder
         .create()
@@ -197,7 +180,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     closeClient(client);
 
     RuntimeException error = new RuntimeException("Test");
-    client = TracingHttpClients.create(
+    client = HttpClient5Tracing.create(
       httpTracing,
       HttpAsyncClientBuilder
         .create()
@@ -209,7 +192,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     client.start();
 
     assertThatThrownBy(() -> get(client, "/foo"))
-      .isSameAs(error);
+      .hasRootCause(error);
 
     assertThat(currentTraceContext.get()).isNull();
 

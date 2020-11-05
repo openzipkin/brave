@@ -19,9 +19,8 @@ import org.apache.hc.core5.http.nio.AsyncEntityProducer;
 import static brave.httpclient5.HttpClientUtils.parseTargetAddress;
 
 class AsyncHandleSendHandler implements AsyncExecChainHandler {
-  private final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
-  @Nullable
-  private final String serverName;
+  final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
+  @Nullable final String serverName;
 
   AsyncHandleSendHandler(HttpTracing httpTracing) {
     this.serverName = "".equals(httpTracing.serverName()) ? null : httpTracing.serverName();
