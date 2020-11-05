@@ -58,7 +58,7 @@
     <dependency>
       <groupId>com.blogspot.mydailyjava</groupId>
       <artifactId>weak-lock-free</artifactId>
-      <version>0.16</version>
+      <version>0.17</version>
       <scope>test</scope>
     </dependency>
     <!-- to mock Platform calls -->
@@ -83,6 +83,7 @@
     <dependency>
       <groupId>com.squareup.okhttp3</groupId>
       <artifactId>mockwebserver</artifactId>
+      <version>${okhttp.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -100,35 +101,31 @@
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-core</artifactId>
-      <version>1.5.2</version>
+      <version>1.6.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-context</artifactId>
+      <version>${spring5.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.aspectj</groupId>
       <artifactId>aspectjweaver</artifactId>
-      <version>1.9.5</version>
+      <version>1.9.6</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-test</artifactId>
+      <version>${spring5.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>io.zipkin.reporter2</groupId>
       <artifactId>zipkin-sender-okhttp3</artifactId>
       <version>${zipkin-reporter.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.zipkin.zipkin2</groupId>
-      <artifactId>zipkin-junit</artifactId>
-      <version>${zipkin.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

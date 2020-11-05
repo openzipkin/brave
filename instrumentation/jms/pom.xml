@@ -41,6 +41,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-messaging</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <!-- Provided at 2.0.1 eventhough 1.1 is supported via invoker tests -->
     <dependency>
@@ -53,6 +54,7 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-tests</artifactId>
+      <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
 

@@ -177,8 +177,9 @@ elif is_travis_branch_master; then
   # -Prelease ensures the core jar ends up JRE 1.6 compatible
   DEPLOY="./mvnw --batch-mode -s ./.settings.xml -Prelease -nsu -DskipTests deploy"
 
+  # -DskipBenchmarks ensures benchmarks don't end up in javadocs or in Maven Central
+  $DEPLOY -DskipBenchmarks -pl -:brave-bom
   # Deploy the Bill of Materials (BOM) separately as it is unhooked from the main project intentionally
-  $DEPLOY -pl -:brave-bom
   $DEPLOY -f brave-bom/pom.xml
 
   if is_release_version; then

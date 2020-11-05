@@ -83,8 +83,9 @@ VERSION=xx-version-to-release-xx
 # once this works, deploy and synchronize to maven central
 git checkout $VERSION
 
+# -DskipBenchmarks ensures benchmarks don't end up in javadocs or in Maven Central
+./mvnw --batch-mode -s ./.settings.xml -Prelease -nsu -DskipTests deploy -DskipBenchmarks -pl -:brave-bom
 # Deploy the Bill of Materials (BOM) separately as it is unhooked from the main project intentionally
-./mvnw --batch-mode -s ./.settings.xml -Prelease -nsu -DskipTests deploy -pl -:brave-bom
 ./mvnw --batch-mode -s ./.settings.xml -Prelease -nsu -DskipTests deploy -f brave-bom/pom.xml
 
 # if all the above worked, clean up stuff and push the local changes.
