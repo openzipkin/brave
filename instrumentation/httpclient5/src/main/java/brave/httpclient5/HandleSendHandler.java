@@ -19,7 +19,6 @@ import brave.http.HttpClientHandler;
 import brave.http.HttpClientRequest;
 import brave.http.HttpClientResponse;
 import brave.http.HttpTracing;
-import brave.internal.Nullable;
 import java.io.IOException;
 import org.apache.hc.client5.http.classic.ExecChain;
 import org.apache.hc.client5.http.classic.ExecChain.Scope;
@@ -33,10 +32,8 @@ import static brave.httpclient5.HttpClientUtils.parseTargetAddress;
 class HandleSendHandler implements ExecChainHandler {
 
   final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
-  @Nullable final String serverName;
 
   HandleSendHandler(HttpTracing httpTracing) {
-    this.serverName = "".equals(httpTracing.serverName()) ? null : httpTracing.serverName();
     this.handler = HttpClientHandler.create(httpTracing);
   }
 
@@ -55,9 +52,6 @@ class HandleSendHandler implements ExecChainHandler {
 
     ClassicHttpResponse response = execChain.proceed(classicHttpRequest, scope);
     if (span != null) {
-      if (serverName != null) {
-        span.remoteServiceName(serverName);
-      }
       parseTargetAddress(scope.route.getTargetHost(), span);
     }
     return response;

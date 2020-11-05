@@ -5,7 +5,6 @@ import brave.http.HttpClientHandler;
 import brave.http.HttpClientRequest;
 import brave.http.HttpClientResponse;
 import brave.http.HttpTracing;
-import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import java.io.IOException;
 import org.apache.hc.client5.http.async.AsyncExecCallback;
@@ -20,10 +19,8 @@ import static brave.httpclient5.HttpClientUtils.parseTargetAddress;
 
 class AsyncHandleSendHandler implements AsyncExecChainHandler {
   final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
-  @Nullable final String serverName;
 
   AsyncHandleSendHandler(HttpTracing httpTracing) {
-    this.serverName = "".equals(httpTracing.serverName()) ? null : httpTracing.serverName();
     this.handler = HttpClientHandler.create(httpTracing);
   }
 
@@ -40,9 +37,6 @@ class AsyncHandleSendHandler implements AsyncExecChainHandler {
     Span span = handler.handleSendWithParent(requestWrapper, parent);
     context.setAttribute(Span.class.getName(), span);
 
-    if (serverName != null) {
-      span.remoteServiceName(serverName);
-    }
     parseTargetAddress(requestWrapper.target, span);
     AsyncExecCallbackWrapper callbackWrapper =
       new AsyncExecCallbackWrapper(asyncExecCallback, requestWrapper, handler, span, context);
