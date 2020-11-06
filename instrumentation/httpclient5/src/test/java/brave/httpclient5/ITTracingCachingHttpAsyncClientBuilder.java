@@ -20,21 +20,18 @@ import brave.propagation.TraceContext;
 import java.io.IOException;
 import java.util.Arrays;
 import okhttp3.mockwebserver.MockResponse;
-import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
+import org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder;
 import org.apache.hc.client5.http.impl.cache.CachingHttpAsyncClientBuilder;
 import org.junit.Test;
 
 import static brave.Span.Kind.CLIENT;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class ITTracingCachingHttpAsyncClientBuilder extends ITTracingHttpAsyncClientBuilder {
   @Override
-  protected CloseableHttpAsyncClient newClient(int port) {
-    CloseableHttpAsyncClient result =
-      HttpClient5Tracing.newBuilder(httpTracing)
-        .create(CachingHttpAsyncClientBuilder.create().disableAutomaticRetries());
-    result.start();
-    return result;
+  protected HttpAsyncClientBuilder newClientBuilder() {
+    return CachingHttpAsyncClientBuilder.create().disableAutomaticRetries();
   }
 
   /**
@@ -63,5 +60,28 @@ public class ITTracingCachingHttpAsyncClientBuilder extends ITTracingHttpAsyncCl
       assertChildOf(child, parent);
     }
     assertSequential(real, cached);
+  }
+
+  /**
+   * Caching Client will throw error asynchronously.
+   */
+  @Override
+  @Test
+  public void failedRequestInterceptorRemovesScope() {
+    assertThat(currentTraceContext.get()).isNull();
+    RuntimeException error = new RuntimeException("Test");
+    client = HttpClient5Tracing.newBuilder(httpTracing)
+      .create(newClientBuilder()
+        .addRequestInterceptorLast((httpRequest, entityDetails, httpContext) -> {
+          throw error;
+        }));
+    client.start();
+
+    assertThatThrownBy(() -> get(client, "/foo"))
+      .hasRootCause(error);
+
+    assertThat(currentTraceContext.get()).isNull();
+
+    testSpanHandler.takeRemoteSpanWithError(CLIENT, error);
   }
 }

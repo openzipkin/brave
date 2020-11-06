@@ -50,11 +50,14 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     }
   }
 
+  protected HttpAsyncClientBuilder newClientBuilder() {
+    return HttpAsyncClientBuilder.create().disableAutomaticRetries();
+  }
+
   @Override
   protected CloseableHttpAsyncClient newClient(int port) {
     CloseableHttpAsyncClient result =
-      HttpClient5Tracing.newBuilder(httpTracing)
-        .create(HttpAsyncClientBuilder.create().disableAutomaticRetries());
+      HttpClient5Tracing.newBuilder(httpTracing).create(newClientBuilder());
     result.start();
     return result;
   }
@@ -111,8 +114,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     closeClient(client);
 
     client = HttpClient5Tracing.newBuilder(httpTracing)
-      .create(HttpAsyncClientBuilder
-        .create()
+      .create(newClientBuilder()
         .addRequestInterceptorFirst(
           (httpRequest, entityDetails, httpContext) ->
             httpRequest.setHeader("my-req-id", currentTraceContext.get().traceIdString()))
@@ -156,12 +158,10 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     assertThat(currentTraceContext.get()).isNull();
     RuntimeException error = new RuntimeException("Test");
     client = HttpClient5Tracing.newBuilder(httpTracing)
-      .create(HttpAsyncClientBuilder
-        .create()
+      .create(newClientBuilder()
         .addRequestInterceptorLast((httpRequest, entityDetails, httpContext) -> {
           throw error;
-        })
-        .disableAutomaticRetries());
+        }));
     client.start();
 
     assertThatThrownBy(() -> get(client, "/foo"))
@@ -179,12 +179,10 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
 
     RuntimeException error = new RuntimeException("Test");
     client = HttpClient5Tracing.newBuilder(httpTracing)
-      .create(HttpAsyncClientBuilder
-        .create()
+      .create(newClientBuilder()
         .addResponseInterceptorLast((httpResponse, entityDetails, httpContext) -> {
           throw error;
-        })
-        .disableAutomaticRetries());
+        }));
 
     client.start();
 

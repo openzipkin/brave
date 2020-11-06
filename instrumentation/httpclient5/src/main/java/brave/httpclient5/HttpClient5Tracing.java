@@ -31,16 +31,16 @@ public class HttpClient5Tracing {
 
   final HttpTracing httpTracing;
 
+  HttpClient5Tracing(HttpTracing httpTracing) {
+    this.httpTracing = httpTracing;
+  }
+
   public static HttpClient5Tracing newBuilder(Tracing tracing) {
     return new HttpClient5Tracing(HttpTracing.create(tracing));
   }
 
   public static HttpClient5Tracing newBuilder(HttpTracing httpTracing) {
     return new HttpClient5Tracing(httpTracing);
-  }
-
-  HttpClient5Tracing(HttpTracing httpTracing) {
-    this.httpTracing = httpTracing;
   }
 
   public CloseableHttpClient create(HttpClientBuilder httpClientBuilder) {
