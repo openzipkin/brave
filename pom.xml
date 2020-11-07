@@ -200,21 +200,21 @@
       <version>${log4j.version}</version>
       <scope>test</scope>
     </dependency>
-    <!-- route jul over log4j2 during tests -->
+    <!-- route jul over log4j2 during integration tests -->
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-jul</artifactId>
       <version>${log4j.version}</version>
       <scope>test</scope>
     </dependency>
-    <!-- route log4j over log4j2 during tests -->
+    <!-- route log4j over log4j2 during integration tests -->
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-1.2-api</artifactId>
       <version>${log4j.version}</version>
       <scope>test</scope>
     </dependency>
-    <!-- route slf4j over log4j2 during tests -->
+    <!-- route slf4j over log4j2 during integration tests -->
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-slf4j-impl</artifactId>
@@ -428,12 +428,13 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${maven-failsafe-plugin.version}</version>
         <configuration>
-          <systemPropertyVariables>
-            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager
-            </java.util.logging.manager>
-          </systemPropertyVariables>
           <!-- Ensure scope leak cause ends up in the console -->
           <trimStackTrace>false</trimStackTrace>
+          <!-- Don't add org.apache.logging.log4j.jul.LogManager here as it conflicts with
+               classloading, causing brave.test.propagation.PropagationTest to flake. -->
+          <classpathDependencyExcludes>
+            <classpathDependencyExclude>org.apache.logging.log4j:log4j-jul</classpathDependencyExclude>
+          </classpathDependencyExcludes>
         </configuration>
       </plugin>
       <plugin>
@@ -444,9 +445,10 @@
           <reuseForks>false</reuseForks>
           <!-- workaround to SUREFIRE-1831 -->
           <useModulePath>false</useModulePath>
+          <!-- Brave and OkHttp MockWebServer log with java.util.logging. Adding the bridge allows
+               allows us to change scope and format via log4j2.properties -->
           <systemPropertyVariables>
-            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager
-            </java.util.logging.manager>
+            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager</java.util.logging.manager>
           </systemPropertyVariables>
           <!-- Ensure scope leak cause ends up in the console -->
           <trimStackTrace>false</trimStackTrace>
@@ -542,6 +544,10 @@
             <exclude>**/com.alibaba.dubbo.rpc.Filter</exclude>
             <exclude>src/test/resources/**</exclude>
             <exclude>src/test/proto/**</exclude>
+            <!-- generated grpc 1.2 test sources -->
+            <exclude>**/Hello*.java</exclude>
+            <exclude>**/GreeterGrpc*.java</exclude>
+            <exclude>**/GraterGrpc*.java</exclude>
           </excludes>
           <strictCheck>true</strictCheck>
         </configuration>
@@ -602,6 +608,7 @@
         </plugins>
       </build>
     </profile>
+
     <!-- -DskipBenchmarks ensures benchmarks don't end up in javadocs or in Maven Central -->
     <profile>
       <id>include-benchmarks</id>
@@ -614,6 +621,7 @@
         <module>instrumentation/benchmarks</module>
       </modules>
     </profile>
+
     <profile>
       <id>release</id>
       <build>

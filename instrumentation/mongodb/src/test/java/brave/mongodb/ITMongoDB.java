@@ -37,8 +37,8 @@ public abstract class ITMongoDB extends ITRemote { // public because of ClassRul
 
   @ClassRule
   public static GenericContainer<?> mongo = new GenericContainer<>(
-    // Use a quay.io mirror to prevent build outages due to Docker Hub pull quotas
-    DockerImageName.parse("quay.io/bitnami/mongodb:4.4.1"))
+    // Use OpenZipkin's small test image, which is multi-arch and doesn't consume Docker Hub quota
+    DockerImageName.parse("ghcr.io/openzipkin/mongodb-alpine:4.0.5"))
     .withExposedPorts(MONGODB_PORT);
 
   @BeforeClass public static void initCollection() {

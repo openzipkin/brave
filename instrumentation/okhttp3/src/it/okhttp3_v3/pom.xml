@@ -25,10 +25,11 @@
   <name>okhttp3_v3</name>
 
   <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
+
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
-    <!-- Last version before Call.timeout was added -->
-    <okhttp.version>3.11.0</okhttp.version>
   </properties>
 
   <dependencies>
@@ -41,7 +42,7 @@
     <dependency>
       <groupId>com.squareup.okhttp3</groupId>
       <artifactId>mockwebserver</artifactId>
-      <version>${okhttp.version}</version>
+      <version>@old-okhttp.version@</version>
       <scope>provided</scope>
     </dependency>
 
@@ -61,22 +62,29 @@
       <artifactId>retrofit</artifactId>
       <version>@retrofit.version@</version>
     </dependency>
+
+    <!-- Route jul over log4j2 during integration tests -->
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-jul</artifactId>
+      <version>@log4j.version@</version>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-core</artifactId>
       <version>@log4j.version@</version>
       <scope>test</scope>
     </dependency>
-    <!-- MockWebServer uses JUL -->
-    <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-jul</artifactId>
-      <version>@log4j.version@</version>
-    </dependency>
   </dependencies>
 
   <build>
     <sourceDirectory>@project.build.testSourceDirectory@</sourceDirectory>
+    <testResources>
+      <testResource>
+        <directory>@project.basedir@/src/test/resources</directory>
+      </testResource>
+    </testResources>
     <plugins>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
@@ -97,9 +105,14 @@
           <includes>
             <include>**/IT*.java</include>
           </includes>
+          <!-- Try to prevent flakes in CI -->
+          <reuseForks>false</reuseForks>
+          <!-- workaround to SUREFIRE-1831 -->
+          <useModulePath>false</useModulePath>
+          <!-- Brave and OkHttp MockWebServer log with java.util.logging. Adding the bridge allows
+               allows us to change scope and format via log4j2.properties -->
           <systemPropertyVariables>
-            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager
-            </java.util.logging.manager>
+            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager</java.util.logging.manager>
           </systemPropertyVariables>
           <!-- Ensure scope leak cause ends up in the console -->
           <trimStackTrace>false</trimStackTrace>

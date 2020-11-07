@@ -13,7 +13,9 @@
     the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
@@ -29,19 +31,21 @@
     <module.name>brave.grpc</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
-    <!-- grpc-java < 1.15 supports Java 6 https://github.com/grpc/grpc-java/issues/3961 Current versions support Java 7 eventhough TLS typically implies Java 8+ -->
+    <!-- grpc-java < 1.15 supports Java 6 https://github.com/grpc/grpc-java/issues/3961
+         Current versions support Java 7 even though TLS typically implies Java 8+ -->
     <main.java.version>1.6</main.java.version>
     <main.signature.artifact>java16</main.signature.artifact>
 
     <os-maven-plugin.version>1.6.2</os-maven-plugin.version>
     <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
 
-    <old-grpc>io.grpc:grpc-all:1.2.0:jar</old-grpc>
-    <old-protoc>com.google.protobuf:protoc:3.2.0:exe:${os.detected.classifier}</old-protoc>
+    <old-grpc.version>1.2.0</old-grpc.version>
+    <old-protoc.version>3.2.0</old-protoc.version>
 
     <!-- disable mutability warning as TagContextBinaryMarshaller intentionally returns mixed -->
     <errorprone.args>-Xep:MixedMutabilityReturnType:OFF</errorprone.args>
 
+    <build-helper-maven-plugin.version>3.2.0</build-helper-maven-plugin.version>
     <maven-dependency-plugin.version>3.1.2</maven-dependency-plugin.version>
   </properties>
 
@@ -112,44 +116,52 @@
           </pluginArtifact>
         </configuration>
       </plugin>
-      <!-- maven-invoker-plugin's extraArtifacts are pulled from the local repository, not the
-           remote ones. We manually resolve so that a brand new build slave with no cache will
-           end up with the dependencies it needs. -->
-      <plugin>
-        <artifactId>maven-dependency-plugin</artifactId>
-        <version>${maven-dependency-plugin.version}</version>
-        <executions>
-          <execution>
-            <id>get-old-grpc</id>
-            <phase>test</phase>
-            <goals>
-              <goal>get</goal>
-            </goals>
-            <configuration>
-              <artifact>${old-grpc}</artifact>
-            </configuration>
-          </execution>
-          <execution>
-            <id>get-old-protoc</id>
-            <phase>test</phase>
-            <goals>
-              <goal>get</goal>
-            </goals>
-            <configuration>
-              <artifact>${old-protoc}</artifact>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <artifactId>maven-invoker-plugin</artifactId>
-        <configuration>
-          <extraArtifacts>
-            <extraArtifact>${old-grpc}</extraArtifact>
-            <extraArtifact>${old-protoc}</extraArtifact>
-          </extraArtifacts>
-        </configuration>
-      </plugin>
     </plugins>
   </build>
+  <profiles>
+    <profile>
+      <id>include-invoker</id>
+      <activation>
+        <property>
+          <name>!skipTests</name>
+        </property>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-invoker-plugin</artifactId>
+          </plugin>
+          <plugin>
+            <groupId>de.qaware.maven</groupId>
+            <artifactId>go-offline-maven-plugin</artifactId>
+            <executions>
+              <execution>
+                <phase>package</phase>
+                <goals>
+                  <goal>resolve-dependencies</goal>
+                </goals>
+              </execution>
+            </executions>
+            <configuration>
+              <!-- Add dependencies specific to invoker tests so that they cache on go-offline -->
+              <dynamicDependencies>
+                <DynamicDependency>
+                  <groupId>io.grpc</groupId>
+                  <artifactId>grpc-all</artifactId>
+                  <version>${old-grpc.version}</version>
+                  <repositoryType>MAIN</repositoryType>
+                </DynamicDependency>
+                <DynamicDependency>
+                  <groupId>org.codehaus.mojo</groupId>
+                  <artifactId>build-helper-maven-plugin</artifactId>
+                  <version>${build-helper-maven-plugin.version}</version>
+                  <repositoryType>PLUGIN</repositoryType>
+                </DynamicDependency>
+              </dynamicDependencies>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
