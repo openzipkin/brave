@@ -429,8 +429,7 @@
         <version>${maven-failsafe-plugin.version}</version>
         <configuration>
           <systemPropertyVariables>
-            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager
-            </java.util.logging.manager>
+            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager</java.util.logging.manager>
           </systemPropertyVariables>
           <!-- Ensure scope leak cause ends up in the console -->
           <trimStackTrace>false</trimStackTrace>
@@ -445,8 +444,7 @@
           <!-- workaround to SUREFIRE-1831 -->
           <useModulePath>false</useModulePath>
           <systemPropertyVariables>
-            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager
-            </java.util.logging.manager>
+            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager</java.util.logging.manager>
           </systemPropertyVariables>
           <!-- Ensure scope leak cause ends up in the console -->
           <trimStackTrace>false</trimStackTrace>
@@ -542,6 +540,10 @@
             <exclude>**/com.alibaba.dubbo.rpc.Filter</exclude>
             <exclude>src/test/resources/**</exclude>
             <exclude>src/test/proto/**</exclude>
+            <!-- generated grpc 1.2 test sources -->
+            <exclude>**/Hello*.java</exclude>
+            <exclude>**/GreeterGrpc*.java</exclude>
+            <exclude>**/GraterGrpc*.java</exclude>
           </excludes>
           <strictCheck>true</strictCheck>
         </configuration>
