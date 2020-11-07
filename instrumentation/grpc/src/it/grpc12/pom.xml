@@ -69,24 +69,24 @@
       <artifactId>brave-context-log4j2</artifactId>
       <version>${project.version}</version>
     </dependency>
-    <!-- Main code uses jul and tests log with log4j -->
-    <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-core</artifactId>
-      <version>@log4j.version@</version>
-      <scope>test</scope>
-    </dependency>
-    <!-- route jul over log4j2 during tests -->
+
+    <!-- Route jul over log4j2 during integration tests -->
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-jul</artifactId>
       <version>@log4j.version@</version>
       <scope>test</scope>
     </dependency>
-    <!-- route log4j over log4j2 during tests -->
+    <!-- route log4j over log4j2 during integration tests -->
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-1.2-api</artifactId>
+      <version>@log4j.version@</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
       <version>@log4j.version@</version>
       <scope>test</scope>
     </dependency>
@@ -125,8 +125,6 @@
           <!-- Only compiling types involved in integration tests avoids an otherwise unnecessary
                Mockito dependency -->
           <includes>
-            <!-- generated sources -->
-            <include>io/grpc/examples/helloworld/*.java</include>
             <include>**/BaseIT*.java</include>
             <include>**/GreeterImpl.java</include>
             <include>**/PickUnusedPort.java</include>
@@ -141,14 +139,20 @@
         <version>@maven-failsafe-plugin.version@</version>
         <configuration>
           <failIfNoTests>true</failIfNoTests>
-          <!-- workaround to SUREFIRE-1831 -->
-          <useModulePath>false</useModulePath>
-          <systemPropertyVariables>
-            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager</java.util.logging.manager>
-          </systemPropertyVariables>
           <includes>
             <include>**/IT*.java</include>
           </includes>
+          <!-- Try to prevent flakes in CI -->
+          <reuseForks>false</reuseForks>
+          <!-- workaround to SUREFIRE-1831 -->
+          <useModulePath>false</useModulePath>
+          <!-- Brave and OkHttp MockWebServer log with java.util.logging. Adding the bridge allows
+               allows us to change scope and format via log4j2.properties -->
+          <systemPropertyVariables>
+            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager</java.util.logging.manager>
+          </systemPropertyVariables>
+          <!-- Ensure scope leak cause ends up in the console -->
+          <trimStackTrace>false</trimStackTrace>
         </configuration>
       </plugin>
     </plugins>

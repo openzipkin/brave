@@ -32,6 +32,8 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
     <main.java.version>1.6</main.java.version>
     <main.signature.artifact>java16</main.signature.artifact>
+
+    <old-httpclient.version>4.3.6</old-httpclient.version>
   </properties>
 
   <dependencies>
@@ -64,6 +66,35 @@
     <plugins>
       <plugin>
         <artifactId>maven-invoker-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>de.qaware.maven</groupId>
+        <artifactId>go-offline-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>resolve-dependencies</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <!-- Add dependencies specific to invoker tests so that they cache on go-offline -->
+          <dynamicDependencies>
+            <DynamicDependency>
+              <groupId>org.apache.httpcomponents</groupId>
+              <artifactId>httpclient</artifactId>
+              <version>${old-httpclient.version}</version>
+              <repositoryType>MAIN</repositoryType>
+            </DynamicDependency>
+            <DynamicDependency>
+              <groupId>org.apache.httpcomponents</groupId>
+              <artifactId>httpclient-cache</artifactId>
+              <version>${old-httpclient.version}</version>
+              <repositoryType>MAIN</repositoryType>
+            </DynamicDependency>
+          </dynamicDependencies>
+        </configuration>
       </plugin>
     </plugins>
   </build>

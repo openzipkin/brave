@@ -143,6 +143,7 @@
               </execution>
             </executions>
             <configuration>
+              <!-- Add dependencies specific to invoker tests so that they cache on go-offline -->
               <dynamicDependencies>
                 <DynamicDependency>
                   <groupId>io.grpc</groupId>

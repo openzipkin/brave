@@ -94,6 +94,29 @@
       <plugin>
         <artifactId>maven-invoker-plugin</artifactId>
       </plugin>
+      <plugin>
+        <groupId>de.qaware.maven</groupId>
+        <artifactId>go-offline-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>resolve-dependencies</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <!-- Add dependencies specific to invoker tests so that they cache on go-offline -->
+          <dynamicDependencies>
+            <DynamicDependency>
+              <groupId>org.springframework</groupId>
+              <artifactId>spring-web</artifactId>
+              <version>${spring.version}</version>
+              <repositoryType>MAIN</repositoryType>
+            </DynamicDependency>
+          </dynamicDependencies>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 </project>

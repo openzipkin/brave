@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright 2013-2019 The OpenZipkin Authors
+    Copyright 2013-2020 The OpenZipkin Authors
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
     in compliance with the License. You may obtain a copy of the License at
@@ -25,6 +25,9 @@
   <name>kafka-clients-kafka1</name>
 
   <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
+
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
   </properties>
@@ -39,12 +42,11 @@
     <dependency>
       <groupId>org.apache.kafka</groupId>
       <artifactId>kafka-clients</artifactId>
-      <!-- explicit version intentional to ensure old clients still work -->
-      <version>1.0.0</version>
+      <version>@old-kafka-clients.version@</version>
       <exclusions>
         <exclusion>
           <groupId>org.slf4j</groupId>
-          <artifactId>slf4j-log4j12</artifactId>
+          <artifactId>*</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -57,12 +59,63 @@
     <dependency>
       <groupId>com.github.charithe</groupId>
       <artifactId>kafka-junit</artifactId>
-      <version>4.0.0</version>
+      <version>@old-kafka-junit.version@</version>
+      <exclusions>
+        <exclusion>
+          <groupId>junit</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.junit.jupiter</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>log4j</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <!-- route log4j over log4j2 during tests -->
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-1.2-api</artifactId>
+      <version>@log4j.version@</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- route slf4j over log4j2 during tests -->
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-slf4j-impl</artifactId>
+      <version>@log4j.version@</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Route jul over log4j2 during integration tests -->
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-jul</artifactId>
+      <version>@log4j.version@</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
+      <version>@log4j.version@</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
   <build>
     <sourceDirectory>@project.build.testSourceDirectory@</sourceDirectory>
+    <testResources>
+      <testResource>
+        <directory>@project.basedir@/src/test/resources</directory>
+      </testResource>
+    </testResources>
     <plugins>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
@@ -83,6 +136,17 @@
           <includes>
             <include>**/IT*.java</include>
           </includes>
+          <!-- Try to prevent flakes in CI -->
+          <reuseForks>false</reuseForks>
+          <!-- workaround to SUREFIRE-1831 -->
+          <useModulePath>false</useModulePath>
+          <!-- Brave and OkHttp MockWebServer log with java.util.logging. Adding the bridge allows
+               allows us to change scope and format via log4j2.properties -->
+          <systemPropertyVariables>
+            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager</java.util.logging.manager>
+          </systemPropertyVariables>
+          <!-- Ensure scope leak cause ends up in the console -->
+          <trimStackTrace>false</trimStackTrace>
         </configuration>
       </plugin>
     </plugins>

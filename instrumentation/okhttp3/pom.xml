@@ -30,6 +30,8 @@
     <module.name>brave.okhttp3</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
+    <!-- Last version before Call.timeout was added -->
+    <old-okhttp.version>3.11.0</old-okhttp.version>
     <retrofit.version>2.9.0</retrofit.version>
   </properties>
 
@@ -63,6 +65,29 @@
     <plugins>
       <plugin>
         <artifactId>maven-invoker-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>de.qaware.maven</groupId>
+        <artifactId>go-offline-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>resolve-dependencies</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <!-- Add dependencies specific to invoker tests so that they cache on go-offline -->
+          <dynamicDependencies>
+            <DynamicDependency>
+              <groupId>com.squareup.okhttp3</groupId>
+              <artifactId>mockwebserver</artifactId>
+              <version>${old-okhttp.version}</version>
+              <repositoryType>MAIN</repositoryType>
+            </DynamicDependency>
+          </dynamicDependencies>
+        </configuration>
       </plugin>
     </plugins>
   </build>
