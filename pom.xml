@@ -200,7 +200,7 @@
       <version>${log4j.version}</version>
       <scope>test</scope>
     </dependency>
-    <!-- route jul over log4j2 during tests -->
+    <!-- route jul over log4j2 during integration tests -->
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-jul</artifactId>
@@ -428,13 +428,13 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${maven-failsafe-plugin.version}</version>
         <configuration>
-          <!-- Try to prevent flakes in CI -->
-          <reuseForks>false</reuseForks>
-          <systemPropertyVariables>
-            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager</java.util.logging.manager>
-          </systemPropertyVariables>
           <!-- Ensure scope leak cause ends up in the console -->
           <trimStackTrace>false</trimStackTrace>
+          <!-- Don't add org.apache.logging.log4j.jul.LogManager here as it conflicts with
+               classloading, causing brave.test.propagation.PropagationTest to flake. -->
+          <classpathDependencyExcludes>
+            <classpathDependencyExclude>org.apache.logging.log4j:log4j-jul</classpathDependencyExclude>
+          </classpathDependencyExcludes>
         </configuration>
       </plugin>
       <plugin>
@@ -445,6 +445,7 @@
           <reuseForks>false</reuseForks>
           <!-- workaround to SUREFIRE-1831 -->
           <useModulePath>false</useModulePath>
+          <!-- Brave logs with java.util.logging. This allows config via log4j2.properties -->
           <systemPropertyVariables>
             <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager</java.util.logging.manager>
           </systemPropertyVariables>
@@ -606,6 +607,7 @@
         </plugins>
       </build>
     </profile>
+
     <!-- -DskipBenchmarks ensures benchmarks don't end up in javadocs or in Maven Central -->
     <profile>
       <id>include-benchmarks</id>
@@ -618,6 +620,7 @@
         <module>instrumentation/benchmarks</module>
       </modules>
     </profile>
+
     <profile>
       <id>release</id>
       <build>

@@ -99,8 +99,7 @@
         <version>@maven-failsafe-plugin.version@</version>
         <configuration>
           <systemPropertyVariables>
-            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager
-            </java.util.logging.manager>
+            <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager</java.util.logging.manager>
           </systemPropertyVariables>
           <failIfNoTests>true</failIfNoTests>
           <trimStackTrace>false</trimStackTrace>
