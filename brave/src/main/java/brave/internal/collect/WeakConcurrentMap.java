@@ -40,7 +40,7 @@ import java.util.concurrent.ConcurrentMap;
  * <p>See https://github.com/raphw/weak-lock-free
  */
 public class WeakConcurrentMap<K, V> extends ReferenceQueue<K> {
-  final ConcurrentMap<WeakKey<K>, V> target = new ConcurrentHashMap<>();
+  protected final ConcurrentMap<WeakKey<K>, V> target = new ConcurrentHashMap<>();
 
   @Nullable public V getIfPresent(K key) {
     if (key == null) throw new NullPointerException("key == null");

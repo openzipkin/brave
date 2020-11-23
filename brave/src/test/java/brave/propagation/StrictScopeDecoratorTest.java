@@ -13,6 +13,7 @@
  */
 package brave.propagation;
 
+import brave.GarbageCollectors;
 import brave.ScopedSpan;
 import brave.Tracing;
 import brave.propagation.CurrentTraceContext.Scope;
@@ -233,5 +234,15 @@ public class StrictScopeDecoratorTest {
   static void assertStackTraceStartsWithMethod(Throwable throwable, String methodName) {
     assertThat(throwable.getStackTrace()[0].getMethodName())
       .isEqualTo(methodName);
+  }
+
+  @Test public void garbageCollectedScope() throws Exception {
+    currentTraceContext.newScope(null);
+    GarbageCollectors.blockOnGC();
+
+    // We cleanup the weak references on scope operations, so next one will fail.
+    assertThatThrownBy(() -> currentTraceContext.newScope(null))
+      .isInstanceOf(AssertionError.class)
+      .hasMessage("Thread [main] opened a scope of null here:");
   }
 }
