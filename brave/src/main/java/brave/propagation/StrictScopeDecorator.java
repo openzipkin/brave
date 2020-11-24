@@ -18,10 +18,10 @@ import brave.internal.Nullable;
 import brave.internal.collect.WeakConcurrentMap;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
-import brave.propagation.StrictScopeDecorator.CallerStackTrace;
 import java.io.Closeable;
 import java.lang.ref.Reference;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.concurrent.Executor;
 
 import static java.lang.Thread.currentThread;
@@ -40,10 +40,12 @@ import static java.lang.Thread.currentThread;
  * }</pre>
  */
 // Closeable so things like Spring will automatically execute it on shutdown and expose leaks!
-public final class StrictScopeDecorator extends WeakConcurrentMap<Scope, CallerStackTrace> implements ScopeDecorator, Closeable {
+public final class StrictScopeDecorator implements ScopeDecorator, Closeable {
   public static StrictScopeDecorator create() {
     return new StrictScopeDecorator();
   }
+
+  final PendingScopes pendingScopes = new PendingScopes();
 
   /**
    * Identifies problems by throwing {@link IllegalStateException} when a scope is closed on a
@@ -77,7 +79,7 @@ public final class StrictScopeDecorator extends WeakConcurrentMap<Scope, CallerS
     caller.setStackTrace(stackTrace);
 
     Scope strictScope = new StrictScope(scope, caller);
-    putIfProbablyAbsent(strictScope, caller);
+    pendingScopes.putIfProbablyAbsent(strictScope, caller);
     return strictScope;
   }
 
@@ -94,26 +96,17 @@ public final class StrictScopeDecorator extends WeakConcurrentMap<Scope, CallerS
   // AssertionError to ensure test runners render the stack trace
   @Override public void close() {
     // toArray is synchronized while iterators are not
-    expungeStaleEntries();
+    pendingScopes.expungeStaleEntries();
 
-    for (CallerStackTrace caller : target.values()) {
+    for (Map.Entry<Scope, CallerStackTrace> entry : pendingScopes) {
+      CallerStackTrace caller = entry.getValue();
       if (!caller.closed) {
         throwCallerError(caller);
       }
     }
   }
 
-  @Override
-  protected void expungeStaleEntries() {
-    Reference<?> reference;
-    while ((reference = poll()) != null) {
-      CallerStackTrace caller = removeStaleEntry(reference);
-      if (caller == null || caller.closed) continue;
-      throwCallerError(caller);
-    }
-  }
-
-  private static void throwCallerError(CallerStackTrace caller) {
+  static void throwCallerError(CallerStackTrace caller) {
     // Sometimes unit test runners truncate the cause of the exception.
     // This flattens the exception as the caller of close() isn't important vs the one that leaked
     AssertionError toThrow = new AssertionError(
@@ -134,7 +127,7 @@ public final class StrictScopeDecorator extends WeakConcurrentMap<Scope, CallerS
     @Override public void close() {
       caller.closed = true;
 
-      remove(this);
+      pendingScopes.remove(this);
 
       if (currentThread().getId() != caller.threadId) {
         throw new IllegalStateException(String.format(
@@ -159,6 +152,18 @@ public final class StrictScopeDecorator extends WeakConcurrentMap<Scope, CallerS
     CallerStackTrace(@Nullable TraceContext context) {
       super("Thread [" + currentThread().getName() + "] opened scope for " + context + " here:");
       this.context = context;
+    }
+  }
+
+  static class PendingScopes extends WeakConcurrentMap<Scope, CallerStackTrace> {
+    @Override
+    protected void expungeStaleEntries() {
+      Reference<?> reference;
+      while ((reference = poll()) != null) {
+        CallerStackTrace caller = removeStaleEntry(reference);
+        if (caller == null || caller.closed) continue;
+        throwCallerError(caller);
+      }
     }
   }
 
