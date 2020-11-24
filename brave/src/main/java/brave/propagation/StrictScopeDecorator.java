@@ -15,13 +15,13 @@ package brave.propagation;
 
 import brave.Tracer;
 import brave.internal.Nullable;
+import brave.internal.collect.WeakConcurrentMap;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import java.io.Closeable;
+import java.lang.ref.Reference;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.Executor;
 
 import static java.lang.Thread.currentThread;
@@ -45,7 +45,7 @@ public final class StrictScopeDecorator implements ScopeDecorator, Closeable {
     return new StrictScopeDecorator();
   }
 
-  final Set<CallerStackTrace> currentCallers = Collections.synchronizedSet(new LinkedHashSet<>());
+  final PendingScopes pendingScopes = new PendingScopes();
 
   /**
    * Identifies problems by throwing {@link IllegalStateException} when a scope is closed on a
@@ -78,7 +78,9 @@ public final class StrictScopeDecorator implements ScopeDecorator, Closeable {
     stackTrace = Arrays.copyOfRange(stackTrace, from, stackTrace.length);
     caller.setStackTrace(stackTrace);
 
-    return new StrictScope(scope, caller, currentCallers);
+    Scope strictScope = new StrictScope(scope, caller);
+    pendingScopes.putIfProbablyAbsent(strictScope, caller);
+    return strictScope;
   }
 
   /**
@@ -94,31 +96,39 @@ public final class StrictScopeDecorator implements ScopeDecorator, Closeable {
   // AssertionError to ensure test runners render the stack trace
   @Override public void close() {
     // toArray is synchronized while iterators are not
-    CallerStackTrace[] leakedCallers = currentCallers.toArray(new CallerStackTrace[0]);
-    for (CallerStackTrace caller : leakedCallers) {
-      // Sometimes unit test runners truncate the cause of the exception.
-      // This flattens the exception as the caller of close() isn't important vs the one that leaked
-      AssertionError toThrow = new AssertionError(
-        "Thread [" + caller.threadName + "] opened a scope of " + caller.context + " here:");
-      toThrow.setStackTrace(caller.getStackTrace());
-      throw toThrow;
+    pendingScopes.expungeStaleEntries();
+
+    for (Map.Entry<Scope, CallerStackTrace> entry : pendingScopes) {
+      CallerStackTrace caller = entry.getValue();
+      if (!caller.closed) {
+        throwCallerError(caller);
+      }
     }
   }
 
-  static final class StrictScope implements Scope {
+  static void throwCallerError(CallerStackTrace caller) {
+    // Sometimes unit test runners truncate the cause of the exception.
+    // This flattens the exception as the caller of close() isn't important vs the one that leaked
+    AssertionError toThrow = new AssertionError(
+      "Thread [" + caller.threadName + "] opened a scope of " + caller.context + " here:");
+    toThrow.setStackTrace(caller.getStackTrace());
+    throw toThrow;
+  }
+
+  final class StrictScope implements Scope {
     final Scope delegate;
-    final Set<CallerStackTrace> currentCallers;
     final CallerStackTrace caller;
 
-    StrictScope(Scope delegate, CallerStackTrace caller, Set<CallerStackTrace> currentCallers) {
+    StrictScope(Scope delegate, CallerStackTrace caller) {
       this.delegate = delegate;
-      this.currentCallers = currentCallers;
       this.caller = caller;
-      this.currentCallers.add(caller);
     }
 
     @Override public void close() {
-      currentCallers.remove(caller);
+      caller.closed = true;
+
+      pendingScopes.remove(this);
+
       if (currentThread().getId() != caller.threadId) {
         throw new IllegalStateException(String.format(
           "Thread [%s] opened scope, but thread [%s] closed it", caller.threadName,
@@ -137,9 +147,23 @@ public final class StrictScopeDecorator implements ScopeDecorator, Closeable {
     final long threadId = currentThread().getId();
     final TraceContext context;
 
+    volatile boolean closed;
+
     CallerStackTrace(@Nullable TraceContext context) {
       super("Thread [" + currentThread().getName() + "] opened scope for " + context + " here:");
       this.context = context;
+    }
+  }
+
+  static class PendingScopes extends WeakConcurrentMap<Scope, CallerStackTrace> {
+    @Override
+    protected void expungeStaleEntries() {
+      Reference<?> reference;
+      while ((reference = poll()) != null) {
+        CallerStackTrace caller = removeStaleEntry(reference);
+        if (caller == null || caller.closed) continue;
+        throwCallerError(caller);
+      }
     }
   }
 

@@ -92,7 +92,7 @@ public class TracerTest {
   @Test public void handler_hasNiceToString() {
     tracer = Tracing.newBuilder().build().tracer();
 
-    assertThat(tracer.pendingSpans).extracting("spanHandler")
+    assertThat((Object) tracer.pendingSpans).extracting("spanHandler")
       .hasToString("LogSpanHandler{name=brave.Tracer}");
   }
 

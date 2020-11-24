@@ -17,6 +17,10 @@ import brave.internal.Nullable;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
+import java.util.AbstractMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -32,14 +36,13 @@ import java.util.concurrent.ConcurrentMap;
  * <p>Other changes mostly remove features (to reduce the bytecode size) and address style:
  * <ul>
  *   <li>Inline expunction only as we have no thread to use anyway</li>
- *   <li>Removes methods we don't need such as iteration</li>
  *   <li>Stylistic changes including different javadoc and removal of private modifiers</li>
  *   <li>toString: derived only from keys</li>
  * </ul>
  *
  * <p>See https://github.com/raphw/weak-lock-free
  */
-public class WeakConcurrentMap<K, V> extends ReferenceQueue<K> {
+public class WeakConcurrentMap<K, V> extends ReferenceQueue<K> implements Iterable<Map.Entry<K, V>> {
   final ConcurrentMap<WeakKey<K>, V> target = new ConcurrentHashMap<>();
 
   @Nullable public V getIfPresent(K key) {
@@ -64,6 +67,12 @@ public class WeakConcurrentMap<K, V> extends ReferenceQueue<K> {
     expungeStaleEntries();
 
     return target.remove(key);
+  }
+
+  /** Iterates over the entries in this map. */
+  @Override
+  public Iterator<Map.Entry<K, V>> iterator() {
+    return new EntryIterator(target.entrySet().iterator());
   }
 
   /** Cleans all unused references. */
@@ -148,5 +157,53 @@ public class WeakConcurrentMap<K, V> extends ReferenceQueue<K> {
 
   static boolean equal(@Nullable Object a, @Nullable Object b) {
     return a == null ? b == null : a.equals(b); // Java 6 can't use Objects.equals()
+  }
+
+  class EntryIterator implements Iterator<Map.Entry<K, V>> {
+
+    private final Iterator<Map.Entry<WeakKey<K>, V>> iterator;
+
+    private Map.Entry<WeakKey<K>, V> nextEntry;
+
+    private K nextKey;
+
+    private EntryIterator(Iterator<Map.Entry<WeakKey<K>, V>> iterator) {
+      this.iterator = iterator;
+      findNext();
+    }
+
+    private void findNext() {
+      while (iterator.hasNext()) {
+        nextEntry = iterator.next();
+        nextKey = nextEntry.getKey().get();
+        if (nextKey != null) {
+          return;
+        }
+      }
+      nextEntry = null;
+      nextKey = null;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return nextKey != null;
+    }
+
+    @Override
+    public Map.Entry<K, V> next() {
+      if (nextKey == null) {
+        throw new NoSuchElementException();
+      }
+      try {
+        return new AbstractMap.SimpleImmutableEntry<K, V>(nextKey, nextEntry.getValue());
+      } finally {
+        findNext();
+      }
+    }
+
+    @Override
+    public void remove() {
+      throw new UnsupportedOperationException();
+    }
   }
 }
