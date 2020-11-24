@@ -1,0 +1,13 @@
+#!/bin/sh
+
+set -ue
+
+# This script sets up anything needed for `./deploy`. Do not assume `configure_test` was called.
+#
+# See [README.md] for an explanation of this and how CI should use it.
+
+build-bin/gpg/configure_gpg
+build-bin/maven/maven_go_offline
+
+# openzipkin/brave publishes Javadoc to https://zipkin.io/brave/ on release
+build-bin/git/login_git

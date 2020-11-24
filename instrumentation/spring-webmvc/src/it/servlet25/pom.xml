@@ -113,7 +113,7 @@
         <!-- Use surefire to run the ITs until someone figures out how to get invoker to run
              failsafe -->
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>@maven-failsafe-plugin.version@</version>
+        <version>@maven-surefire-plugin.version@</version>
         <configuration>
           <failIfNoTests>true</failIfNoTests>
           <includes>

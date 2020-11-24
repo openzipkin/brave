@@ -1,0 +1,10 @@
+#!/bin/sh
+
+set -ue
+
+# This script runs the tests of the project.
+#
+# See [README.md] for an explanation of this and how CI should use it.
+
+# Don't use `-T1C ` because this project uses RetroLambda which is not threadsafe
+./mvnw verify -nsu "$@"

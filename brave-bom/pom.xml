@@ -34,8 +34,8 @@
     <main.basedir>${project.basedir}/..</main.basedir>
 
     <!-- use the same values in ../pom.xml -->
-    <zipkin.version>2.22.2</zipkin.version>
-    <zipkin-reporter.version>2.16.0</zipkin-reporter.version>
+    <zipkin.version>2.23.0</zipkin.version>
+    <zipkin-reporter.version>2.16.1</zipkin-reporter.version>
 
     <nexus-staging-maven-plugin.version>1.6.8</nexus-staging-maven-plugin.version>
   </properties>
