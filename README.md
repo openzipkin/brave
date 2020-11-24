@@ -1,5 +1,5 @@
 [![Gitter chat](http://img.shields.io/badge/gitter-join%20chat%20%E2%86%92-brightgreen.svg)](https://gitter.im/openzipkin/zipkin)
-[![Build Status](https://travis-ci.org/openzipkin/brave.svg?branch=master)](https://travis-ci.org/openzipkin/brave)
+[![Build Status](https://github.com/openzipkin/brave/workflows/test/badge.svg)](https://github.com/openzipkin/zipkin/actions?query=workflow%3Atest)
 [![Maven Central](https://img.shields.io/maven-central/v/io.zipkin.brave/brave.svg)](https://search.maven.org/search?q=g:io.zipkin.brave%20AND%20a:brave)
 
 # Brave
@@ -62,7 +62,8 @@ All artifacts publish to the group ID "io.zipkin.brave". We use a common
 release version for all components.
 
 ### Library Releases
-Releases are at [Maven Central](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.zipkin.brave%22)
+Snapshots are uploaded to [Sonatype](https://oss.sonatype.org/content/repositories/releases) which
+synchronizes with [Maven Central](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.zipkin.brave%22)
 
 ### Library Snapshots
 Snapshots are uploaded to [Sonatype](https://oss.sonatype.org/content/repositories/snapshots) after

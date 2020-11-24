@@ -1,0 +1,12 @@
+#!/bin/sh
+
+set -ue
+
+# This script sets up anything needed for `./test`. This should not login to anything, as that
+# should be done in `configure_deploy`.
+#
+# See [README.md] for an explanation of this and how CI should use it.
+
+# Docker (testcontainers) tests
+build-bin/docker/configure_docker
+build-bin/maven/maven_go_offline

@@ -1,0 +1,55 @@
+# yamllint --format github .github/workflows/deploy.yml
+---
+name: deploy
+
+# We deploy on master and release versions, regardless of if the commit is
+# documentation-only or not.
+#
+# See https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
+on:
+  push:
+    # Don't deploy tags as they conflict with [maven-release-plugin] prepare release N.M.L
+    tags: ''
+    branches: master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-20.04  # newest available distribution, aka focal
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+        with:
+          # Prevent use of implicit GitHub Actions read-only token GITHUB_TOKEN.
+          # We push Javadocs to the gh-pages branch on commit.
+          token: ${{ secrets.GH_TOKEN }}
+          fetch-depth: 0  # allow build-bin/idl_to_gh_pages to get the full history
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven-
+      - name: Deploy
+        env:
+          # GH_USER=<user that created GH_TOKEN>
+          GH_USER: ${{ secrets.GH_USER }}
+          # GH_TOKEN=<hex token value>
+          #   - pushes gh-pages during build-bin/javadoc_to_gh_pages
+          #   - create via https://github.com/settings/tokens
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GPG_SIGNING_KEY: ${{ secrets.GPG_SIGNING_KEY }}
+          # GPG_PASSPHRASE=<passphrase for GPG_SIGNING_KEY>
+          #   - referenced in .settings.xml
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          # SONATYPE_USER=<sonatype account token>
+          #   - deploys snapshots and releases to Sonatype
+          #   - needs access to io.zipkin via https://issues.sonatype.org/browse/OSSRH-16669
+          #   - generate via https://oss.sonatype.org/#profile;User%20Token
+          #   - referenced in .settings.xml
+          SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
+          # SONATYPE_PASSWORD=<password to sonatype account token>
+          #   - referenced in .settings.xml
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+        run: |  # GITHUB_REF will be refs/heads/master or refs/tags/N.M.L
+          build-bin/configure_deploy &&
+          build-bin/deploy $(echo ${GITHUB_REF} | cut -d/ -f 3)

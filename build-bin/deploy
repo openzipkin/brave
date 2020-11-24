@@ -1,0 +1,20 @@
+#!/bin/sh
+
+set -ue
+
+# This script deploys a master or release version.
+#
+# See [README.md] for an explanation of this and how CI should use it.
+
+build-bin/maven/maven_deploy -pl -:brave-bom
+# Deploy the Bill of Materials (BOM) separately as it is unhooked from the main project intentionally
+build-bin/maven/maven_deploy -f brave-bom/pom.xml
+
+# openzipkin/brave publishes Javadoc to gh-pages (https://zipkin.io/brave/) on release
+case ${version} in
+  *-SNAPSHOT )
+    ;;
+  * )
+    javadoc_to_gh_pages ${version}
+    ;;
+esac
