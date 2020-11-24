@@ -21,6 +21,6 @@ case ${version} in
   *-SNAPSHOT )
     ;;
   * )
-    javadoc_to_gh_pages ${version}
+    build-bin/javadoc_to_gh_pages ${version}
     ;;
 esac
