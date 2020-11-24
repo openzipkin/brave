@@ -13,13 +13,11 @@
     the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
-    <version>5.13.2-SNAPSHOT</version>
+    <version>5.13.2</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -31,8 +29,7 @@
     <module.name>brave.grpc</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
-    <!-- grpc-java < 1.15 supports Java 6 https://github.com/grpc/grpc-java/issues/3961
-         Current versions support Java 7 even though TLS typically implies Java 8+ -->
+    <!-- grpc-java < 1.15 supports Java 6 https://github.com/grpc/grpc-java/issues/3961 Current versions support Java 7 even though TLS typically implies Java 8+ -->
     <main.java.version>1.6</main.java.version>
     <main.signature.artifact>java16</main.signature.artifact>
 
