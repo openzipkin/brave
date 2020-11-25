@@ -58,7 +58,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
   @Override
   protected CloseableHttpAsyncClient newClient(int port) {
     CloseableHttpAsyncClient result =
-      HttpClient5Tracing.newBuilder(httpTracing).create(newClientBuilder());
+      HttpClient5Tracing.newBuilder(httpTracing).build(newClientBuilder());
     result.start();
     return result;
   }
@@ -115,7 +115,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     closeClient(client);
 
     client = HttpClient5Tracing.newBuilder(httpTracing)
-      .create(newClientBuilder()
+      .build(newClientBuilder()
         .addRequestInterceptorFirst(
           (httpRequest, entityDetails, httpContext) ->
             httpRequest.setHeader("my-req-id", currentTraceContext.get().traceIdString()))
@@ -159,7 +159,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     assertThat(currentTraceContext.get()).isNull();
     RuntimeException error = new RuntimeException("Test");
     client = HttpClient5Tracing.newBuilder(httpTracing)
-      .create(newClientBuilder()
+      .build(newClientBuilder()
         .addRequestInterceptorLast((httpRequest, entityDetails, httpContext) -> {
           throw error;
         }));
@@ -180,7 +180,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
 
     RuntimeException error = new RuntimeException("Test");
     client = HttpClient5Tracing.newBuilder(httpTracing)
-      .create(newClientBuilder()
+      .build(newClientBuilder()
         .addResponseInterceptorLast((httpResponse, entityDetails, httpContext) -> {
           throw error;
         }));

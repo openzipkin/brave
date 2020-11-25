@@ -35,7 +35,7 @@ public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient
   @Override
   protected CloseableHttpClient newClient(int port) {
     return HttpClient5Tracing.newBuilder(httpTracing)
-      .create(HttpClientBuilder.create().disableAutomaticRetries());
+      .build(HttpClientBuilder.create().disableAutomaticRetries());
   }
 
   @Override
@@ -67,7 +67,7 @@ public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient
     closeClient(client);
 
     client = HttpClient5Tracing.newBuilder(httpTracing)
-      .create(HttpClientBuilder.create()
+      .build(HttpClientBuilder.create()
         .disableAutomaticRetries()
         .addRequestInterceptorFirst(
           (request, entity, context) ->

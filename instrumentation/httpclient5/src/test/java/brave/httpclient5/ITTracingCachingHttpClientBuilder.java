@@ -32,7 +32,7 @@ public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilde
   @Override
   protected CloseableHttpClient newClient(int port) {
     return HttpClient5Tracing.newBuilder(httpTracing)
-      .create(CachingHttpClientBuilder.create().disableAutomaticRetries());
+      .build(CachingHttpClientBuilder.create().disableAutomaticRetries());
   }
 
   /**

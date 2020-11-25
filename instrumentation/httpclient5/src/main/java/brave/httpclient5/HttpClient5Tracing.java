@@ -30,8 +30,19 @@ public class HttpClient5Tracing {
 
   final HttpTracing httpTracing;
 
+  final CurrentTraceContext currentTraceContext;
+
+  final TraceContextOpenInterceptor openInterceptor;
+
+  final TraceContextCloseInterceptor closeInterceptor;
+
   HttpClient5Tracing(HttpTracing httpTracing) {
+    if (httpTracing == null) throw new NullPointerException("HttpTracing == null");
     this.httpTracing = httpTracing;
+    this.openInterceptor =
+      new TraceContextOpenInterceptor(httpTracing.tracing().currentTraceContext());
+    this.closeInterceptor = new TraceContextCloseInterceptor();
+    this.currentTraceContext = httpTracing.tracing().currentTraceContext();
   }
 
   public static HttpClient5Tracing newBuilder(Tracing tracing) {
@@ -42,49 +53,36 @@ public class HttpClient5Tracing {
     return new HttpClient5Tracing(httpTracing);
   }
 
-  public CloseableHttpClient create(HttpClientBuilder httpClientBuilder) {
-    httpClientBuilder.addExecInterceptorBefore(ChainElement.MAIN_TRANSPORT.name(),
+  public CloseableHttpClient build(HttpClientBuilder builder) {
+    if (builder == null) throw new NullPointerException("HttpClientBuilder == null");
+    builder.addExecInterceptorBefore(ChainElement.MAIN_TRANSPORT.name(),
       HandleSendHandler.class.getName(),
       new HandleSendHandler(httpTracing));
-    httpClientBuilder.addExecInterceptorBefore(ChainElement.PROTOCOL.name(),
+    builder.addExecInterceptorBefore(ChainElement.PROTOCOL.name(),
       HandleReceiveHandler.class.getName(),
       new HandleReceiveHandler(httpTracing));
-    return httpClientBuilder.build();
+    return builder.build();
   }
 
-  public CloseableHttpAsyncClient create(HttpAsyncClientBuilder httpAsyncClientBuilder) {
-    final CurrentTraceContext currentTraceContext = httpTracing.tracing().currentTraceContext();
-    httpAsyncClientBuilder.addExecInterceptorBefore(PROTOCOL.name(),
-      AsyncHandleSendHandler.class.getName(),
+  public CloseableHttpAsyncClient build(HttpAsyncClientBuilder builder) {
+    if (builder == null) throw new NullPointerException("HttpAsyncClientBuilder == null");
+    builder.addExecInterceptorBefore(PROTOCOL.name(), AsyncHandleSendHandler.class.getName(),
       new AsyncHandleSendHandler(httpTracing));
-    httpAsyncClientBuilder.addRequestInterceptorFirst(
-      (httpRequest, entityDetails, httpContext) -> HttpClientUtils.openScope(httpContext,
-        currentTraceContext));
-    httpAsyncClientBuilder.addRequestInterceptorLast(
-      (httpRequest, entityDetails, httpContext) -> HttpClientUtils.closeScope(httpContext));
-    httpAsyncClientBuilder.addResponseInterceptorFirst(
-      (httpResponse, entityDetails, httpContext) -> HttpClientUtils.openScope(httpContext,
-        currentTraceContext));
-    httpAsyncClientBuilder.addResponseInterceptorLast(
-      (httpResponse, entityDetails, httpContext) -> HttpClientUtils.closeScope(httpContext));
-    return new TracingHttpAsyncClient(httpAsyncClientBuilder.build(), currentTraceContext);
+    builder.addRequestInterceptorFirst(openInterceptor);
+    builder.addRequestInterceptorLast(closeInterceptor);
+    builder.addResponseInterceptorFirst(openInterceptor);
+    builder.addResponseInterceptorLast(closeInterceptor);
+    return new TracingHttpAsyncClient(builder.build(), currentTraceContext);
   }
 
-  public CloseableHttpAsyncClient create(H2AsyncClientBuilder h2AsyncClientBuilder) {
-    final CurrentTraceContext currentTraceContext = httpTracing.tracing().currentTraceContext();
-    h2AsyncClientBuilder.addExecInterceptorBefore(PROTOCOL.name(),
-      AsyncHandleSendHandler.class.getName(),
+  public CloseableHttpAsyncClient build(H2AsyncClientBuilder builder) {
+    if (builder == null) throw new NullPointerException("H2AsyncClientBuilder == null");
+    builder.addExecInterceptorBefore(PROTOCOL.name(), AsyncHandleSendHandler.class.getName(),
       new AsyncHandleSendHandler(httpTracing));
-    h2AsyncClientBuilder.addRequestInterceptorFirst(
-      (httpRequest, entityDetails, httpContext) -> HttpClientUtils.openScope(httpContext,
-        currentTraceContext));
-    h2AsyncClientBuilder.addRequestInterceptorLast(
-      (httpRequest, entityDetails, httpContext) -> HttpClientUtils.closeScope(httpContext));
-    h2AsyncClientBuilder.addResponseInterceptorFirst(
-      (httpResponse, entityDetails, httpContext) -> HttpClientUtils.openScope(httpContext,
-        currentTraceContext));
-    h2AsyncClientBuilder.addResponseInterceptorLast(
-      (httpResponse, entityDetails, httpContext) -> HttpClientUtils.closeScope(httpContext));
-    return new TracingHttpAsyncClient(h2AsyncClientBuilder.build(), currentTraceContext);
+    builder.addRequestInterceptorFirst(openInterceptor);
+    builder.addRequestInterceptorLast(closeInterceptor);
+    builder.addResponseInterceptorFirst(openInterceptor);
+    builder.addResponseInterceptorLast(closeInterceptor);
+    return new TracingHttpAsyncClient(builder.build(), currentTraceContext);
   }
 }

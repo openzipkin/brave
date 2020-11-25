@@ -72,7 +72,7 @@ public class ITTracingCachingHttpAsyncClientBuilder extends ITTracingHttpAsyncCl
     assertThat(currentTraceContext.get()).isNull();
     RuntimeException error = new RuntimeException("Test");
     client = HttpClient5Tracing.newBuilder(httpTracing)
-      .create(newClientBuilder()
+      .build(newClientBuilder()
         .addRequestInterceptorLast((httpRequest, entityDetails, httpContext) -> {
           throw error;
         }));

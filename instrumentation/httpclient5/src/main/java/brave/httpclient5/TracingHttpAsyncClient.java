@@ -71,10 +71,13 @@ class TracingHttpAsyncClient extends CloseableHttpAsyncClient {
     if (invocationContext != null) {
       context.setAttribute(TraceContext.class.getName(), invocationContext);
     }
+
+    if (callback != null && invocationContext != null) {
+      callback = new TraceContextFutureCallback<>(callback, currentTraceContext, invocationContext);
+    }
+
     return delegate.execute(target, requestProducer, responseConsumer, pushHandlerFactory, context,
-      callback != null && invocationContext != null
-        ? new TraceContextFutureCallback<>(callback, currentTraceContext, invocationContext)
-        : callback);
+      callback);
   }
 
   @Override
