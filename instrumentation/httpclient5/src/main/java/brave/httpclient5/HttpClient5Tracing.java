@@ -32,16 +32,16 @@ public class HttpClient5Tracing {
 
   final CurrentTraceContext currentTraceContext;
 
-  final TraceContextOpenInterceptor openInterceptor;
+  final TraceContextOpenScopeInterceptor openInterceptor;
 
-  final TraceContextCloseInterceptor closeInterceptor;
+  final TraceContextCloseScopeInterceptor closeInterceptor;
 
   HttpClient5Tracing(HttpTracing httpTracing) {
     if (httpTracing == null) throw new NullPointerException("HttpTracing == null");
     this.httpTracing = httpTracing;
     this.openInterceptor =
-      new TraceContextOpenInterceptor(httpTracing.tracing().currentTraceContext());
-    this.closeInterceptor = new TraceContextCloseInterceptor();
+      new TraceContextOpenScopeInterceptor(httpTracing.tracing().currentTraceContext());
+    this.closeInterceptor = new TraceContextCloseScopeInterceptor();
     this.currentTraceContext = httpTracing.tracing().currentTraceContext();
   }
 
