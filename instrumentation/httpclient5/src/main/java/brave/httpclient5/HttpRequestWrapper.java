@@ -24,7 +24,7 @@ final class HttpRequestWrapper extends HttpClientRequest {
   final HttpRequest request;
   @Nullable final HttpHost target;
 
-  HttpRequestWrapper(HttpRequest request, HttpHost target) {
+  HttpRequestWrapper(HttpRequest request, @Nullable HttpHost target) {
     this.request = request;
     this.target = target;
   }
