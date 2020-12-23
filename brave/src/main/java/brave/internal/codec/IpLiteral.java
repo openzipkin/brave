@@ -30,7 +30,7 @@ public final class IpLiteral {
     return ip;
   }
 
-  // All the below code is from zipkin2.Endpoint, copy/pasted here to prevent a depedency.
+  // All the below code is from zipkin2.Endpoint, copy/pasted here to prevent a dependency.
   public enum IpFamily {
     Unknown,
     IPv4,
