@@ -85,7 +85,7 @@ public class CharSequencesBenchmarks {
   @Benchmark public CharSequence withoutSubSequence_middle_max() {
     return withoutSubSequence(TRACESTATE_B3_MIDDLE_MAX_ENTRIES,
       INDEX_OF_TRACESTATE_B3_MIDDLE_MAX_ENTRIES,
-      INDEX_OF_TRACESTATE_B3_MIDDLE_MAX_ENTRIES + TRACESTATE_B3_ONLY.length()).toString();
+      INDEX_OF_TRACESTATE_B3_MIDDLE_MAX_ENTRIES + TRACESTATE_B3_ONLY.length());
   }
 
   @Benchmark public CharSequence withoutSubSequence_middle_max_string() {
