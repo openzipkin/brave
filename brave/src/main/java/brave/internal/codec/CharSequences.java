@@ -47,18 +47,17 @@ public final class CharSequences {
     int length = input.length();
 
     // Exit early if the region is empty or the entire input
-    if (regionLength(length, beginIndex, endIndex) == 0) return input;
+    int skippedRegionLength = regionLength(length, beginIndex, endIndex);
+    if (skippedRegionLength == 0) return input;
     if (beginIndex == 0 && endIndex == length) return "";
 
     // Exit early if the region ends on a boundary.
-    if (beginIndex == 0) return input.subSequence(endIndex, length);
-    if (endIndex == length) return input.subSequence(0, beginIndex);
+    // This doesn't use input.subsequence as it might allocate a String
+    if (beginIndex == 0) return new SubSequence(input, endIndex, length);
+    if (endIndex == length) return new SubSequence(input, 0, beginIndex);
 
     // Otherwise, the region to skip in the middle
-    return new ConcatCharSequence(
-      input.subSequence(0, beginIndex),
-      input.subSequence(endIndex, length)
-    );
+    return new WithoutSubSequence(input, 0, beginIndex, endIndex, length);
   }
 
   static int regionLength(int inputLength, int beginIndex, int endIndex) {
@@ -70,18 +69,16 @@ public final class CharSequences {
     return regionLength;
   }
 
-  /**
-   * Joins two character sequences together. Inputs must be immutable. This is useful when the
-   * result is only scanned. It does not implement {@link #toString()} or {@link #equals(Object)}.
-   */
-  static final class ConcatCharSequence implements CharSequence {
-    final CharSequence left, right;
-    final int length;
+  /** Avoids implicit string allocation when the input calls {@link String#subSequence(int, int)} */
+  static final class SubSequence implements CharSequence {
+    final CharSequence input;
+    final int begin, end, length;
 
-    ConcatCharSequence(CharSequence left, CharSequence right) {
-      this.left = left;
-      this.right = right;
-      this.length = left.length() + right.length();
+    SubSequence(CharSequence input, int begin, int end) {
+      this.input = input;
+      this.begin = begin;
+      this.end = end;
+      this.length = end - begin;
     }
 
     @Override public int length() {
@@ -91,35 +88,76 @@ public final class CharSequences {
     @Override public char charAt(int index) {
       if (index < 0) throw new IndexOutOfBoundsException("index < 0");
       if (index >= length) throw new IndexOutOfBoundsException("index >= length");
-      int leftLength = left.length();
-      if (index < leftLength) return left.charAt(index);
-      return right.charAt(index - leftLength);
+      return input.charAt(begin + index);
     }
 
     @Override public CharSequence subSequence(int beginIndex, int endIndex) {
-      if (regionLength(length, beginIndex, endIndex) == 0) return "";
-      if (beginIndex == 0 && endIndex == length) return this;
-
-      int leftLength = left.length();
-      // Exit early if the subSequence is only left or right
-      if (beginIndex == 0 && endIndex == leftLength) return left;
-      if (beginIndex == leftLength && endIndex == length) return right;
-
-      // Exit early if the subSequence is contained by left or right
-      if (endIndex <= leftLength) {
-        return left.subSequence(beginIndex, endIndex);
-      } else if (beginIndex > leftLength) {
-        return right.subSequence(beginIndex - leftLength, endIndex - leftLength);
-      }
-
-      return new ConcatCharSequence( // we are in the middle
-        left.subSequence(beginIndex, leftLength),
-        right.subSequence(0, endIndex - leftLength)
-      );
+      int newLength = regionLength(length, beginIndex, endIndex);
+      if (newLength == 0) return "";
+      if (newLength == length) return this;
+      return new SubSequence(input, beginIndex + begin, endIndex + begin);
     }
 
     @Override public String toString() {
-      return String.valueOf(left) + right;
+      return new StringBuilder(length).append(input, begin, end).toString();
+    }
+  }
+
+  static final class WithoutSubSequence implements CharSequence {
+    final CharSequence input;
+    final int begin, beginSkip, endSkip, end, skipLength, length;
+
+    WithoutSubSequence(
+      CharSequence input, int begin, int beginSkip, int endSkip, int end) {
+      this.input = input;
+      this.begin = begin;
+      this.beginSkip = beginSkip;
+      this.endSkip = endSkip;
+      this.end = end;
+      this.skipLength = endSkip - beginSkip;
+      this.length = end - begin - skipLength;
+    }
+
+    @Override public int length() {
+      return length;
+    }
+
+    @Override public char charAt(int index) {
+      if (index < 0) throw new IndexOutOfBoundsException("index < 0");
+      if (index >= length) throw new IndexOutOfBoundsException("index >= length");
+      index += begin;
+      if (index >= beginSkip) index += skipLength;
+      return input.charAt(index);
+    }
+
+    @Override public CharSequence subSequence(int beginIndex, int endIndex) {
+      int newLength = regionLength(length, beginIndex, endIndex);
+      if (newLength == 0) return "";
+      if (newLength == length) return this;
+
+      // Move the input positions to the relative offset
+      beginIndex += begin;
+      endIndex += begin;
+
+      // Check to see if we are before the skipped region
+      if (endIndex <= beginSkip) return new SubSequence(input, beginIndex, endIndex);
+
+      // We now know we either include the skipped region or start after it
+      endIndex += skipLength;
+
+      // If we are after the skipped region, return a subsequence
+      if (beginIndex >= beginSkip) return new SubSequence(input, beginIndex + skipLength, endIndex);
+
+      // We happened to require both sides of the skipped region, so narrow it according to inputs.
+      return new WithoutSubSequence(input, beginIndex, beginSkip, endSkip, endIndex);
+    }
+
+    @Override public String toString() {
+      // Careful here to use .append(input, begin, end), not .append(input.subsequence(begin, end))
+      // The latter can allocate temporary strings, subverting the purpose of using StringBuilder!
+      return new StringBuilder(length)
+        .append(input, begin, beginSkip)
+        .append(input, endSkip, end).toString();
     }
   }
 }

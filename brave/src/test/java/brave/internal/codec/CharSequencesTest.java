@@ -13,10 +13,12 @@
  */
 package brave.internal.codec;
 
-import brave.internal.codec.CharSequences.ConcatCharSequence;
+import brave.internal.codec.CharSequences.SubSequence;
+import brave.internal.codec.CharSequences.WithoutSubSequence;
 import java.nio.CharBuffer;
 import org.junit.Test;
 
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -60,59 +62,76 @@ public class CharSequencesTest {
       .hasMessage("endIndex > input");
   }
 
-  @Test public void concat() {
-    assertThat(new ConcatCharSequence("a", "b")).hasToString("ab");
-    assertThat(new ConcatCharSequence("a", ",b")).hasToString("a,b");
+  @Test public void withoutSubSequence() {
+    String input = "b3=1,es=2";
+    assertThat(CharSequences.withoutSubSequence(input, 0, 0))
+      .isSameAs(input);
+    assertThat(CharSequences.withoutSubSequence(input, 0, input.length()))
+      .isInstanceOf(String.class).isEmpty();
 
-    assertThat(new ConcatCharSequence(CharBuffer.wrap("a"), "b")).hasToString("ab");
-    assertThat(new ConcatCharSequence("a", CharBuffer.wrap("b"))).hasToString("ab");
+    assertThat(CharSequences.withoutSubSequence(input, 0, 2))
+      .isInstanceOf(SubSequence.class).hasToString("=1,es=2");
+    assertThat(CharSequences.withoutSubSequence(input, 2, 4))
+      .isInstanceOf(WithoutSubSequence.class).hasToString("b3,es=2");
+    assertThat(CharSequences.withoutSubSequence(input, 4, 6))
+      .isInstanceOf(WithoutSubSequence.class).hasToString("b3=1s=2");
+    assertThat(CharSequences.withoutSubSequence(input, 6, 8))
+      .isInstanceOf(WithoutSubSequence.class).hasToString("b3=1,e2");
+
+    assertThat(CharSequences.withoutSubSequence(input, 1, 9))
+      .isInstanceOf(SubSequence.class).hasToString("b");
+    assertThat(CharSequences.withoutSubSequence(input, 0, 8))
+      .isInstanceOf(SubSequence.class).hasToString("2");
   }
 
-  @Test public void concat_charAt() {
-    String left = "b3=1", right = "azure=b";
-    CharSequence concated = new ConcatCharSequence(left, right);
-    String normalConcated = left + right;
-    for (int i = 0; i < normalConcated.length(); i++) {
-      assertThat(concated.charAt(i)).isEqualTo(normalConcated.charAt(i));
+  @Test public void withoutSubSequence_charAt() {
+    String input = "b3=1,es=2";
+
+    for (CharSequence sequence : asList(
+      CharSequences.withoutSubSequence(input, 0, 2),
+      CharSequences.withoutSubSequence(input, 2, 4),
+      CharSequences.withoutSubSequence(input, 4, 6),
+      CharSequences.withoutSubSequence(input, 6, 8),
+      CharSequences.withoutSubSequence(input, 1, 9),
+      CharSequences.withoutSubSequence(input, 0, 8))) {
+      String string = sequence.toString(); // we know this is ok as it is tested above
+      for (int i = 0; i < string.length(); i++) {
+        assertThat(sequence.charAt(i))
+          .isEqualTo(string.charAt(i));
+      }
     }
   }
 
-  @Test public void concat_empties() {
-    assertThat(new ConcatCharSequence("", "")).isEmpty();
-    assertThat(new ConcatCharSequence("a", "")).hasToString("a");
-    assertThat(new ConcatCharSequence("", "b")).hasToString("b");
-  }
-
-  @Test public void concat_subSequence() {
-    String left = "b3=1,", right = "es=2";
-    CharSequence concat = new ConcatCharSequence(left, right);
-    assertThat(concat.subSequence(0, 0)).isEmpty();
-    assertThat(concat.subSequence(0, concat.length())).isSameAs(concat);
-
-    assertThat(concat.subSequence(0, left.length())).isSameAs(left);
-    assertThat(concat.subSequence(left.length(), concat.length())).isSameAs(right);
-
-    assertThat(concat.subSequence(0, 2)).hasToString("b3");
-    assertThat(concat.subSequence(2, 4)).hasToString("=1");
-    assertThat(concat.subSequence(4, 6)).hasToString(",e");
-    assertThat(concat.subSequence(6, 8)).hasToString("s=");
-
-    assertThat(concat.subSequence(1, 9)).hasToString("3=1,es=2");
-    assertThat(concat.subSequence(0, 8)).hasToString("b3=1,es=");
-  }
-
-  @Test public void withoutSubSequence() {
+  @Test public void withoutSubSequence_length() {
     String input = "b3=1,es=2";
-    assertThat(CharSequences.withoutSubSequence(input, 0, 0)).isSameAs(input);
-    assertThat(CharSequences.withoutSubSequence(input, 0, input.length())).isEmpty();
 
-    assertThat(CharSequences.withoutSubSequence(input, 0, 2)).hasToString("=1,es=2");
-    assertThat(CharSequences.withoutSubSequence(input, 2, 4)).hasToString("b3,es=2");
-    assertThat(CharSequences.withoutSubSequence(input, 4, 6)).hasToString("b3=1s=2");
-    assertThat(CharSequences.withoutSubSequence(input, 6, 8)).hasToString("b3=1,e2");
+    for (CharSequence sequence : asList(
+      CharSequences.withoutSubSequence(input, 0, 2),
+      CharSequences.withoutSubSequence(input, 2, 4),
+      CharSequences.withoutSubSequence(input, 4, 6),
+      CharSequences.withoutSubSequence(input, 6, 8),
+      CharSequences.withoutSubSequence(input, 1, 9),
+      CharSequences.withoutSubSequence(input, 0, 8))) {
+      String string = sequence.toString(); // we know this is ok as it is tested above
+      assertThat(sequence.length()).isEqualTo(string.length());
+    }
+  }
 
-    assertThat(CharSequences.withoutSubSequence(input, 1, 9)).hasToString("b");
-    assertThat(CharSequences.withoutSubSequence(input, 0, 8)).hasToString("2");
+  @Test public void withoutSubSequence_subsequence() {
+    String realInput = "~b3=1!@#$%^&*,es=2"; // fill skipped area with junk so failures are obvious
+
+    CharSequence input = new WithoutSubSequence(realInput, 1, 5, 13, realInput.length());
+    assertThat(input).hasToString("b3=1,es=2");
+
+    assertThat(input.subSequence(0, input.length())).isSameAs(input);
+    assertThat(input.subSequence(0, 0)).isInstanceOf(String.class).isEmpty();
+
+    assertThat(input.subSequence(0, 2)).isInstanceOf(SubSequence.class).hasToString("b3");
+    assertThat(input.subSequence(2, 4)).isInstanceOf(SubSequence.class).hasToString("=1");
+    assertThat(input.subSequence(3, 5)).isInstanceOf(WithoutSubSequence.class).hasToString("1,");
+    assertThat(input.subSequence(4, 6)).isInstanceOf(SubSequence.class).hasToString(",e");
+    assertThat(input.subSequence(6, 8)).isInstanceOf(SubSequence.class).hasToString("s=");
+    assertThat(input.subSequence(8, 9)).isInstanceOf(SubSequence.class).hasToString("2");
   }
 
   @Test public void withoutSubSequence_badParameters() {
