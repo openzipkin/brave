@@ -68,7 +68,7 @@ public final class WriteBuffer {
     return pos;
   }
 
-  public void writeAscii(String v) {
+  public void writeAscii(CharSequence v) {
     for (int i = 0, length = v.length(); i < length; i++) {
       writeByte(v.charAt(i) & 0xff);
     }

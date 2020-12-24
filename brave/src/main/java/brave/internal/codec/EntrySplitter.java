@@ -16,8 +16,8 @@ package brave.internal.codec;
 import brave.internal.Platform;
 
 /**
- * Splits a character sequence that's in a delimited string, optionally trimming optional whitespace
- * (<a href="https://httpwg.org/specs/rfc7230.html#rfc.section.3.2">OWS</a>) before or after
+ * Splits a delimited character sequence, optionally trimming optional whitespace (<a
+ * href="https://httpwg.org/specs/rfc7230.html#rfc.section.3.2">OWS</a>) before or after
  * delimiters.
  *
  * <p>This is intended to be initialized as a constant, as doing so per-request will add
@@ -36,8 +36,8 @@ public final class EntrySplitter {
 
     /**
      * When set, {@link Handler} will be called maximum {@code maxEntries} times per parse. After
-     * that, {@link #parse(Handler, Object, String)} returns false or throws an exception, based on
-     * {@link #shouldThrow(boolean)}. Default: {@link Integer#MAX_VALUE}.
+     * that, {@link #parse(Handler, Object, CharSequence)} returns false or throws an exception,
+     * based on {@link #shouldThrow(boolean)}. Default: {@link Integer#MAX_VALUE}.
      *
      * <p>This is used to implement strict format constraints. For example, above 32 entries is
      * malformed. This is separate from any capacity constraints of the {@link Handler}, which may
@@ -99,7 +99,7 @@ public final class EntrySplitter {
      * are removed around the {@link #keyValueSeparator(char)}. Default: {@code true}
      *
      * <p>For example, given the input "  k1   =   v1  ,  k2   =   v2  ", this trims around the
-     * "=" character and string boundaries: {@code [("  k1", "v1  "),("  k2", "v2  ")]}.
+     * "=" character and charSequence boundaries: {@code [("  k1", "v1  "),("  k2", "v2  ")]}.
      *
      * @see #trimOWSAroundKeyValueSeparator(boolean)
      */
@@ -110,7 +110,7 @@ public final class EntrySplitter {
 
     /**
      * When {@code true}, when a {@link #keyValueSeparator(char)} does not follow a key, {@link
-     * #parse(Handler, Object, String)} returns false or throws an exception, based on {@link
+     * #parse(Handler, Object, CharSequence)} returns false or throws an exception, based on {@link
      * #shouldThrow(boolean)}. Default: {@code true}.
      *
      * <p>Setting this to {@code false} makes "k1,k2=v2" interpreted the same as if there was
@@ -151,20 +151,20 @@ public final class EntrySplitter {
      *
      * <p>After validating, typically strings will be parsed from the input like so:
      * <pre>{@code
-     * String key = input.substring(beginKey, endKey);
-     * String value = input.substring(beginValue, endValue);
+     * String key = input.subSequence(beginKey, endKey).toString();
+     * String value = input.subSequence(beginValue, endValue).toString();
      * }</pre>
      *
-     * @param target receiver of parsed entries
-     * @param input string including data to parse
-     * @param beginKey begin index of the entry's key in {@code input}, inclusive
-     * @param endKey end index of the entry's key in {@code input}, exclusive
+     * @param target     receiver of parsed entries
+     * @param input      character sequence at least as large as the index parameters
+     * @param beginKey   begin index of the entry's key in {@code input}, inclusive
+     * @param endKey     end index of the entry's key in {@code input}, exclusive
      * @param beginValue begin index of the entry's value in {@code input}, inclusive
-     * @param endValue end index of the entry's value in {@code input}, exclusive
+     * @param endValue   end index of the entry's value in {@code input}, exclusive
      * @return true if we reached the {@code endIndex} without failures.
      */
     boolean onEntry(
-        T target, String input, int beginKey, int endKey, int beginValue, int endValue);
+      T target, CharSequence input, int beginKey, int endKey, int beginValue, int endValue);
   }
 
   final char keyValueSeparator, entrySeparator;
@@ -183,31 +183,31 @@ public final class EntrySplitter {
     shouldThrow = builder.shouldThrow;
     missingKey = "Invalid input: no key before '" + keyValueSeparator + "'";
     missingKeyValueSeparator =
-        "Invalid input: missing key value separator '" + keyValueSeparator + "'";
+      "Invalid input: missing key value separator '" + keyValueSeparator + "'";
     overMaxEntries = "Invalid input: over " + maxEntries + " entries";
   }
 
   /**
    * @param handler parses entries emitted upon success
-   * @param target receiver of parsed entries
-   * @param input string including data to parse
+   * @param target  receiver of parsed entries
+   * @param input   character sequence at least as large as the index parameters
    * @return true if we reached the {@code endIndex} without failures.
    */
-  public <T> boolean parse(Handler<T> handler, T target, String input) {
+  public <T> boolean parse(Handler<T> handler, T target, CharSequence input) {
     if (input == null) throw new NullPointerException("input == null");
     return parse(handler, target, input, 0, input.length());
   }
 
   /**
-   * @param handler parses entries emitted upon success
-   * @param target receiver of parsed entries
-   * @param input string including data to parse
+   * @param handler    parses entries emitted upon success
+   * @param target     receiver of parsed entries
+   * @param input      character sequence at least as large as the index parameters
    * @param beginIndex begin index of the {@code input}, inclusive
-   * @param endIndex end index of the {@code input}, exclusive
+   * @param endIndex   end index of the {@code input}, exclusive
    * @return true if we reached the {@code endIndex} without failures.
    */
   public <T> boolean parse(
-      Handler<T> handler, T target, String input, int beginIndex, int endIndex) {
+    Handler<T> handler, T target, CharSequence input, int beginIndex, int endIndex) {
     if (handler == null) throw new NullPointerException("handler == null");
     if (target == null) throw new NullPointerException("target == null");
     if (input == null) throw new NullPointerException("input == null");
@@ -291,7 +291,7 @@ public final class EntrySplitter {
     return true;
   }
 
-  static int rewindOWS(String input, int beginIndex, int endIndex) {
+  static int rewindOWS(CharSequence input, int beginIndex, int endIndex) {
     // endIndex is a boundary. we need to begin looking one character before it.
     while (isOWS(input.charAt(endIndex - 1))) {
       if (--endIndex == beginIndex) return beginIndex; // trim whitespace

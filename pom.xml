@@ -117,7 +117,6 @@
 
     <!-- Test only dependencies -->
     <junit.version>4.13.1</junit.version>
-    <junit-jupiter.version>5.7.0</junit-jupiter.version>
     <assertj.version>3.18.1</assertj.version>
     <powermock.version>2.0.9</powermock.version>
     <mockito.version>3.6.0</mockito.version>
@@ -138,6 +137,8 @@
     <maven-dependency-plugin.version>3.1.2</maven-dependency-plugin.version>
     <maven-deploy-plugin.version>3.0.0-M1</maven-deploy-plugin.version>
     <maven-enforcer-plugin.version>3.0.0-M3</maven-enforcer-plugin.version>
+    <!-- Use same version as https://github.com/openzipkin/docker-java -->
+    <maven-help-plugin.version>3.2.0</maven-help-plugin.version>
     <maven-install-plugin.version>3.0.0-M1</maven-install-plugin.version>
     <maven-invoker-plugin.version>3.2.1</maven-invoker-plugin.version>
     <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
@@ -255,13 +256,6 @@
           <configuration>
             <!-- Add dependencies indirectly referenced by build plugins -->
             <dynamicDependencies>
-              <!-- animal sniffer implicitly uses this -->
-              <DynamicDependency>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <version>${maven-dependency-plugin.version}</version>
-                <repositoryType>PLUGIN</repositoryType>
-              </DynamicDependency>
               <DynamicDependency>
                 <groupId>org.codehaus.mojo.signature</groupId>
                 <artifactId>${main.signature.artifact}</artifactId>
@@ -303,11 +297,6 @@
             <fork>true</fork>
             <showWarnings>true</showWarnings>
           </configuration>
-        </plugin>
-
-        <plugin>
-          <artifactId>maven-dependency-plugin</artifactId>
-          <version>${maven-dependency-plugin.version}</version>
         </plugin>
 
         <!-- Uploads occur as a last step (which also adds checksums) -->
@@ -420,6 +409,16 @@
     </pluginManagement>
 
     <plugins>
+      <!-- Ensure common utility commands use coherent versions (avoid lazy downloads) -->
+      <plugin>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>${maven-dependency-plugin.version}</version>
+      </plugin>
+      <plugin>
+        <artifactId>maven-help-plugin</artifactId>
+        <version>${maven-help-plugin.version}</version>
+      </plugin>
+
       <plugin>
         <groupId>net.orfjackal.retrolambda</groupId>
         <artifactId>retrolambda-maven-plugin</artifactId>

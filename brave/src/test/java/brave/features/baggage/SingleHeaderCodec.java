@@ -50,10 +50,10 @@ final class SingleHeaderCodec implements BaggageCodec, EntrySplitter.Handler<Val
     return ENTRY_SPLITTER.parse(this, valueUpdater, value);
   }
 
-  @Override public boolean onEntry(
-      ValueUpdater target, String buffer, int beginKey, int endKey, int beginValue, int endValue) {
-    BaggageField field = BaggageField.create(buffer.substring(beginKey, endKey));
-    String value = buffer.substring(beginValue, endValue);
+  @Override public boolean onEntry(ValueUpdater target,
+    CharSequence buffer, int beginKey, int endKey, int beginValue, int endValue) {
+    BaggageField field = BaggageField.create(buffer.subSequence(beginKey, endKey).toString());
+    String value = buffer.subSequence(beginValue, endValue).toString();
     return target.updateValue(field, value);
   }
 

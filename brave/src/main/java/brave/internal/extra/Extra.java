@@ -21,11 +21,11 @@ import java.util.Arrays;
 /**
  * Holds extended state in {@link TraceContext#extra()} or {@link TraceContextOrSamplingFlags#extra()}.
  *
- * <p>The implementation of this type uses copy-on-write semantics to prevent changes in a
- * child context from affecting its parent.
+ * <p>Implementations copy-on-write when changing {@linkplain #state} to prevent a child context
+ * from affecting its parent.
  *
  * @param <E> Use a final type as otherwise tools like {@link TraceContext#findExtra(Class)} will
- * not work. In most cases, the type should be package private.
+ *            not work. In most cases, the type should be package private.
  * @param <F> The factory that {@link ExtraFactory#create() creates} this instance.
  */
 // We handle dynamic vs fixed state internally as it..
@@ -66,7 +66,9 @@ public abstract class Extra<E extends Extra<E, F>, F extends ExtraFactory<E, F>>
    * <p>Ex 1: If state is a map, and ours includes {@code A -> 1, B -> 2} and theirs
    * includes {@code A -> 2, D -> 1}, create a new state of {@code A -> 1, B -> 2, D -> 1}.
    *
-   * <p><em>Note</em>: This operation does not need to {@linkplain #lock lock}.
+   * <p><em>Note</em>: This operation does not need to {@linkplain #lock lock} as long as changes
+   * happen before updating {@link #state}. See <a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/package-summary.html#MemoryVisibility">MemoryVisibility</a>
+   * for details on "happens before" and volatile fields.
    */
   protected abstract void mergeStateKeepingOursOnConflict(E that);
 
