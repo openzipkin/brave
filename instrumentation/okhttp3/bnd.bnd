@@ -1,4 +1,6 @@
 Import-Package: \
+  okhttp3;version="[3.11, 5)",\
+  okio;version="[1.15,3)",\
   *
 Export-Package: \
   brave.okhttp3
