@@ -19,68 +19,6 @@ package brave.internal.codec;
  * signatures that match our utilities such as {@link EntrySplitter}.
  */
 public final class CharSequences {
-
-  /**
-   * Joins two character sequences together. Inputs must be immutable. This is useful when the
-   * result is only scanned. It does not implement {@link #toString()} or {@link #equals(Object)}.
-   */
-  public static CharSequence concat(CharSequence left, CharSequence right) {
-    if (left == null) throw new NullPointerException("left == null");
-    if (right == null) throw new NullPointerException("right == null");
-    if (left.length() == 0) return right; // isEmpty is Java 15+
-    if (right.length() == 0) return left;
-    return new ConcatCharSequence(left, right);
-  }
-
-  static final class ConcatCharSequence implements CharSequence {
-    final CharSequence left, right;
-    final int length;
-
-    ConcatCharSequence(CharSequence left, CharSequence right) {
-      this.left = left;
-      this.right = right;
-      this.length = left.length() + right.length();
-    }
-
-    @Override public int length() {
-      return length;
-    }
-
-    @Override public char charAt(int index) {
-      if (index < 0) throw new IndexOutOfBoundsException("index < 0");
-      if (index >= length) throw new IndexOutOfBoundsException("index >= length");
-      int leftLength = left.length();
-      if (index < leftLength) return left.charAt(index);
-      return right.charAt(index - leftLength);
-    }
-
-    @Override public CharSequence subSequence(int beginIndex, int endIndex) {
-      if (regionLength(length, beginIndex, endIndex) == 0) return "";
-      if (beginIndex == 0 && endIndex == length) return this;
-
-      int leftLength = left.length();
-      // Exit early if the subSequence is only left or right
-      if (beginIndex == 0 && endIndex == leftLength) return left;
-      if (beginIndex == leftLength && endIndex == length) return right;
-
-      // Exit early if the subSequence is contained by left or right
-      if (endIndex <= leftLength) {
-        return left.subSequence(beginIndex, endIndex);
-      } else if (beginIndex > leftLength) {
-        return right.subSequence(beginIndex - leftLength, endIndex - leftLength);
-      }
-
-      return new ConcatCharSequence( // we are in the middle
-        left.subSequence(beginIndex, leftLength),
-        right.subSequence(0, endIndex - leftLength)
-      );
-    }
-
-    @Override public String toString() {
-      return String.valueOf(left) + right;
-    }
-  }
-
   /**
    * Returns true if the input range contains only the expected characters.
    *
@@ -130,5 +68,58 @@ public final class CharSequences {
     int regionLength = endIndex - beginIndex;
     if (endIndex > inputLength) throw new IndexOutOfBoundsException("endIndex > input");
     return regionLength;
+  }
+
+  /**
+   * Joins two character sequences together. Inputs must be immutable. This is useful when the
+   * result is only scanned. It does not implement {@link #toString()} or {@link #equals(Object)}.
+   */
+  static final class ConcatCharSequence implements CharSequence {
+    final CharSequence left, right;
+    final int length;
+
+    ConcatCharSequence(CharSequence left, CharSequence right) {
+      this.left = left;
+      this.right = right;
+      this.length = left.length() + right.length();
+    }
+
+    @Override public int length() {
+      return length;
+    }
+
+    @Override public char charAt(int index) {
+      if (index < 0) throw new IndexOutOfBoundsException("index < 0");
+      if (index >= length) throw new IndexOutOfBoundsException("index >= length");
+      int leftLength = left.length();
+      if (index < leftLength) return left.charAt(index);
+      return right.charAt(index - leftLength);
+    }
+
+    @Override public CharSequence subSequence(int beginIndex, int endIndex) {
+      if (regionLength(length, beginIndex, endIndex) == 0) return "";
+      if (beginIndex == 0 && endIndex == length) return this;
+
+      int leftLength = left.length();
+      // Exit early if the subSequence is only left or right
+      if (beginIndex == 0 && endIndex == leftLength) return left;
+      if (beginIndex == leftLength && endIndex == length) return right;
+
+      // Exit early if the subSequence is contained by left or right
+      if (endIndex <= leftLength) {
+        return left.subSequence(beginIndex, endIndex);
+      } else if (beginIndex > leftLength) {
+        return right.subSequence(beginIndex - leftLength, endIndex - leftLength);
+      }
+
+      return new ConcatCharSequence( // we are in the middle
+        left.subSequence(beginIndex, leftLength),
+        right.subSequence(0, endIndex - leftLength)
+      );
+    }
+
+    @Override public String toString() {
+      return String.valueOf(left) + right;
+    }
   }
 }

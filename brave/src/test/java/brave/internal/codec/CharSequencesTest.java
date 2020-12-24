@@ -13,6 +13,7 @@
  */
 package brave.internal.codec;
 
+import brave.internal.codec.CharSequences.ConcatCharSequence;
 import java.nio.CharBuffer;
 import org.junit.Test;
 
@@ -60,16 +61,16 @@ public class CharSequencesTest {
   }
 
   @Test public void concat() {
-    assertThat(CharSequences.concat("a", "b")).hasToString("ab");
-    assertThat(CharSequences.concat("a", ",b")).hasToString("a,b");
+    assertThat(new ConcatCharSequence("a", "b")).hasToString("ab");
+    assertThat(new ConcatCharSequence("a", ",b")).hasToString("a,b");
 
-    assertThat(CharSequences.concat(CharBuffer.wrap("a"), "b")).hasToString("ab");
-    assertThat(CharSequences.concat("a", CharBuffer.wrap("b"))).hasToString("ab");
+    assertThat(new ConcatCharSequence(CharBuffer.wrap("a"), "b")).hasToString("ab");
+    assertThat(new ConcatCharSequence("a", CharBuffer.wrap("b"))).hasToString("ab");
   }
 
   @Test public void concat_charAt() {
     String left = "b3=1", right = "azure=b";
-    CharSequence concated = new CharSequences.ConcatCharSequence(left, right);
+    CharSequence concated = new ConcatCharSequence(left, right);
     String normalConcated = left + right;
     for (int i = 0; i < normalConcated.length(); i++) {
       assertThat(concated.charAt(i)).isEqualTo(normalConcated.charAt(i));
@@ -77,40 +78,14 @@ public class CharSequencesTest {
   }
 
   @Test public void concat_empties() {
-    assertThat(CharSequences.concat("", "")).isEmpty();
-    assertThat(CharSequences.concat("a", "")).isEqualTo("a");
-    assertThat(CharSequences.concat("", "b")).isEqualTo("b");
-  }
-
-  @Test public void concat_badParameters() {
-    assertThatThrownBy(() -> CharSequences.concat(null, ""))
-      .isInstanceOf(NullPointerException.class)
-      .hasMessage("left == null");
-    assertThatThrownBy(() -> CharSequences.concat("", null))
-      .isInstanceOf(NullPointerException.class)
-      .hasMessage("right == null");
-
-    CharSequence concated = CharSequences.concat("1", "2");
-    assertThatThrownBy(() -> concated.subSequence(-1, 1))
-      .isInstanceOf(IndexOutOfBoundsException.class)
-      .hasMessage("beginIndex < 0");
-
-    assertThatThrownBy(() -> concated.subSequence(0, -1))
-      .isInstanceOf(IndexOutOfBoundsException.class)
-      .hasMessage("endIndex < 0");
-
-    assertThatThrownBy(() -> concated.subSequence(1, 0))
-      .isInstanceOf(IndexOutOfBoundsException.class)
-      .hasMessage("beginIndex > endIndex");
-
-    assertThatThrownBy(() -> concated.subSequence(0, 5))
-      .isInstanceOf(IndexOutOfBoundsException.class)
-      .hasMessage("endIndex > input");
+    assertThat(new ConcatCharSequence("", "")).isEmpty();
+    assertThat(new ConcatCharSequence("a", "")).hasToString("a");
+    assertThat(new ConcatCharSequence("", "b")).hasToString("b");
   }
 
   @Test public void concat_subSequence() {
     String left = "b3=1,", right = "es=2";
-    CharSequence concat = new CharSequences.ConcatCharSequence(left, right);
+    CharSequence concat = new ConcatCharSequence(left, right);
     assertThat(concat.subSequence(0, 0)).isEmpty();
     assertThat(concat.subSequence(0, concat.length())).isSameAs(concat);
 
