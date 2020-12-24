@@ -48,26 +48,26 @@ public class EntrySplitterBenchmarks {
   static final EntrySplitter.Handler<Boolean> NOOP_HANDLER =
     (target, input, beginKey, endKey, beginValue, endValue) -> true;
 
-  @Benchmark public boolean parse_middle_normal() {
+  @Benchmark public boolean parse_normal() {
     return ENTRY_SPLITTER.parse(NOOP_HANDLER, false, TRACESTATE_B3_MIDDLE);
   }
 
-  @Benchmark public boolean parse_middle_normal_string() {
+  @Benchmark public boolean parse_normal_string() {
     return parse_string(TRACESTATE_B3_MIDDLE);
   }
 
-  @Benchmark public boolean parse_middle_max() {
+  @Benchmark public boolean parse_max() {
     return ENTRY_SPLITTER.parse(NOOP_HANDLER, false, TRACESTATE_B3_MIDDLE_MAX_ENTRIES);
   }
 
-  @Benchmark public boolean parse_middle_max_string() {
+  @Benchmark public boolean parse_max_string() {
     return parse_string(TRACESTATE_B3_MIDDLE_MAX_ENTRIES);
   }
 
   static boolean parse_string(String input) {
     boolean result = true;
     for (String entry : input.split(",", 32)) {
-      result = entry.trim().split(",", 2).length == 2;
+      result = entry.trim().split("=", 2).length == 2;
     }
     return result;
   }
