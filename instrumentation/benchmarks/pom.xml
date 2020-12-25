@@ -13,7 +13,9 @@
     the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>io.zipkin.brave</groupId>
@@ -28,8 +30,8 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
     <main.java.version>1.8</main.java.version>
     <main.signature.artifact>java18</main.signature.artifact>
-    <jmh.version>1.26</jmh.version>
-    <undertow-servlet.version>2.2.2.Final</undertow-servlet.version>
+    <jmh.version>1.27</jmh.version>
+    <undertow-servlet.version>2.2.3.Final</undertow-servlet.version>
   </properties>
 
   <!-- can't import brave-bom due to build-support/go-offline.sh -->
@@ -56,7 +58,7 @@
     <dependency>
       <groupId>com.amazonaws</groupId>
       <artifactId>aws-xray-recorder-sdk-core</artifactId>
-      <version>2.7.1</version>
+      <version>2.8.0</version>
     </dependency>
 
     <dependency>
