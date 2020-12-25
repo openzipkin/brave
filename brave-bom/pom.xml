@@ -13,7 +13,9 @@
     the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>io.zipkin.brave</groupId>
@@ -34,8 +36,8 @@
     <main.basedir>${project.basedir}/..</main.basedir>
 
     <!-- use the same values in ../pom.xml -->
-    <zipkin.version>2.23.0</zipkin.version>
-    <zipkin-reporter.version>2.16.1</zipkin-reporter.version>
+    <zipkin.version>2.23.2</zipkin.version>
+    <zipkin-reporter.version>2.16.3</zipkin-reporter.version>
 
     <nexus-staging-maven-plugin.version>1.6.8</nexus-staging-maven-plugin.version>
   </properties>
