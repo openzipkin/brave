@@ -99,7 +99,7 @@
     <jetty-servlet25.version>7.6.21.v20160908</jetty-servlet25.version>
     <resteasy.version>3.14.0.Final</resteasy.version>
 
-    <kafka.version>2.7.0</kafka.version>
+    <kafka.version>2.6.0</kafka.version>
     <activemq.version>5.16.0</activemq.version>
     <spring-rabbit.version>2.3.2</spring-rabbit.version>
 
