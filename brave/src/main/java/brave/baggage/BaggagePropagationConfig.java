@@ -38,7 +38,7 @@ import static brave.baggage.BaggageField.validateName;
  *
  * scopeBuilder.clear() // TRACE_ID is a default field!
  *             .add(SingleBaggageField.newBuilder(BaggageFields.TRACE_ID)
- *                                        .name("trace-id").build())
+ *                                        .addKeyName("trace-id").build())
  * }</pre>
  *
  * <p><em>Note</em>At the moment, dynamic fields are not supported. Use {@link
