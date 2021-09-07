@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2021 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -193,9 +193,8 @@ public class Tracer {
   }
 
   /** Returns an equivalent context if exists in the pending map */
-  TraceContext swapForPendingContext(TraceContext context) {
-    PendingSpan pendingSpan = pendingSpans.get(context);
-    return pendingSpan != null ? pendingSpan.context() : null;
+  PendingSpan getPendingSpan(TraceContext context) {
+    return pendingSpans.get(context);
   }
 
   /**
@@ -377,9 +376,12 @@ public class Tracer {
   }
 
   Span toSpan(@Nullable TraceContext parent, TraceContext context) {
-    // Re-use a pending context if present: This ensures reference consistency on Span.context()
-    TraceContext pendingContext = swapForPendingContext(context);
-    if (pendingContext != null) return _toSpan(parent, pendingContext);
+    // Re-use a pending span if present: This ensures reference consistency on Span.context()
+    PendingSpan pendingSpan = getPendingSpan(context);
+    if (pendingSpan != null) {
+      if (isNoop(context)) return new NoopSpan(context);
+      return _toSpan(context, pendingSpan);
+    }
 
     // There are a few known scenarios for the context to be absent from the pending map:
     // * Created by a separate tracer (localRootId set)
@@ -408,6 +410,10 @@ public class Tracer {
 
     // allocate a mutable span in case multiple threads call this method.. they'll use the same data
     PendingSpan pendingSpan = pendingSpans.getOrCreate(parent, context, false);
+    return _toSpan(context, pendingSpan);
+  }
+
+  Span _toSpan(TraceContext context, PendingSpan pendingSpan) {
     TraceContext pendingContext = pendingSpan.context();
     // A lost race of Tracer.toSpan(context) is the only known situation where "context" won't be
     // the same as pendingSpan.context()
