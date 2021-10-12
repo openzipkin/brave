@@ -192,11 +192,6 @@ public class Tracer {
     }
   }
 
-  /** Returns an equivalent context if exists in the pending map */
-  PendingSpan getPendingSpan(TraceContext context) {
-    return pendingSpans.get(context);
-  }
-
   /**
    * Explicitly creates a child within an existing trace. The result will be have its parent ID set
    * to the input's span ID. If a sampling decision has not yet been made, one will happen here.
@@ -377,7 +372,7 @@ public class Tracer {
 
   Span toSpan(@Nullable TraceContext parent, TraceContext context) {
     // Re-use a pending span if present: This ensures reference consistency on Span.context()
-    PendingSpan pendingSpan = getPendingSpan(context);
+    PendingSpan pendingSpan = pendingSpans.get(context);
     if (pendingSpan != null) {
       if (isNoop(context)) return new NoopSpan(context);
       return _toSpan(context, pendingSpan);
