@@ -37,7 +37,11 @@ final class TracingKafkaClientSupplier implements KafkaClientSupplier {
     this.kafkaTracing = kafkaTracing;
   }
 
-  @Override public AdminClient getAdminClient(Map<String, Object> config) {
+  @Deprecated public AdminClient getAdminClient(Map<String, Object> config) {
+    return getAdmin(config);
+  }
+
+  @Override public AdminClient getAdmin(Map<String, Object> config) {
     return AdminClient.create(config);
   }
 
