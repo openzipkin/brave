@@ -711,9 +711,10 @@
             <configuration>
               <serverId>ossrh</serverId>
               <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-              <!-- Double the normal timeout even though we haven't had a problem in this project.
-                   The only outcome of timing out client side is trying again. -->
-              <stagingProgressTimeoutMinutes>10</stagingProgressTimeoutMinutes>
+              <!-- Recent slowdowns with Sonatype staging have pushed latencies over 10-20 minutes.
+                   Increasing the timeout avoids failures and retries, which still often fail when
+                   Sonatype servers are overloaded. -->
+              <stagingProgressTimeoutMinutes>30</stagingProgressTimeoutMinutes>
               <autoReleaseAfterClose>true</autoReleaseAfterClose>
             </configuration>
           </plugin>
