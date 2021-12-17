@@ -1,0 +1,1 @@
+memberSearchIndex = [{"p":"brave.context.jfr","c":"JfrScopeDecorator","l":"create()"},{"p":"brave.context.jfr","c":"JfrScopeDecorator","l":"decorateScope(TraceContext, CurrentTraceContext.Scope)","url":"decorateScope(brave.propagation.TraceContext,brave.propagation.CurrentTraceContext.Scope)"},{"p":"brave.context.jfr","c":"JfrScopeDecorator","l":"get()"}]
