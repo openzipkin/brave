@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"brave.mysql8","l":"TracingExceptionInterceptor"},{"p":"brave.mysql8","l":"TracingQueryInterceptor"}]
