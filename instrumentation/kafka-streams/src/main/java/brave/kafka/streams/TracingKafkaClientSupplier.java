@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2021 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -37,7 +37,11 @@ final class TracingKafkaClientSupplier implements KafkaClientSupplier {
     this.kafkaTracing = kafkaTracing;
   }
 
-  @Override public AdminClient getAdminClient(Map<String, Object> config) {
+  @Deprecated public AdminClient getAdminClient(Map<String, Object> config) {
+    return getAdmin(config);
+  }
+
+  @Override public AdminClient getAdmin(Map<String, Object> config) {
     return AdminClient.create(config);
   }
 
