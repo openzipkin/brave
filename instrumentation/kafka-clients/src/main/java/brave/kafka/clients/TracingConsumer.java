@@ -20,12 +20,10 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.SamplerFunction;
+
+import java.lang.reflect.Method;
 import java.time.Duration;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -306,6 +304,16 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions,
     Duration timeout) {
     return delegate.endOffsets(partitions, timeout);
+  }
+
+  // Do not use @Override annotation to avoid compatibility issue version < 3.0
+  public OptionalLong currentLag(TopicPartition topicPartition) {
+    try {
+      Method currentLag = delegate.getClass().getMethod("currentLag", TopicPartition.class);
+      return (OptionalLong) currentLag.invoke(delegate, topicPartition);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   // Do not use @Override annotation to avoid compatibility issue version < 2.5
