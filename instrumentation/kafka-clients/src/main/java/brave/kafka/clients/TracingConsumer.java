@@ -23,7 +23,11 @@ import brave.sampler.SamplerFunction;
 
 import java.lang.reflect.Method;
 import java.time.Duration;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import org.apache.kafka.clients.consumer.Consumer;
