@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -25,6 +25,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -303,9 +304,13 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   }
 
   // Do not use @Override annotation to avoid compatibility issue version < 2.0
-  public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions,
-    Duration timeout) {
+  public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions, Duration timeout) {
     return delegate.endOffsets(partitions, timeout);
+  }
+
+  // Do not use @Override annotation to avoid compatibility issue version < 3.0
+  public OptionalLong currentLag(TopicPartition topicPartition) {
+    return delegate.currentLag(topicPartition);
   }
 
   // Do not use @Override annotation to avoid compatibility issue version < 2.5
@@ -324,7 +329,7 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
 
   // Do not use @Override annotation to avoid compatibility on deprecated methods
   public void close(long timeout, TimeUnit unit) {
-    delegate.close(timeout, unit);
+    delegate.close(Duration.ofMillis(unit.convert(timeout, TimeUnit.MILLISECONDS)));
   }
 
   // Do not use @Override annotation to avoid compatibility issue version < 2.0
