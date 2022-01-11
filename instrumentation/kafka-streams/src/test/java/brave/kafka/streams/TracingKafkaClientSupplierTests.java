@@ -39,7 +39,7 @@ class TracingKafkaClientSupplierTests {
   void shouldThrowException() {
     assertThrows(UnsupportedOperationException.class, () -> {
       FakeKafkaClientSupplier fake = new FakeKafkaClientSupplier();
-      fake.getAdminClient(props);
+      fake.getAdmin(props);
     });
   }
 
