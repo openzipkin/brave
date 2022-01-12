@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -48,7 +48,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
   @Before public void setup() {
     server.start();
 
-    String url = "dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean";
+    String url = "dubbo://" + server.ip() + ":" + server.port() + "?scope=remote";
     client = new ReferenceConfig<>();
     client.setGeneric("true");
     client.setFilter("tracing");

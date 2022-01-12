@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -51,7 +51,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     init();
     server.start();
 
-    String url = "dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean";
+    String url = "dubbo://" + server.ip() + ":" + server.port() + "?scope=remote";
     client = new ReferenceConfig<>();
     client.setGeneric("true");
     client.setInterface(GreeterService.class);
@@ -70,7 +70,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
   @Test public void reusesPropagatedSpanId() {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
 
-    RpcContext.getContext().getAttachments().put("b3", B3SingleFormat.writeB3SingleFormat(parent));
+    RpcContext.getContext().getObjectAttachments().put("b3", B3SingleFormat.writeB3SingleFormat(parent));
     client.get().sayHello("jorge");
 
     assertSameIds(testSpanHandler.takeRemoteSpan(SERVER), parent);
@@ -82,7 +82,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
 
-    RpcContext.getContext().getAttachments().put("b3", B3SingleFormat.writeB3SingleFormat(parent));
+    RpcContext.getContext().getObjectAttachments().put("b3", B3SingleFormat.writeB3SingleFormat(parent));
     client.get().sayHello("jorge");
 
     MutableSpan span = testSpanHandler.takeRemoteSpan(SERVER);

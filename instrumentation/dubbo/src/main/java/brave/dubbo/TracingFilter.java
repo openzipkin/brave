@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -26,7 +26,6 @@ import brave.rpc.RpcResponse;
 import brave.rpc.RpcResponseParser;
 import brave.rpc.RpcServerHandler;
 import brave.rpc.RpcTracing;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.common.extension.Activate;
@@ -110,8 +109,7 @@ public final class TracingFilter implements Filter {
       // C service span is A when read from invocation.getAttachments(). This is because
       // AbstractInvoker adds attachments via RpcContext.getContext(), not the invocation.
       // See org.apache.dubbo.rpc.protocol.AbstractInvoker(line 141) from v2.7.3
-      Map<String, String> attachments = RpcContext.getContext().getAttachments();
-      DubboClientRequest clientRequest = new DubboClientRequest(invoker, invocation, attachments);
+      DubboClientRequest clientRequest = new DubboClientRequest(invoker, invocation);
       request = clientRequest;
       span = clientHandler.handleSendWithParent(clientRequest, invocationContext);
     } else {

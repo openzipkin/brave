@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,8 +13,6 @@
  */
 package brave.dubbo;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
 import org.apache.dubbo.rpc.Result;
@@ -30,8 +28,7 @@ public class DubboClientResponseTest {
   Invocation invocation = mock(Invocation.class);
   Result result = mock(Result.class);
   RpcException error = new RpcException(TIMEOUT_EXCEPTION);
-  Map<String, String> attachments = new LinkedHashMap<>();
-  DubboClientRequest request = new DubboClientRequest(invoker, invocation, attachments);
+  DubboClientRequest request = new DubboClientRequest(invoker, invocation);
   DubboClientResponse response = new DubboClientResponse(request, result, error);
 
   @Test public void request() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,11 +13,10 @@
  */
 package brave.dubbo;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
+import org.apache.dubbo.rpc.RpcContext;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,8 +27,7 @@ public class DubboClientRequestTest {
   Invoker invoker = mock(Invoker.class);
   Invocation invocation = mock(Invocation.class);
   URL url = URL.valueOf("dubbo://localhost:6666?scope=remote&interface=brave.dubbo.GreeterService");
-  Map<String, String> attachments = new LinkedHashMap<>();
-  DubboClientRequest request = new DubboClientRequest(invoker, invocation, attachments);
+  DubboClientRequest request = new DubboClientRequest(invoker, invocation);
 
   @Test public void service() {
     when(invocation.getInvoker()).thenReturn(invoker);
@@ -60,6 +58,6 @@ public class DubboClientRequestTest {
   @Test public void propagationField() {
     request.propagationField("b3", "d");
 
-    assertThat(attachments).containsEntry("b3", "d");
+    assertThat(RpcContext.getContext().getObjectAttachments()).containsEntry("b3", "d");
   }
 }

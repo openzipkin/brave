@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,22 +15,20 @@ package brave.dubbo;
 
 import brave.Span;
 import brave.rpc.RpcClientRequest;
-import java.util.Map;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
+import org.apache.dubbo.rpc.RpcContext;
 
 final class DubboClientRequest extends RpcClientRequest implements DubboRequest {
   final Invoker<?> invoker;
   final Invocation invocation;
-  final Map<String, String> attachments;
 
-  DubboClientRequest(Invoker<?> invoker, Invocation invocation, Map<String, String> attachments) {
+  DubboClientRequest(Invoker<?> invoker, Invocation invocation) {
     if (invoker == null) throw new NullPointerException("invoker == null");
     if (invocation == null) throw new NullPointerException("invocation == null");
     this.invoker = invoker;
     this.invocation = invocation;
-    this.attachments = attachments;
   }
 
   @Override public Invoker<?> invoker() {
@@ -66,6 +64,6 @@ final class DubboClientRequest extends RpcClientRequest implements DubboRequest 
   }
 
   @Override protected void propagationField(String keyName, String value) {
-    attachments.put(keyName, value);
+    RpcContext.getContext().setAttachment(keyName, value);
   }
 }
