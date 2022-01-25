@@ -122,7 +122,7 @@ public class TracingProducerBenchmarks {
     @Override
     public Future<RecordMetadata> send(ProducerRecord<String, String> record, Callback callback) {
       TopicPartition tp = new TopicPartition(record.topic(), 0);
-      RecordMetadata rm = new RecordMetadata(tp, -1L, -1L, 1L, 2L, 3, 4);
+      RecordMetadata rm = new RecordMetadata(tp, -1L, -1, 1L, 3, 4);
       if (callback != null) callback.onCompletion(rm, null);
       return Futures.immediateFuture(rm);
     }
@@ -139,9 +139,6 @@ public class TracingProducerBenchmarks {
     }
 
     @Override public void close() {
-    }
-
-    @Override public void close(long l, TimeUnit timeUnit) {
     }
 
     @Override public void close(Duration duration) {
