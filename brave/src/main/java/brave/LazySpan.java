@@ -88,6 +88,12 @@ final class LazySpan extends Span {
     span().finish();
   }
 
+  @Override
+  public long finishWithDuration() {
+    this.finish();
+    return 0;
+  }
+
   @Override public void finish(long timestamp) {
     span().finish(timestamp);
   }

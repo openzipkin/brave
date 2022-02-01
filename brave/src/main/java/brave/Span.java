@@ -193,6 +193,9 @@ public abstract class Span implements SpanCustomizer {
   /** Reports the span complete, assigning the most precise duration possible. */
   public abstract void finish();
 
+  /** Reports the span complete, assigning the most precise duration possible and return duration */
+  public abstract long finishWithDuration();
+
   /** Throws away the current span without reporting it. */
   public abstract void abandon();
 
