@@ -150,6 +150,12 @@ final class RealSpan extends Span {
     }
   }
 
+  @Override
+  public long finishWithDuration(long timestamp) {
+    this.finish(timestamp);
+    return this.state.finishTimestamp() - this.state.startTimestamp();
+  }
+
   @Override public void abandon() {
     pendingSpans.abandon(context);
   }

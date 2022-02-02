@@ -80,6 +80,12 @@ public class RealSpanTest {
     assertThat(finishedWithDuration).isPositive();
   }
 
+  @Test public void finishWithDuration_timestamp() {
+    span.start(1);
+    long finishedWithDuration = span.finishWithDuration(5);
+    assertThat(finishedWithDuration).isPositive();
+  }
+
   @Test public void finish_timestamp() {
     span.start(2);
     span.finish(5);

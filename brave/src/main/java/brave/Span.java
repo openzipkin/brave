@@ -221,6 +221,12 @@ public abstract class Span implements SpanCustomizer {
   public abstract void finish(long timestamp);
 
   /**
+   * Like {@link #finish(long timestamp)}, except with a return value of span duration in microseconds.
+   * Refer to {@link #finish(long)} for more documentation details.
+   */
+  public abstract long finishWithDuration(long timestamp);
+
+  /**
    * Reports the span, even if unfinished. Most users will not call this method.
    *
    * <p>This primarily supports two use cases: one-way spans and orphaned spans. For example, a

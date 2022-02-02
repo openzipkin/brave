@@ -98,6 +98,12 @@ final class LazySpan extends Span {
     span().finish(timestamp);
   }
 
+  @Override
+  public long finishWithDuration(long timestamp) {
+    this.finish(timestamp);
+    return 0;
+  }
+
   @Override public void abandon() {
     if (delegate == null) return; // prevent resurrection
     span().abandon();

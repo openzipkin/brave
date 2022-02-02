@@ -88,6 +88,12 @@ final class NoopSpan extends Span {
   @Override public void finish(long timestamp) {
   }
 
+  @Override
+  public long finishWithDuration(long timestamp) {
+    this.finish(timestamp);
+    return 0;
+  }
+
   @Override public void abandon() {
   }
 
