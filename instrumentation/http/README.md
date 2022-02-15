@@ -29,7 +29,7 @@ For example, to add a non-default tag for HTTP clients, you can do this:
 ```java
 httpTracing = httpTracing.toBuilder()
     .clientRequestParser((req, context, span) -> {
-      HttpClientRequestParser.DEFAULT.parse(req, context, span);
+      HttpRequestParser.DEFAULT.parse(req, context, span);
       HttpTags.URL.tag(req, context, span); // add the url in addition to defaults
     })
     .build();
