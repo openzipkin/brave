@@ -36,6 +36,11 @@ includeParameterValues=true
 excludebinary=true
 ```
 
+### Affected rows count
+When the `includeAffectedRowsCount` option is set to `true`, the tag `sql.affected_rows` of traces
+for SQL insert and update commands will include the number of rows that were inserted/updated, if
+the database and driver supports that. No row count is included for select statements.
+
 ## Service name as URL query parameter
 `spy.properties` applies globally to any instrumented jdbc connection. To override this, add the
 `zipkinServiceName` property to your connection string.
