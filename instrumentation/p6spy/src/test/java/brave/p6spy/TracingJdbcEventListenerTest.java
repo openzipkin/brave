@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -79,7 +79,7 @@ public class TracingJdbcEventListenerTest {
     when(connection.getMetaData()).thenReturn(metaData);
     when(metaData.getURL()).thenReturn(url);
 
-    new TracingJdbcEventListener("", false, logOptions).parseServerIpAndPort(connection, span);
+    new TracingJdbcEventListener("", false, false, logOptions).parseServerIpAndPort(connection, span);
 
     verify(span).remoteIpAndPort("1.2.3.4", 5555);
   }
@@ -89,7 +89,7 @@ public class TracingJdbcEventListenerTest {
     when(metaData.getURL()).thenReturn(url);
     when(connection.getCatalog()).thenReturn("mydatabase");
 
-    new TracingJdbcEventListener("", false, logOptions).parseServerIpAndPort(connection, span);
+    new TracingJdbcEventListener("", false, false, logOptions).parseServerIpAndPort(connection, span);
 
     verify(span).remoteServiceName("mydatabase");
     verify(span).remoteIpAndPort("1.2.3.4", 5555);
@@ -99,7 +99,7 @@ public class TracingJdbcEventListenerTest {
     when(connection.getMetaData()).thenReturn(metaData);
     when(metaData.getURL()).thenReturn(urlWithServiceName);
 
-    new TracingJdbcEventListener("", false, logOptions).parseServerIpAndPort(connection, span);
+    new TracingJdbcEventListener("", false, false, logOptions).parseServerIpAndPort(connection, span);
 
     verify(span).remoteServiceName("mysql_service");
     verify(span).remoteIpAndPort("1.2.3.4", 5555);
@@ -110,7 +110,7 @@ public class TracingJdbcEventListenerTest {
     when(metaData.getURL()).thenReturn(urlWithEmptyServiceName);
     when(connection.getCatalog()).thenReturn("mydatabase");
 
-    new TracingJdbcEventListener("", false, logOptions).parseServerIpAndPort(connection, span);
+    new TracingJdbcEventListener("", false, false, logOptions).parseServerIpAndPort(connection, span);
 
     verify(span).remoteServiceName("mydatabase");
     verify(span).remoteIpAndPort("1.2.3.4", 5555);
@@ -120,7 +120,7 @@ public class TracingJdbcEventListenerTest {
     when(connection.getMetaData()).thenReturn(metaData);
     when(metaData.getURL()).thenReturn(url);
 
-    new TracingJdbcEventListener("foo", false, logOptions).parseServerIpAndPort(connection, span);
+    new TracingJdbcEventListener("foo", false, false, logOptions).parseServerIpAndPort(connection, span);
 
     verify(span).remoteServiceName("foo");
     verify(span).remoteIpAndPort("1.2.3.4", 5555);
@@ -160,7 +160,7 @@ public class TracingJdbcEventListenerTest {
       when(connection.getMetaData()).thenReturn(metaData);
       when(metaData.getURL()).thenReturn("jdbc:mysql://1.2.3.4:5555/mydatabase" + queryString);
 
-      new TracingJdbcEventListener(null, false,
+      new TracingJdbcEventListener(null, false, false,
         P6LogOptions.getActiveInstance()).parseServerIpAndPort(connection, span);
 
       if (remoteServiceName != null) { // shouldn't invoke if no service name was parsed
@@ -173,7 +173,7 @@ public class TracingJdbcEventListenerTest {
   @Test public void parseServerIpAndPort_doesntCrash() throws SQLException {
     when(connection.getMetaData()).thenThrow(new SQLException());
 
-    new TracingJdbcEventListener("", false, logOptions).parseServerIpAndPort(connection, span);
+    new TracingJdbcEventListener("", false, false, logOptions).parseServerIpAndPort(connection, span);
 
     verifyNoMoreInteractions(span);
   }
@@ -182,7 +182,7 @@ public class TracingJdbcEventListenerTest {
     when(connection.getMetaData()).thenReturn(metaData);
     when(metaData.getURL()).thenReturn(urlWithWhiteSpace);
 
-    new TracingJdbcEventListener("foo", false, logOptions).parseServerIpAndPort(connection, span);
+    new TracingJdbcEventListener("foo", false, false, logOptions).parseServerIpAndPort(connection, span);
 
     verify(span).remoteServiceName("foo");
   }
@@ -195,7 +195,7 @@ public class TracingJdbcEventListenerTest {
     when(connectionInformation.getConnection()).thenReturn(connection);
     when(connection.getMetaData()).thenReturn(metaData);
 
-    TracingJdbcEventListener listener = new TracingJdbcEventListener("", false, logOptions);
+    TracingJdbcEventListener listener = new TracingJdbcEventListener("", false, false, logOptions);
     listener.onBeforeAnyExecute(statementInformation);
     listener.onAfterAnyExecute(statementInformation, 1, null);
 
@@ -209,7 +209,7 @@ public class TracingJdbcEventListenerTest {
   @Test public void nullSqlWontNPE() {
     when(statementInformation.getSql()).thenReturn(null);
 
-    TracingJdbcEventListener listener = new TracingJdbcEventListener("", false, logOptions);
+    TracingJdbcEventListener listener = new TracingJdbcEventListener("", false, false, logOptions);
     listener.onBeforeAnyExecute(statementInformation);
     listener.onAfterAnyExecute(statementInformation, 1, null);
 
@@ -219,7 +219,7 @@ public class TracingJdbcEventListenerTest {
   @Test public void handleAfterExecute_without_beforeExecute_getting_called() {
     ScopedSpan parent = tracing.tracer().startScopedSpan("test");
     try {
-      TracingJdbcEventListener listener = new TracingJdbcEventListener("", false, logOptions);
+      TracingJdbcEventListener listener = new TracingJdbcEventListener("", false, false, logOptions);
       listener.onAfterAnyExecute(statementInformation, 1, null);
       listener.onAfterAnyExecute(statementInformation, 1, null);
     } finally {

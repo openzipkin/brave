@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -23,16 +23,21 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Statement;
 import java.sql.SQLException;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 public class ITTracingP6Factory {
-  static final String URL = "jdbc:p6spy:derby:memory:p6spy;create=true";
+  @Rule
+  public TestName testName = new TestName();
+
   static final String QUERY = "SELECT 1 FROM SYSIBM.SYSDUMMY1";
 
   //Get rid of annoying derby.log
@@ -49,8 +54,15 @@ public class ITTracingP6Factory {
 
   @Before
   public void setup() throws Exception {
-    DriverManager.getDriver(URL);
-    connection = DriverManager.getConnection(URL, "foo", "bar");
+    String url = String.format("jdbc:p6spy:derby:memory:%s;create=true", testName.getMethodName());
+    connection = DriverManager.getConnection(url, "foo", "bar");
+    Statement statement = connection.createStatement();
+    statement.executeUpdate("create table t (i integer, c char )");
+    statement.executeUpdate("insert into t (i, c) values (1, 'a')");
+    statement.executeUpdate("insert into t (i, c) values (2, 'b')");
+    statement.executeUpdate("insert into t (i, c) values (2, 'c')");
+    statement.close();
+    spans.clear();
   }
 
   @After
@@ -101,6 +113,15 @@ public class ITTracingP6Factory {
   }
 
   @Test
+  public void addsRowsWrittenTag() throws Exception {
+    prepareExecuteUpdate("update t set c='x' where i=2");
+
+    assertThat(spans)
+      .flatExtracting(s -> s.tags().entrySet())
+      .contains(entry("sql.affected_rows", "2"));
+  }
+
+  @Test
   public void reportsServerAddress() throws Exception {
     prepareExecuteSelect(QUERY);
 
@@ -116,6 +137,12 @@ public class ITTracingP6Factory {
           resultSet.getString(1);
         }
       }
+    }
+  }
+
+  void prepareExecuteUpdate(String sql) throws SQLException {
+    try (PreparedStatement ps = connection.prepareStatement(sql)) {
+      ps.executeUpdate();
     }
   }
 }
