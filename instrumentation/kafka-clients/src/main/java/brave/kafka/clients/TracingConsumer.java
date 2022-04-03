@@ -330,6 +330,10 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     delegate.close();
   }
 
+  /**
+   * This operation is deprecated and removed in Kafka v3.
+   * For backward-compatibility, it is kept on this instrumentation, though the message will fall-back to {@link Consumer#close()}
+   */
   // Do not use @Override annotation to avoid compatibility on deprecated methods
   @Deprecated public void close(long timeout, TimeUnit unit) {
     LOG.warning("Falling back to Consumer#close() as #close(long, TimeUnit) is deprecated in v3.0");
