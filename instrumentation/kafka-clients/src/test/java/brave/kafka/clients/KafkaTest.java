@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -64,7 +64,7 @@ public class KafkaTest {
 
   ConsumerRecord<String, String>
       consumerRecord = new ConsumerRecord<>(TEST_TOPIC, 0, 1L, TEST_KEY, TEST_VALUE);
-  ProducerRecord<Object, String>
+  ProducerRecord<String, String>
       producerRecord = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
   RuntimeException error = new RuntimeException("Test exception");
 
@@ -98,10 +98,10 @@ public class KafkaTest {
     return result.entrySet();
   }
 
-  static Map<String, String> lastHeaders(MockProducer<Object, String> mockProducer) {
+  static Map<String, String> lastHeaders(MockProducer<String, String> mockProducer) {
     Map<String, String> headers = new LinkedHashMap<>();
-    List<ProducerRecord<Object, String>> history = mockProducer.history();
-    ProducerRecord<Object, String> lastRecord = history.get(history.size() - 1);
+    List<ProducerRecord<String, String>> history = mockProducer.history();
+    ProducerRecord<String, String> lastRecord = history.get(history.size() - 1);
     for (Header header : lastRecord.headers()) {
       headers.put(header.key(), new String(header.value(), StandardCharsets.UTF_8));
     }

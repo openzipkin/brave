@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -155,7 +155,7 @@ final class TracingProducer<K, V> implements Producer<K, V> {
 
   // Do not use @Override annotation to avoid compatibility on deprecated methods
   public void close(long timeout, TimeUnit unit) {
-    delegate.close(timeout, unit);
+    delegate.close(Duration.ofMillis(unit.convert(timeout, TimeUnit.MILLISECONDS)));
   }
 
   // Do not use @Override annotation to avoid compatibility issue version < 2.0

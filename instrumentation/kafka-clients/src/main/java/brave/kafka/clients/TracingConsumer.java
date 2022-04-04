@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -25,8 +25,10 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
@@ -46,6 +48,8 @@ import org.apache.kafka.common.TopicPartition;
  * producers span if possible.
  */
 final class TracingConsumer<K, V> implements Consumer<K, V> {
+  static final Logger LOG = Logger.getLogger(TracingConsumer.class.getName());
+
   final Consumer<K, V> delegate;
   final KafkaTracing kafkaTracing;
   final Tracing tracing;
@@ -303,9 +307,13 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   }
 
   // Do not use @Override annotation to avoid compatibility issue version < 2.0
-  public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions,
-    Duration timeout) {
+  public Map<TopicPartition, Long> endOffsets(Collection<TopicPartition> partitions, Duration timeout) {
     return delegate.endOffsets(partitions, timeout);
+  }
+
+  // Do not use @Override annotation to avoid compatibility issue version < 3.0
+  public OptionalLong currentLag(TopicPartition topicPartition) {
+    return delegate.currentLag(topicPartition);
   }
 
   // Do not use @Override annotation to avoid compatibility issue version < 2.5
@@ -322,9 +330,14 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     delegate.close();
   }
 
+  /**
+   * This operation is deprecated and removed in Kafka v3.
+   * For backward-compatibility, it is kept on this instrumentation, though the message will fall-back to {@link Consumer#close()}
+   */
   // Do not use @Override annotation to avoid compatibility on deprecated methods
-  public void close(long timeout, TimeUnit unit) {
-    delegate.close(timeout, unit);
+  @Deprecated public void close(long timeout, TimeUnit unit) {
+    LOG.warning("Falling back to Consumer#close() as #close(long, TimeUnit) is deprecated in v3.0");
+    delegate.close();
   }
 
   // Do not use @Override annotation to avoid compatibility issue version < 2.0

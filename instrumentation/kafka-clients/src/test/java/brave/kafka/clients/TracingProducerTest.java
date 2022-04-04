@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -22,6 +22,8 @@ import org.apache.kafka.clients.producer.MockProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.Test;
 
 import static brave.Span.Kind.PRODUCER;
@@ -29,9 +31,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 public class TracingProducerTest extends KafkaTest {
-  MockProducer<Object, String> mockProducer = new MockProducer<>();
-  TracingProducer<Object, String> tracingProducer =
-    (TracingProducer<Object, String>) kafkaTracing.producer(mockProducer);
+  MockProducer<String, String> mockProducer = new MockProducer<>(false, new StringSerializer(), new StringSerializer());
+  TracingProducer<String, String> tracingProducer =
+    (TracingProducer<String, String>) kafkaTracing.producer(mockProducer);
 
   @Test public void should_add_b3_headers_to_records() {
     tracingProducer.send(producerRecord);
@@ -45,7 +47,7 @@ public class TracingProducerTest extends KafkaTest {
   }
 
   @Test public void should_add_b3_headers_when_other_headers_exist() {
-    ProducerRecord<Object, String> record = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
+    ProducerRecord<String, String> record = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
     record.headers().add("tx-id", "1".getBytes());
     tracingProducer.send(record);
     mockProducer.completeNext();
@@ -71,7 +73,7 @@ public class TracingProducerTest extends KafkaTest {
   }
 
   @Test public void should_add_parent_trace_when_context_injected_on_headers() {
-    ProducerRecord<Object, String> record = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
+    ProducerRecord<String, String> record = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
     tracingProducer.injector.inject(parent, new KafkaProducerRequest(record));
     tracingProducer.send(record);
     mockProducer.completeNext();
@@ -119,6 +121,9 @@ public class TracingProducerTest extends KafkaTest {
   }
 
   @Test public void send_shouldnt_tag_binary_key() {
+    MockProducer<byte[], String> mockProducer = new MockProducer<>(false, new ByteArraySerializer(), new StringSerializer());
+    TracingProducer<byte[], String> tracingProducer =
+      (TracingProducer<byte[], String>) kafkaTracing.producer(mockProducer);
     tracingProducer.send(new ProducerRecord<>(TEST_TOPIC, new byte[1], TEST_VALUE));
     mockProducer.completeNext();
 
@@ -129,7 +134,7 @@ public class TracingProducerTest extends KafkaTest {
   }
 
   @Test public void should_not_error_if_headers_are_read_only() {
-    final ProducerRecord<Object, String> record = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
+    final ProducerRecord<String, String> record = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
     ((RecordHeaders) record.headers()).setReadOnly();
     tracingProducer.send(record);
   }
