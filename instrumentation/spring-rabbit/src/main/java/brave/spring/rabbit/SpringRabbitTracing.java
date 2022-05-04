@@ -33,9 +33,11 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.config.AbstractRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.config.DirectRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.listener.AbstractMessageListenerContainer;
 
 /**
  * Factory for Brave instrumented Spring Rabbit classes.
@@ -167,15 +169,45 @@ public final class SpringRabbitTracing {
     ConnectionFactory connectionFactory
   ) {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+    initNewRabbitListenerContainerFactory(factory, connectionFactory);
+    return factory;
+  }
+
+  /** Creates an instrumented {@linkplain DirectRabbitListenerContainerFactory} */
+  public DirectRabbitListenerContainerFactory newDirectRabbitListenerContainerFactory(
+    ConnectionFactory connectionFactory
+  ) {
+    DirectRabbitListenerContainerFactory factory = new DirectRabbitListenerContainerFactory();
+    initNewRabbitListenerContainerFactory(factory, connectionFactory);
+    return factory;
+  }
+
+  private <C extends AbstractMessageListenerContainer, F extends AbstractRabbitListenerContainerFactory<C>>
+    void initNewRabbitListenerContainerFactory(
+      F factory, ConnectionFactory connectionFactory
+  ) {
     factory.setConnectionFactory(connectionFactory);
     factory.setAdviceChain(new TracingRabbitListenerAdvice(this));
     factory.setBeforeSendReplyPostProcessors(new TracingMessagePostProcessor(this));
-    return factory;
   }
 
   /** Instruments an existing {@linkplain SimpleRabbitListenerContainerFactory} */
   public SimpleRabbitListenerContainerFactory decorateSimpleRabbitListenerContainerFactory(
     SimpleRabbitListenerContainerFactory factory
+  ) {
+    return decorateRabbitListenerContainerFactory(factory);
+  }
+
+  /** Instruments an existing {@linkplain DirectRabbitListenerContainerFactory} */
+  public DirectRabbitListenerContainerFactory decorateDirectRabbitListenerContainerFactory(
+    DirectRabbitListenerContainerFactory factory
+  ) {
+    return decorateRabbitListenerContainerFactory(factory);
+  }
+
+  private <C extends AbstractMessageListenerContainer, F extends AbstractRabbitListenerContainerFactory<C>>
+    F decorateRabbitListenerContainerFactory(
+      F factory
   ) {
     Advice[] advice = prependTracingRabbitListenerAdvice(factory);
     if (advice != null) factory.setAdviceChain(advice);
@@ -263,7 +295,9 @@ public final class SpringRabbitTracing {
 
   /** Returns {@code null} if a change was impossible or not needed */
   @Nullable
-  Advice[] prependTracingRabbitListenerAdvice(SimpleRabbitListenerContainerFactory factory) {
+  <C extends AbstractMessageListenerContainer> Advice[] prependTracingRabbitListenerAdvice(
+    AbstractRabbitListenerContainerFactory<C> factory
+  ) {
     Advice[] chain = factory.getAdviceChain();
 
     TracingRabbitListenerAdvice tracingAdvice = new TracingRabbitListenerAdvice(this);
