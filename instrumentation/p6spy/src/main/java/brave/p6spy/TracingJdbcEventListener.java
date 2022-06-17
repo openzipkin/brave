@@ -18,7 +18,6 @@ import brave.internal.Nullable;
 import brave.propagation.ThreadLocalSpan;
 
 import com.p6spy.engine.common.PreparedStatementInformation;
-import com.p6spy.engine.common.ResultSetInformation;
 import com.p6spy.engine.common.StatementInformation;
 import com.p6spy.engine.event.SimpleJdbcEventListener;
 import com.p6spy.engine.logging.P6LogLoadableOptions;
@@ -83,6 +82,33 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
     if (span == null || span.isNoop()) return;
     if (includeAffectedRowsCount) {
       span.tag("sql.affected_rows", String.valueOf(rowCount));
+    }
+    finishSpan(span, e);
+  }
+
+  @Override public void onAfterExecuteUpdate(
+    StatementInformation statementInformation, long timeElapsedNanos, String sql, int rowCount, SQLException e
+  ) {
+    Span span = ThreadLocalSpan.CURRENT_TRACER.remove();
+    if (span == null || span.isNoop()) return;
+    if (includeAffectedRowsCount) {
+      span.tag("sql.affected_rows", String.valueOf(rowCount));
+    }
+    finishSpan(span, e);
+  }
+
+  @Override
+  public void onAfterExecuteBatch(StatementInformation statementInformation, long timeElapsedNanos, int[] updateCounts, SQLException e) {
+    Span span = ThreadLocalSpan.CURRENT_TRACER.remove();
+    if (span == null || span.isNoop()) return;
+    if (includeAffectedRowsCount && updateCounts.length > 0) {
+      StringBuilder sb = new StringBuilder();
+      sb.append(updateCounts[0]);
+      for (int i = 1; i < updateCounts.length; i++) {
+        sb.append(',');
+        sb.append(updateCounts[i]);
+      }
+      span.tag("sql.affected_rows", sb.toString());
     }
     finishSpan(span, e);
   }
