@@ -84,13 +84,20 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
 
   // Do not use @Override annotation to avoid compatibility issue version < 2.0
   public ConsumerRecords<K, V> poll(Duration timeout) {
-    return poll(timeout.toMillis());
+    return poll(delegate.poll(timeout));
   }
 
-  /** This uses a single timestamp for all records polled, to reduce overhead. */
   // Do not use @Override annotation to avoid compatibility on deprecated methods
-  public ConsumerRecords<K, V> poll(long timeout) {
-    ConsumerRecords<K, V> records = delegate.poll(timeout);
+  @Deprecated public ConsumerRecords<K, V> poll(long timeout) {
+    return poll(delegate.poll(timeout));
+  }
+
+  /** This uses a single timestamp for all records polled, to reduce overhead.
+   * poll internal implementation changes between {@code #poll(long)} and {@code #poll(Duration)}.
+   * <p/>
+   * To avoid forcing the old behavior, the wrapping methods call themselves first to obtain records.
+   */
+  private ConsumerRecords<K, V> poll(ConsumerRecords<K, V> records) {
     if (records.isEmpty() || tracing.isNoop()) return records;
     long timestamp = 0L;
     Map<String, Span> consumerSpansForTopic = new LinkedHashMap<>();
