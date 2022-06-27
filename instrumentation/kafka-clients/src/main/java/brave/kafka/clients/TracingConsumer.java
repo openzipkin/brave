@@ -87,12 +87,12 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     return poll(delegate.poll(timeout));
   }
 
+  // Do not use @Override annotation to avoid compatibility on deprecated methods
   @Deprecated public ConsumerRecords<K, V> poll(long timeout) {
     return poll(delegate.poll(timeout));
   }
 
   /** This uses a single timestamp for all records polled, to reduce overhead. */
-  // Do not use @Override annotation to avoid compatibility on deprecated methods
   private ConsumerRecords<K, V> poll(ConsumerRecords<K, V> records) {
     if (records.isEmpty() || tracing.isNoop()) return records;
     long timestamp = 0L;
