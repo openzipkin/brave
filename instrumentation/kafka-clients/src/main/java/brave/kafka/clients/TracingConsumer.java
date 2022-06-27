@@ -92,7 +92,11 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     return poll(delegate.poll(timeout));
   }
 
-  /** This uses a single timestamp for all records polled, to reduce overhead. */
+  /** This uses a single timestamp for all records polled, to reduce overhead.
+   * poll internal implementation changes between {@code #poll(long)} and {@code #poll(Duration)}.
+   * <p/>
+   * To avoid forcing the old behavior, the wrapping methods call themselves first to obtain records.
+   */
   private ConsumerRecords<K, V> poll(ConsumerRecords<K, V> records) {
     if (records.isEmpty() || tracing.isNoop()) return records;
     long timestamp = 0L;
