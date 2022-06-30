@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -37,9 +37,12 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import org.junit.After;
 import org.junit.Test;
+import org.mockito.Mockito;
+
 import zipkin2.Endpoint;
 import zipkin2.reporter.Reporter;
 
@@ -226,6 +229,7 @@ public class TracerTest {
   @Test public void join_createsChildWhenUnsupportedByPropagation() {
     tracer = Tracing.newBuilder()
       .propagationFactory(new Propagation.Factory() {
+        @Override
         @Deprecated public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
           return B3Propagation.FACTORY.create(keyFactory);
         }
@@ -1090,6 +1094,22 @@ public class TracerTest {
     TraceContext toSpan = tracer.toSpan(incoming).context();
     assertThat(toSpan).isNotSameAs(incoming);
     assertThat(toSpan.extra()).isNotEmpty();
+  }
+
+  @Test public void toSpan_flushedAfterFetch() throws InterruptedException, ExecutionException {
+    propagationFactory = baggageFactory;
+    TraceContext parent = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true).build();
+    TraceContext incoming = TraceContext.newBuilder().traceId(1L).spanId(3L).parentId(2L).sampled(true).build();
+
+    tracer.pendingSpans.getOrCreate(parent, incoming, false);
+    Tracer spiedTracer = Mockito.spy(tracer);
+    Mockito.doAnswer(i -> {
+      //Simulate a concurrent call flushing the span at the beginning of this method's execution
+      tracer.pendingSpans.flush(incoming);
+      return i.callRealMethod();
+    }).when(spiedTracer)._toSpan(Mockito.any(TraceContext.class), Mockito.any(TraceContext.class));
+
+    spiedTracer.toSpan(incoming);
   }
 
   @Test public void currentSpan_sameContextReference() {
