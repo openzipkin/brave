@@ -167,6 +167,10 @@ final class TracingServerInterceptor implements ServerInterceptor {
       try (Scope scope = currentTraceContext.maybeScope(context)) {
         delegate().onCancel();
       }
+      Span span = spanRef.getAndSet(null);
+      if (span != null) {
+        span.finish();
+      }
     }
 
     @Override public void onComplete() {
