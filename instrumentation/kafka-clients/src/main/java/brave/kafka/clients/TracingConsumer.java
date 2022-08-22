@@ -333,6 +333,11 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
     delegate.enforceRebalance();
   }
 
+  // Do not use @Override annotation to avoid compatibility issue version < 3.2
+  public void enforceRebalance(String reason) {
+    delegate.enforceRebalance(reason);
+  }
+
   @Override public void close() {
     delegate.close();
   }
