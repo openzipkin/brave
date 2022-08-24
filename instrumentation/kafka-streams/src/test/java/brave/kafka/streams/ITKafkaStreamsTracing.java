@@ -1358,6 +1358,8 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, testName.getMethodName());
     properties.put(StreamsConfig.consumerPrefix(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG),
       Topology.AutoOffsetReset.EARLIEST.name().toLowerCase());
+    properties.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.StringSerde.class.getName());
+    properties.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.StringSerde.class.getName());
     return properties;
   }
 
