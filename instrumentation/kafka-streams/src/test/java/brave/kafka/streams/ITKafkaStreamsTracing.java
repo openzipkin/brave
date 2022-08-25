@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -1358,6 +1358,8 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, testName.getMethodName());
     properties.put(StreamsConfig.consumerPrefix(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG),
       Topology.AutoOffsetReset.EARLIEST.name().toLowerCase());
+    properties.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+    properties.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
     return properties;
   }
 
