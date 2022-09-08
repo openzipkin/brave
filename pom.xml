@@ -97,6 +97,10 @@
     <jetty-servlet25.version>7.6.21.v20160908</jetty-servlet25.version>
     <resteasy.version>3.14.0.Final</resteasy.version>
 
+    <!-- Jakarta -->
+    <jetty11.version>11.0.11</jetty11.version>
+    <jakarta.servlet>5.0.0</jakarta.servlet>
+
     <kafka.version>3.2.1</kafka.version>
     <activemq.version>5.16.0</activemq.version>
     <spring-rabbit.version>2.3.2</spring-rabbit.version>
@@ -547,6 +551,7 @@
             <maven_release>SCRIPT_STYLE</maven_release>
           </mapping>
           <excludes>
+            <exclude>**/jetty-logging.properties</exclude>
             <exclude>**/log4j2.properties</exclude>
             <exclude>.editorconfig</exclude>
             <exclude>.gitattributes</exclude>

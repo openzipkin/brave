@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -38,7 +38,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.servlet.UnavailableException;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -60,7 +59,7 @@ public abstract class ITHttpServer extends ITRemote {
     }
   };
 
-  OkHttpClient client = new OkHttpClient();
+  protected OkHttpClient client = new OkHttpClient();
   protected HttpTracing httpTracing = HttpTracing.create(tracing);
 
   @Before public void setup() throws IOException {
@@ -481,7 +480,7 @@ public abstract class ITHttpServer extends ITRemote {
         .isEqualTo(503);
   }
 
-  Response httpStatusCodeTagMatchesResponse_onUncaughtException(String path, String errorMessage)
+  protected Response httpStatusCodeTagMatchesResponse_onUncaughtException(String path, String errorMessage)
       throws IOException {
     Response response = get(path);
 
@@ -491,7 +490,7 @@ public abstract class ITHttpServer extends ITRemote {
     return response;
   }
 
-  Response httpStatusCodeTagMatchesResponse_onUncaughtException(String path) throws IOException {
+  protected Response httpStatusCodeTagMatchesResponse_onUncaughtException(String path) throws IOException {
     Response response = get(path);
     MutableSpan span = testSpanHandler.takeRemoteSpanWithError(SERVER);
     assertThat(span.tags()).containsEntry("http.status_code", String.valueOf(response.code()));

@@ -34,6 +34,7 @@
   <modules>
     <module>http</module>
     <module>http-tests</module>
+    <module>http-tests-jakarta</module>
     <module>dubbo</module>
     <module>dubbo-rpc</module>
     <module>grpc</module>
@@ -51,6 +52,7 @@
     <module>p6spy</module>
     <module>rpc</module>
     <module>servlet</module>
+    <module>servlet-jakarta</module>
     <module>sparkjava</module>
     <module>spring-rabbit</module>
     <module>spring-web</module>

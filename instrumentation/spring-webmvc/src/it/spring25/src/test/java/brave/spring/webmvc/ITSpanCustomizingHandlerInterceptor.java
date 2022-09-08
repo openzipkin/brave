@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,6 +16,7 @@ package brave.spring.webmvc;
 import brave.Tracer;
 import brave.http.HttpTracing;
 import brave.test.http.ITServletContainer;
+import brave.test.http.ITServlet25Container;
 import brave.test.http.ServletContainer;
 import java.io.IOException;
 import java.util.EnumSet;
@@ -103,7 +104,7 @@ public class ITSpanCustomizingHandlerInterceptor extends ITServletContainer {
 
     @RequestMapping(value = "/exception")
     public void notReady() throws UnavailableException {
-      throw NOT_READY_UE;
+      throw ITServlet25Container.NOT_READY_UE;
     }
   }
 
