@@ -43,6 +43,7 @@
     <module>jaxrs2</module>
     <module>jersey-server</module>
     <module>jms</module>
+    <module>jms-jakarta</module>
     <module>messaging</module>
     <module>mongodb</module>
     <module>mysql</module>
