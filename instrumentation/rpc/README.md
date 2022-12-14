@@ -78,7 +78,7 @@ rpcTracingBuilder.serverSampler(RpcRuleSampler.newBuilder()
 
 # Developing new instrumentation
 
-Check for [instrumentation written here](../) and [Zipkin's list](https://zipkin.io/pages/existing_instrumentations.html)
+Check for [instrumentation written here](../) and [Zipkin's list](https://zipkin.io/pages/tracers_instrumentation)
 before rolling your own Rpc instrumentation! Besides documentation here,
 you should look at the [core library documentation](../../brave/README.md) as it
 covers topics including propagation. You may find our [feature tests](src/test/java/brave/rpc/features) helpful, too.
