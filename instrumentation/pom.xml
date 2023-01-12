@@ -51,6 +51,7 @@
     <module>mysql6</module>
     <module>mysql8</module>
     <module>okhttp3</module>
+    <module>rocketmq-client</module>
     <module>rpc</module>
     <module>servlet</module>
     <module>servlet-jakarta</module>
