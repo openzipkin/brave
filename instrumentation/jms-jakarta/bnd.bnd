@@ -1,0 +1,7 @@
+# We use need to import to support brave.internal.Throwables
+# brave.internal.Nullable is not used at runtime.
+Import-Package: \
+  brave.internal;braveinternal=true,\
+  *
+Export-Package: \
+  brave.jakarta.jms
