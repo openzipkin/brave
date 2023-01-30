@@ -88,7 +88,7 @@
     <guice.version>5.0.0-BETA-1</guice.version>
 
     <!-- Ensure older versions of spring still work -->
-    <spring5.version>5.3.2</spring5.version>
+    <spring5.version>5.3.14</spring5.version>
     <spring.version>3.2.18.RELEASE</spring.version>
 
     <!-- Apis used, but not in Jetty 7.6* imply duplication in servlet25 test fixtures -->
