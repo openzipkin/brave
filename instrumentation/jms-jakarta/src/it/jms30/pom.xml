@@ -39,7 +39,7 @@
 
     <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>brave-instrumentation-jakarta-jms</artifactId>
+      <artifactId>brave-instrumentation-jms-jakarta</artifactId>
       <version>${project.version}</version>
     </dependency>
 

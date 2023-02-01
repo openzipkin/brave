@@ -44,6 +44,7 @@
     <module>jersey-server</module>
     <module>jms</module>
     <module>jms-jakarta</module>
+    <module>jakarta-jms</module>
     <module>messaging</module>
     <module>mongodb</module>
     <module>mysql</module>

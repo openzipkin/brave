@@ -22,7 +22,7 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>brave-instrumentation-jakarta-jms</artifactId>
+  <artifactId>brave-instrumentation-jms-jakarta</artifactId>
   <name>Brave Instrumentation: JMS (Jakarta)</name>
 
   <properties>
