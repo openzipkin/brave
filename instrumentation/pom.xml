@@ -37,6 +37,7 @@
     <module>http-tests-jakarta</module>
     <module>dubbo</module>
     <module>dubbo-rpc</module>
+    <module>dubbo3</module>
     <module>grpc</module>
     <module>httpasyncclient</module>
     <module>httpclient</module>
