@@ -61,7 +61,6 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     client.setInterface(GreeterService.class);
     client.setUrl(url);
 
-
     wrongClient = new ReferenceConfig<>();
     wrongClient.setRetries(-1);
     wrongClient.setGeneric("true");
@@ -75,7 +74,6 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
         .start();
 
     init();
-
 
     // perform a warmup request to allow CI to fail quicker
     client.get().sayHello("jorge");
@@ -213,7 +211,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     assertThatThrownBy(() -> client.get().sayHello("jorge"))
         .isInstanceOf(RpcException.class);
 
-    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*RemotingException.*");
+    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Service brave.dubbo3.GreeterService with version 0.0.0 not found, invocation rejected.*");
   }
 
   @Test public void onTransportException_setError_async() {
@@ -221,9 +219,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
 
     RpcContext.getContext().asyncCall(() -> client.get().sayHello("romeo"));
 
-    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*IOException.*");
-//    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*IOException.*");
-//    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*RemotingException.*");
+    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Service brave.dubbo3.GreeterService with version 0.0.0 not found, invocation rejected.*");
   }
 
   @Test public void finishesOneWaySpan() {

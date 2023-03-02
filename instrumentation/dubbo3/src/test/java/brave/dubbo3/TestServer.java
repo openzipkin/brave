@@ -35,11 +35,9 @@ class TestServer {
   final Extractor<Map<String, String>> extractor;
   final ServiceConfig<GenericService> service;
 
-  private final ApplicationConfig applicationConfig;
   final String linkLocalIp;
 
   TestServer(Propagation.Factory propagationFactory, ApplicationConfig application) {
-    this.applicationConfig = application;
     extractor = propagationFactory.get().extractor(Map::get);
     linkLocalIp = Platform.get().linkLocalIp();
     if (linkLocalIp != null) {
@@ -48,8 +46,7 @@ class TestServer {
       System.setProperty(Constants.DUBBO_IP_TO_REGISTRY, linkLocalIp);
     }
     service = new ServiceConfig<>();
-//    service.setFilter("tracing");
-    service.setApplication(applicationConfig);
+    service.setApplication(application);
     service.setRegistry(new RegistryConfig(RegistryConfig.NO_AVAILABLE));
     service.setProtocol(new ProtocolConfig("dubbo",PickUnusedPort.get()));
   }
@@ -63,9 +60,6 @@ class TestServer {
     });
   }
 
-  ApplicationConfig application() {
-    return service.getApplication();
-  }
 
   void start() {
     service.export();

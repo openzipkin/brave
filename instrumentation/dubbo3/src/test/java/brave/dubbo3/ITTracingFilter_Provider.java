@@ -50,11 +50,10 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
       if (arg.getProperty("value").equals("bad")) throw new IllegalArgumentException("bad");
 
-      String s = currentTraceContext.get() != null
+      String value = currentTraceContext.get() != null
         ? currentTraceContext.get().traceIdString()
         : "";
-
-      return JavaBeanSerializeUtil.serialize(s);
+      return JavaBeanSerializeUtil.serialize(value);
     });
     init();
     server.start();
@@ -65,7 +64,6 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     client.setInterface(GreeterService.class);
     client.setUrl(url);
     client.setRetries(-1);
-
 
     // perform a warmup request to allow CI to fail quicker
     client.get().sayHello("jorge");
