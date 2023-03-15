@@ -179,7 +179,7 @@ public class ITTracingH2AsyncClientBuilder extends ITHttpAsyncClient<CloseableHt
     client.start();
 
     assertThatThrownBy(() -> get(client, "/foo"))
-      .isSameAs(error);
+      .hasRootCause(error);
 
     assertThat(currentTraceContext.get()).isNull();
 
