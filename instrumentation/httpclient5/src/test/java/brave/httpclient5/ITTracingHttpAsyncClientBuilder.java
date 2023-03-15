@@ -25,8 +25,8 @@ import java.util.function.BiConsumer;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.apache.hc.client5.http.async.methods.SimpleHttpRequest;
-import org.apache.hc.client5.http.async.methods.SimpleHttpRequests;
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
+import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
 import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder;
 import org.apache.hc.core5.concurrent.FutureCallback;
@@ -71,18 +71,18 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
   @Override
   protected void get(CloseableHttpAsyncClient client, String pathIncludingQuery)
     throws IOException {
-    invoke(client, SimpleHttpRequests.get(URI.create(url(pathIncludingQuery))));
+    invoke(client, SimpleRequestBuilder.get(URI.create(url(pathIncludingQuery))).build());
   }
 
   @Override
   protected void options(CloseableHttpAsyncClient client, String path) throws IOException {
-    invoke(client, SimpleHttpRequests.options(URI.create(url(path))));
+    invoke(client, SimpleRequestBuilder.options(URI.create(url(path))).build());
   }
 
   @Override
   protected void post(CloseableHttpAsyncClient client, String pathIncludingQuery, String body)
     throws IOException {
-    SimpleHttpRequest post = SimpleHttpRequests.post(URI.create(url(pathIncludingQuery)));
+    SimpleHttpRequest post = SimpleRequestBuilder.post(URI.create(url(pathIncludingQuery))).build();
     post.setBody(body, ContentType.TEXT_PLAIN);
     invoke(client, post);
   }
@@ -90,7 +90,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
   @Override
   protected void get(CloseableHttpAsyncClient client, String path,
     BiConsumer<Integer, Throwable> callback) {
-    SimpleHttpRequest get = SimpleHttpRequests.get(URI.create(url(path)));
+    SimpleHttpRequest get = SimpleRequestBuilder.get(URI.create(url(path))).build();
     client.execute(get, new FutureCallback<SimpleHttpResponse>() {
       @Override
       public void completed(SimpleHttpResponse res) {
@@ -125,7 +125,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     client.start();
 
     AssertableCallback<String> callback = new AssertableCallback<>();
-    SimpleHttpRequest get = SimpleHttpRequests.get(URI.create(url("/foo")));
+    SimpleHttpRequest get = SimpleRequestBuilder.get(URI.create(url("/foo"))).build();
     client.execute(get, new FutureCallback<SimpleHttpResponse>() {
       @Override
       public void completed(SimpleHttpResponse res) {
