@@ -15,7 +15,7 @@
 
 set -ue
 
-# This script creates a git `N.M.L` version tag which later will have `deploy` run against it.
+# This script creates a git `MAJOR.MINOR.PATCH` version tag which later will have `deploy` run against it.
 #
 # In CI..
 #  * trigger pattern: tag =~ /^release-[0-9]+\.[0-9]+\.[0-9]+/
@@ -40,4 +40,4 @@ if [ "$commit_local_release_branch" != "$commit_remote_release_branch" ]; then
 fi
 
 # Prepare and push release commits and the version tag (N.N.N), which triggers deployment.
-./mvnw --batch-mode -nsu -DreleaseVersion=${release_version} -Darguments=-DskipTests release:prepare
+./mvnw --batch-mode -nsu -DreleaseVersion=${release_version} -Denforcer.fail=false -Darguments="-DskipTests -Denforcer.fail=false" release:prepare

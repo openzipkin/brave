@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -122,7 +122,7 @@ public class TracingProducerBenchmarks {
     @Override
     public Future<RecordMetadata> send(ProducerRecord<String, String> record, Callback callback) {
       TopicPartition tp = new TopicPartition(record.topic(), 0);
-      RecordMetadata rm = new RecordMetadata(tp, -1L, -1L, 1L, 2L, 3, 4);
+      RecordMetadata rm = new RecordMetadata(tp, -1L, -1, 1L, 3, 4);
       if (callback != null) callback.onCompletion(rm, null);
       return Futures.immediateFuture(rm);
     }
@@ -139,9 +139,6 @@ public class TracingProducerBenchmarks {
     }
 
     @Override public void close() {
-    }
-
-    @Override public void close(long l, TimeUnit timeUnit) {
     }
 
     @Override public void close(Duration duration) {

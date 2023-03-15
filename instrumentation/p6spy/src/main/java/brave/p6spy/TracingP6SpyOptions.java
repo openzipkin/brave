@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -24,6 +24,7 @@ final class TracingP6SpyOptions extends P6SpyOptions {
 
   static final String REMOTE_SERVICE_NAME = "remoteServiceName";
   static final String INCLUDE_PARAMETER_VALUES = "includeParameterValues";
+  static final String INCLUDE_AFFECTED_ROWS_COUNT = "includeAffectedRowsCount";
 
   private final P6OptionsRepository optionsRepository;
   private final P6LogLoadableOptions logLoadableOptions;
@@ -41,6 +42,8 @@ final class TracingP6SpyOptions extends P6SpyOptions {
     optionsRepository.set(String.class, REMOTE_SERVICE_NAME, options.get(REMOTE_SERVICE_NAME));
     optionsRepository.set(Boolean.class, INCLUDE_PARAMETER_VALUES,
       options.get(INCLUDE_PARAMETER_VALUES));
+    optionsRepository.set(Boolean.class, INCLUDE_AFFECTED_ROWS_COUNT,
+      options.get(INCLUDE_AFFECTED_ROWS_COUNT));
   }
 
   @Override
@@ -48,6 +51,7 @@ final class TracingP6SpyOptions extends P6SpyOptions {
     Map<String, String> allDefaults = new LinkedHashMap<>(super.getDefaults());
     allDefaults.putAll(logLoadableOptions.getDefaults());
     allDefaults.put(INCLUDE_PARAMETER_VALUES, Boolean.FALSE.toString());
+    allDefaults.put(INCLUDE_AFFECTED_ROWS_COUNT, Boolean.FALSE.toString());
     return allDefaults;
   }
 
@@ -61,5 +65,9 @@ final class TracingP6SpyOptions extends P6SpyOptions {
 
   Boolean includeParameterValues() {
     return optionsRepository.get(Boolean.class, INCLUDE_PARAMETER_VALUES);
+  }
+
+  Boolean includeAffectedRowsCount() {
+    return optionsRepository.get(Boolean.class, INCLUDE_AFFECTED_ROWS_COUNT);
   }
 }

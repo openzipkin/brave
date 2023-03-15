@@ -46,23 +46,19 @@ public abstract class MutableSpanBytesEncoder {
       writer = new ZipkinV2JsonWriter(errorTag);
     }
 
-    @Override
-    public int sizeInBytes(MutableSpan input) {
+    @Override public int sizeInBytes(MutableSpan input) {
       return writer.sizeInBytes(input);
     }
 
-    @Override
-    public byte[] encode(MutableSpan span) {
+    @Override public byte[] encode(MutableSpan span) {
       return JsonWriter.write(writer, span);
     }
 
-    @Override
-    public byte[] encodeList(List<MutableSpan> spans) {
+    @Override public byte[] encodeList(List<MutableSpan> spans) {
       return JsonWriter.writeList(writer, spans);
     }
 
-    @Override
-    public int encodeList(List<MutableSpan> spans, byte[] out, int pos) {
+    @Override public int encodeList(List<MutableSpan> spans, byte[] out, int pos) {
       return JsonWriter.writeList(writer, spans, out, pos);
     }
   }

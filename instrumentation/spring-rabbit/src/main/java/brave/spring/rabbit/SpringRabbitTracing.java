@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -33,9 +33,13 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.config.AbstractRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.config.DirectRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.listener.AbstractMessageListenerContainer;
+import org.springframework.amqp.rabbit.listener.DirectMessageListenerContainer;
+import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 
 /**
  * Factory for Brave instrumented Spring Rabbit classes.
@@ -108,6 +112,7 @@ public final class SpringRabbitTracing {
 
   @Nullable final Field beforePublishPostProcessorsField;
   @Nullable final Field beforeSendReplyPostProcessorsField;
+  @Nullable final Field messageListenerContainerAdviceChainField;
 
   SpringRabbitTracing(Builder builder) { // intentionally hidden constructor
     this.tracing = builder.messagingTracing.tracing();
@@ -131,6 +136,9 @@ public final class SpringRabbitTracing {
       getField(RabbitTemplate.class, "beforePublishPostProcessors");
     beforeSendReplyPostProcessorsField =
       getField(AbstractRabbitListenerContainerFactory.class, "beforeSendReplyPostProcessors");
+    // We need this field because AbstractMessageListenerContainer#getAdviceChain is protected.
+    messageListenerContainerAdviceChainField =
+      getField(AbstractMessageListenerContainer.class, "adviceChain");
   }
 
   /** Allows us to work around lack of an append command. */
@@ -177,6 +185,29 @@ public final class SpringRabbitTracing {
   public SimpleRabbitListenerContainerFactory decorateSimpleRabbitListenerContainerFactory(
     SimpleRabbitListenerContainerFactory factory
   ) {
+    return decorateRabbitListenerContainerFactory(factory);
+  }
+
+  /** Creates an instrumented {@linkplain DirectRabbitListenerContainerFactory} */
+  public DirectRabbitListenerContainerFactory newDirectRabbitListenerContainerFactory(
+    ConnectionFactory connectionFactory
+  ) {
+    DirectRabbitListenerContainerFactory factory = new DirectRabbitListenerContainerFactory();
+    factory.setConnectionFactory(connectionFactory);
+    factory.setAdviceChain(new TracingRabbitListenerAdvice(this));
+    factory.setBeforeSendReplyPostProcessors(new TracingMessagePostProcessor(this));
+    return factory;
+  }
+
+  /** Instruments an existing {@linkplain DirectRabbitListenerContainerFactory} */
+  public DirectRabbitListenerContainerFactory decorateDirectRabbitListenerContainerFactory(
+    DirectRabbitListenerContainerFactory factory
+  ) {
+    return decorateRabbitListenerContainerFactory(factory);
+  }
+
+  /** Instruments an existing {@linkplain AbstractRabbitListenerContainerFactory} **/
+  public <T extends AbstractRabbitListenerContainerFactory> T decorateRabbitListenerContainerFactory(T factory) {
     Advice[] advice = prependTracingRabbitListenerAdvice(factory);
     if (advice != null) factory.setAdviceChain(advice);
 
@@ -185,8 +216,34 @@ public final class SpringRabbitTracing {
     if (beforeSendReplyPostProcessors != null) {
       factory.setBeforeSendReplyPostProcessors(beforeSendReplyPostProcessors);
     }
-
     return factory;
+  }
+
+  /** Creates an instrumented {@linkplain SimpleMessageListenerContainer} */
+  public SimpleMessageListenerContainer newSimpleMessageListenerContainer(
+    ConnectionFactory connectionFactory
+  ) {
+    SimpleMessageListenerContainer simpleMessageListenerContainer = new SimpleMessageListenerContainer();
+    simpleMessageListenerContainer.setConnectionFactory(connectionFactory);
+    return decorateMessageListenerContainer(simpleMessageListenerContainer);
+  }
+
+  /** Creates an instrumented {@linkplain DirectMessageListenerContainer} */
+  public DirectMessageListenerContainer newDirectMessageListenerContainer(
+    ConnectionFactory connectionFactory
+  ) {
+    DirectMessageListenerContainer directMessageListenerContainer = new DirectMessageListenerContainer();
+    directMessageListenerContainer.setConnectionFactory(connectionFactory);
+    return decorateMessageListenerContainer(directMessageListenerContainer);
+  }
+
+  /** Instruments an existing {@linkplain AbstractMessageListenerContainer} **/
+  public <T extends AbstractMessageListenerContainer> T decorateMessageListenerContainer(T container) {
+    Advice[] advice = prependTracingMessageContainerAdvice(container);
+    if (advice != null) {
+      container.setAdviceChain(advice);
+    }
+    return container;
   }
 
   <R> TraceContextOrSamplingFlags extractAndClearTraceIdHeaders(
@@ -263,12 +320,31 @@ public final class SpringRabbitTracing {
 
   /** Returns {@code null} if a change was impossible or not needed */
   @Nullable
-  Advice[] prependTracingRabbitListenerAdvice(SimpleRabbitListenerContainerFactory factory) {
-    Advice[] chain = factory.getAdviceChain();
+  Advice[] prependTracingRabbitListenerAdvice(AbstractRabbitListenerContainerFactory factory) {
+    return prependTracingAdvice(factory.getAdviceChain());
+  }
 
+  /** Returns {@code null} if a change was impossible or not needed */
+  @Nullable
+  Advice[] prependTracingMessageContainerAdvice(AbstractMessageListenerContainer container) {
+    if (messageListenerContainerAdviceChainField == null) {
+      return null;
+    }
+    Advice[] chain;
+    try {
+      chain = (Advice[]) messageListenerContainerAdviceChainField.get(container);
+    } catch (Exception e) {
+      return null;
+    }
+    return prependTracingAdvice(chain);
+  }
+
+  @Nullable
+  Advice[] prependTracingAdvice(Advice[] chain) {
     TracingRabbitListenerAdvice tracingAdvice = new TracingRabbitListenerAdvice(this);
-    // If there are no existing advice, return only the tracing one
-    if (chain == null) return new Advice[] {tracingAdvice};
+    if (chain == null || chain.length == 0) {
+      return new Advice[] {tracingAdvice};
+    }
 
     // If there is an existing tracing advice return
     for (Advice advice : chain) {

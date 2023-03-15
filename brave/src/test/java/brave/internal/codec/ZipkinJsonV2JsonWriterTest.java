@@ -20,6 +20,7 @@ import brave.handler.MutableSpanTest;
 import org.junit.Before;
 import org.junit.Test;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ZipkinJsonV2JsonWriterTest {
@@ -48,7 +49,7 @@ public class ZipkinJsonV2JsonWriterTest {
 
   @Test public void sizeInBytes_matchesWhatsWritten() {
     assertThat(jsonWriter.sizeInBytes(MutableSpanTest.PERMUTATIONS.get(0).get()))
-        .isEqualTo(2); // {}
+      .isEqualTo(2); // {}
 
     // check for simple bugs
     for (int i = 1, length = MutableSpanTest.PERMUTATIONS.size(); i < length; i++) {
@@ -58,9 +59,26 @@ public class ZipkinJsonV2JsonWriterTest {
       jsonWriter.write(span, buffer);
       int size = jsonWriter.sizeInBytes(span);
       assertThat(jsonWriter.sizeInBytes(span))
-          .withFailMessage("expected to write %s bytes: was %s for %s", size, buffer.pos, span)
-          .isEqualTo(buffer.pos);
+        .withFailMessage("expected to write %s bytes: was %s for %s", size, buffer.pos, span)
+        .isEqualTo(buffer.pos);
     }
+  }
+
+  @Test public void specialCharacters() {
+    MutableSpan span = new MutableSpan();
+    span.name("\u2028 and \u2029");
+    span.localServiceName("\"foo");
+    span.tag("hello \n", "\t\b");
+    span.annotate(1L, "\uD83D\uDCA9");
+
+    jsonWriter.write(span, buffer);
+    String string = buffer.toString();
+    assertThat(string)
+      .isEqualTo(
+        "{\"name\":\"\\u2028 and \\u2029\",\"localEndpoint\":{\"serviceName\":\"\\\"foo\"},\"annotations\":[{\"timestamp\":1,\"value\":\"\uD83D\uDCA9\"}],\"tags\":{\"hello \\n\":\"\\t\\b\"}}");
+
+    assertThat(jsonWriter.sizeInBytes(span))
+      .isEqualTo(string.getBytes(UTF_8).length);
   }
 
   @Test public void missingFields_testCases() {
@@ -75,8 +93,8 @@ public class ZipkinJsonV2JsonWriterTest {
       jsonWriter.write(span, buffer);
 
       assertThat(buffer.toString())
-          .doesNotContain("null")
-          .doesNotContain(":0");
+        .doesNotContain("null")
+        .doesNotContain(":0");
     }
   }
 
@@ -84,12 +102,12 @@ public class ZipkinJsonV2JsonWriterTest {
     jsonWriter.write(clientSpan, buffer);
 
     assertThat(buffer.toString()).isEqualTo("{"
-        + "\"traceId\":\"0000000000000001\",\"parentId\":\"0000000000000002\",\"id\":\"0000000000000003\","
-        + "\"kind\":\"CLIENT\",\"name\":\"get\",\"timestamp\":1000,\"duration\":200,"
-        + "\"localEndpoint\":{\"serviceName\":\"frontend\",\"ipv4\":\"127.0.0.1\"},"
-        + "\"remoteEndpoint\":{\"serviceName\":\"backend\",\"ipv4\":\"192.168.99.101\",\"port\":9000},"
-        + "\"annotations\":[{\"timestamp\":1100,\"value\":\"foo\"}],"
-        + "\"tags\":{\"http.path\":\"/api\",\"clnt/finagle.version\":\"6.45.0\"}"
-        + "}");
+      + "\"traceId\":\"0000000000000001\",\"parentId\":\"0000000000000002\",\"id\":\"0000000000000003\","
+      + "\"kind\":\"CLIENT\",\"name\":\"get\",\"timestamp\":1000,\"duration\":200,"
+      + "\"localEndpoint\":{\"serviceName\":\"frontend\",\"ipv4\":\"127.0.0.1\"},"
+      + "\"remoteEndpoint\":{\"serviceName\":\"backend\",\"ipv4\":\"192.168.99.101\",\"port\":9000},"
+      + "\"annotations\":[{\"timestamp\":1100,\"value\":\"foo\"}],"
+      + "\"tags\":{\"http.path\":\"/api\",\"clnt/finagle.version\":\"6.45.0\"}"
+      + "}");
   }
 }

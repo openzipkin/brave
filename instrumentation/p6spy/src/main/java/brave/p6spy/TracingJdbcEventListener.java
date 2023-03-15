@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,6 +16,8 @@ package brave.p6spy;
 import brave.Span;
 import brave.internal.Nullable;
 import brave.propagation.ThreadLocalSpan;
+
+import com.p6spy.engine.common.PreparedStatementInformation;
 import com.p6spy.engine.common.StatementInformation;
 import com.p6spy.engine.event.SimpleJdbcEventListener;
 import com.p6spy.engine.logging.P6LogLoadableOptions;
@@ -35,12 +37,19 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
 
   @Nullable final String remoteServiceName;
   final boolean includeParameterValues;
+  final boolean includeAffectedRowsCount;
   final P6LogLoadableOptions logOptions;
 
   TracingJdbcEventListener(@Nullable String remoteServiceName, boolean includeParameterValues,
     P6LogLoadableOptions logOptions) {
+    this(remoteServiceName, includeParameterValues, false, logOptions);
+  }
+
+  TracingJdbcEventListener(@Nullable String remoteServiceName, boolean includeParameterValues,
+    boolean includeAffectedRowsCount, P6LogLoadableOptions logOptions) {
     this.remoteServiceName = remoteServiceName;
     this.includeParameterValues = includeParameterValues;
+    this.includeAffectedRowsCount = includeAffectedRowsCount;
     this.logOptions = logOptions;
   }
 
@@ -66,10 +75,51 @@ final class TracingJdbcEventListener extends SimpleJdbcEventListener {
     span.start();
   }
 
+  @Override public void onAfterExecuteUpdate(
+    PreparedStatementInformation statementInformation, long timeElapsedNanos, int rowCount, SQLException e
+  ) {
+    Span span = ThreadLocalSpan.CURRENT_TRACER.remove();
+    if (span == null || span.isNoop()) return;
+    if (includeAffectedRowsCount) {
+      span.tag("sql.affected_rows", String.valueOf(rowCount));
+    }
+    finishSpan(span, e);
+  }
+
+  @Override public void onAfterExecuteUpdate(
+    StatementInformation statementInformation, long timeElapsedNanos, String sql, int rowCount, SQLException e
+  ) {
+    Span span = ThreadLocalSpan.CURRENT_TRACER.remove();
+    if (span == null || span.isNoop()) return;
+    if (includeAffectedRowsCount) {
+      span.tag("sql.affected_rows", String.valueOf(rowCount));
+    }
+    finishSpan(span, e);
+  }
+
+  @Override
+  public void onAfterExecuteBatch(StatementInformation statementInformation, long timeElapsedNanos, int[] updateCounts, SQLException e) {
+    Span span = ThreadLocalSpan.CURRENT_TRACER.remove();
+    if (span == null || span.isNoop()) return;
+    if (includeAffectedRowsCount && updateCounts.length > 0) {
+      StringBuilder sb = new StringBuilder();
+      sb.append(updateCounts[0]);
+      for (int i = 1; i < updateCounts.length; i++) {
+        sb.append(',');
+        sb.append(updateCounts[i]);
+      }
+      span.tag("sql.affected_rows", sb.toString());
+    }
+    finishSpan(span, e);
+  }
+
   @Override public void onAfterAnyExecute(StatementInformation info, long elapsed, SQLException e) {
     Span span = ThreadLocalSpan.CURRENT_TRACER.remove();
     if (span == null || span.isNoop()) return;
+    finishSpan(span, e);
+  }
 
+  private void finishSpan(Span span, SQLException e) {
     if (e != null) {
       span.error(e);
       span.tag("error", Integer.toString(e.getErrorCode()));

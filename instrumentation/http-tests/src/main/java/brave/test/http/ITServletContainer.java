@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,24 +14,21 @@
 package brave.test.http;
 
 import brave.test.http.ServletContainer.ServerController;
-import javax.servlet.UnavailableException;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.util.log.Log;
+import org.eclipse.jetty.util.log.Logger;
 import org.junit.After;
 
 /** Starts a jetty server which runs a servlet container */
 public abstract class ITServletContainer extends ITHttpServer {
-  public static final UnavailableException NOT_READY_UE =
-    new UnavailableException(NOT_READY_ISE.getMessage(), 1 /* temporary implies 503 */) {
-      @Override public Throwable fillInStackTrace() {
-        return this; // don't fill logs as we are only testing
-      }
-    };
-
   final ServerController serverController;
 
   protected ITServletContainer(ServerController serverController) {
-    Log.setLog(new Log4J2Log());
+      this(serverController, new Log4J2Log());
+  }
+  
+  protected ITServletContainer(ServerController serverController, Logger logger) {
+    Log.setLog(logger);
     this.serverController = serverController;
   }
 

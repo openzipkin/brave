@@ -1,6 +1,6 @@
 <!--
 
-    Copyright 2013-2019 The OpenZipkin Authors
+    Copyright 2013-2023 The OpenZipkin Authors
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
     in compliance with the License. You may obtain a copy of the License at
@@ -18,7 +18,7 @@
 
   <groupId>io.zipkin.brave</groupId>
   <artifactId>brave-bom</artifactId>
-  <version>5.13.3-SNAPSHOT</version>
+  <version>5.15.1-SNAPSHOT</version>
   <name>Brave BOM</name>
   <description>Bill Of Materials POM for all Brave artifacts</description>
   <packaging>pom</packaging>
@@ -34,8 +34,8 @@
     <main.basedir>${project.basedir}/..</main.basedir>
 
     <!-- use the same values in ../pom.xml -->
-    <zipkin.version>2.23.0</zipkin.version>
-    <zipkin-reporter.version>2.16.1</zipkin-reporter.version>
+    <zipkin.version>2.23.2</zipkin.version>
+    <zipkin-reporter.version>2.16.3</zipkin-reporter.version>
 
     <nexus-staging-maven-plugin.version>1.6.8</nexus-staging-maven-plugin.version>
   </properties>
@@ -186,6 +186,11 @@
       </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
+        <artifactId>brave-instrumentation-jms-jakarta</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-kafka-clients</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -242,6 +247,11 @@
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-servlet</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>brave-instrumentation-servlet-jakarta</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
