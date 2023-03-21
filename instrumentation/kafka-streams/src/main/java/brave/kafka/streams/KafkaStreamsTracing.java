@@ -23,22 +23,30 @@ import brave.propagation.Propagation;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.Properties;
+import java.util.Set;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.Topology;
-import org.apache.kafka.streams.kstream.*;
+import org.apache.kafka.streams.kstream.ForeachAction;
+import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.KeyValueMapper;
+import org.apache.kafka.streams.kstream.Predicate;
+import org.apache.kafka.streams.kstream.TransformerSupplier;
+import org.apache.kafka.streams.kstream.ValueMapper;
+import org.apache.kafka.streams.kstream.ValueMapperWithKey;
+import org.apache.kafka.streams.kstream.ValueTransformerSupplier;
+import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
+import org.apache.kafka.streams.kstream.ValueTransformerWithKeySupplier;
 import org.apache.kafka.streams.processor.AbstractProcessor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
 import org.apache.kafka.streams.processor.api.ProcessingContext;
-
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.Properties;
-import java.util.Set;
 
 /** Use this class to decorate Kafka Stream Topologies and enable Tracing. */
 public final class KafkaStreamsTracing {
@@ -128,6 +136,8 @@ public final class KafkaStreamsTracing {
    * }</pre>
    *
    * @see TracingKafkaClientSupplier
+   * @deprecated Use {@link KafkaStreamsTracing#process(String, org.apache.kafka.streams.processor.api.ProcessorSupplier)} or
+   * {@link KafkaStreamsTracing#processValues(String, org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier)} instead.
    */
   @Deprecated
   public <K, V> ProcessorSupplier<K, V> processor(String spanName,
@@ -145,6 +155,8 @@ public final class KafkaStreamsTracing {
    *        .transform(kafkaStreamsTracing.transformer("my-transformer", myTransformerSupplier)
    *        .to(outputTopic);
    * }</pre>
+   * @deprecated Use {@link KafkaStreamsTracing#process(String, org.apache.kafka.streams.processor.api.ProcessorSupplier)} or
+   * {@link KafkaStreamsTracing#processValues(String, org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier)} instead.
    */
   @Deprecated
   public <K, V, R> TransformerSupplier<K, V, R> transformer(String spanName,
@@ -162,6 +174,8 @@ public final class KafkaStreamsTracing {
    *        .transformValues(kafkaStreamsTracing.valueTransformer("my-transformer", myTransformerSupplier)
    *        .to(outputTopic);
    * }</pre>
+   * @deprecated Use {@link KafkaStreamsTracing#process(String, org.apache.kafka.streams.processor.api.ProcessorSupplier)} or
+   * {@link KafkaStreamsTracing#processValues(String, org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier)} instead.
    */
   @Deprecated
   public <V, VR> ValueTransformerSupplier<V, VR> valueTransformer(String spanName,
@@ -179,6 +193,8 @@ public final class KafkaStreamsTracing {
    *        .transformValues(kafkaStreamsTracing.valueTransformerWithKey("my-transformer", myTransformerSupplier)
    *        .to(outputTopic);
    * }</pre>
+   * @deprecated Use {@link KafkaStreamsTracing#process(String, org.apache.kafka.streams.processor.api.ProcessorSupplier)} or
+   * {@link KafkaStreamsTracing#processValues(String, org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier)} instead.
    */
   @Deprecated
   public <K, V, VR> ValueTransformerWithKeySupplier<K, V, VR> valueTransformerWithKey(
@@ -198,6 +214,8 @@ public final class KafkaStreamsTracing {
    * builder.stream(inputTopic)
    *        .process(kafkaStreamsTracing.foreach("myForeach", (k, v) -> ...);
    * }</pre>
+   * @deprecated Use {@link KafkaStreamsTracing#process(String, org.apache.kafka.streams.processor.api.ProcessorSupplier)} or
+   * {@link KafkaStreamsTracing#processValues(String, org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier)} instead.
    */
   @Deprecated
   public <K, V> ProcessorSupplier<K, V> foreach(String spanName, ForeachAction<K, V> action) {
@@ -220,6 +238,8 @@ public final class KafkaStreamsTracing {
    *        .transformValues(kafkaStreamsTracing.peek("myPeek", (k, v) -> ...)
    *        .to(outputTopic);
    * }</pre>
+   * @deprecated Use {@link KafkaStreamsTracing#process(String, org.apache.kafka.streams.processor.api.ProcessorSupplier)} or
+   * {@link KafkaStreamsTracing#processValues(String, org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier)} instead.
    */
   @Deprecated
   public <K, V> ValueTransformerWithKeySupplier<K, V, V> peek(String spanName,
@@ -251,6 +271,8 @@ public final class KafkaStreamsTracing {
    *        .transform(kafkaStreamsTracing.mark("end-complex-transformation")
    *        .to(outputTopic);
    * }</pre>
+   * @deprecated Use {@link KafkaStreamsTracing#process(String, org.apache.kafka.streams.processor.api.ProcessorSupplier)} or
+   * {@link KafkaStreamsTracing#processValues(String, org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier)} instead.
    */
   @Deprecated
   public <K, V> ValueTransformerWithKeySupplier<K, V, V> mark(String spanName) {
@@ -273,6 +295,8 @@ public final class KafkaStreamsTracing {
    *        .transform(kafkaStreamsTracing.map("myMap", (k, v) -> ...)
    *        .to(outputTopic);
    * }</pre>
+   * @deprecated Use {@link KafkaStreamsTracing#process(String, org.apache.kafka.streams.processor.api.ProcessorSupplier)} or
+   * {@link KafkaStreamsTracing#processValues(String, org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier)} instead.
    */
   @Deprecated
   public <K, V, KR, VR> TransformerSupplier<K, V, KeyValue<KR, VR>> map(String spanName,
@@ -296,6 +320,8 @@ public final class KafkaStreamsTracing {
    *        .flatTransform(kafkaStreamsTracing.flatMap("myflatMap", (k, v) -> ...)
    *        .to(outputTopic);
    * }</pre>
+   * @deprecated Use {@link KafkaStreamsTracing#process(String, org.apache.kafka.streams.processor.api.ProcessorSupplier)} or
+   * {@link KafkaStreamsTracing#processValues(String, org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier)} instead.
    */
   @Deprecated
   public <K, V, KR, VR> TransformerSupplier<K, V, Iterable<KeyValue<KR, VR>>> flatMap(
@@ -326,6 +352,8 @@ public final class KafkaStreamsTracing {
    *       .transform(kafkaStreamsTracing.filter("myFilter", (k, v) -> ...)
    *       .to(outputTopic);
    * }</pre>
+   * @deprecated Use {@link KafkaStreamsTracing#process(String, org.apache.kafka.streams.processor.api.ProcessorSupplier)} or
+   * {@link KafkaStreamsTracing#processValues(String, org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier)} instead.
    */
   @Deprecated
   public <K, V> TransformerSupplier<K, V, KeyValue<K, V>> filter(String spanName,
@@ -348,6 +376,8 @@ public final class KafkaStreamsTracing {
    *       .transform(kafkaStreamsTracing.filterNot("myFilter", (k, v) -> ...)
    *       .to(outputTopic);
    * }</pre>
+   * @deprecated Use {@link KafkaStreamsTracing#process(String, org.apache.kafka.streams.processor.api.ProcessorSupplier)} or
+   * {@link KafkaStreamsTracing#processValues(String, org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier)} instead.
    */
   @Deprecated
   public <K, V> TransformerSupplier<K, V, KeyValue<K, V>> filterNot(String spanName,
@@ -374,6 +404,8 @@ public final class KafkaStreamsTracing {
    *       .filterNot((k, v) -> Objects.isNull(v))
    *       .to(outputTopic);
    * }</pre>
+   * @deprecated Use {@link KafkaStreamsTracing#process(String, org.apache.kafka.streams.processor.api.ProcessorSupplier)} or
+   * {@link KafkaStreamsTracing#processValues(String, org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier)} instead.
    */
   @Deprecated
   public <K, V> ValueTransformerWithKeySupplier<K, V, V> markAsFiltered(String spanName,
@@ -400,6 +432,8 @@ public final class KafkaStreamsTracing {
    *       .filterNot((k, v) -> Objects.isNull(v))
    *       .to(outputTopic);
    * }</pre>
+   * @deprecated Use {@link KafkaStreamsTracing#process(String, org.apache.kafka.streams.processor.api.ProcessorSupplier)} or
+   * {@link KafkaStreamsTracing#processValues(String, org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier)} instead.
    */
   @Deprecated
   public <K, V> ValueTransformerWithKeySupplier<K, V, V> markAsNotFiltered(String spanName,
@@ -418,6 +452,8 @@ public final class KafkaStreamsTracing {
    *        .transformValues(kafkaStreamsTracing.mapValues("myMapValues", (k, v) -> ...)
    *        .to(outputTopic);
    * }</pre>
+   * @deprecated Use {@link KafkaStreamsTracing#process(String, org.apache.kafka.streams.processor.api.ProcessorSupplier)} or
+   * {@link KafkaStreamsTracing#processValues(String, org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier)} instead.
    */
   @Deprecated
   public <K, V, VR> ValueTransformerWithKeySupplier<K, V, VR> mapValues(String spanName,
@@ -441,6 +477,8 @@ public final class KafkaStreamsTracing {
    *        .transformValues(kafkaStreamsTracing.mapValues("myMapValues", v -> ...)
    *        .to(outputTopic);
    * }</pre>
+   * @deprecated Use {@link KafkaStreamsTracing#process(String, org.apache.kafka.streams.processor.api.ProcessorSupplier)} or
+   * {@link KafkaStreamsTracing#processValues(String, org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier)} instead.
    */
   @Deprecated
   public <V, VR> ValueTransformerSupplier<V, VR> mapValues(String spanName,
@@ -465,7 +503,7 @@ public final class KafkaStreamsTracing {
    *
    * @see TracingKafkaClientSupplier
    */
-  public <KIn, VIn, KOut, VOut> org.apache.kafka.streams.processor.api.ProcessorSupplier<KIn, VIn, KOut, VOut> processor(String spanName,
+  public <KIn, VIn, KOut, VOut> org.apache.kafka.streams.processor.api.ProcessorSupplier<KIn, VIn, KOut, VOut> process(String spanName,
     org.apache.kafka.streams.processor.api.ProcessorSupplier<KIn, VIn, KOut, VOut> processorSupplier) {
     return new NewTracingProcessorSupplier<>(this, spanName, processorSupplier);
   }

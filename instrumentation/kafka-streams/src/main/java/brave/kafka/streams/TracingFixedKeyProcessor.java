@@ -15,6 +15,9 @@ package brave.kafka.streams;
 
 import brave.Span;
 import brave.Tracer;
+import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
+import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
+import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 
 import static brave.internal.Throwables.propagateIfFatal;
 
