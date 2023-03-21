@@ -140,9 +140,10 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
   @Test
   public void newProcessorSupplier_should_add_baggage_field() {
     org.apache.kafka.streams.processor.api.ProcessorSupplier<String, String, String, String> processorSupplier =
-      kafkaStreamsTracing.processor(
+      kafkaStreamsTracing.process(
         "forward-1", () ->
-          (org.apache.kafka.streams.processor.api.Processor<String, String, String, String>) record -> assertThat(BAGGAGE_FIELD.getValue(currentTraceContext.get())).isEqualTo("user1"));
+          (org.apache.kafka.streams.processor.api.Processor<String, String, String, String>) record ->
+            assertThat(BAGGAGE_FIELD.getValue(currentTraceContext.get())).isEqualTo("user1"));
     Headers headers = new RecordHeaders().add(BAGGAGE_FIELD_KEY, "user1".getBytes());
     org.apache.kafka.streams.processor.api.Processor<String, String, String, String> processor = processorSupplier.get();
     processor.init(newProcessorContextSupplier.get());

@@ -20,17 +20,21 @@ import brave.propagation.B3Propagation;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.test.TestSpanHandler;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.KeyValue;
-import org.apache.kafka.streams.kstream.*;
+import org.apache.kafka.streams.kstream.Transformer;
+import org.apache.kafka.streams.kstream.TransformerSupplier;
+import org.apache.kafka.streams.kstream.ValueTransformer;
+import org.apache.kafka.streams.kstream.ValueTransformerSupplier;
+import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
+import org.apache.kafka.streams.kstream.ValueTransformerWithKeySupplier;
 import org.apache.kafka.streams.processor.AbstractProcessor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
 import org.apache.kafka.streams.processor.TaskId;
 import org.apache.kafka.streams.processor.api.Record;
-
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 import static brave.test.ITRemote.BAGGAGE_FIELD;
 import static brave.test.ITRemote.BAGGAGE_FIELD_KEY;
@@ -89,7 +93,7 @@ class KafkaStreamsTest {
               });
 
   org.apache.kafka.streams.processor.api.ProcessorSupplier<String, String, String, String> newFakeProcessorSupplier =
-    kafkaStreamsTracing.processor(
+    kafkaStreamsTracing.process(
       "forward-1", () ->
         new org.apache.kafka.streams.processor.api.Processor<String, String, String, String>() {
           org.apache.kafka.streams.processor.api.ProcessorContext context;
