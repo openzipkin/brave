@@ -20,19 +20,17 @@ import brave.propagation.B3Propagation;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.test.TestSpanHandler;
-import java.util.function.Function;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.KeyValue;
-import org.apache.kafka.streams.kstream.Transformer;
-import org.apache.kafka.streams.kstream.TransformerSupplier;
-import org.apache.kafka.streams.kstream.ValueTransformer;
-import org.apache.kafka.streams.kstream.ValueTransformerSupplier;
-import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
-import org.apache.kafka.streams.kstream.ValueTransformerWithKeySupplier;
+import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.processor.AbstractProcessor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
 import org.apache.kafka.streams.processor.TaskId;
+import org.apache.kafka.streams.processor.api.Record;
+
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static brave.test.ITRemote.BAGGAGE_FIELD;
 import static brave.test.ITRemote.BAGGAGE_FIELD_KEY;
@@ -71,6 +69,15 @@ class KafkaStreamsTest {
         return processorContext;
       };
 
+  Supplier<org.apache.kafka.streams.processor.api.ProcessorContext<String, String>> newProcessorContextSupplier =
+    () ->
+    {
+      org.apache.kafka.streams.processor.api.ProcessorContext processorContext = mock(org.apache.kafka.streams.processor.api.ProcessorContext.class);
+      when(processorContext.applicationId()).thenReturn(TEST_APPLICATION_ID);
+      when(processorContext.taskId()).thenReturn(new TaskId(0, 0));
+      return processorContext;
+    };
+
   ProcessorSupplier<String, String> fakeProcessorSupplier =
       kafkaStreamsTracing.processor(
           "forward-1", () ->
@@ -80,6 +87,21 @@ class KafkaStreamsTest {
                   context().forward(key, value);
                 }
               });
+
+  org.apache.kafka.streams.processor.api.ProcessorSupplier<String, String, String, String> newFakeProcessorSupplier =
+    kafkaStreamsTracing.processor(
+      "forward-1", () ->
+        new org.apache.kafka.streams.processor.api.Processor<String, String, String, String>() {
+          org.apache.kafka.streams.processor.api.ProcessorContext context;
+          @Override
+          public void init(org.apache.kafka.streams.processor.api.ProcessorContext<String, String> context) {
+            this.context = context;
+          }
+          @Override
+          public void process(Record record) {
+            context.forward(record);
+          }
+        });
 
   TransformerSupplier<String, String, KeyValue<String, String>> fakeTransformerSupplier =
       kafkaStreamsTracing.transformer(

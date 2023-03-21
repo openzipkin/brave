@@ -19,12 +19,6 @@ import brave.messaging.MessagingTracing;
 import brave.propagation.TraceContext;
 import com.github.charithe.kafka.EphemeralKafkaBroker;
 import com.github.charithe.kafka.KafkaJunitRule;
-import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Properties;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -33,25 +27,18 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.KeyValue;
-import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.Topology;
-import org.apache.kafka.streams.kstream.Consumed;
-import org.apache.kafka.streams.kstream.Produced;
-import org.apache.kafka.streams.kstream.Transformer;
-import org.apache.kafka.streams.kstream.TransformerSupplier;
-import org.apache.kafka.streams.kstream.ValueTransformer;
-import org.apache.kafka.streams.kstream.ValueTransformerSupplier;
-import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
-import org.apache.kafka.streams.kstream.ValueTransformerWithKeySupplier;
+import org.apache.kafka.streams.*;
+import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.processor.AbstractProcessor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
+import org.apache.kafka.streams.processor.api.Record;
 import org.junit.After;
 import org.junit.ClassRule;
 import org.junit.Test;
+
+import java.io.FileNotFoundException;
+import java.util.*;
 
 import static brave.Span.Kind.CONSUMER;
 import static brave.Span.Kind.PRODUCER;
@@ -209,6 +196,45 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
           new AbstractProcessor<String, String>() {
             @Override
             public void process(String key, String value) {
+              try {
+                Thread.sleep(100L);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+            }
+          });
+
+    String inputTopic = testName.getMethodName() + "-input";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+      .process(processorSupplier);
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreams(topology);
+
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
+
+    waitForStreamToRun(streams);
+
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
+  public void should_create_spans_from_stream_with_tracing_processor1() {
+    org.apache.kafka.streams.processor.api.ProcessorSupplier<String, String, String, String> processorSupplier =
+      kafkaStreamsTracing.processor(
+        "forward-1", () ->
+          new org.apache.kafka.streams.processor.api.Processor<String, String, String, String>() {
+            @Override
+            public void process(Record<String, String> record) {
               try {
                 Thread.sleep(100L);
               } catch (InterruptedException e) {
