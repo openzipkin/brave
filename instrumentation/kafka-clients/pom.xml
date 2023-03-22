@@ -65,29 +65,24 @@
       <scope>test</scope>
       <version>${project.version}</version>
     </dependency>
+
     <dependency>
-      <groupId>com.github.charithe</groupId>
-      <artifactId>kafka-junit</artifactId>
-      <version>${kafka-junit.version}</version>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka_2.12</artifactId>
+      <version>3.4.0</version>
       <scope>test</scope>
-      <exclusions>
-        <exclusion>
-          <groupId>junit</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.junit.jupiter</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>log4j</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.salesforce.kafka.test</groupId>
+      <artifactId>kafka-junit4</artifactId>
+      <version>3.2.3</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
+      <version>4.2.0</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
