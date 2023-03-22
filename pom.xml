@@ -101,7 +101,7 @@
     <jetty11.version>11.0.11</jetty11.version>
     <jakarta.servlet>5.0.0</jakarta.servlet>
 
-    <kafka.version>3.2.1</kafka.version>
+    <kafka.version>3.2.3</kafka.version>
     <activemq.version>5.16.0</activemq.version>
     <activemq.artemis.version>2.26.0</activemq.artemis.version>
     <spring-rabbit.version>2.3.2</spring-rabbit.version>
