@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -26,10 +26,11 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
 import brave.sampler.Sampler;
 import brave.test.IntegrationTestSpanHandler;
-
-import java.util.*;
-
-import com.salesforce.kafka.test.junit4.SharedKafkaTestResource;
+import com.github.charithe.kafka.EphemeralKafkaBroker;
+import com.github.charithe.kafka.KafkaJunitRule;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -38,8 +39,6 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.After;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -54,7 +53,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class ITKafkaTracing extends ITKafka {
   @ClassRule
-  public static final SharedKafkaTestResource kafkaRule = new SharedKafkaTestResource();
+  public static KafkaJunitRule kafkaRule = new KafkaJunitRule(EphemeralKafkaBroker.create());
 
   @Rule public IntegrationTestSpanHandler producerSpanHandler = new IntegrationTestSpanHandler();
   @Rule public IntegrationTestSpanHandler consumerSpanHandler = new IntegrationTestSpanHandler();
@@ -110,7 +109,9 @@ public class ITKafkaTracing extends ITKafka {
   }
 
   void send(ProducerRecord<String, String> record) {
-      producer.send(record);
+    BlockingCallback callback = new BlockingCallback();
+    producer.send(record, callback);
+    callback.join();
   }
 
   MutableSpan takeProducerSpan() {
@@ -126,7 +127,7 @@ public class ITKafkaTracing extends ITKafka {
     String topic1 = testName.getMethodName() + "1";
     String topic2 = testName.getMethodName() + "2";
 
-    producer = kafkaRule.getKafkaTestUtils().getKafkaProducer(StringSerializer.class, StringSerializer.class); // not traced
+    producer = kafkaRule.helper().createStringProducer(); // not traced
     consumer = createTracingConsumer(topic1, topic2);
 
     for (int i = 0; i < 5; i++) {
@@ -303,7 +304,7 @@ public class ITKafkaTracing extends ITKafka {
           .putRule(operationEquals("receive"), Sampler.NEVER_SAMPLE)
           .build()).build());
 
-    producer = kafkaRule.getKafkaTestUtils().getKafkaProducer(StringSerializer.class, StringSerializer.class); // intentionally don't trace the producer
+    producer = kafkaRule.helper().createStringProducer(); // intentionally don't trace the producer
     consumer = createTracingConsumer();
 
     send(new ProducerRecord<>(topic, TEST_KEY, TEST_VALUE));
@@ -319,10 +320,8 @@ public class ITKafkaTracing extends ITKafka {
   }
 
   Consumer<String, String> createTracingConsumer(String... topics) {
-    if (topics.length == 0) {
-      topics = new String[] {testName.getMethodName()};
-    }
-    KafkaConsumer<String, String> consumer = kafkaRule.getKafkaTestUtils().getKafkaConsumer(StringDeserializer.class, StringDeserializer.class);
+    if (topics.length == 0) topics = new String[] {testName.getMethodName()};
+    KafkaConsumer<String, String> consumer = kafkaRule.helper().createStringConsumer();
     List<TopicPartition> assignments = new ArrayList<>();
     for (String topic : topics) {
       assignments.add(new TopicPartition(topic, 0));
@@ -332,7 +331,7 @@ public class ITKafkaTracing extends ITKafka {
   }
 
   Producer<String, String> createTracingProducer() {
-    KafkaProducer<String, String> producer = kafkaRule.getKafkaTestUtils().getKafkaProducer(StringSerializer.class, StringSerializer.class);
+    KafkaProducer<String, String> producer = kafkaRule.helper().createStringProducer();
     return producerTracing.producer(producer);
   }
 }

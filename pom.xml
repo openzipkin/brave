@@ -125,8 +125,8 @@
     <powermock.version>2.0.9</powermock.version>
     <mockito.version>3.6.28</mockito.version>
     <jersey.version>2.33</jersey.version>
-    <!-- must align with kafka version https://github.com/charithe/kafka-junit -->
-    <kafka-junit.version>4.2.3</kafka-junit.version>
+      <!-- must align with kafka version https://github.com/charithe/kafka-junit -->
+    <kafka-junit.version>4.2.4</kafka-junit.version>
     <testcontainers.version>1.15.1</testcontainers.version>
 
     <license.skip>${skipTests}</license.skip>

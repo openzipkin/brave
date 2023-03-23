@@ -17,14 +17,15 @@ import brave.handler.MutableSpan;
 import brave.kafka.clients.KafkaTracing;
 import brave.messaging.MessagingTracing;
 import brave.propagation.TraceContext;
+import com.github.charithe.kafka.EphemeralKafkaBroker;
+import com.github.charithe.kafka.KafkaJunitRule;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
-
-import com.salesforce.kafka.test.junit4.SharedKafkaTestResource;
+import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -32,8 +33,6 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -63,9 +62,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 public class ITKafkaStreamsTracing extends ITKafkaStreams {
-
-  @ClassRule
-  public static final SharedKafkaTestResource kafka = new SharedKafkaTestResource();
+  @ClassRule public static KafkaJunitRule kafka = new KafkaJunitRule(EphemeralKafkaBroker.create());
 
   Producer<String, String> producer = createProducer();
 
@@ -1428,7 +1425,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
   Properties streamsProperties() {
     Properties properties = new Properties();
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG,
-      kafka.getKafkaConnectString());
+      kafka.helper().consumerConfig().getProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
     properties.put(StreamsConfig.STATE_DIR_CONFIG, "target/kafka-streams");
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, testName.getMethodName());
     properties.put(StreamsConfig.consumerPrefix(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG),
@@ -1444,14 +1441,14 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
   }
 
   Producer<String, String> createProducer() {
-    return kafka.getKafkaTestUtils().getKafkaProducer(StringSerializer.class, StringSerializer.class);
+    return kafka.helper().createStringProducer();
   }
 
   Consumer<String, String> createTracingConsumer(String... topics) {
     if (topics.length == 0) {
       topics = new String[] {testName.getMethodName()};
     }
-    KafkaConsumer<String, String> consumer = kafka.getKafkaTestUtils().getKafkaConsumer(StringDeserializer.class, StringDeserializer.class);
+    KafkaConsumer<String, String> consumer = kafka.helper().createStringConsumer();
     List<TopicPartition> assignments = new ArrayList<>();
     for (String topic : topics) {
       assignments.add(new TopicPartition(topic, 0));
