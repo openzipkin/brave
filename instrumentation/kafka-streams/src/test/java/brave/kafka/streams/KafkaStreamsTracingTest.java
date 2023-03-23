@@ -27,7 +27,6 @@ import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
 import org.apache.kafka.streams.processor.api.Record;
 import org.junit.Test;
-
 import java.util.Date;
 
 import static brave.test.ITRemote.BAGGAGE_FIELD;
@@ -59,7 +58,7 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
     child.finish();
 
     assertThat(child.context().parentIdString())
-      .isEqualTo(parent.spanIdString());
+        .isEqualTo(parent.spanIdString());
   }
 
   @Test
