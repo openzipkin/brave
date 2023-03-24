@@ -498,7 +498,7 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .process(kafkaStreamsTracing.processor("my-processor", myProcessorSupplier);
+   *        .process(kafkaStreamsTracing.process("my-processor", myProcessorSupplier);
    * }</pre>
    *
    * @see TracingKafkaClientSupplier
@@ -515,7 +515,7 @@ public final class KafkaStreamsTracing {
    * <pre>{@code
    * StreamsBuilder builder = new StreamsBuilder();
    * builder.stream(inputTopic)
-   *        .processValues(kafkaStreamsTracing.processor("my-processor", myFixedKeyProcessorSupplier);
+   *        .processValues(kafkaStreamsTracing.processValues("my-processor", myFixedKeyProcessorSupplier);
    * }</pre>
    *
    * @see TracingKafkaClientSupplier
