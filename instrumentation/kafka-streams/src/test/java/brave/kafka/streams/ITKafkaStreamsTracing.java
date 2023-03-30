@@ -241,7 +241,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
   }
 
   @Test
-  public void should_create_spans_from_stream_with_new_tracing_processor() {
+  public void should_create_spans_from_stream_with_tracing_v2_processor() {
     org.apache.kafka.streams.processor.api.ProcessorSupplier<String, String, String, String> processorSupplier =
       kafkaStreamsTracing.process(
         "forward-1", () ->
