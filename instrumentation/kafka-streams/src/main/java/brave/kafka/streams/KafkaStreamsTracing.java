@@ -522,7 +522,7 @@ public final class KafkaStreamsTracing {
    */
   public <KIn, VIn, VOut> org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier<KIn, VIn, VOut> processValues(String spanName,
     org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier<KIn, VIn, VOut> processorSupplier) {
-    return new TracingFixedKeyProcessorSupplier<>(this, spanName, processorSupplier);
+    return new TracingV2FixedKeyProcessorSupplier<>(this, spanName, processorSupplier);
   }
 
   static void addTags(ProcessorContext processorContext, SpanCustomizer result) {
