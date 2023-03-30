@@ -505,7 +505,7 @@ public final class KafkaStreamsTracing {
    */
   public <KIn, VIn, KOut, VOut> org.apache.kafka.streams.processor.api.ProcessorSupplier<KIn, VIn, KOut, VOut> process(String spanName,
     org.apache.kafka.streams.processor.api.ProcessorSupplier<KIn, VIn, KOut, VOut> processorSupplier) {
-    return new NewTracingProcessorSupplier<>(this, spanName, processorSupplier);
+    return new TracingV2ProcessorSupplier<>(this, spanName, processorSupplier);
   }
 
   /**
