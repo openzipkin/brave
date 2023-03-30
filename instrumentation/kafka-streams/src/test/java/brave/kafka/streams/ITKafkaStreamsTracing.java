@@ -277,7 +277,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
   }
 
   @Test
-  public void should_create_spans_from_stream_with_tracing_fixed_key_processor() {
+  public void should_create_spans_from_stream_with_tracing_v2_fixed_key_processor() {
     org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier<String, String, String> processorSupplier =
       kafkaStreamsTracing.processValues(
         "forward-1", () ->
