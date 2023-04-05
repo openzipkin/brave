@@ -15,22 +15,26 @@ package brave.kafka.streams;
 
 import brave.Span;
 import brave.Tracer;
-import org.apache.kafka.streams.processor.api.Processor;
-import org.apache.kafka.streams.processor.api.ProcessorContext;
-import org.apache.kafka.streams.processor.api.Record;
+import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
+import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
+import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 
 import static brave.internal.Throwables.propagateIfFatal;
 
-class NewTracingProcessor<KIn, VIn, KOut, VOut> implements Processor<KIn, VIn, KOut, VOut> {
+/*
+ * Note. the V2 naming convention has been introduced here to help distinguish between the existing TracingProcessor classes
+ * and those that implement the new kafka streams API introduced in version 3.4.0
+ */
+class TracingV2FixedKeyProcessor<KIn, VIn, VOut> implements FixedKeyProcessor<KIn, VIn, VOut> {
   final KafkaStreamsTracing kafkaStreamsTracing;
   final Tracer tracer;
   final String spanName;
-  final Processor<KIn, VIn, KOut, VOut> delegateProcessor;
+  final FixedKeyProcessor<KIn, VIn, VOut> delegateProcessor;
 
-  ProcessorContext processorContext;
+  FixedKeyProcessorContext processorContext;
 
-  NewTracingProcessor(KafkaStreamsTracing kafkaStreamsTracing,
-                      String spanName, Processor<KIn, VIn, KOut, VOut> delegateProcessor) {
+  TracingV2FixedKeyProcessor(KafkaStreamsTracing kafkaStreamsTracing,
+                             String spanName, FixedKeyProcessor<KIn, VIn, VOut> delegateProcessor) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.tracer = kafkaStreamsTracing.tracer;
     this.spanName = spanName;
@@ -38,13 +42,13 @@ class NewTracingProcessor<KIn, VIn, KOut, VOut> implements Processor<KIn, VIn, K
   }
 
   @Override
-  public void init(ProcessorContext<KOut, VOut> context) {
+  public void init(FixedKeyProcessorContext<KIn, VOut> context) {
     this.processorContext = context;
     delegateProcessor.init(processorContext);
   }
 
   @Override
-  public void process(Record<KIn, VIn> record) {
+  public void process(FixedKeyRecord<KIn, VIn> record) {
     Span span = kafkaStreamsTracing.nextSpan(processorContext, record.headers());
     if (!span.isNoop()) {
       span.name(spanName);

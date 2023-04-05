@@ -13,24 +13,28 @@
  */
 package brave.kafka.streams;
 
-import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
-import org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier;
+import org.apache.kafka.streams.processor.api.Processor;
+import org.apache.kafka.streams.processor.api.ProcessorSupplier;
 
-class TracingFixedKeyProcessorSupplier<KIn, VIn, VOut> implements FixedKeyProcessorSupplier<KIn, VIn, VOut> {
+/*
+ * Note. the V2 naming convention has been introduced here to help distinguish between the existing TracingProcessor classes
+ * and those that implement the new kafka streams API introduced in version 3.4.0
+ */
+class TracingV2ProcessorSupplier<KIn, VIn, KOut, VOut> implements ProcessorSupplier<KIn, VIn, KOut, VOut> {
   final KafkaStreamsTracing kafkaStreamsTracing;
   final String spanName;
-  final FixedKeyProcessorSupplier<KIn, VIn, VOut> delegateProcessorSupplier;
+  final ProcessorSupplier<KIn, VIn, KOut, VOut> delegateProcessorSupplier;
 
-  TracingFixedKeyProcessorSupplier(KafkaStreamsTracing kafkaStreamsTracing,
-                                   String spanName,
-                                   FixedKeyProcessorSupplier<KIn, VIn, VOut> processorSupplier) {
+  TracingV2ProcessorSupplier(KafkaStreamsTracing kafkaStreamsTracing,
+                             String spanName,
+                             ProcessorSupplier<KIn, VIn, KOut, VOut> processorSupplier) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.spanName = spanName;
     this.delegateProcessorSupplier = processorSupplier;
   }
 
   /** This wraps process method to enable tracing. */
-  @Override public FixedKeyProcessor<KIn, VIn, VOut> get() {
-    return new TracingFixedKeyProcessor<>(kafkaStreamsTracing, spanName, delegateProcessorSupplier.get());
+  @Override public Processor<KIn, VIn, KOut, VOut> get() {
+    return new TracingV2Processor<>(kafkaStreamsTracing, spanName, delegateProcessorSupplier.get());
   }
 }

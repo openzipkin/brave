@@ -73,7 +73,7 @@ class KafkaStreamsTest {
         return processorContext;
       };
 
-  Supplier<org.apache.kafka.streams.processor.api.ProcessorContext<String, String>> newProcessorContextSupplier =
+  Supplier<org.apache.kafka.streams.processor.api.ProcessorContext<String, String>> processorV2ContextSupplier =
     () ->
     {
       org.apache.kafka.streams.processor.api.ProcessorContext processorContext = mock(org.apache.kafka.streams.processor.api.ProcessorContext.class);
@@ -92,7 +92,7 @@ class KafkaStreamsTest {
                 }
               });
 
-  org.apache.kafka.streams.processor.api.ProcessorSupplier<String, String, String, String> newFakeProcessorSupplier =
+  org.apache.kafka.streams.processor.api.ProcessorSupplier<String, String, String, String> fakeV2ProcessorSupplier =
     kafkaStreamsTracing.process(
       "forward-1", () ->
         new org.apache.kafka.streams.processor.api.Processor<String, String, String, String>() {

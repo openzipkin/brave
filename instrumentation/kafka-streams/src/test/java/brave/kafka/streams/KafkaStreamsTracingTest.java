@@ -50,7 +50,7 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
 
   @Test
   public void nextSpanWithHeaders_uses_current_context() {
-    org.apache.kafka.streams.processor.api.ProcessorContext<String, String> fakeProcessorContext = newProcessorContextSupplier.get();
+    org.apache.kafka.streams.processor.api.ProcessorContext<String, String> fakeProcessorContext = processorV2ContextSupplier.get();
     Span child;
     try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
       child = kafkaStreamsTracing.nextSpan(fakeProcessorContext, new RecordHeaders());
@@ -69,7 +69,7 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
 
   @Test
   public void nextSpanWithHeaders_should_create_span_if_no_headers() {
-    org.apache.kafka.streams.processor.api.ProcessorContext<String, String> fakeProcessorContext = newProcessorContextSupplier.get();
+    org.apache.kafka.streams.processor.api.ProcessorContext<String, String> fakeProcessorContext = processorV2ContextSupplier.get();
     assertThat(kafkaStreamsTracing.nextSpan(fakeProcessorContext, new RecordHeaders())).isNotNull();
   }
 
@@ -86,7 +86,7 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
 
   @Test
   public void nextSpanWithHeaders_should_tag_app_id_and_task_id() {
-    org.apache.kafka.streams.processor.api.ProcessorContext<String, String> fakeProcessorContext = newProcessorContextSupplier.get();
+    org.apache.kafka.streams.processor.api.ProcessorContext<String, String> fakeProcessorContext = processorV2ContextSupplier.get();
     kafkaStreamsTracing.nextSpan(fakeProcessorContext, new RecordHeaders()).start().finish();
 
     assertThat(spans.get(0).tags())
@@ -109,8 +109,8 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
 
   @Test
   public void newProcessorSupplier_should_tag_app_id_and_task_id() {
-    org.apache.kafka.streams.processor.api.Processor<String, String, String, String> processor = newFakeProcessorSupplier.get();
-    processor.init(newProcessorContextSupplier.get());
+    org.apache.kafka.streams.processor.api.Processor<String, String, String, String> processor = fakeV2ProcessorSupplier.get();
+    processor.init(processorV2ContextSupplier.get());
     processor.process(new Record<>(TEST_KEY, TEST_VALUE, new Date().getTime()));
 
     assertThat(spans.get(0).tags())
@@ -145,7 +145,7 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
             assertThat(BAGGAGE_FIELD.getValue(currentTraceContext.get())).isEqualTo("user1"));
     Headers headers = new RecordHeaders().add(BAGGAGE_FIELD_KEY, "user1".getBytes());
     org.apache.kafka.streams.processor.api.Processor<String, String, String, String> processor = processorSupplier.get();
-    processor.init(newProcessorContextSupplier.get());
+    processor.init(processorV2ContextSupplier.get());
     processor.process(new Record<>(TEST_KEY, TEST_VALUE, new Date().getTime(), headers));
   }
 

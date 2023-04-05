@@ -11,20 +11,9 @@ propagated downstream onto the Stream topology. The span context is stored in th
 the Producers at the middle (e.g. `builder.through(topic)`) or at the end of a Stream topology
 will reference the initial span, and mark the end of a Stream Process.
 
-If intermediate steps on the Stream topology require tracing, `TracingProcessorSupplier` and
-`TracingTransformerSupplier` record execution into a new Span,
+If intermediate steps on the Stream topology require tracing, `TracingV2ProcessorSupplier` and
+`TracingV2FixedKeyProcessorSupplier` record execution into a new Span,
 referencing the parent context stored on Headers, if available.
-
-### Transformers and Partitioning
-
-The behaviour of some operations wrapped into Kafka Streams Processor API types could change the underlying topology.
-
-For example, `filter` operation on the Kafka Streams DSL is stateless and doesn't impact partitioning;
-but `kafkaStreamsTracing.filter()` returns a `Transformer` that if grouping or joining operations
-follows, it could lead to **unintentional partitioning**.
-
-Be aware operations that any usage of `builder.transformer(...)` will cause re-partitioning when
-grouping or joining downstream ([Kafka docs](https://kafka.apache.org/documentation/streams/developer-guide/dsl-api.html#applying-processors-and-transformers-processor-api-integration)).
 
 ### Why doesn't this trace all Kafka Streams operations?
 
@@ -43,5 +32,18 @@ traces would be harder to understand, leading to requests to disable tracing. Th
 code involved to disable tracing may mean more code than visa versa!
 
 Given the current scenario, `KafkaStreamsTracing` is equipped with a set of common DSL operation wrapped as
-Processors/Transformers APIs that enable tracing when needed;
+Processor APIs that enable tracing when needed;
 apart from `poll` and `send` spans available out-of-the-box.
+
+### Transformers and Partitioning (Kafka Streams < v3.4.0)
+
+The behaviour of some operations wrapped into Kafka Streams Processor API types could change the underlying topology.
+
+For example, `filter` operation on the Kafka Streams DSL is stateless and doesn't impact partitioning;
+but `kafkaStreamsTracing.filter()` returns a `Transformer` that if grouping or joining operations
+follows, it could lead to **unintentional partitioning**.
+
+Be aware operations that any usage of `builder.transformer(...)` will cause re-partitioning when
+grouping or joining downstream ([Kafka docs](https://kafka.apache.org/documentation/streams/developer-guide/dsl-api.html#applying-processors-and-transformers-processor-api-integration)).
+
+

@@ -18,6 +18,28 @@ import brave.kafka.streams.KafkaStreamsTracing;
 kafkaStreamsTracing = KafkaStreamsTracing.create(tracing);
 ```
 
+## Kafka Streams  >= v3.4.0
+
+To trace a processor in your application use the `TracingV2ProcessorSupplier`, provided by instrumentation API:
+
+```java
+builder.stream(inputTopic)
+       .process(kafkaStreamsTracing.process(
+            "process",
+            customProcessor));
+```
+
+or the `TracingV2FixedKeyProcessorSupplier`, provided by instrumentation API:
+
+```java
+builder.stream(inputTopic)
+        .processValues(kafkaStreamsTracing.processValues(
+            "process",
+            customProcessor));
+```
+
+## Kafka Streams  < v3.4.0
+
 To trace a processor in your application use `TracingProcessorSupplier`, provided by instrumentation API:
 
 ```java
