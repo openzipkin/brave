@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -23,6 +23,17 @@ import org.apache.hc.core5.http.HttpHost;
 import org.apache.hc.core5.http.protocol.HttpContext;
 
 class HttpClientUtils {
+
+  static final boolean HAS_CLIENT_CACHE = hasClientCache();
+
+  private static boolean hasClientCache() {
+    try {
+      Class.forName("org.apache.hc.client5.http.cache.CacheResponseStatus");
+      return true;
+    } catch (Throwable t) {
+      return false;
+    }
+  }
 
   static void openScope(HttpContext httpContext, CurrentTraceContext currentTraceContext) {
     Span span = (Span) httpContext.getAttribute(Span.class.getName());
@@ -54,6 +65,9 @@ class HttpClientUtils {
   }
 
   static boolean isLocalCached(HttpContext context, Span span) {
+    if (!HAS_CLIENT_CACHE) {
+      return false;
+    }
     boolean cacheHit = CacheResponseStatus.CACHE_HIT == context.getAttribute(
       HttpCacheContext.CACHE_RESPONSE_STATUS);
     if (cacheHit) {
