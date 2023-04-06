@@ -24,9 +24,9 @@ import org.apache.hc.core5.http.protocol.HttpContext;
 
 class HttpClientUtils {
 
-  static final boolean HAS_CLIENT_CACHE = hasClientCache();
+  static final boolean HAS_CLIENT_CACHE_SUPPORT = hasClientCacheSupport();
 
-  private static boolean hasClientCache() {
+  private static boolean hasClientCacheSupport() {
     try {
       Class.forName("org.apache.hc.client5.http.cache.CacheResponseStatus");
       return true;
@@ -65,7 +65,7 @@ class HttpClientUtils {
   }
 
   static boolean isLocalCached(HttpContext context, Span span) {
-    if (!HAS_CLIENT_CACHE) {
+    if (!HAS_CLIENT_CACHE_SUPPORT) {
       return false;
     }
     boolean cacheHit = CacheResponseStatus.CACHE_HIT == context.getAttribute(
