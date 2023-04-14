@@ -18,6 +18,32 @@ import brave.kafka.streams.KafkaStreamsTracing;
 kafkaStreamsTracing = KafkaStreamsTracing.create(tracing);
 ```
 
+[KIP-820](https://cwiki.apache.org/confluence/display/KAFKA/KIP-820%3A+Extend+KStream+process+with+new+Processor+API)
+introduces new processor APIs to the Kafka Streams DSL.
+The following sections show how to instrument applications with the latest and previous APIs.
+
+## Kafka Streams  >= v3.4.0
+
+To trace a processor in your application use the `TracingV2ProcessorSupplier`, provided by instrumentation API:
+
+```java
+builder.stream(inputTopic)
+       .process(kafkaStreamsTracing.process(
+            "process",
+            customProcessor));
+```
+
+or the `TracingV2FixedKeyProcessorSupplier`, provided by instrumentation API:
+
+```java
+builder.stream(inputTopic)
+        .processValues(kafkaStreamsTracing.processValues(
+            "process",
+            customProcessor));
+```
+
+## Kafka Streams  < v3.4.0
+
 To trace a processor in your application use `TracingProcessorSupplier`, provided by instrumentation API:
 
 ```java

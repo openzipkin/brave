@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -25,7 +25,9 @@ import org.apache.kafka.streams.processor.AbstractProcessor;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
+import org.apache.kafka.streams.processor.api.Record;
 import org.junit.Test;
+import java.util.Date;
 
 import static brave.test.ITRemote.BAGGAGE_FIELD;
 import static brave.test.ITRemote.BAGGAGE_FIELD_KEY;
@@ -47,9 +49,28 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
   }
 
   @Test
+  public void nextSpanWithHeaders_uses_current_context() {
+    org.apache.kafka.streams.processor.api.ProcessorContext<String, String> fakeProcessorContext = processorV2ContextSupplier.get();
+    Span child;
+    try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
+      child = kafkaStreamsTracing.nextSpan(fakeProcessorContext, new RecordHeaders());
+    }
+    child.finish();
+
+    assertThat(child.context().parentIdString())
+        .isEqualTo(parent.spanIdString());
+  }
+
+  @Test
   public void nextSpan_should_create_span_if_no_headers() {
     ProcessorContext fakeProcessorContext = processorContextSupplier.apply(new RecordHeaders());
     assertThat(kafkaStreamsTracing.nextSpan(fakeProcessorContext)).isNotNull();
+  }
+
+  @Test
+  public void nextSpanWithHeaders_should_create_span_if_no_headers() {
+    org.apache.kafka.streams.processor.api.ProcessorContext<String, String> fakeProcessorContext = processorV2ContextSupplier.get();
+    assertThat(kafkaStreamsTracing.nextSpan(fakeProcessorContext, new RecordHeaders())).isNotNull();
   }
 
   @Test
@@ -64,10 +85,33 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
   }
 
   @Test
+  public void nextSpanWithHeaders_should_tag_app_id_and_task_id() {
+    org.apache.kafka.streams.processor.api.ProcessorContext<String, String> fakeProcessorContext = processorV2ContextSupplier.get();
+    kafkaStreamsTracing.nextSpan(fakeProcessorContext, new RecordHeaders()).start().finish();
+
+    assertThat(spans.get(0).tags())
+      .containsOnly(
+        entry("kafka.streams.application.id", TEST_APPLICATION_ID),
+        entry("kafka.streams.task.id", TEST_TASK_ID));
+  }
+
+  @Test
   public void processorSupplier_should_tag_app_id_and_task_id() {
     Processor<String, String> processor = fakeProcessorSupplier.get();
     processor.init(processorContextSupplier.apply(new RecordHeaders()));
     processor.process(TEST_KEY, TEST_VALUE);
+
+    assertThat(spans.get(0).tags())
+      .containsOnly(
+        entry("kafka.streams.application.id", TEST_APPLICATION_ID),
+        entry("kafka.streams.task.id", TEST_TASK_ID));
+  }
+
+  @Test
+  public void newProcessorSupplier_should_tag_app_id_and_task_id() {
+    org.apache.kafka.streams.processor.api.Processor<String, String, String, String> processor = fakeV2ProcessorSupplier.get();
+    processor.init(processorV2ContextSupplier.get());
+    processor.process(new Record<>(TEST_KEY, TEST_VALUE, new Date().getTime()));
 
     assertThat(spans.get(0).tags())
       .containsOnly(
@@ -90,6 +134,19 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
     Processor<String, String> processor = processorSupplier.get();
     processor.init(processorContextSupplier.apply(headers));
     processor.process(TEST_KEY, TEST_VALUE);
+  }
+
+  @Test
+  public void newProcessorSupplier_should_add_baggage_field() {
+    org.apache.kafka.streams.processor.api.ProcessorSupplier<String, String, String, String> processorSupplier =
+      kafkaStreamsTracing.process(
+        "forward-1", () ->
+          (org.apache.kafka.streams.processor.api.Processor<String, String, String, String>) record ->
+            assertThat(BAGGAGE_FIELD.getValue(currentTraceContext.get())).isEqualTo("user1"));
+    Headers headers = new RecordHeaders().add(BAGGAGE_FIELD_KEY, "user1".getBytes());
+    org.apache.kafka.streams.processor.api.Processor<String, String, String, String> processor = processorSupplier.get();
+    processor.init(processorV2ContextSupplier.get());
+    processor.process(new Record<>(TEST_KEY, TEST_VALUE, new Date().getTime(), headers));
   }
 
   @Test
