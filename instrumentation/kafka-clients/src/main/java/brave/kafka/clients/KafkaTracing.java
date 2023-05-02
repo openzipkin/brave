@@ -56,7 +56,8 @@ public final class KafkaTracing {
   };
   // Use nested class to ensure logger isn't initialized unless it is accessed once.
   private static final class LoggerHolder {
-    static final Logger LOG = Logger.getLogger(KafkaTracing.class.getName());
+    static final String LOGGER_NAME = KafkaTracing.class.getName();
+    static final Logger LOG = Logger.getLogger(LOGGER_NAME);
   }
 
   public static KafkaTracing create(Tracing tracing) {
@@ -278,6 +279,7 @@ public final class KafkaTracing {
     Logger logger = LoggerHolder.LOG;
     if (!logger.isLoggable(Level.FINE)) return; // fine level to not fill logs
     LogRecord lr = new LogRecord(Level.FINE, msg);
+    lr.setLoggerName(LoggerHolder.LOGGER_NAME);
     Object[] params = one != null ? new Object[] {zero, one} : new Object[] {zero};
     lr.setParameters(params);
     lr.setThrown(thrown);
