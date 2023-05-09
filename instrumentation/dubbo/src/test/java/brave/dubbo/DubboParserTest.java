@@ -122,6 +122,14 @@ public class DubboParserTest {
     assertThat(DubboParser.errorCode(new RpcException(8)))
         .isEqualTo("TIMEOUT_TERMINATE");
     assertThat(DubboParser.errorCode(new RpcException(9)))
-        .isNull(); // This test will drift with a new error code name if Dubbo adds one.
+      .isEqualTo("REGISTRY_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(10)))
+      .isEqualTo("ROUTER_CACHE_NOT_BUILD");
+    assertThat(DubboParser.errorCode(new RpcException(11)))
+      .isEqualTo("METHOD_NOT_FOUND");
+    assertThat(DubboParser.errorCode(new RpcException(12)))
+      .isEqualTo("VALIDATION_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(13)))
+      .isNull();// This test will drift with a new error code name if Dubbo adds one
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -26,18 +26,19 @@ import brave.rpc.RpcResponse;
 import brave.rpc.RpcResponseParser;
 import brave.rpc.RpcServerHandler;
 import brave.rpc.RpcTracing;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+import org.apache.dubbo.common.Version;
 import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.common.extension.ExtensionLoader;
-import org.apache.dubbo.config.spring.extension.SpringExtensionFactory;
 import org.apache.dubbo.rpc.Filter;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
 import org.apache.dubbo.rpc.Result;
 import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.RpcException;
+
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import static brave.internal.Throwables.propagateIfFatal;
 
@@ -64,7 +65,7 @@ public final class TracingFilter implements Filter {
 
   /**
    * {@link ExtensionLoader} supplies the tracing implementation which must be named "tracing". For
-   * example, if using the {@link SpringExtensionFactory}, only a bean named "tracing" will be
+   * example, if using the {@link org.apache.dubbo.config.spring.extension.SpringExtensionInjector}, only a bean named "tracing" will be
    * injected.
    *
    * @deprecated Since 5.12 only use {@link #setRpcTracing(RpcTracing)}
@@ -79,7 +80,7 @@ public final class TracingFilter implements Filter {
 
   /**
    * {@link ExtensionLoader} supplies the tracing implementation which must be named "rpcTracing".
-   * For example, if using the {@link SpringExtensionFactory}, only a bean named "rpcTracing" will
+   * For example, if using the {@link org.apache.dubbo.config.spring.extension.SpringExtensionInjector}, only a bean named "rpcTracing" will
    * be injected.
    *
    * <h3>Custom parsing</h3>
@@ -106,11 +107,7 @@ public final class TracingFilter implements Filter {
     Span span;
     DubboRequest request;
     if (kind.equals(Kind.CLIENT)) {
-      // When A service invoke B service, then B service then invoke C service, the parentId of the
-      // C service span is A when read from invocation.getAttachments(). This is because
-      // AbstractInvoker adds attachments via RpcContext.getContext(), not the invocation.
-      // See org.apache.dubbo.rpc.protocol.AbstractInvoker(line 141) from v2.7.3
-      Map<String, String> attachments = RpcContext.getContext().getAttachments();
+      Map<String, String> attachments = getVersion() >= 3000000 ? invocation.getAttachments():RpcContext.getContext().getAttachments();
       DubboClientRequest clientRequest = new DubboClientRequest(invoker, invocation, attachments);
       request = clientRequest;
       span = clientHandler.handleSendWithParent(clientRequest, invocationContext);
@@ -144,5 +141,9 @@ public final class TracingFilter implements Filter {
       if (isSynchronous) FinishSpan.finish(this, request, result, error, span);
       scope.close();
     }
+  }
+
+  private int getVersion(){
+    return Version.getIntVersion(Version.getVersion());
   }
 }

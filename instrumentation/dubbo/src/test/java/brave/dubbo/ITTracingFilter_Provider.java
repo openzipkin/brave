@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -21,12 +21,15 @@ import brave.propagation.TraceContext;
 import brave.rpc.RpcResponseParser;
 import brave.rpc.RpcRuleSampler;
 import brave.rpc.RpcTracing;
+import org.apache.dubbo.common.beanutil.JavaBeanDescriptor;
+import org.apache.dubbo.common.beanutil.JavaBeanSerializeUtil;
 import org.apache.dubbo.config.ReferenceConfig;
-import org.apache.dubbo.config.bootstrap.DubboBootstrap;
 import org.apache.dubbo.rpc.Result;
 import org.apache.dubbo.rpc.RpcContext;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.Map;
 
 import static brave.Span.Kind.SERVER;
 import static brave.rpc.RpcRequestMatchers.methodEquals;
@@ -37,16 +40,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class ITTracingFilter_Provider extends ITTracingFilter {
+
   @Before public void setup() {
     server.service.setFilter("tracing");
     server.service.setGeneric("true");
     server.service.setInterface(GreeterService.class);
     server.service.setRef((method, parameterTypes, args) -> {
-      String arg = (String) args[0];
-      if (arg.equals("bad")) throw new IllegalArgumentException("bad");
-      return currentTraceContext.get() != null
-          ? currentTraceContext.get().traceIdString()
-          : "";
+      JavaBeanDescriptor arg =(JavaBeanDescriptor) args[0];
+
+      if (arg.getProperty("value").equals("bad")) throw new IllegalArgumentException("bad");
+
+      String value = currentTraceContext.get() != null
+        ? currentTraceContext.get().traceIdString()
+        : "";
+      return JavaBeanSerializeUtil.serialize(value);
     });
     init();
     server.start();
@@ -56,11 +63,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     client.setGeneric("true");
     client.setInterface(GreeterService.class);
     client.setUrl(url);
-
-    DubboBootstrap.getInstance().application(application)
-        .service(server.service)
-        .reference(client)
-        .start();
+    client.setRetries(-1);
 
     // perform a warmup request to allow CI to fail quicker
     client.get().sayHello("jorge");
@@ -70,7 +73,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
   @Test public void reusesPropagatedSpanId() {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
 
-    RpcContext.getContext().getAttachments().put("b3", B3SingleFormat.writeB3SingleFormat(parent));
+    RpcContext.getClientAttachment().setAttachment("b3", B3SingleFormat.writeB3SingleFormat(parent));
     client.get().sayHello("jorge");
 
     assertSameIds(testSpanHandler.takeRemoteSpan(SERVER), parent);
@@ -82,7 +85,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
 
-    RpcContext.getContext().getAttachments().put("b3", B3SingleFormat.writeB3SingleFormat(parent));
+    RpcContext.getClientAttachment().setAttachment("b3", B3SingleFormat.writeB3SingleFormat(parent));
     client.get().sayHello("jorge");
 
     MutableSpan span = testSpanHandler.takeRemoteSpan(SERVER);
@@ -150,7 +153,8 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
       @Override protected String parseValue(DubboResponse input, TraceContext context) {
         Result result = input.result();
         if (result == null) return null;
-        return String.valueOf(result.getValue());
+        Object value = ((JavaBeanDescriptor) result.getValue()).getProperty("value");
+        return String.valueOf(value);
       }
     };
 
@@ -165,7 +169,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
     String javaResult = client.get().sayHello("jorge");
 
-    assertThat(testSpanHandler.takeRemoteSpan(SERVER).tags())
-        .containsEntry("dubbo.result_value", javaResult);
+    Map<String, String> tags = testSpanHandler.takeRemoteSpan(SERVER).tags();
+    assertThat(tags).containsEntry("dubbo.result_value", javaResult);
   }
 }
