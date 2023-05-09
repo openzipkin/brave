@@ -20,7 +20,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-parent</artifactId>
-    <version>5.15.1-SNAPSHOT</version>
+    <version>5.15.2-SNAPSHOT</version>
   </parent>
 
   <artifactId>brave-instrumentation-parent</artifactId>
@@ -40,6 +40,7 @@
     <module>grpc</module>
     <module>httpasyncclient</module>
     <module>httpclient</module>
+    <module>httpclient5</module>
     <module>jaxrs2</module>
     <module>jersey-server</module>
     <module>jms</module>
