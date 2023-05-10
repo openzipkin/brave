@@ -107,7 +107,15 @@ public final class TracingFilter implements Filter {
     Span span;
     DubboRequest request;
     if (kind.equals(Kind.CLIENT)) {
-      Map<String, String> attachments = getVersion() >= 3000000 ? invocation.getAttachments():RpcContext.getContext().getAttachments();
+      /*
+
+       The purpose of the attachments is to store span information that is sent to remote services, which was previously saved in the invocationContext obtained by calling currentTraceContext.get().
+       In Dubbo 2.7.x, calling RpcContext.getContext().getAttachments() returns an editable attachments map that will be added to the invocation in later processing stages.
+       However, in Dubbo 3.x, the returned attachments map is a copy and will not be added to the invocation.
+       Therefore, we should use invocation.getAttachments() instead to retrieve the map that will be added to the
+       invocation.
+       */
+      Map<String, String> attachments = invocation.getAttachments();
       DubboClientRequest clientRequest = new DubboClientRequest(invoker, invocation, attachments);
       request = clientRequest;
       span = clientHandler.handleSendWithParent(clientRequest, invocationContext);
@@ -141,9 +149,5 @@ public final class TracingFilter implements Filter {
       if (isSynchronous) FinishSpan.finish(this, request, result, error, span);
       scope.close();
     }
-  }
-
-  private int getVersion(){
-    return Version.getIntVersion(Version.getVersion());
   }
 }
