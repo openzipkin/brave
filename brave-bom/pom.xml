@@ -136,6 +136,11 @@
       </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
+        <artifactId>brave-instrumentation-benchmarks</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-dubbo</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -161,12 +166,27 @@
       </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
+        <artifactId>brave-instrumentation-http-tests-jakarta</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-httpasyncclient</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-httpclient</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>brave-instrumentation-httpclient5</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>brave-instrumentation-jakarta-jms</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
