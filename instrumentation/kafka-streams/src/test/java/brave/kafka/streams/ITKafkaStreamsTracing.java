@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -222,6 +222,78 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
       .process(processorSupplier);
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreams(topology);
+
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
+
+    waitForStreamToRun(streams);
+
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
+  public void should_create_spans_from_stream_with_tracing_v2_processor() {
+    org.apache.kafka.streams.processor.api.ProcessorSupplier<String, String, String, String> processorSupplier =
+      kafkaStreamsTracing.process(
+        "forward-1", () ->
+          record -> {
+            try {
+              Thread.sleep(100L);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          });
+
+    String inputTopic = testName.getMethodName() + "-input";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+      .process(processorSupplier);
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreams(topology);
+
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
+
+    waitForStreamToRun(streams);
+
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
+  public void should_create_spans_from_stream_with_tracing_v2_fixed_key_processor() {
+    org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier<String, String, String> processorSupplier =
+      kafkaStreamsTracing.processValues(
+        "forward-1", () ->
+          record -> {
+            try {
+              Thread.sleep(100L);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          });
+
+    String inputTopic = testName.getMethodName() + "-input";
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+      .processValues(processorSupplier);
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
@@ -1358,6 +1430,8 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, testName.getMethodName());
     properties.put(StreamsConfig.consumerPrefix(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG),
       Topology.AutoOffsetReset.EARLIEST.name().toLowerCase());
+    properties.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+    properties.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
     return properties;
   }
 

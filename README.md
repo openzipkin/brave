@@ -1,15 +1,23 @@
 [![Gitter chat](http://img.shields.io/badge/gitter-join%20chat%20%E2%86%92-brightgreen.svg)](https://gitter.im/openzipkin/zipkin)
-[![Build Status](https://github.com/openzipkin/brave/workflows/test/badge.svg)](https://github.com/openzipkin/zipkin/actions?query=workflow%3Atest)
+[![Build Status](https://github.com/openzipkin/brave/workflows/test/badge.svg)](https://github.com/openzipkin/brave/actions?query=workflow%3Atest)
 [![Maven Central](https://img.shields.io/maven-central/v/io.zipkin.brave/brave.svg)](https://search.maven.org/search?q=g:io.zipkin.brave%20AND%20a:brave)
 
 # Brave
 
-Brave is a distributed tracing instrumentation library. Brave typically intercepts production requests to gather timing data,
-correlate and propagate trace contexts. While typically trace data is sent to [Zipkin server](https://github.com/openzipkin/zipkin/tree/master/zipkin-server), third-party plugins are available to send to alternate services such as [Amazon X-Ray](https://github.com/openzipkin/zipkin-aws/tree/master/storage/xray-udp).
+Brave is a distributed tracing instrumentation library. Brave typically
+intercepts production requests to gather timing data, correlate and
+propagate trace contexts. While typically trace data is sent to
+[Zipkin server](https://github.com/openzipkin/zipkin/tree/master/zipkin-server),
+third-party plugins are available to send to alternate services such as
+[Amazon X-Ray](https://github.com/openzipkin/zipkin-aws/tree/master/storage/xray-udp).
 
-This repository includes dependency-free Java libraries and instrumentation for common components used in production services. For example, this includes trace filters for Servlet and log correlation for Apache Log4J.
+This repository includes dependency-free Java libraries and
+instrumentation for common components used in production services. For
+example, this includes trace filters for Servlet and log correlation for
+Apache Log4J.
 
-You can look at our [example project](https://github.com/openzipkin/brave-webmvc-example) for how to trace a simple web application.
+You can look at our [example project](https://github.com/openzipkin/brave-webmvc-example)
+for how to trace a simple web application.
 
 ## What's included
 
@@ -18,14 +26,16 @@ This is the underlying api that instrumentation use to time operations
 and add tags that describe them. This library also includes code that
 parses `X-B3-TraceId` headers.
 
-Most users won't write tracing code directly. Rather, they reuse instrumentation
-others have written. Check our [instrumentation](instrumentation/) and [Zipkin's list](https://zipkin.io/pages/tracers_instrumentation.html)
+Most users won't write tracing code directly. Rather, they reuse
+instrumentation others have written. Check our
+[instrumentation](instrumentation/) and
+[Zipkin's list](https://zipkin.io/pages/tracers_instrumentation.html)
 before rolling your own. Common tracing libraries like JDBC, Servlet
 and Spring already exist. Instrumentation written here are tested and
 benchmarked.
 
 If you are trying to trace legacy applications, you may be interested in
-[Spring XML Configuration](spring-beans/). This allows you to setup
+[Spring XML Configuration](spring-beans/). This allows you to set up
 tracing without any custom code.
 
 You may want to put trace IDs into your log files, or change thread local
@@ -39,7 +49,8 @@ is to neither impact your projects' choices, nor subject your project
 to dependency decisions made by others.
 
 For example, even including a basic reporting library,
-[zipkin-sender-urlconnection](https://github.com/openzipkin/zipkin-reporter-java), Brave transitively includes no json,
+[zipkin-sender-urlconnection](https://github.com/openzipkin/zipkin-reporter-java),
+Brave transitively includes no json,
 logging, protobuf or thrift dependency. This means zero concern if your
 application chooses a specific version of SLF4J, Gson or Guava.
 Moreover, the entire dependency tree including basic reporting in json,
@@ -55,18 +66,22 @@ ensures Brave doesn't interfere with the versions you choose.
 
 Some libraries update often which leads to api drift. In some cases, we
 test versions ranges to reduce the impact of this. For example, we test
-[gRPC](instrumentation/grpc) and [Kafka](instrumentation/kafka-clients) against multiple library versions.
+[gRPC](instrumentation/grpc) and [Kafka](instrumentation/kafka-clients)
+against multiple library versions.
 
 ## Artifacts
 All artifacts publish to the group ID "io.zipkin.brave". We use a common
 release version for all components.
 
 ### Library Releases
-Snapshots are uploaded to [Sonatype](https://oss.sonatype.org/content/repositories/releases) which
-synchronizes with [Maven Central](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.zipkin.brave%22)
+Snapshots are uploaded to
+[Sonatype](https://oss.sonatype.org/content/repositories/releases) which
+synchronizes with
+[Maven Central](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.zipkin.brave%22)
 
 ### Library Snapshots
-Snapshots are uploaded to [Sonatype](https://oss.sonatype.org/content/repositories/snapshots) after
+Snapshots are uploaded to
+[Sonatype](https://oss.sonatype.org/content/repositories/snapshots) after
 commits to master.
 
 ### Version alignments
@@ -92,7 +107,7 @@ Ex. in your dependencies section, import the BOM like this:
 ```
 
 Now, you can leave off the version when choosing any supported
-instrumentation. Also any indirect use will have versions aligned:
+instrumentation. Also, any indirect use will have versions aligned:
 ```xml
 <dependency>
   <groupId>io.zipkin.brave</groupId>
@@ -100,8 +115,9 @@ instrumentation. Also any indirect use will have versions aligned:
 </dependency>
 ```
 
-With the above in place, you can use the property `brave.version` to override dependency
-versions coherently. This is most commonly to test a new feature or fix.
+With the above in place, you can use the property `brave.version` to
+override dependency versions coherently. This is most commonly to test a
+new feature or fix.
 
 Note: If you override a version, always double check that your version
 is valid (equal to or later) than what you are updating. This will avoid

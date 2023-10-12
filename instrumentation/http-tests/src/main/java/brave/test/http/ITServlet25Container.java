@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -24,6 +24,7 @@ import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
+import javax.servlet.UnavailableException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -37,6 +38,12 @@ import static brave.Span.Kind.SERVER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITServlet25Container extends ITServletContainer {
+  public static final UnavailableException NOT_READY_UE =
+    new UnavailableException(NOT_READY_ISE.getMessage(), 1 /* temporary implies 503 */) {
+      @Override public Throwable fillInStackTrace() {
+        return this; // don't fill logs as we are only testing
+      }
+    };
 
   protected ITServlet25Container(ServletContainer.ServerController serverController) {
     super(serverController);

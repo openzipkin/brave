@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2021 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -39,7 +39,7 @@ class TracingKafkaClientSupplierTests {
   void shouldThrowException() {
     assertThrows(UnsupportedOperationException.class, () -> {
       FakeKafkaClientSupplier fake = new FakeKafkaClientSupplier();
-      fake.getAdminClient(props);
+      fake.getAdmin(props);
     });
   }
 

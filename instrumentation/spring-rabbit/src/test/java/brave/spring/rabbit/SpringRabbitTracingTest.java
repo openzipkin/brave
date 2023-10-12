@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,11 +16,16 @@ package brave.spring.rabbit;
 import brave.Tracing;
 import java.util.Collection;
 import java.util.List;
+
+import org.aopalliance.aop.Advice;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.amqp.core.MessagePostProcessor;
+import org.springframework.amqp.rabbit.config.DirectRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.listener.DirectMessageListenerContainer;
+import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.amqp.support.postprocessor.UnzipPostProcessor;
 import org.springframework.cache.interceptor.CacheInterceptor;
 
@@ -119,4 +124,126 @@ public class SpringRabbitTracingTest {
       .asInstanceOf(array(MessagePostProcessor[].class))
       .matches(adviceArray -> adviceArray[1] instanceof TracingMessagePostProcessor);
   }
+
+  // DirectRabbitListenerContainerFactory
+  @Test public void decorateDirectRabbitListenerContainerFactory_adds_by_default() {
+    DirectRabbitListenerContainerFactory factory = new DirectRabbitListenerContainerFactory();
+
+    assertThat(rabbitTracing.decorateDirectRabbitListenerContainerFactory(factory).getAdviceChain())
+      .allMatch(advice -> advice instanceof TracingRabbitListenerAdvice);
+  }
+
+  @Test public void decorateDirectRabbitListenerContainerFactory_skips_when_present() {
+    DirectRabbitListenerContainerFactory factory = new DirectRabbitListenerContainerFactory();
+    factory.setAdviceChain(new TracingRabbitListenerAdvice(rabbitTracing));
+
+    assertThat(rabbitTracing.decorateDirectRabbitListenerContainerFactory(factory).getAdviceChain())
+      .hasSize(1);
+  }
+
+  @Test public void decorateDirectRabbitListenerContainerFactory_prepends_as_first_when_absent() {
+    DirectRabbitListenerContainerFactory factory = new DirectRabbitListenerContainerFactory();
+    factory.setAdviceChain(new CacheInterceptor());
+
+    // the order of advices is important for the downstream interceptor to see the tracing context
+    assertThat(rabbitTracing.decorateDirectRabbitListenerContainerFactory(factory).getAdviceChain())
+      .hasSize(2)
+      .matches(adviceArray -> adviceArray[0] instanceof TracingRabbitListenerAdvice);
+  }
+
+  @Test
+  public void decorateDirectRabbitListenerContainerFactory_adds_TracingMessagePostProcessor() {
+    DirectRabbitListenerContainerFactory factory = new DirectRabbitListenerContainerFactory();
+    assertThat(rabbitTracing.decorateDirectRabbitListenerContainerFactory(factory))
+      .extracting("beforeSendReplyPostProcessors")
+      .asInstanceOf(array(MessagePostProcessor[].class))
+      .allMatch(postProcessor -> postProcessor instanceof TracingMessagePostProcessor);
+  }
+
+  @Test
+  public void decorateDirectRabbitListenerContainerFactory_skips_TracingMessagePostProcessor_when_present() {
+    DirectRabbitListenerContainerFactory factory = new DirectRabbitListenerContainerFactory();
+    factory.setBeforeSendReplyPostProcessors(new TracingMessagePostProcessor(rabbitTracing));
+
+    assertThat(rabbitTracing.decorateDirectRabbitListenerContainerFactory(factory))
+      .extracting("beforeSendReplyPostProcessors")
+      .asInstanceOf(array(MessagePostProcessor[].class))
+      .hasSize(1);
+  }
+
+  @Test
+  public void decorateDirectRabbitListenerContainerFactory_appends_TracingMessagePostProcessor_when_absent() {
+    DirectRabbitListenerContainerFactory factory = new DirectRabbitListenerContainerFactory();
+    factory.setBeforeSendReplyPostProcessors(new UnzipPostProcessor());
+
+    assertThat(rabbitTracing.decorateDirectRabbitListenerContainerFactory(factory))
+      .extracting("beforeSendReplyPostProcessors")
+      .asInstanceOf(array(MessagePostProcessor[].class))
+      .matches(adviceArray -> adviceArray[1] instanceof TracingMessagePostProcessor);
+  }
+
+  // SimpleMessageListenerContainer
+  @Test public void decorateSimpleMessageListenerContainer__adds_by_default() {
+    SimpleMessageListenerContainer listenerContainer = new SimpleMessageListenerContainer();
+
+    assertThat(rabbitTracing.decorateMessageListenerContainer(listenerContainer))
+      .extracting("adviceChain")
+      .asInstanceOf(array(Advice[].class))
+      .hasSize(1);
+  }
+
+
+  @Test public void decorateSimpleMessageListenerContainer_skips_when_present() {
+    SimpleMessageListenerContainer listenerContainer = new SimpleMessageListenerContainer();
+    listenerContainer.setAdviceChain(new TracingRabbitListenerAdvice(rabbitTracing));
+
+    assertThat(rabbitTracing.decorateMessageListenerContainer(listenerContainer))
+      .extracting("adviceChain")
+      .asInstanceOf(array(Advice[].class))
+      .hasSize(1);
+  }
+
+  @Test public void decorateSimpleMessageListenerContainer_prepends_as_first_when_absent() {
+    SimpleMessageListenerContainer listenerContainer = new SimpleMessageListenerContainer();
+    listenerContainer.setAdviceChain(new CacheInterceptor());
+
+    assertThat(rabbitTracing.decorateMessageListenerContainer(listenerContainer))
+      .extracting("adviceChain")
+      .asInstanceOf(array(Advice[].class))
+      .hasSize(2)
+      .matches(adviceArray -> adviceArray[0] instanceof TracingRabbitListenerAdvice);
+  }
+
+  // DirectRabbitListenerContainer
+  @Test public void decorateDirectMessageListenerContainer__adds_by_default() {
+    DirectMessageListenerContainer listenerContainer = new DirectMessageListenerContainer();
+
+    assertThat(rabbitTracing.decorateMessageListenerContainer(listenerContainer))
+      .extracting("adviceChain")
+      .asInstanceOf(array(Advice[].class))
+      .hasSize(1);
+  }
+
+
+  @Test public void decorateDirectMessageListenerContainer_skips_when_present() {
+    DirectMessageListenerContainer listenerContainer = new DirectMessageListenerContainer();
+    listenerContainer.setAdviceChain(new TracingRabbitListenerAdvice(rabbitTracing));
+
+    assertThat(rabbitTracing.decorateMessageListenerContainer(listenerContainer))
+      .extracting("adviceChain")
+      .asInstanceOf(array(Advice[].class))
+      .hasSize(1);
+  }
+
+  @Test public void decorateDirectMessageListenerContainer_prepends_as_first_when_absent() {
+    DirectMessageListenerContainer listenerContainer = new DirectMessageListenerContainer();
+    listenerContainer.setAdviceChain(new CacheInterceptor());
+
+    assertThat(rabbitTracing.decorateMessageListenerContainer(listenerContainer))
+      .extracting("adviceChain")
+      .asInstanceOf(array(Advice[].class))
+      .hasSize(2)
+      .matches(adviceArray -> adviceArray[0] instanceof TracingRabbitListenerAdvice);
+  }
+
 }

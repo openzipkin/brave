@@ -4,6 +4,11 @@ Add decorators for Kafka producer and consumer to enable tracing.
 * `TracingProducer` completes a producer span per record and propagates it via headers.
 * `TracingConsumer` completes a consumer span on `poll`, resuming a trace in headers if present.
 
+## Notes
+* This tracer is only compatible with Kafka versions including headers support ( > 0.11.0).
+* More information about "Message Tracing" [here](https://github.com/openzipkin/openzipkin.github.io/wiki/Messaging-instrumentation-abstraction)
+* `Consumer#timeout(long, TimeUnit)` is deprecated and removed in > 3.x. When using this method, Brave will fall-back to `Consumer#timeout()`.
+
 ## Setup
 First, setup the generic Kafka component like this:
 ```java
@@ -133,6 +138,3 @@ poll
 +- processing N
 ```
 
-## Notes
-* This tracer is only compatible with Kafka versions including headers support ( > 0.11.0).
-* More information about "Message Tracing" [here](https://github.com/openzipkin/openzipkin.github.io/wiki/Messaging-instrumentation-abstraction)
