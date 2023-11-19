@@ -3,7 +3,7 @@ Brave Core Library
 
 Brave is a library used to capture and report latency information about
 distributed operations to Zipkin. Most users won't use Brave directly,
-rather libraries or frameworks than employ Brave on their behalf.
+rather libraries or frameworks that employ Brave on their behalf.
 
 This module includes tracer creates and joins spans that model the
 latency of potentially distributed work. It also includes libraries to
