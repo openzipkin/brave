@@ -30,8 +30,6 @@
     <module.name>brave.jakarta.jms</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
-    <main.java.version>1.6</main.java.version>
-    <main.signature.artifact>java16</main.signature.artifact>
 
     <!-- disable errorprone override warning as we do this intentionally to allow JMS 1.1 -->
     <errorprone.args>-Xep:MissingOverride:OFF</errorprone.args>

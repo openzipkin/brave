@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -55,7 +55,7 @@ public class MapExtra<K, V, A extends MapExtra<K, V, A, F>,
   protected Set<K> keySet() {
     if (!isDynamic()) return factory.initialFieldIndices.keySet();
     Object[] state = state();
-    Set<K> result = new LinkedHashSet<>(state.length / 2);
+    Set<K> result = new LinkedHashSet<K>(state.length / 2);
     for (int i = 0; i < state.length; i += 2) {
       result.add((K) state[i]);
     }

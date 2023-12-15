@@ -15,21 +15,58 @@ on:
     paths-ignore: '**/*.md'
 
 jobs:
-  test:
-    runs-on: ubuntu-20.04  # newest available distribution, aka focal
+  test-javadoc:
+    name: Test JavaDoc Builds
+    runs-on: ubuntu-22.04 # newest available distribution, aka jellyfish
     if: "!contains(github.event.head_commit.message, 'maven-release-plugin')"
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # full git history for license check
+          fetch-depth: 0 # full git history for license check
+      - name: Setup java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'  # zulu as it supports a wide version range
+          java-version: '11'  # earliest LTS and last that can compile the 1.6 release profile.
       - name: Cache local Maven repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-maven-
-      # We can't cache Docker without using buildx because GH actions restricts /var/lib/docker
-      # That's ok because DOCKER_PARENT_IMAGE is always ghcr.io and local anyway.
+          key: ${{ runner.os }}-jdk-11-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-jdk-11-maven-
+      - name: Build JavaDoc
+        run: ./mvnw clean javadoc:aggregate -Prelease
+
+  test:
+    name: test (JDK ${{ matrix.java_version }})
+    runs-on: ubuntu-22.04 # newest available distribution, aka jellyfish
+    if: "!contains(github.event.head_commit.message, 'maven-release-plugin')"
+    strategy:
+      fail-fast: false  # don't fail fast as sometimes failures are operating system specific
+      matrix:  # use latest available versions and be consistent on all workflows!
+        include:
+          - java_version: 11  # Last that can compile brave to 1.6
+            maven_args: -Prelease -Dgpg.skip -Dmaven.javadoc.skip=true
+          - java_version: 21  # Most recent LTS
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full git history for license check
+      - name: Setup java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'  # zulu as it supports a wide version range
+          java-version: ${{ matrix.java_version }}
+      - name: Cache local Maven repository
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-jdk-${{ matrix.java_version }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-jdk-${{ matrix.java_version }}-maven-
+      # Don't attempt to cache Docker. Sensitive information can be stolen
+      # via forks, and login session ends up in ~/.docker. This is ok because
+      # we publish DOCKER_PARENT_IMAGE to ghcr.io, hence local to the runner.
       - name: Test
         run: build-bin/configure_test && build-bin/test

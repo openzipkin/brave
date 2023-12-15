@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -171,12 +171,13 @@ public class ThreadLocalSpan {
    * not possible because there is no api to place an arbitrary span in scope using this api.
    */
   @SuppressWarnings("ThreadLocalUsage") // intentional: to support multiple Tracer instances
-  final ThreadLocal<ArrayDeque<SpanAndScope>> currentSpanInScopeStack = new ThreadLocal<>();
+  final ThreadLocal<ArrayDeque<SpanAndScope>> currentSpanInScopeStack =
+    new ThreadLocal<ArrayDeque<SpanAndScope>>();
 
   ArrayDeque<SpanAndScope> getCurrentSpanInScopeStack() {
     ArrayDeque<SpanAndScope> stack = currentSpanInScopeStack.get();
     if (stack == null) {
-      stack = new ArrayDeque<>();
+      stack = new ArrayDeque<SpanAndScope>();
       currentSpanInScopeStack.set(stack);
     }
     return stack;

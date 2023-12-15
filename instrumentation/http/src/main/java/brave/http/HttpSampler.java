@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -129,7 +129,7 @@ public abstract class HttpSampler implements SamplerFunction<HttpRequest> {
       if (request instanceof HttpRequest) {
         return delegate.trySample((HttpRequest) request);
       }
-      return delegate.trySample(new FromHttpAdapter<>(adapter, request));
+      return delegate.trySample(new FromHttpAdapter<Req>(adapter, request));
     }
 
     @Override public String toString() {

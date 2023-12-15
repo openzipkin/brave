@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -30,7 +30,7 @@ public final class SamplerFunctions {
   public static <T> SamplerFunction<T> nullSafe(SamplerFunction<T> delegate) {
     if (delegate == null) throw new NullPointerException("delegate == null");
     if (delegate instanceof Constants || delegate instanceof NullSafe) return delegate;
-    return new NullSafe<>(delegate);
+    return new NullSafe<T>(delegate);
   }
 
   static final class NullSafe<T> implements SamplerFunction<T> {

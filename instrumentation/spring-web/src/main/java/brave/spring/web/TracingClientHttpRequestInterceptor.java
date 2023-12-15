@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -29,6 +29,8 @@ import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.web.client.HttpStatusCodeException;
 
+import static brave.internal.Throwables.propagateIfFatal;
+
 public final class TracingClientHttpRequestInterceptor implements ClientHttpRequestInterceptor {
   public static ClientHttpRequestInterceptor create(Tracing tracing) {
     return create(HttpTracing.create(tracing));
@@ -51,14 +53,23 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
     HttpRequestWrapper request = new HttpRequestWrapper(req);
     Span span = handler.handleSend(request);
     ClientHttpResponse response = null;
+    Scope ws = currentTraceContext.newScope(span.context());
     Throwable error = null;
-    try (Scope ws = currentTraceContext.newScope(span.context())) {
+    try {
       return response = execution.execute(req, body);
-    } catch (Throwable e) {
+    } catch (RuntimeException e) {
+      error = e;
+      throw e;
+    } catch (IOException e) {
+      error = e;
+      throw e;
+    } catch (Error e) {
+      propagateIfFatal(e);
       error = e;
       throw e;
     } finally {
       handler.handleReceive(new ClientHttpResponseWrapper(request, response, error), span);
+      ws.close();
     }
   }
 

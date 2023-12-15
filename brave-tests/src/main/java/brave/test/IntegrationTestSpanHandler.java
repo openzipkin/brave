@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -128,7 +128,7 @@ public final class IntegrationTestSpanHandler extends SpanHandler implements Tes
 
   public IntegrationTestSpanHandler() {
     // OrphanTracker detects to see if it should add "brave.flushed" or not, as it is used in
-    // production some times and avoiding this could be helpful. This forces a failed match,
+    // production sometimes and avoiding this could be helpful. This forces a failed match,
     // so that we can detect orphans even when no data was added.
     MutableSpan intentionallyWrongDefaultSpan = new MutableSpan();
     intentionallyWrongDefaultSpan.tag("not", "me");

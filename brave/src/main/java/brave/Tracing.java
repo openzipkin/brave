@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -50,7 +50,7 @@ import zipkin2.reporter.brave.ZipkinSpanHandler;
  * for example via spring or when mocking.
  */
 public abstract class Tracing implements Closeable {
-  static final AtomicReference<Tracing> CURRENT = new AtomicReference<>();
+  static final AtomicReference<Tracing> CURRENT = new AtomicReference<Tracing>();
 
   public static Builder newBuilder() {
     return new Builder();
@@ -148,7 +148,7 @@ public abstract class Tracing implements Closeable {
     boolean alwaysSampleLocal = false, alwaysReportSpans = false, trackOrphans = false;
     Propagation.Factory propagationFactory = B3Propagation.FACTORY;
     ErrorParser errorParser = new ErrorParser();
-    Set<SpanHandler> spanHandlers = new LinkedHashSet<>(); // dupes not ok
+    Set<SpanHandler> spanHandlers = new LinkedHashSet<SpanHandler>(); // dupes not ok
 
     Builder() {
       defaultSpan.localServiceName("unknown");
@@ -162,7 +162,7 @@ public abstract class Tracing implements Closeable {
      * @since 5.12
      */
     public Set<SpanHandler> spanHandlers() {
-      return Collections.unmodifiableSet(new LinkedHashSet<>(spanHandlers));
+      return Collections.unmodifiableSet(new LinkedHashSet<SpanHandler>(spanHandlers));
     }
 
     /**
@@ -480,7 +480,7 @@ public abstract class Tracing implements Closeable {
         defaultSpan.localIp(Platform.get().linkLocalIp());
       }
 
-      Set<SpanHandler> spanHandlers = new LinkedHashSet<>(builder.spanHandlers);
+      Set<SpanHandler> spanHandlers = new LinkedHashSet<SpanHandler>(builder.spanHandlers);
       // When present, the Zipkin handler is invoked after the user-supplied ones.
       if (builder.zipkinSpanReporter != null) {
         spanHandlers.add(

@@ -30,8 +30,6 @@
     <module.name>brave.spring.webmvc</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
-    <main.java.version>1.6</main.java.version>
-    <main.signature.artifact>java16</main.signature.artifact>
   </properties>
 
   <dependencies>
@@ -66,20 +64,6 @@
       <version>${jetty.version}</version>
       <scope>test</scope>
     </dependency>
-
-    <!-- to mock System calls -->
-    <dependency>
-      <groupId>org.powermock</groupId>
-      <artifactId>powermock-module-junit4</artifactId>
-      <version>${powermock.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.powermock</groupId>
-      <artifactId>powermock-api-mockito2</artifactId>
-      <version>${powermock.version}</version>
-      <scope>test</scope>
-    </dependency>
   </dependencies>
 
   <build>
@@ -89,4 +73,40 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <profile>
+      <id>release</id>
+      <properties>
+        <!-- Spring is Java 1.6 bytecode -->
+        <main.java.version>1.6</main.java.version>
+        <main.signature.artifact>java16</main.signature.artifact>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-enforcer-plugin</artifactId>
+            <version>${maven-enforcer-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>enforce-java</id>
+                <goals>
+                  <goal>enforce</goal>
+                </goals>
+                <configuration>
+                  <rules>
+                    <!-- The only LTS JDK we support that can compile 1.6 bytecode is 11.
+                         https://www.oracle.com/java/technologies/javase/12-relnote-issues.html -->
+                    <requireJavaVersion>
+                      <version>[11,12)</version>
+                    </requireJavaVersion>
+                  </rules>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

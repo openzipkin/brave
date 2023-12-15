@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -83,7 +83,7 @@ public final class Matchers {
     if (matchers instanceof Collection) {
       return (Matcher[]) ((Collection) matchers).toArray(new Matcher[0]);
     }
-    List<Matcher<P>> result = new ArrayList<>();
+    List<Matcher<P>> result = new ArrayList<Matcher<P>>();
     for (Matcher<P> matcher : matchers) result.add(matcher);
     return result.toArray(new Matcher[0]);
   }
@@ -95,7 +95,7 @@ public final class Matchers {
       if (matchers[i] == null) throw new NullPointerException("matchers[" + i + "] == null");
     }
     if (matchers.length == 1) return matchers[0];
-    return and ? new And<>(matchers) : new Or<>(matchers);
+    return and ? new And<P>(matchers) : new Or<P>(matchers);
   }
 
   static class And<P> implements Matcher<P> {

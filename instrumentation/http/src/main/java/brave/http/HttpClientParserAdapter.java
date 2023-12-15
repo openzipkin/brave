@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -44,7 +44,7 @@ import brave.propagation.CurrentTraceContext;
   public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
     HttpRequest request;
     if (req instanceof HttpClientRequest) {
-      request = new HttpClientAdapters.FromRequestAdapter<>((HttpClientAdapter) adapter, req);
+      request = new HttpClientAdapters.FromRequestAdapter<Req>((HttpClientAdapter) adapter, req);
     } else if (adapter instanceof HttpClientAdapters.ToRequestAdapter) {
       request = ((HttpClientAdapters.ToRequestAdapter) adapter).delegate;
     } else {
@@ -58,7 +58,7 @@ import brave.propagation.CurrentTraceContext;
     HttpResponse response;
     if (res instanceof HttpClientResponse) {
       response =
-        new HttpClientAdapters.FromResponseAdapter<>((HttpClientAdapter) adapter, res, error);
+        new HttpClientAdapters.FromResponseAdapter<Resp>((HttpClientAdapter) adapter, res, error);
     } else if (adapter instanceof HttpClientAdapters.ToResponseAdapter) {
       response = ((HttpClientAdapters.ToResponseAdapter) adapter).delegate;
     } else {

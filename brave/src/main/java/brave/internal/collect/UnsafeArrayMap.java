@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -46,7 +46,7 @@ public class UnsafeArrayMap<K, V> implements Map<K, V> {
   }
 
   public static <K, V> Builder<K, V> newBuilder() {
-    return new Builder<>();
+    return new Builder<K, V>();
   }
 
   public static final class Builder<K, V> {
@@ -94,8 +94,8 @@ public class UnsafeArrayMap<K, V> implements Map<K, V> {
         }
       }
       if (numFiltered == i / 2) return Collections.emptyMap();
-      if (keyMapper == null) return new UnsafeArrayMap<>(array, i, filteredBitSet);
-      return new KeyMapping<>(this, array, i, filteredBitSet);
+      if (keyMapper == null) return new UnsafeArrayMap<K, V>(array, i, filteredBitSet);
+      return new KeyMapping<K, V>(this, array, i, filteredBitSet);
     }
   }
 
@@ -217,7 +217,7 @@ public class UnsafeArrayMap<K, V> implements Map<K, V> {
 
   final class EntrySetView extends SetView<Map.Entry<K, V>> {
     @Override Map.Entry<K, V> elementAtArrayIndex(int i) {
-      return new SimpleImmutableEntry<>(key(i), value(i + 1));
+      return new SimpleImmutableEntry<K, V>(key(i), value(i + 1));
     }
 
     @Override public boolean contains(Object o) {

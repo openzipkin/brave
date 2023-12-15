@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -44,7 +44,7 @@ final class TraceContextListenableFuture<T> implements ListenableFuture<T> {
 
   @Override public void addCallback(ListenableFutureCallback<? super T> callback) {
     delegate.addCallback(callback != null
-      ? new TraceContextListenableFutureCallback<>(callback, this)
+      ? new TraceContextListenableFutureCallback(callback, this)
       : null
     );
   }
@@ -54,7 +54,7 @@ final class TraceContextListenableFuture<T> implements ListenableFuture<T> {
     FailureCallback failureCallback) {
     delegate.addCallback(
       successCallback != null
-        ? new TraceContextSuccessCallback<>(successCallback, this)
+        ? new TraceContextSuccessCallback(successCallback, this)
         : null,
       failureCallback != null
         ? new TraceContextFailureCallback(failureCallback, this)
@@ -104,14 +104,20 @@ final class TraceContextListenableFuture<T> implements ListenableFuture<T> {
     }
 
     @Override public void onSuccess(T result) {
-      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
+      Scope scope = currentTraceContext.maybeScope(invocationContext);
+      try {
         delegate.onSuccess(result);
+      } finally {
+        scope.close();
       }
     }
 
     @Override public void onFailure(Throwable ex) {
-      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
+      Scope scope = currentTraceContext.maybeScope(invocationContext);
+      try {
         delegate.onFailure(ex);
+      } finally {
+        scope.close();
       }
     }
 
@@ -133,8 +139,11 @@ final class TraceContextListenableFuture<T> implements ListenableFuture<T> {
     }
 
     @Override public void onSuccess(T result) {
-      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
+      Scope scope = currentTraceContext.maybeScope(invocationContext);
+      try {
         delegate.onSuccess(result);
+      } finally {
+        scope.close();
       }
     }
 
@@ -156,8 +165,11 @@ final class TraceContextListenableFuture<T> implements ListenableFuture<T> {
     }
 
     @Override public void onFailure(Throwable ex) {
-      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
+      Scope scope = currentTraceContext.maybeScope(invocationContext);
+      try {
         delegate.onFailure(ex);
+      } finally {
+        scope.close();
       }
     }
 

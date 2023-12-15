@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -76,7 +76,7 @@ public final class StringPropagationAdapter<K> implements Propagation<K> {
     if (delegate == null) throw new NullPointerException("delegate == null");
     if (keyFactory == null) throw new NullPointerException("keyFactory == null");
     if (keyFactory == KeyFactory.STRING) return (Propagation<K>) delegate;
-    return new StringPropagationAdapter<>(delegate, keyFactory);
+    return new StringPropagationAdapter<K>(delegate, keyFactory);
   }
 
   final Propagation<String> delegate;
@@ -87,7 +87,7 @@ public final class StringPropagationAdapter<K> implements Propagation<K> {
   StringPropagationAdapter(Propagation<String> delegate, KeyFactory<K> keyFactory) {
     this.delegate = delegate;
     this.keyFactory = keyFactory;
-    this.map = new LinkedHashMap<>();
+    this.map = new LinkedHashMap<String, K>();
     this.keysList = toKeyList(delegate.keys(), keyFactory);
   }
 
@@ -110,13 +110,13 @@ public final class StringPropagationAdapter<K> implements Propagation<K> {
   @Override public <R> Injector<R> injector(Setter<R, K> setter) {
     // No check if Setter is a RemoteSetter because this instance cannot have String keys while
     // RemoteSetter must have String keys
-    return delegate.injector(new SetterAdapter<>(setter, map));
+    return delegate.injector(new SetterAdapter<R, K>(setter, map));
   }
 
   @Override public <R> Extractor<R> extractor(Getter<R, K> getter) {
     // No check if Setter is a RemoteGetter because this instance cannot have String keys while
     // RemoteGetter must have String keys
-    return delegate.extractor(new GetterAdapter<>(getter, map));
+    return delegate.extractor(new GetterAdapter<R, K>(getter, map));
   }
 
   @Override public int hashCode() {

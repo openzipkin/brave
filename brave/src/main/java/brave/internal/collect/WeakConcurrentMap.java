@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -43,7 +43,7 @@ import java.util.concurrent.ConcurrentMap;
  * <p>See https://github.com/raphw/weak-lock-free
  */
 public class WeakConcurrentMap<K, V> extends ReferenceQueue<K> implements Iterable<Map.Entry<K, V>> {
-  final ConcurrentMap<WeakKey<K>, V> target = new ConcurrentHashMap<>();
+  final ConcurrentMap<WeakKey<K>, V> target = new ConcurrentHashMap<WeakKey<K>, V>();
 
   @Nullable public V getIfPresent(K key) {
     if (key == null) throw new NullPointerException("key == null");
@@ -58,7 +58,7 @@ public class WeakConcurrentMap<K, V> extends ReferenceQueue<K> implements Iterab
     if (value == null) throw new NullPointerException("value == null");
     expungeStaleEntries();
 
-    return target.putIfAbsent(new WeakKey<>(key, this), value);
+    return target.putIfAbsent(new WeakKey<K>(key, this), value);
   }
 
   /** Removes the entry with the indicated key and returns the old value or {@code null}. */

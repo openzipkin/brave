@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -362,7 +362,7 @@ public final class TraceContextOrSamplingFlags {
     /** @deprecated Since 5.12, use {@link #addExtra(Object)} */
     @Deprecated public Builder extra(List<Object> extraList) {
       if (extraList == null) throw new NullPointerException("extraList == null");
-      this.extraList = new ArrayList<>();
+      this.extraList = new ArrayList<Object>();
       for (Object extra : extraList) addExtra(extra);
       return this;
     }

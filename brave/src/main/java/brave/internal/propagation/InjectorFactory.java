@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -152,13 +152,13 @@ public final class InjectorFactory {
     clientInjectorFunction = builder.clientInjectorFunction;
     producerInjectorFunction = builder.producerInjectorFunction;
     consumerInjectorFunction = builder.consumerInjectorFunction;
-    Set<String> keyNames = new LinkedHashSet<>();
+    Set<String> keyNames = new LinkedHashSet<String>();
     // Add messaging first as their formats are likely the cheapest to extract
     keyNames.addAll(builder.consumerInjectorFunction.keyNames());
     keyNames.addAll(builder.producerInjectorFunction.keyNames());
     keyNames.addAll(builder.clientInjectorFunction.keyNames());
     keyNames.addAll(builder.injectorFunction.keyNames());
-    this.keyNames = Collections.unmodifiableList(new ArrayList<>(keyNames));
+    this.keyNames = Collections.unmodifiableList(new ArrayList<String>(keyNames));
   }
 
   /**
@@ -181,15 +181,15 @@ public final class InjectorFactory {
       RemoteSetter<?> remoteSetter = (RemoteSetter<?>) setter;
       switch (remoteSetter.spanKind()) {
         case CLIENT:
-          return new RemoteInjector<>(setter, clientInjectorFunction);
+          return new RemoteInjector<R>(setter, clientInjectorFunction);
         case PRODUCER:
-          return new RemoteInjector<>(setter, producerInjectorFunction);
+          return new RemoteInjector<R>(setter, producerInjectorFunction);
         case CONSUMER:
-          return new RemoteInjector<>(setter, consumerInjectorFunction);
+          return new RemoteInjector<R>(setter, consumerInjectorFunction);
         default: // SERVER is nonsense as it cannot be injected
       }
     }
-    return new DeferredInjector<>(setter, this);
+    return new DeferredInjector<R>(setter, this);
   }
 
   @Override public int hashCode() {
@@ -305,7 +305,7 @@ public final class InjectorFactory {
   static InjectorFunction injectorFunction(InjectorFunction existing, InjectorFunction... update) {
     if (update == null) throw new NullPointerException("injectorFunctions == null");
     LinkedHashSet<InjectorFunction> injectorFunctionSet =
-        new LinkedHashSet<>(Arrays.asList(update));
+        new LinkedHashSet<InjectorFunction>(Arrays.asList(update));
     if (injectorFunctionSet.contains(null)) {
       throw new NullPointerException("injectorFunction == null");
     }
@@ -321,11 +321,11 @@ public final class InjectorFactory {
 
     CompositeInjectorFunction(InjectorFunction[] injectorFunctions) {
       this.injectorFunctions = injectorFunctions;
-      Set<String> keyNames = new LinkedHashSet<>();
+      Set<String> keyNames = new LinkedHashSet<String>();
       for (InjectorFunction injectorFunction : injectorFunctions) {
         keyNames.addAll(injectorFunction.keyNames());
       }
-      this.keyNames = Collections.unmodifiableList(new ArrayList<>(keyNames));
+      this.keyNames = Collections.unmodifiableList(new ArrayList<String>(keyNames));
     }
 
     @Override public List<String> keyNames() {

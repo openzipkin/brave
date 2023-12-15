@@ -31,8 +31,7 @@
     <module.name>brave.httpclient5</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
-    <main.java.version>1.7</main.java.version>
-    <main.signature.artifact>java17</main.signature.artifact>
+
     <!-- To obey the integration tests, we need to use the version >= 5.2 -->
     <httpclient5.version>5.2</httpclient5.version>
   </properties>
@@ -62,4 +61,40 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <profiles>
+    <profile>
+      <id>release</id>
+      <properties>
+        <!-- HttpClient 5 is Java 1.7 bytecode -->
+        <main.java.version>1.7</main.java.version>
+        <main.signature.artifact>java17</main.signature.artifact>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-enforcer-plugin</artifactId>
+            <version>${maven-enforcer-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>enforce-java</id>
+                <goals>
+                  <goal>enforce</goal>
+                </goals>
+                <configuration>
+                  <rules>
+                    <!-- The only LTS JDK we support that can compile 1.6 bytecode is 11.
+                         https://www.oracle.com/java/technologies/javase/12-relnote-issues.html -->
+                    <requireJavaVersion>
+                      <version>[11,12)</version>
+                    </requireJavaVersion>
+                  </rules>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

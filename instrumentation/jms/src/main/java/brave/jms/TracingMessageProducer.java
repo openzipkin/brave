@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -120,10 +120,16 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     Throwable error = null;
     try {
       delegate.send(message);
-    } catch (Throwable t) {
-      propagateIfFatal(t);
-      error = t;
-      throw t;
+    } catch (RuntimeException e) {
+      error = e;
+      throw e;
+    } catch (JMSException e) {
+      error = e;
+      throw e;
+    } catch (Error e) {
+      propagateIfFatal(e);
+      error = e;
+      throw e;
     } finally {
       if (error != null) span.error(error);
       span.finish();
@@ -138,10 +144,16 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     Throwable error = null;
     try {
       delegate.send(message, deliveryMode, priority, timeToLive);
-    } catch (Throwable t) {
-      propagateIfFatal(t);
-      error = t;
-      throw t;
+    } catch (RuntimeException e) {
+      error = e;
+      throw e;
+    } catch (JMSException e) {
+      error = e;
+      throw e;
+    } catch (Error e) {
+      propagateIfFatal(e);
+      error = e;
+      throw e;
     } finally {
       if (error != null) span.error(error);
       span.finish();
@@ -184,10 +196,16 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     Throwable error = null;
     try {
       sendDestination.apply(delegate, destination, message);
-    } catch (Throwable t) {
-      propagateIfFatal(t);
-      error = t;
-      throw t;
+    } catch (RuntimeException e) {
+      error = e;
+      throw e;
+    } catch (JMSException e) {
+      error = e;
+      throw e;
+    } catch (Error e) {
+      propagateIfFatal(e);
+      error = e;
+      throw e;
     } finally {
       if (error != null) span.error(error);
       span.finish();
@@ -203,10 +221,16 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     Throwable error = null;
     try {
       delegate.send(destination, message, deliveryMode, priority, timeToLive);
-    } catch (Throwable t) {
-      propagateIfFatal(t);
-      error = t;
-      throw t;
+    } catch (RuntimeException e) {
+      error = e;
+      throw e;
+    } catch (JMSException e) {
+      error = e;
+      throw e;
+    } catch (Error e) {
+      propagateIfFatal(e);
+      error = e;
+      throw e;
     } finally {
       if (error != null) span.error(error);
       span.finish();
@@ -223,10 +247,16 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     Throwable error = null;
     try {
       delegate.send(message, TracingCompletionListener.create(completionListener, destination, span, current));
-    } catch (Throwable t) {
-      propagateIfFatal(t);
-      error = t;
-      throw t;
+    } catch (RuntimeException e) {
+      error = e;
+      throw e;
+    } catch (JMSException e) {
+      error = e;
+      throw e;
+    } catch (Error e) {
+      propagateIfFatal(e);
+      error = e;
+      throw e;
     } finally {
       if (error != null) span.error(error).finish();
       ws.close();
@@ -243,10 +273,16 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     Throwable error = null;
     try {
       delegate.send(message, deliveryMode, priority, timeToLive, completionListener);
-    } catch (Throwable t) {
-      propagateIfFatal(t);
-      error = t;
-      throw t;
+    } catch (RuntimeException e) {
+      error = e;
+      throw e;
+    } catch (JMSException e) {
+      error = e;
+      throw e;
+    } catch (Error e) {
+      propagateIfFatal(e);
+      error = e;
+      throw e;
     } finally {
       if (error != null) span.error(error).finish();
       ws.close();
@@ -262,10 +298,16 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     Throwable error = null;
     try {
       delegate.send(destination, message, completionListener);
-    } catch (Throwable t) {
-      propagateIfFatal(t);
-      error = t;
-      throw t;
+    } catch (RuntimeException e) {
+      error = e;
+      throw e;
+    } catch (JMSException e) {
+      error = e;
+      throw e;
+    } catch (Error e) {
+      propagateIfFatal(e);
+      error = e;
+      throw e;
     } finally {
       if (error != null) span.error(error).finish();
       ws.close();
@@ -281,10 +323,16 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     Throwable error = null;
     try {
       delegate.send(destination, message, deliveryMode, priority, timeToLive, completionListener);
-    } catch (Throwable t) {
-      propagateIfFatal(t);
-      error = t;
-      throw t;
+    } catch (RuntimeException e) {
+      error = e;
+      throw e;
+    } catch (JMSException e) {
+      error = e;
+      throw e;
+    } catch (Error e) {
+      propagateIfFatal(e);
+      error = e;
+      throw e;
     } finally {
       if (error != null) span.error(error).finish();
       ws.close();
@@ -313,10 +361,16 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     Throwable error = null;
     try {
       qs.send(queue, message, deliveryMode, priority, timeToLive);
-    } catch (Throwable t) {
-      propagateIfFatal(t);
-      error = t;
-      throw t;
+    } catch (RuntimeException e) {
+      error = e;
+      throw e;
+    } catch (JMSException e) {
+      error = e;
+      throw e;
+    } catch (Error e) {
+      propagateIfFatal(e);
+      error = e;
+      throw e;
     } finally {
       if (error != null) span.error(error);
       span.finish();
@@ -346,10 +400,16 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     Throwable error = null;
     try {
       tp.publish(message);
-    } catch (Throwable t) {
-      propagateIfFatal(t);
-      error = t;
-      throw t;
+    } catch (RuntimeException e) {
+      error = e;
+      throw e;
+    } catch (JMSException e) {
+      error = e;
+      throw e;
+    } catch (Error e) {
+      propagateIfFatal(e);
+      error = e;
+      throw e;
     } finally {
       if (error != null) span.error(error);
       span.finish();
@@ -367,10 +427,16 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     Throwable error = null;
     try {
       tp.publish(message, deliveryMode, priority, timeToLive);
-    } catch (Throwable t) {
-      propagateIfFatal(t);
-      error = t;
-      throw t;
+    } catch (RuntimeException e) {
+      error = e;
+      throw e;
+    } catch (JMSException e) {
+      error = e;
+      throw e;
+    } catch (Error e) {
+      propagateIfFatal(e);
+      error = e;
+      throw e;
     } finally {
       if (error != null) span.error(error);
       span.finish();
@@ -394,10 +460,16 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     Throwable error = null;
     try {
       tp.publish(topic, message, deliveryMode, priority, timeToLive);
-    } catch (Throwable t) {
-      propagateIfFatal(t);
-      error = t;
-      throw t;
+    } catch (RuntimeException e) {
+      error = e;
+      throw e;
+    } catch (JMSException e) {
+      error = e;
+      throw e;
+    } catch (Error e) {
+      propagateIfFatal(e);
+      error = e;
+      throw e;
     } finally {
       if (error != null) span.error(error);
       span.finish();

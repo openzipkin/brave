@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -609,7 +609,7 @@ public final class MutableSpan implements Cloneable {
     // IndexOutOfBoundsException(i) is Java 9+
     if (i < 0) throw new IndexOutOfBoundsException("i < 0");
     if (i >= annotationCount) throw new IndexOutOfBoundsException("i >= annotationCount");
-    return (long) annotations[i * 2];
+    return (Long) annotations[i * 2];
   }
 
   /**
@@ -658,7 +658,7 @@ public final class MutableSpan implements Cloneable {
    */
   public <T> void forEachAnnotation(AnnotationConsumer<T> annotationConsumer, T target) {
     for (int i = 0, length = annotationCount * 2; i < length; i += 2) {
-      long timestamp = (long) annotations[i];
+      long timestamp = (Long) annotations[i];
       annotationConsumer.accept(target, timestamp, annotations[i + 1].toString());
     }
   }
@@ -682,7 +682,7 @@ public final class MutableSpan implements Cloneable {
   public void forEachAnnotation(AnnotationUpdater annotationUpdater) {
     for (int i = 0, length = annotationCount * 2; i < length; i += 2) {
       String value = annotations[i + 1].toString();
-      String newValue = annotationUpdater.update((long) annotations[i], value);
+      String newValue = annotationUpdater.update((Long) annotations[i], value);
       if (newValue != null) {
         update(annotations, i, newValue);
       } else {

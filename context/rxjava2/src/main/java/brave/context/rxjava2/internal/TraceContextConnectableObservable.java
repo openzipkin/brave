@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -38,12 +38,12 @@ final class TraceContextConnectableObservable<T> extends ConnectableObservable<T
    * subscription callbacks.
    */
   @Override protected void subscribeActual(Observer<? super T> o) {
-    source.subscribe(new TraceContextObserver<>(o, contextScoper, assembled));
+    source.subscribe(new TraceContextObserver(o, contextScoper, assembled));
   }
 
   @Override public void connect(Consumer<? super Disposable> connection) {
     Scope scope = contextScoper.maybeScope(assembled);
-    try { // retrolambda can't resolve this try/finally
+    try {
       source.connect(connection);
     } finally {
       scope.close();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,6 +13,7 @@
  */
 package brave.sampler;
 
+import brave.internal.Platform;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -46,25 +47,27 @@ public class RateLimitingSampler extends Sampler {
   public static Sampler create(int tracesPerSecond) {
     if (tracesPerSecond < 0) throw new IllegalArgumentException("tracesPerSecond < 0");
     if (tracesPerSecond == 0) return Sampler.NEVER_SAMPLE;
-    return new RateLimitingSampler(tracesPerSecond);
+    return new RateLimitingSampler(Platform.get(), tracesPerSecond);
   }
 
   static final long NANOS_PER_SECOND = TimeUnit.SECONDS.toNanos(1);
   static final long NANOS_PER_DECISECOND = NANOS_PER_SECOND / 10;
 
+  final Platform platform;
   final MaxFunction maxFunction;
   final AtomicInteger usage = new AtomicInteger(0);
   final AtomicLong nextReset;
 
-  RateLimitingSampler(int tracesPerSecond) {
+  RateLimitingSampler(Platform platform, int tracesPerSecond) {
+    this.platform = platform;
     this.maxFunction =
       tracesPerSecond < 10 ? new LessThan10(tracesPerSecond) : new AtLeast10(tracesPerSecond);
-    long now = System.nanoTime();
+    long now = platform.nanoTime();
     this.nextReset = new AtomicLong(now + NANOS_PER_SECOND);
   }
 
   @Override public boolean isSampled(long ignoredTraceId) {
-    long now = System.nanoTime(), updateAt = nextReset.get();
+    long now = platform.nanoTime(), updateAt = nextReset.get();
 
     // First task is to determine if this request is later than the one second sampling window
     long nanosUntilReset = -(now - updateAt); // because nanoTime can be negative

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -33,7 +33,7 @@ public final class RpcRequestMatchers {
   public static <Req extends RpcRequest> Matcher<Req> methodEquals(String method) {
     if (method == null) throw new NullPointerException("method == null");
     if (method.isEmpty()) throw new NullPointerException("method is empty");
-    return new RpcMethodEquals<>(method);
+    return new RpcMethodEquals<Req>(method);
   }
 
   static final class RpcMethodEquals<Req extends RpcRequest> implements Matcher<Req> {
@@ -72,7 +72,7 @@ public final class RpcRequestMatchers {
   public static <Req extends RpcRequest> Matcher<Req> serviceEquals(String service) {
     if (service == null) throw new NullPointerException("service == null");
     if (service.isEmpty()) throw new NullPointerException("service is empty");
-    return new RpcServiceEquals<>(service);
+    return new RpcServiceEquals<Req>(service);
   }
 
   static final class RpcServiceEquals<Req extends RpcRequest> implements Matcher<Req> {

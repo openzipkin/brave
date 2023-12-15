@@ -67,8 +67,8 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
     <!-- default bytecode version for src/main -->
-    <main.java.version>1.7</main.java.version>
-    <main.signature.artifact>java17</main.signature.artifact>
+    <main.java.version>1.8</main.java.version>
+    <main.signature.artifact>java18</main.signature.artifact>
 
     <!-- default bytecode version for src/test -->
     <maven.compiler.source>1.8</maven.compiler.source>
@@ -120,38 +120,38 @@
     <sparkjava.version>2.9.3</sparkjava.version>
 
     <!-- Test only dependencies -->
-    <junit.version>4.13.1</junit.version>
-    <assertj.version>3.18.1</assertj.version>
-    <powermock.version>2.0.9</powermock.version>
-    <mockito.version>3.6.28</mockito.version>
+    <junit.version>4.13.2</junit.version>
+    <junit-jupiter.version>5.10.1</junit-jupiter.version>
+    <assertj.version>3.24.2</assertj.version>
+    <mockito.version>5.8.0</mockito.version>
     <jersey.version>2.33</jersey.version>
     <!-- must align with kafka version https://github.com/charithe/kafka-junit -->
-    <kafka-junit.version>4.2.4</kafka-junit.version>
-    <testcontainers.version>1.15.1</testcontainers.version>
+    <kafka-junit.version>4.2.10</kafka-junit.version>
+    <testcontainers.version>1.19.3</testcontainers.version>
 
     <license.skip>${skipTests}</license.skip>
 
-    <animal-sniffer-maven-plugin.version>1.19</animal-sniffer-maven-plugin.version>
+    <animal-sniffer-maven-plugin.version>1.23</animal-sniffer-maven-plugin.version>
     <go-offline-maven-plugin.version>1.2.8</go-offline-maven-plugin.version>
     <!-- TODO: cleanup any redundant ignores now also in the 4.0 release (once final) -->
-    <license-maven-plugin.version>4.0.rc2</license-maven-plugin.version>
-    <maven-bundle-plugin.version>5.1.1</maven-bundle-plugin.version>
-    <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
+    <license-maven-plugin.version>4.3</license-maven-plugin.version>
+    <maven-bundle-plugin.version>5.1.9</maven-bundle-plugin.version>
+    <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
     <!-- Use same version as https://github.com/openzipkin/docker-java -->
-    <maven-dependency-plugin.version>3.1.2</maven-dependency-plugin.version>
-    <maven-deploy-plugin.version>3.0.0-M1</maven-deploy-plugin.version>
-    <maven-enforcer-plugin.version>3.0.0-M3</maven-enforcer-plugin.version>
+    <maven-dependency-plugin.version>3.6.1</maven-dependency-plugin.version>
+    <maven-deploy-plugin.version>3.1.1</maven-deploy-plugin.version>
+    <maven-enforcer-plugin.version>3.4.1</maven-enforcer-plugin.version>
     <!-- Use same version as https://github.com/openzipkin/docker-java -->
-    <maven-help-plugin.version>3.2.0</maven-help-plugin.version>
-    <maven-install-plugin.version>3.0.0-M1</maven-install-plugin.version>
-    <maven-invoker-plugin.version>3.2.1</maven-invoker-plugin.version>
-    <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
-    <maven-jar-plugin.version>3.2.0</maven-jar-plugin.version>
-    <maven-release-plugin.version>3.0.0-M1</maven-release-plugin.version>
-    <maven-shade-plugin.version>3.2.4</maven-shade-plugin.version>
-    <maven-source-plugin.version>3.2.1</maven-source-plugin.version>
-    <maven-surefire-plugin.version>3.0.0-M5</maven-surefire-plugin.version>
-    <nexus-staging-maven-plugin.version>1.6.8</nexus-staging-maven-plugin.version>
+    <maven-help-plugin.version>3.4.0</maven-help-plugin.version>
+    <maven-install-plugin.version>3.1.1</maven-install-plugin.version>
+    <maven-invoker-plugin.version>3.6.0</maven-invoker-plugin.version>
+    <maven-javadoc-plugin.version>3.6.2</maven-javadoc-plugin.version>
+    <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
+    <maven-release-plugin.version>3.0.1</maven-release-plugin.version>
+    <maven-shade-plugin.version>3.5.1</maven-shade-plugin.version>
+    <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
+    <maven-surefire-plugin.version>3.2.2</maven-surefire-plugin.version>
+    <nexus-staging-maven-plugin.version>1.6.13</nexus-staging-maven-plugin.version>
   </properties>
 
   <modules>
@@ -198,9 +198,23 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${junit-jupiter.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
       <version>${assertj.version}</version>
+      <exclusions>
+        <!-- Use newer bytebuddy from mockito, which is JRE 21 compatible.
+             TODO: remove when assertj releases a new version -->
+        <exclusion>
+          <groupId>net.bytebuddy</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
       <scope>test</scope>
     </dependency>
     <!-- Main code uses jul and tests log with log4j -->
@@ -233,7 +247,7 @@
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
-      <artifactId>mockito-core</artifactId>
+      <artifactId>mockito-junit-jupiter</artifactId>
       <version>${mockito.version}</version>
       <scope>test</scope>
     </dependency>
@@ -242,16 +256,6 @@
   <build>
     <pluginManagement>
       <plugins>
-        <!-- mvn -N io.takari:maven:wrapper generates the ./mvnw script -->
-        <plugin>
-          <groupId>io.takari</groupId>
-          <artifactId>maven</artifactId>
-          <version>0.7.7</version>
-          <configuration>
-            <maven>3.6.3</maven>
-          </configuration>
-        </plugin>
-
         <!-- mvn de.qaware.maven:go-offline-maven-plugin:resolve-dependencies -->
         <plugin>
           <groupId>de.qaware.maven</groupId>
@@ -278,6 +282,7 @@
                 <artifactId>error_prone_core</artifactId>
                 <version>${errorprone.version}</version>
                 <repositoryType>MAIN</repositoryType>
+                <type>jar</type>
               </DynamicDependency>
               <DynamicDependency>
                 <groupId>org.apache.maven.surefire</groupId>
@@ -392,12 +397,13 @@
             <profiles>
               <profile>!release</profile>
             </profiles>
-            <useLocalRepository>true</useLocalRepository>
             <localRepositoryPath>${project.build.directory}/local-repo</localRepositoryPath>
+            <!--- Don't use addTestClassPath as it interferes with the classpath -->
             <postBuildHookScript>verify</postBuildHookScript>
-            <addTestClassPath>true</addTestClassPath>
             <skipInvocation>${skipTests}</skipInvocation>
             <streamLogs>true</streamLogs>
+            <!-- Silences repetitive "downloading" logs from the local repo.
+                 Note: this also silences logs about integration test runs! -->
             <mavenOpts>-Dorg.slf4j.simpleLogger.defaultLogLevel=WARN</mavenOpts>
           </configuration>
           <executions>
@@ -421,24 +427,6 @@
       <plugin>
         <artifactId>maven-help-plugin</artifactId>
         <version>${maven-help-plugin.version}</version>
-      </plugin>
-
-      <plugin>
-        <groupId>net.orfjackal.retrolambda</groupId>
-        <artifactId>retrolambda-maven-plugin</artifactId>
-        <version>2.5.7</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>process-main</goal>
-            </goals>
-            <configuration>
-              <target>${main.java.version}</target>
-              <fork>true</fork>
-              <quiet>true</quiet>
-            </configuration>
-          </execution>
-        </executions>
       </plugin>
 
       <plugin>
@@ -516,9 +504,9 @@
             <configuration>
               <rules>
                 <requireJavaVersion>
-                  <!-- Cannot use JDK 15 until Retrolambda supports it
-                       https://github.com/luontola/retrolambda/issues/161 -->
-                  <version>[11,15)</version>
+                  <!-- Change this to control LTS JDK versions allowed to build
+                       the project. Keep in sync with .github/workflows -->
+                  <version>[11,12),[17,18),[21,22)</version>
                 </requireJavaVersion>
               </rules>
             </configuration>
@@ -658,9 +646,10 @@
     </profile>
 
     <profile>
-      <id>error-prone</id>
+      <id>error-prone-11+</id>
       <activation>
-        <activeByDefault>true</activeByDefault>
+        <!-- Only LTS versions -->
+        <jdk>[11,12),[17,18),[21,22)</jdk>
       </activation>
       <build>
         <plugins>
@@ -669,11 +658,8 @@
             <version>${maven-compiler-plugin.version}</version>
             <inherited>true</inherited>
             <configuration>
-              <!-- Retrolambda will rewrite lambdas as Java 6 bytecode -->
-              <source>1.8</source>
-              <target>1.8</target>
-              <compilerVersion>1.8</compilerVersion>
-              <!-- or die! com.sun.tools.javac.api.JavacTool -->
+              <source>${main.java.version}</source>
+              <target>${main.java.version}</target>
               <fork>true</fork>
               <showWarnings>true</showWarnings>
             </configuration>
@@ -690,6 +676,17 @@
                   <compilerArgs>
                     <arg>-XDcompilePolicy=simple</arg>
                     <arg>-Xplugin:ErrorProne ${errorprone.args}</arg>
+                    <!-- below needed for JDK16+ per https://errorprone.info/docs/installation -->
+                    <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED</arg>
+                    <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED</arg>
+                    <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED</arg>
+                    <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED</arg>
+                    <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED</arg>
+                    <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED</arg>
+                    <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</arg>
+                    <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED</arg>
+                    <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED</arg>
+                    <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED</arg>
                   </compilerArgs>
                   <annotationProcessorPaths>
                     <processorPath>
@@ -727,7 +724,7 @@
 
           <plugin>
             <artifactId>maven-gpg-plugin</artifactId>
-            <version>1.6</version>
+            <version>3.1.0</version>
             <executions>
               <execution>
                 <id>sign-artifacts</id>

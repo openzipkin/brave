@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,6 +19,7 @@ import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
 import brave.handler.SpanHandler.Cause;
 import brave.internal.Nullable;
+import brave.internal.Platform;
 import brave.internal.collect.WeakConcurrentMap;
 import brave.propagation.TraceContext;
 import java.lang.ref.Reference;
@@ -36,12 +37,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingSpan> {
   final MutableSpan defaultSpan;
+  final Platform platform;
   final Clock clock;
   final SpanHandler spanHandler;
   final AtomicBoolean noop;
 
   public PendingSpans(MutableSpan defaultSpan, Clock clock, SpanHandler spanHandler,
     AtomicBoolean noop) {
+    this.platform = Platform.get();
     this.defaultSpan = defaultSpan;
     this.clock = clock;
     this.spanHandler = spanHandler;
@@ -76,7 +79,7 @@ public final class PendingSpans extends WeakConcurrentMap<TraceContext, PendingS
       if (start) span.startTimestamp(clock.currentTimeMicroseconds());
     } else {
       long currentTimeMicroseconds = this.clock.currentTimeMicroseconds();
-      clock = new TickClock(currentTimeMicroseconds, System.nanoTime());
+      clock = new TickClock(platform, currentTimeMicroseconds, platform.nanoTime());
       if (start) span.startTimestamp(currentTimeMicroseconds);
     }
 

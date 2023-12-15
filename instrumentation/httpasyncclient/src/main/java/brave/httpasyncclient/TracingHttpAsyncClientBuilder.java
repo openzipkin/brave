@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -136,10 +136,10 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
 
       return delegate.execute(
         new TracingAsyncRequestProducer(requestProducer, httpContext),
-        new TracingAsyncResponseConsumer<>(responseConsumer, httpContext),
+        new TracingAsyncResponseConsumer<T>(responseConsumer, httpContext),
         httpContext,
         callback != null && invocationContext != null
-          ? new TraceContextFutureCallback<>(callback, currentTraceContext, invocationContext)
+          ? new TraceContextFutureCallback<T>(callback, currentTraceContext, invocationContext)
           : callback
       );
     }
@@ -174,20 +174,29 @@ public final class TracingHttpAsyncClientBuilder extends HttpAsyncClientBuilder 
     }
 
     @Override public void completed(T t) {
-      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
+      Scope scope = currentTraceContext.maybeScope(invocationContext);
+      try {
         delegate.completed(t);
+      } finally {
+        scope.close();
       }
     }
 
     @Override public void failed(Exception e) {
-      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
+      Scope scope = currentTraceContext.maybeScope(invocationContext);
+      try {
         delegate.failed(e);
+      } finally {
+        scope.close();
       }
     }
 
     @Override public void cancelled() {
-      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
+      Scope scope = currentTraceContext.maybeScope(invocationContext);
+      try {
         delegate.cancelled();
+      } finally {
+        scope.close();
       }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -42,7 +42,7 @@ public abstract class CurrentTraceContext {
 
   /** Implementations of this allow standardized configuration, for example scope decoration. */
   public abstract static class Builder {
-    ArrayList<ScopeDecorator> scopeDecorators = new ArrayList<>();
+    ArrayList<ScopeDecorator> scopeDecorators = new ArrayList<ScopeDecorator>();
 
     /**
      * Implementations call decorators in order to add features like log correlation to a scope.
@@ -217,7 +217,8 @@ public abstract class CurrentTraceContext {
    */
   public static final class Default extends ThreadLocalCurrentTraceContext {
     // Inheritable as Brave 3's ThreadLocalServerClientAndLocalSpanState was inheritable
-    static final InheritableThreadLocal<TraceContext> INHERITABLE = new InheritableThreadLocal<>();
+    static final InheritableThreadLocal<TraceContext> INHERITABLE =
+      new InheritableThreadLocal<TraceContext>();
 
     /** Uses a non-inheritable static thread local */
     public static CurrentTraceContext create() {
@@ -243,12 +244,15 @@ public abstract class CurrentTraceContext {
   }
 
   /** Wraps the input so that it executes with the same context as now. */
-  public <C> Callable<C> wrap(Callable<C> task) {
+  public <C> Callable<C> wrap(final Callable<C> task) {
     final TraceContext invocationContext = get();
     class CurrentTraceContextCallable implements Callable<C> {
       @Override public C call() throws Exception {
-        try (Scope scope = maybeScope(invocationContext)) {
+        Scope scope = maybeScope(invocationContext);
+        try {
           return task.call();
+        } finally {
+          scope.close();
         }
       }
     }
@@ -256,12 +260,15 @@ public abstract class CurrentTraceContext {
   }
 
   /** Wraps the input so that it executes with the same context as now. */
-  public Runnable wrap(Runnable task) {
+  public Runnable wrap(final Runnable task) {
     final TraceContext invocationContext = get();
     class CurrentTraceContextRunnable implements Runnable {
       @Override public void run() {
-        try (Scope scope = maybeScope(invocationContext)) {
+        Scope scope = maybeScope(invocationContext);
+        try {
           task.run();
+        } finally {
+          scope.close();
         }
       }
     }
@@ -272,7 +279,7 @@ public abstract class CurrentTraceContext {
    * Decorates the input such that the {@link #get() current trace context} at the time a task is
    * scheduled is made current when the task is executed.
    */
-  public Executor executor(Executor delegate) {
+  public Executor executor(final Executor delegate) {
     class CurrentTraceContextExecutor implements Executor {
       @Override public void execute(Runnable task) {
         delegate.execute(CurrentTraceContext.this.wrap(task));
@@ -285,7 +292,7 @@ public abstract class CurrentTraceContext {
    * Decorates the input such that the {@link #get() current trace context} at the time a task is
    * scheduled is made current when the task is executed.
    */
-  public ExecutorService executorService(ExecutorService delegate) {
+  public ExecutorService executorService(final ExecutorService delegate) {
     class CurrentTraceContextExecutorService extends brave.internal.WrappingExecutorService {
 
       @Override protected ExecutorService delegate() {

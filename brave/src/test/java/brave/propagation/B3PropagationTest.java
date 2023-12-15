@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -23,27 +23,22 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.assertj.core.api.InstanceOfAssertFactories;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.powermock.api.mockito.PowerMockito.mock;
-import static org.powermock.api.mockito.PowerMockito.mockStatic;
-import static org.powermock.api.mockito.PowerMockito.when;
 
-@RunWith(PowerMockRunner.class)
-// Added to declutter console: tells power mock not to mess with implicit classes we aren't testing
-@PowerMockIgnore({"org.apache.logging.*", "javax.script.*"})
-@PrepareForTest({Platform.class, B3Propagation.class})
-public class B3PropagationTest {
+@ExtendWith(MockitoExtension.class)
+class B3PropagationTest {
   String traceIdHigh = "0000000000000009";
   String traceId = "0000000000000001";
   String parentId = "0000000000000002";
@@ -52,34 +47,24 @@ public class B3PropagationTest {
   TraceContext context = TraceContext.newBuilder().traceId(1).parentId(2).spanId(3).build();
 
   Propagation<String> propagation = B3Propagation.B3_STRING;
-  Platform platform = mock(Platform.class);
+  @Mock Platform platform;
 
-  @Before public void setupLogger() {
-    mockStatic(Platform.class);
-    when(Platform.get()).thenReturn(platform);
+  @Test void keys_defaultToAll() {
+      propagation = B3Propagation.newFactoryBuilder()
+        .build().get();
+
+      assertThat(propagation.keys()).containsExactly(
+        "b3",
+        "X-B3-TraceId",
+        "X-B3-SpanId",
+        "X-B3-ParentSpanId",
+        "X-B3-Sampled",
+        "X-B3-Flags"
+      );
   }
 
-  /** Either we asserted on the log messages or there weren't any */
-  @After public void ensureNothingLogged() {
-    verifyNoMoreInteractions(platform);
-  }
-
-  @Test public void keys_defaultToAll() {
-    propagation = B3Propagation.newFactoryBuilder()
-      .build().get();
-
-    assertThat(propagation.keys()).containsExactly(
-      "b3",
-      "X-B3-TraceId",
-      "X-B3-SpanId",
-      "X-B3-ParentSpanId",
-      "X-B3-Sampled",
-      "X-B3-Flags"
-    );
-  }
-
-  @Test public void keys_withoutB3Single() {
-    propagation = B3Propagation.newFactoryBuilder()
+  @Test void keys_withoutB3Single() {
+      propagation = B3Propagation.newFactoryBuilder()
       .injectFormat(Span.Kind.PRODUCER, Format.MULTI)
       .injectFormat(Span.Kind.CONSUMER, Format.MULTI)
       .build().get();
@@ -93,7 +78,7 @@ public class B3PropagationTest {
     );
   }
 
-  @Test public void keys_onlyB3Single() {
+  @Test void keys_onlyB3Single() {
     propagation = B3Propagation.newFactoryBuilder()
       .injectFormat(Format.SINGLE)
       .injectFormat(Span.Kind.CLIENT, Format.SINGLE)
@@ -103,7 +88,7 @@ public class B3PropagationTest {
     assertThat(propagation.keys()).containsOnly("b3");
   }
 
-  @Test public void injectFormat() {
+  @Test void injectFormat() {
     B3Propagation.Factory factory = (B3Propagation.Factory) B3Propagation.newFactoryBuilder()
       .injectFormat(Format.SINGLE)
       .build();
@@ -112,7 +97,7 @@ public class B3PropagationTest {
       .isEqualTo(Format.SINGLE);
   }
 
-  @Test public void injectKindFormat() {
+  @Test void injectKindFormat() {
     B3Propagation.Factory factory = (B3Propagation.Factory) B3Propagation.newFactoryBuilder()
       .injectFormat(Span.Kind.CLIENT, Format.SINGLE)
       .build();
@@ -121,7 +106,7 @@ public class B3PropagationTest {
       .isEqualTo(Format.SINGLE);
   }
 
-  @Test public void injectKindFormats() {
+  @Test void injectKindFormats() {
     B3Propagation.Factory factory = (B3Propagation.Factory) B3Propagation.newFactoryBuilder()
       .injectFormats(Span.Kind.CLIENT, Format.SINGLE, Format.MULTI)
       .build();
@@ -131,13 +116,13 @@ public class B3PropagationTest {
       .containsExactly(Format.SINGLE, Format.MULTI);
   }
 
-  @Test public void injectKindFormats_cantBeSame() {
+  @Test void injectKindFormats_cantBeSame() {
     assertThatThrownBy(() -> B3Propagation.newFactoryBuilder()
       .injectFormats(Span.Kind.CLIENT, Format.MULTI, Format.MULTI))
       .isInstanceOf(IllegalArgumentException.class);
   }
 
-  @Test public void injectKindFormats_cantBeBothSingle() {
+  @Test void injectKindFormats_cantBeBothSingle() {
     assertThatThrownBy(() -> B3Propagation.newFactoryBuilder()
       .injectFormats(Span.Kind.CLIENT, Format.SINGLE, Format.SINGLE_NO_PARENT))
       .isInstanceOf(IllegalArgumentException.class);
@@ -159,7 +144,7 @@ public class B3PropagationTest {
     }
   }
 
-  @Test public void clientUsesB3Multi() {
+  @Test void clientUsesB3Multi() {
     ClientRequest request = new ClientRequest();
     Propagation.B3_STRING.injector(ClientRequest::header).inject(context, request);
 
@@ -186,7 +171,7 @@ public class B3PropagationTest {
     }
   }
 
-  @Test public void producerUsesB3SingleNoParent_deferred() {
+  @Test void producerUsesB3SingleNoParent_deferred() {
     // This injector won't know the type it is injecting until the call to inject()
     Injector<ProducerRequest> injector = Propagation.B3_STRING.injector(ProducerRequest::header);
 
@@ -208,7 +193,7 @@ public class B3PropagationTest {
     }
   }
 
-  @Test public void producerUsesB3SingleNoParent() {
+  @Test void producerUsesB3SingleNoParent() {
     // This injector needs no instanceof checks during inject()
     Injector<ProducerRequest> injector = Propagation.B3_STRING.injector(new ProducerSetter());
 
@@ -220,7 +205,7 @@ public class B3PropagationTest {
       .containsEntry("b3", "0000000000000001-0000000000000003");
   }
 
-  @Test public void canConfigureSingle() {
+  @Test void canConfigureSingle() {
     propagation = B3Propagation.newFactoryBuilder()
       .injectFormat(Format.SINGLE_NO_PARENT)
       .build().get();
@@ -233,7 +218,7 @@ public class B3PropagationTest {
       .containsEntry("b3", "0000000000000001-0000000000000003");
   }
 
-  @Test public void canConfigureBasedOnKind() {
+  @Test void canConfigureBasedOnKind() {
     propagation = B3Propagation.newFactoryBuilder()
       .injectFormats(Span.Kind.CLIENT, Format.SINGLE, Format.MULTI)
       .build().get();
@@ -249,7 +234,7 @@ public class B3PropagationTest {
       .containsEntry("b3", traceId + "-" + spanId + "-" + parentId);
   }
 
-  @Test public void extract_notYetSampled() {
+  @Test void extract_notYetSampled() {
     Map<String, String> headers = new LinkedHashMap<>();
     headers.put("X-B3-TraceId", traceId);
     headers.put("X-B3-SpanId", spanId);
@@ -257,7 +242,7 @@ public class B3PropagationTest {
     assertThat(extract(headers).sampled()).isNull();
   }
 
-  @Test public void extract_sampled() {
+  @Test void extract_sampled() {
     Map<String, String> headers = new LinkedHashMap<>();
     headers.put("X-B3-TraceId", traceId);
     headers.put("X-B3-SpanId", spanId);
@@ -271,7 +256,7 @@ public class B3PropagationTest {
     assertThat(extract(headers).sampled()).isTrue();
   }
 
-  @Test public void extract_128Bit() {
+  @Test void extract_128Bit() {
     Map<String, String> headers = new LinkedHashMap<>();
     headers.put("X-B3-TraceId", traceIdHigh + traceId);
     headers.put("X-B3-SpanId", spanId);
@@ -283,7 +268,7 @@ public class B3PropagationTest {
     );
   }
 
-  @Test public void extract_padded() {
+  @Test void extract_padded() {
     Map<String, String> headers = new LinkedHashMap<>();
     headers.put("X-B3-TraceId", "0000000000000000" + traceId);
     headers.put("X-B3-SpanId", spanId);
@@ -294,7 +279,7 @@ public class B3PropagationTest {
     );
   }
 
-  @Test public void extract_padded_right() {
+  @Test void extract_padded_right() {
     Map<String, String> headers = new LinkedHashMap<>();
     headers.put("X-B3-TraceId", traceIdHigh + "0000000000000000");
     headers.put("X-B3-SpanId", spanId);
@@ -305,37 +290,49 @@ public class B3PropagationTest {
     );
   }
 
-  @Test public void extract_zeros_traceId() {
-    Map<String, String> headers = new LinkedHashMap<>();
-    headers.put("X-B3-TraceId", "0000000000000000");
-    headers.put("X-B3-SpanId", spanId);
+  @Test void extract_zeros_traceId() {
+    try (MockedStatic<Platform> mb = mockStatic(Platform.class)) {
+      mb.when(Platform::get).thenReturn(platform);
 
-    assertThat(extract(headers).context()).isNull();
+      Map<String, String> headers = new LinkedHashMap<>();
+      headers.put("X-B3-TraceId", "0000000000000000");
+      headers.put("X-B3-SpanId", spanId);
 
-    verify(platform).log("Invalid input: traceId was all zeros", null);
+      assertThat(extract(headers).context()).isNull();
+
+      verify(platform).log("Invalid input: traceId was all zeros", null);
+    }
   }
 
-  @Test public void extract_zeros_traceId_128() {
-    Map<String, String> headers = new LinkedHashMap<>();
-    headers.put("X-B3-TraceId", "00000000000000000000000000000000");
-    headers.put("X-B3-SpanId", spanId);
+  @Test void extract_zeros_traceId_128() {
+    try (MockedStatic<Platform> mb = mockStatic(Platform.class)) {
+      mb.when(Platform::get).thenReturn(platform);
 
-    assertThat(extract(headers).context()).isNull();
+      Map<String, String> headers = new LinkedHashMap<>();
+      headers.put("X-B3-TraceId", "00000000000000000000000000000000");
+      headers.put("X-B3-SpanId", spanId);
 
-    verify(platform).log("Invalid input: traceId was all zeros", null);
+      assertThat(extract(headers).context()).isNull();
+
+      verify(platform).log("Invalid input: traceId was all zeros", null);
+    }
   }
 
-  @Test public void extract_zeros_spanId() {
-    Map<String, String> headers = new LinkedHashMap<>();
-    headers.put("X-B3-TraceId", traceId);
-    headers.put("X-B3-SpanId", "0000000000000000");
+  @Test void extract_zeros_spanId() {
+    try (MockedStatic<Platform> mb = mockStatic(Platform.class)) {
+      mb.when(Platform::get).thenReturn(platform);
 
-    assertThat(extract(headers).context()).isNull();
+      Map<String, String> headers = new LinkedHashMap<>();
+      headers.put("X-B3-TraceId", traceId);
+      headers.put("X-B3-SpanId", "0000000000000000");
 
-    verify(platform).log("Invalid input: spanId was all zeros", null);
+      assertThat(extract(headers).context()).isNull();
+
+      verify(platform).log("Invalid input: spanId was all zeros", null);
+    }
   }
 
-  @Test public void extract_sampled_false() {
+  @Test void extract_sampled_false() {
     Map<String, String> headers = new LinkedHashMap<>();
     headers.put("X-B3-TraceId", traceId);
     headers.put("X-B3-SpanId", spanId);
@@ -349,26 +346,30 @@ public class B3PropagationTest {
     assertThat(extract(headers).sampled()).isFalse();
   }
 
-  @Test public void extract_sampledCorrupt() {
-    Map<String, String> headers = new LinkedHashMap<>();
-    headers.put("X-B3-TraceId", traceId);
-    headers.put("X-B3-SpanId", spanId);
+  @Test void extract_sampledCorrupt() {
+    try (MockedStatic<Platform> mb = mockStatic(Platform.class)) {
+      mb.when(Platform::get).thenReturn(platform);
 
-    Stream.of("", "d", "💩", "hello").forEach(sampled -> {
-      headers.put("X-B3-Sampled", sampled);
-      assertThat(extract(headers)).isSameAs(TraceContextOrSamplingFlags.EMPTY);
+      Map<String, String> headers = new LinkedHashMap<>();
+      headers.put("X-B3-TraceId", traceId);
+      headers.put("X-B3-SpanId", spanId);
 
-      verify(platform).log("Invalid input: expected 0 or 1 for X-B3-Sampled, but found '{0}'",
-        sampled, null);
-    });
+      Stream.of("", "d", "💩", "hello").forEach(sampled -> {
+        headers.put("X-B3-Sampled", sampled);
+        assertThat(extract(headers)).isSameAs(TraceContextOrSamplingFlags.EMPTY);
+
+        verify(platform).log("Invalid input: expected 0 or 1 for X-B3-Sampled, but found '{0}'",
+          sampled, null);
+      });
+    }
   }
 
-  @Test public void build_defaultIsSingleton() {
+  @Test void build_defaultIsSingleton() {
     assertThat(B3Propagation.newFactoryBuilder().build())
         .isSameAs(B3Propagation.FACTORY);
   }
 
-  @Test public void equalsAndHashCode() {
+  @Test void equalsAndHashCode() {
     // same instance are equivalent
     Propagation.Factory factory = B3Propagation.newFactoryBuilder()
         .injectFormat(Span.Kind.CLIENT, Format.SINGLE_NO_PARENT)
