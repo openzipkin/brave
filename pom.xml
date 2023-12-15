@@ -111,10 +111,10 @@
     <okhttp.version>4.9.0</okhttp.version>
     <httpclient.version>4.5.13</httpclient.version>
 
-    <grpc.version>1.34.1</grpc.version>
-    <protobuf.version>3.12.0</protobuf.version>
+    <grpc.version>1.54.0</grpc.version>
+    <protobuf.version>3.21.7</protobuf.version>
     <!-- prefer grpc's version of netty -->
-    <netty.version>4.1.86.final</netty.version>
+    <netty.version>4.1.87.Final</netty.version>
 
     <httpasyncclient.version>4.1.4</httpasyncclient.version>
     <sparkjava.version>2.9.3</sparkjava.version>
