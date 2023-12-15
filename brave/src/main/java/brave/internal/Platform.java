@@ -14,6 +14,8 @@
 package brave.internal;
 
 import brave.Clock;
+import brave.Tracer;
+
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
@@ -81,7 +83,8 @@ public abstract class Platform {
 
   // Use nested class to ensure logger isn't initialized unless it is accessed once.
   private static final class LoggerHolder {
-    static final Logger LOG = Logger.getLogger(brave.Tracer.class.getName());
+    static final String LOGGER_NAME = Tracer.class.getName();
+    static final Logger LOG = Logger.getLogger(LOGGER_NAME);
   }
 
   /** Like {@link Logger#log(Level, String) */
@@ -96,6 +99,7 @@ public abstract class Platform {
     Logger logger = LoggerHolder.LOG;
     if (!logger.isLoggable(Level.FINE)) return; // fine level to not fill logs
     LogRecord lr = new LogRecord(Level.FINE, msg);
+    lr.setLoggerName(LoggerHolder.LOGGER_NAME);
     Object[] params = {param1};
     lr.setParameters(params);
     if (thrown != null) lr.setThrown(thrown);
