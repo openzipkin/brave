@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -23,6 +23,7 @@ import brave.rpc.RpcResponseParser;
 import brave.rpc.RpcRuleSampler;
 import brave.rpc.RpcTracing;
 import brave.test.util.AssertableCallback;
+import org.apache.dubbo.common.beanutil.JavaBeanDescriptor;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.config.bootstrap.DubboBootstrap;
@@ -33,6 +34,8 @@ import org.apache.dubbo.rpc.RpcException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.Map;
 
 import static brave.Span.Kind.CLIENT;
 import static brave.rpc.RpcRequestMatchers.methodEquals;
@@ -46,16 +49,19 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
   ReferenceConfig<GraterService> wrongClient;
 
   @Before public void setup() {
+    server.initService();
+    init();
     server.start();
-
     String url = "dubbo://" + server.ip() + ":" + server.port() + "?scope=remote&generic=bean";
     client = new ReferenceConfig<>();
     client.setGeneric("true");
     client.setFilter("tracing");
+    client.setRetries(-1);
     client.setInterface(GreeterService.class);
     client.setUrl(url);
 
     wrongClient = new ReferenceConfig<>();
+    wrongClient.setRetries(-1);
     wrongClient.setGeneric("true");
     wrongClient.setFilter("tracing");
     wrongClient.setInterface(GraterService.class);
@@ -204,7 +210,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     assertThatThrownBy(() -> client.get().sayHello("jorge"))
         .isInstanceOf(RpcException.class);
 
-    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*RemotingException.*");
+    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Service brave.dubbo.GreeterService with version 0.0.0 not found, invocation rejected.*");
   }
 
   @Test public void onTransportException_setError_async() {
@@ -212,7 +218,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
 
     RpcContext.getContext().asyncCall(() -> client.get().sayHello("romeo"));
 
-    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*RemotingException.*");
+    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Service brave.dubbo.GreeterService with version 0.0.0 not found, invocation rejected.*");
   }
 
   @Test public void finishesOneWaySpan() {
@@ -228,7 +234,8 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
         .isInstanceOf(RpcException.class);
 
     MutableSpan span =
-        testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Not found exported service.*");
+        testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Service brave.dubbo.GraterService with version 0.0.0 not found, invocation rejected.*");
+
     assertThat(span.tags())
         .containsEntry("dubbo.error_code", "1");
   }
@@ -246,7 +253,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
         .isInstanceOf(RpcException.class);
 
     MutableSpan span =
-        testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Not found exported service.*");
+        testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Service brave.dubbo.GraterService with version 0.0.0 not found, invocation rejected.*");
     assertThat(span.tags())
         .containsEntry("dubbo.error_code", "1");
   }
@@ -275,7 +282,10 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
       @Override protected String parseValue(DubboResponse input, TraceContext context) {
         Result result = input.result();
         if (result == null) return null;
-        return String.valueOf(result.getValue());
+        JavaBeanDescriptor value = (JavaBeanDescriptor) result.getValue();
+        String s = String.valueOf(value.getProperty("value"));
+        System.out.println(s);
+        return s;
       }
     };
 
@@ -290,7 +300,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
 
     String javaResult = client.get().sayHello("jorge");
 
-    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).tags())
-        .containsEntry("dubbo.result_value", javaResult);
+    Map<String, String> tags = testSpanHandler.takeRemoteSpan(CLIENT).tags();
+    assertThat(tags).containsEntry("dubbo.result_value", javaResult);
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -47,7 +47,11 @@ class TestServer {
     service = new ServiceConfig<>();
     service.setApplication(application);
     service.setRegistry(new RegistryConfig(RegistryConfig.NO_AVAILABLE));
-    service.setProtocol(new ProtocolConfig("dubbo", PickUnusedPort.get()));
+    service.setProtocol(new ProtocolConfig("dubbo",PickUnusedPort.get()));
+  }
+
+  public void initService() {
+
     service.setInterface(GreeterService.class);
     service.setRef((method, parameterTypes, args) -> {
       requestQueue.add(extractor.extract(RpcContext.getContext().getAttachments()));
@@ -55,9 +59,6 @@ class TestServer {
     });
   }
 
-  ApplicationConfig application() {
-    return service.getApplication();
-  }
 
   void start() {
     service.export();

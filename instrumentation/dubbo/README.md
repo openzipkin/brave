@@ -1,5 +1,5 @@
 # brave-instrumentation-dubbo
-This is a tracing filter for RPC providers and consumers in [Apache Dubbo 2.7+](http://dubbo.apache.org/en-us/docs/dev/impls/filter.html)
+This is a tracing filter for RPC providers and consumers in Apache Dubbo3
 
 When used on a consumer, `TracingFilter` adds trace state as attachments
 to outgoing requests. When a provider, it extracts trace state from
@@ -13,13 +13,6 @@ Zipkin terminology.
 The filter "tracing" requires an extension of type `brave.rpc.RpcTracing` named
 "rpcTracing" configured. Once that's configured, you assign the filter to your
 providers and consumers like so:
-
-Here's an example of with Spring 2.5+ [XML](http://dubbo.apache.org/en-us/docs/user/references/xml/dubbo-consumer.html)
-```xml
-<!-- default to trace all services -->
-<dubbo:consumer filter="tracing" />
-<dubbo:provider filter="tracing" />
-```
 
 Here's an example with dubbo.properties:
 ```properties
@@ -43,24 +36,25 @@ tracing by creating and registering an extension factory:
 package com.yourcompany.dubbo;
 
 import brave.Tracing;
-import brave.rpc.RpcTracing;
 import brave.rpc.RpcRuleSampler;
-import org.apache.dubbo.common.extension.ExtensionFactory;
+import brave.rpc.RpcTracing;
+import brave.sampler.Sampler;
+import org.apache.dubbo.common.extension.ExtensionInjector;
 import zipkin2.reporter.AsyncReporter;
 import zipkin2.reporter.brave.ZipkinSpanHandler;
-import brave.Span;
 
 import static brave.rpc.RpcRequestMatchers.methodEquals;
-import static brave.sampler.Matchers.and;
 
-public class TracingExtensionFactory implements ExtensionFactory {
+public class TracingExtensionFactory implements ExtensionInjector {
 
-  @Override public <T> T getExtension(Class<T> type, String name) {
-    if (type != RpcTracing.class) return null;
+  @Override
+  public <T> T getInstance(Class<T> type, String name) {
+    if (type != RpcTracing.class)
+      return null;
 
     return (T) RpcTracing.newBuilder(tracing())
-                         .serverSampler(serverSampler())
-                         .build();
+      .serverSampler(serverSampler())
+      .build();
   }
 
   RpcRuleSampler serverSampler() {
@@ -71,16 +65,17 @@ public class TracingExtensionFactory implements ExtensionFactory {
 
   Tracing tracing() {
     return Tracing.newBuilder()
-                  .localServiceName("my-service")
-                  .addSpanHandler(spanHandler())
-                  .build();
+      .localServiceName("my-service")
+      .addSpanHandler(spanHandler())
+      .build();
   }
+
 
   // NOTE: When async, the spanHandler should be closed with a shutdown hook
   ZipkinSpanHandler spanHandler() {
     //   (this dependency is io.zipkin.reporter2:zipkin-reporter-brave)
     return ZipkinSpanHandler.create(AsyncReporter.builder(sender()));
---snip--
+    --snip--
 ```
 
 #### Register that factory using META-INF
