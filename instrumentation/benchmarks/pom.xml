@@ -29,7 +29,8 @@
     <main.java.version>1.8</main.java.version>
     <main.signature.artifact>java18</main.signature.artifact>
     <jmh.version>1.27</jmh.version>
-    <undertow-servlet.version>2.2.3.Final</undertow-servlet.version>
+    <!-- Note: versions above 2.2 move to jakarta package -->
+    <undertow-servlet.version>2.2.28.Final</undertow-servlet.version>
   </properties>
 
   <!-- can't import brave-bom due to build-support/go-offline.sh -->
