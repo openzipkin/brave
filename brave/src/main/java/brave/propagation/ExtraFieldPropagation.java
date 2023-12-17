@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -61,9 +61,9 @@ import static java.util.Collections.unmodifiableList;
   @Deprecated public static final class FactoryBuilder {
     final Propagation.Factory delegate;
     final BaggagePropagation.FactoryBuilder baggageFactory;
-    // Updates could be out-of-order in the old impl so we track everything until build()
-    final Set<String> redactedNames = new LinkedHashSet<>();
-    final Map<String, Set<String>> nameToKeyNames = new LinkedHashMap<>();
+    // Updates could be out-of-order in the old impl, so we track everything until build()
+    final Set<String> redactedNames = new LinkedHashSet<String>();
+    final Map<String, Set<String>> nameToKeyNames = new LinkedHashMap<String, Set<String>>();
 
     FactoryBuilder(Propagation.Factory delegate) {
       this.delegate = delegate;
@@ -74,7 +74,7 @@ import static java.util.Collections.unmodifiableList;
     @Deprecated public FactoryBuilder addRedactedField(String fieldName) {
       fieldName = validateFieldName(fieldName);
       redactedNames.add(fieldName);
-      nameToKeyNames.put(fieldName, Collections.emptySet());
+      nameToKeyNames.put(fieldName, Collections.<String>emptySet());
       return this;
     }
 
@@ -99,13 +99,13 @@ import static java.util.Collections.unmodifiableList;
 
     void addKeyName(String name, String keyName) {
       Set<String> keyNames = nameToKeyNames.get(name);
-      if (keyNames == null) nameToKeyNames.put(name, keyNames = new LinkedHashSet<>());
+      if (keyNames == null) nameToKeyNames.put(name, keyNames = new LinkedHashSet<String>());
       keyNames.add(keyName);
     }
 
     /** Returns a wrapper of the delegate if there are no fields to propagate. */
     public Factory build() {
-      Set<String> extraKeyNames = new LinkedHashSet<>();
+      Set<String> extraKeyNames = new LinkedHashSet<String>();
       for (Map.Entry<String, Set<String>> entry : nameToKeyNames.entrySet()) {
         BaggageField field = BaggageField.create(entry.getKey());
         if (redactedNames.contains(field.name())) {
@@ -205,9 +205,9 @@ import static java.util.Collections.unmodifiableList;
     /** {@inheritDoc} */
     @Deprecated @Override
     public <K> ExtraFieldPropagation<K> create(Propagation.KeyFactory<K> keyFactory) {
-      List<K> extraKeys = new ArrayList<>();
+      List<K> extraKeys = new ArrayList<K>();
       for (String extraKeyName : extraKeyNames) extraKeys.add(keyFactory.create(extraKeyName));
-      return new ExtraFieldPropagation<>(delegate.create(keyFactory), unmodifiableList(extraKeys));
+      return new ExtraFieldPropagation<K>(delegate.create(keyFactory), unmodifiableList(extraKeys));
     }
 
     @Override public boolean supportsJoin() {

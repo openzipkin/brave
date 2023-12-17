@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -32,6 +32,8 @@ import io.grpc.Status;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static brave.internal.Throwables.propagateIfFatal;
+
 // not exposed directly as implementation notably changes between versions 1.2 and 1.3
 final class TracingServerInterceptor implements ServerInterceptor {
   final Map<String, Key<String>> nameToKey;
@@ -54,23 +56,35 @@ final class TracingServerInterceptor implements ServerInterceptor {
     GrpcServerRequest request = new GrpcServerRequest(nameToKey, call, headers);
 
     Span span = handler.handleReceive(request);
-    AtomicReference<Span> spanRef = new AtomicReference<>(span);
+    AtomicReference<Span> spanRef = new AtomicReference<Span>(span);
 
     // startCall invokes user interceptors, so we place the span in scope here
     Listener<ReqT> result;
-    try (Scope scope = currentTraceContext.maybeScope(span.context())) {
-      result = next.startCall(new TracingServerCall<>(call, span, spanRef, request), headers);
-    } catch (Throwable e) {
-      // Another interceptor may throw an exception during startCall, in which case no other
-      // callbacks are called, so go ahead and close the span here.
-      //
-      // See instrumentation/grpc/RATIONALE.md for why we don't use the handler here
-      spanRef.set(null);
-      if (span != null) span.error(e).finish();
+    Throwable error = null;
+    Scope scope = currentTraceContext.maybeScope(span.context());
+    try {
+      result =
+        next.startCall(new TracingServerCall<ReqT, RespT>(call, span, spanRef, request), headers);
+    } catch (RuntimeException e) {
+      error = e;
       throw e;
+    } catch (Error e) {
+      propagateIfFatal(e);
+      error = e;
+      throw e;
+    } finally {
+      if (error != null) {
+        // Another interceptor may throw an exception during startCall, in which case no other
+        // callbacks are called, so go ahead and close the span here.
+        //
+        // See instrumentation/grpc/RATIONALE.md for why we don't use the handler here
+        spanRef.set(null);
+        if (span != null) span.error(error).finish();
+      }
+      scope.close();
     }
 
-    return new TracingServerCallListener<>(result, span, spanRef, request);
+    return new TracingServerCallListener<ReqT>(result, span, spanRef, request);
   }
 
   final class TracingServerCall<ReqT, RespT> extends SimpleForwardingServerCall<ReqT, RespT> {
@@ -88,25 +102,34 @@ final class TracingServerInterceptor implements ServerInterceptor {
     }
 
     @Override public void request(int numMessages) {
-      try (Scope scope = currentTraceContext.maybeScope(context)) {
+      Scope scope = currentTraceContext.maybeScope(context);
+      try {
         delegate().request(numMessages);
+      } finally {
+        scope.close();
       }
     }
 
     @Override public void sendHeaders(Metadata headers) {
-      try (Scope scope = currentTraceContext.maybeScope(context)) {
+      Scope scope = currentTraceContext.maybeScope(context);
+      try {
         delegate().sendHeaders(headers);
+      } finally {
+        scope.close();
       }
       // sendHeaders() JavaDoc mentions headers are not thread-safe, so we make a safe copy here.
       this.headers.merge(headers);
     }
 
     @Override public void sendMessage(RespT message) {
-      try (Scope scope = currentTraceContext.maybeScope(context)) {
+      Scope scope = currentTraceContext.maybeScope(context);
+      try {
         delegate().sendMessage(message);
         Span span = spanRef.get(); // could be an error
         SpanCustomizer customizer = span != null ? span.customizer() : NoopSpanCustomizer.INSTANCE;
         messageProcessor.onMessageSent(message, customizer);
+      } finally {
+        scope.close();
       }
     }
 
@@ -116,8 +139,11 @@ final class TracingServerInterceptor implements ServerInterceptor {
       Span span = spanRef.getAndSet(null);
       if (span != null) handler.handleSend(response, span);
 
-      try (Scope scope = currentTraceContext.maybeScope(context)) {
+      Scope scope = currentTraceContext.maybeScope(context);
+      try {
         delegate().close(status, trailers);
+      } finally {
+        scope.close();
       }
     }
   }
@@ -140,44 +166,66 @@ final class TracingServerInterceptor implements ServerInterceptor {
     }
 
     @Override public void onMessage(RespT message) {
-      try (Scope scope = currentTraceContext.maybeScope(context)) {
+      Scope scope = currentTraceContext.maybeScope(context);
+      try {
         delegate().onMessage(message);
         Span span = spanRef.get(); // could be an error
         SpanCustomizer customizer = span != null ? span.customizer() : NoopSpanCustomizer.INSTANCE;
         messageProcessor.onMessageReceived(message, customizer);
+      } finally {
+        scope.close();
       }
     }
 
     @Override public void onHalfClose() {
-      try (Scope scope = currentTraceContext.maybeScope(context)) {
+      Scope scope = currentTraceContext.maybeScope(context);
+      Throwable error = null;
+      try {
         delegate().onHalfClose();
-      } catch (Throwable e) {
-        // If there was an exception executing onHalfClose, we don't expect other lifecycle
-        // commands to succeed. Accordingly, we close the span
-        //
-        // See instrumentation/grpc/RATIONALE.md for why we don't use the handler here
-        Span span = spanRef.getAndSet(null);
-        if (span != null) span.error(e).finish();
-
+      } catch (RuntimeException e) {
+        error = e;
         throw e;
+      } catch (Error e) {
+        propagateIfFatal(e);
+        error = e;
+        throw e;
+      } finally {
+        if (error != null) {
+          // If there was an exception executing onHalfClose, we don't expect other lifecycle
+          // commands to succeed. Accordingly, we close the span
+          //
+          // See instrumentation/grpc/RATIONALE.md for why we don't use the handler here
+          Span span = spanRef.getAndSet(null);
+          if (span != null) span.error(error).finish();
+        }
+        scope.close();
       }
     }
 
     @Override public void onCancel() {
-      try (Scope scope = currentTraceContext.maybeScope(context)) {
+      Scope scope = currentTraceContext.maybeScope(context);
+      try {
         delegate().onCancel();
+      } finally {
+        scope.close();
       }
     }
 
     @Override public void onComplete() {
-      try (Scope scope = currentTraceContext.maybeScope(context)) {
+      Scope scope = currentTraceContext.maybeScope(context);
+      try {
         delegate().onComplete();
+      } finally {
+        scope.close();
       }
     }
 
     @Override public void onReady() {
-      try (Scope scope = currentTraceContext.maybeScope(context)) {
+      Scope scope = currentTraceContext.maybeScope(context);
+      try {
         delegate().onReady();
+      } finally {
+        scope.close();
       }
     }
   }

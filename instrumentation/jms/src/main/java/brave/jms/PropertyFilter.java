@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -86,13 +86,14 @@ final class PropertyFilter {
     }
   }
 
-  static final ThreadLocal<ArrayList<Object>> MESSAGE_PROPERTIES_BUFFER = new ThreadLocal<>();
+  static final ThreadLocal<ArrayList<Object>> MESSAGE_PROPERTIES_BUFFER =
+    new ThreadLocal<ArrayList<Object>>();
 
   /** Also use pair indexing for temporary message properties: (name, value). */
   static ArrayList<Object> messagePropertiesBuffer() {
     ArrayList<Object> messagePropertiesBuffer = MESSAGE_PROPERTIES_BUFFER.get();
     if (messagePropertiesBuffer == null) {
-      messagePropertiesBuffer = new ArrayList<>();
+      messagePropertiesBuffer = new ArrayList<Object>();
       MESSAGE_PROPERTIES_BUFFER.set(messagePropertiesBuffer);
     }
     return messagePropertiesBuffer;

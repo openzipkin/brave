@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -42,7 +42,6 @@ final class TracingClientInterceptor implements ClientInterceptor {
   final Map<String, Key<String>> nameToKey;
   final CurrentTraceContext currentTraceContext;
   final RpcClientHandler handler;
-
   final MessageProcessor messageProcessor;
 
   TracingClientInterceptor(GrpcTracing grpcTracing) {
@@ -55,7 +54,7 @@ final class TracingClientInterceptor implements ClientInterceptor {
   @Override
   public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(MethodDescriptor<ReqT, RespT> method,
     CallOptions callOptions, Channel next) {
-    return new TracingClientCall<>(
+    return new TracingClientCall<ReqT, RespT>(
       method, callOptions, currentTraceContext.get(), next.newCall(method, callOptions));
   }
 
@@ -63,7 +62,7 @@ final class TracingClientInterceptor implements ClientInterceptor {
     final MethodDescriptor<ReqT, RespT> method;
     final CallOptions callOptions;
     final TraceContext invocationContext;
-    final AtomicReference<Span> spanRef = new AtomicReference<>();
+    final AtomicReference<Span> spanRef = new AtomicReference<Span>();
 
     TracingClientCall(MethodDescriptor<ReqT, RespT> method, CallOptions callOptions,
       TraceContext invocationContext, ClientCall<ReqT, RespT> call) {
@@ -80,62 +79,89 @@ final class TracingClientInterceptor implements ClientInterceptor {
       Span span = handler.handleSendWithParent(request, invocationContext);
       spanRef.set(span);
 
-      responseListener = new TracingClientCallListener<>(
+      responseListener = new TracingClientCallListener<RespT>(
         responseListener,
         invocationContext,
         spanRef,
         request
       );
 
-      try (Scope scope = currentTraceContext.maybeScope(span.context())) {
+      Scope scope = currentTraceContext.maybeScope(span.context());
+      Throwable error = null;
+      try {
         super.start(responseListener, headers);
-      } catch (Throwable e) {
-        propagateIfFatal(e);
-
-        // Another interceptor may throw an exception during start, in which case no other
-        // callbacks are called, so go ahead and close the span here.
-        //
-        // See instrumentation/grpc/RATIONALE.md for why we don't use the handler here
-        spanRef.set(null);
-        if (span != null) span.error(e).finish();
+      } catch (RuntimeException e) {
+        error = e;
         throw e;
+      } catch (Error e) {
+        propagateIfFatal(e);
+        error = e;
+        throw e;
+      } finally {
+        if (error != null) {
+          // Another interceptor may throw an exception during start, in which case no other
+          // callbacks are called, so go ahead and close the span here.
+          //
+          // See instrumentation/grpc/RATIONALE.md for why we don't use the handler here
+          spanRef.set(null);
+          if (span != null) span.error(error).finish();
+        }
+        scope.close();
       }
     }
 
     @Override public void cancel(@Nullable String message, @Nullable Throwable cause) {
-      try (Scope scope = maybeScopeClientOrInvocationContext(spanRef, invocationContext)) {
+      Scope scope = maybeScopeClientOrInvocationContext(spanRef, invocationContext);
+      try {
         delegate().cancel(message, cause);
+      } finally {
+        scope.close();
       }
     }
 
     @Override public void halfClose() {
-      try (Scope scope = maybeScopeClientOrInvocationContext(spanRef, invocationContext)) {
+      Scope scope = maybeScopeClientOrInvocationContext(spanRef, invocationContext);
+      Throwable error = null;
+      try {
         delegate().halfClose();
-      } catch (Throwable e) {
-        propagateIfFatal(e);
-
-        // If there was an exception executing onHalfClose, we don't expect other lifecycle
-        // commands to succeed. Accordingly, we close the span
-        //
-        // See instrumentation/grpc/RATIONALE.md for why we don't use the handler here
-        Span span = spanRef.getAndSet(null);
-        if (span != null) span.error(e).finish();
+      } catch (RuntimeException e) {
+        error = e;
         throw e;
+      } catch (Error e) {
+        propagateIfFatal(e);
+        error = e;
+        throw e;
+      } finally {
+        if (error != null) {
+          // If there was an exception executing onHalfClose, we don't expect other lifecycle
+          // commands to succeed. Accordingly, we close the span
+          //
+          // See instrumentation/grpc/RATIONALE.md for why we don't use the handler here
+          Span span = spanRef.getAndSet(null);
+          if (span != null) span.error(error).finish();
+        }
+        scope.close();
       }
     }
 
     @Override public void request(int numMessages) {
-      try (Scope scope = maybeScopeClientOrInvocationContext(spanRef, invocationContext)) {
+      Scope scope = maybeScopeClientOrInvocationContext(spanRef, invocationContext);
+      try {
         delegate().request(numMessages);
+      } finally {
+        scope.close();
       }
     }
 
     @Override public void sendMessage(ReqT message) {
-      try (Scope scope = maybeScopeClientOrInvocationContext(spanRef, invocationContext)) {
+      Scope scope = maybeScopeClientOrInvocationContext(spanRef, invocationContext);
+      try {
         delegate().sendMessage(message);
         Span span = spanRef.get(); // could be an error
         SpanCustomizer customizer = span != null ? span.customizer() : NoopSpanCustomizer.INSTANCE;
         messageProcessor.onMessageSent(message, customizer);
+      } finally {
+        scope.close();
       }
     }
   }
@@ -169,8 +195,11 @@ final class TracingClientInterceptor implements ClientInterceptor {
     }
 
     @Override public void onReady() {
-      try (Scope scope = maybeScopeClientOrInvocationContext(spanRef, invocationContext)) {
+      Scope scope = maybeScopeClientOrInvocationContext(spanRef, invocationContext);
+      try {
         delegate().onReady();
+      } finally {
+        scope.close();
       }
     }
 
@@ -178,17 +207,23 @@ final class TracingClientInterceptor implements ClientInterceptor {
     @Override public void onHeaders(Metadata headers) {
       // onHeaders() JavaDoc mentions headers are not thread-safe, so we make a safe copy here.
       this.headers.merge(headers);
-      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
+      Scope scope = currentTraceContext.maybeScope(invocationContext);
+      try {
         delegate().onHeaders(headers);
+      } finally {
+        scope.close();
       }
     }
 
     @Override public void onMessage(RespT message) {
-      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
+      Scope scope = currentTraceContext.maybeScope(invocationContext);
+      try {
         Span span = spanRef.get(); // could be an error
         SpanCustomizer customizer = span != null ? span.customizer() : NoopSpanCustomizer.INSTANCE;
         messageProcessor.onMessageReceived(message, customizer);
         delegate().onMessage(message);
+      } finally {
+        scope.close();
       }
     }
 
@@ -198,8 +233,11 @@ final class TracingClientInterceptor implements ClientInterceptor {
       Span span = spanRef.getAndSet(null);
       if (span != null) handler.handleReceive(response, span);
 
-      try (Scope scope = currentTraceContext.maybeScope(invocationContext)) {
+      Scope scope = currentTraceContext.maybeScope(invocationContext);
+      try {
         delegate().onClose(status, trailers);
+      } finally {
+        scope.close();
       }
     }
   }

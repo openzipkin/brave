@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2022 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -48,7 +48,7 @@ final class TracingP6SpyOptions extends P6SpyOptions {
 
   @Override
   public Map<String, String> getDefaults() {
-    Map<String, String> allDefaults = new LinkedHashMap<>(super.getDefaults());
+    Map<String, String> allDefaults = new LinkedHashMap<String, String>(super.getDefaults());
     allDefaults.putAll(logLoadableOptions.getDefaults());
     allDefaults.put(INCLUDE_PARAMETER_VALUES, Boolean.FALSE.toString());
     allDefaults.put(INCLUDE_AFFECTED_ROWS_COUNT, Boolean.FALSE.toString());

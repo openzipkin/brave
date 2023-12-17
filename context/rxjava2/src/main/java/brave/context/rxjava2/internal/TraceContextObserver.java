@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -45,7 +45,7 @@ final class TraceContextObserver<T> implements Observer<T>, Disposable {
 
   @Override public void onNext(T t) {
     Scope scope = contextScoper.maybeScope(assembled);
-    try { // retrolambda can't resolve this try/finally
+    try {
       downstream.onNext(t);
     } finally {
       scope.close();
@@ -60,7 +60,7 @@ final class TraceContextObserver<T> implements Observer<T>, Disposable {
     done = true;
 
     Scope scope = contextScoper.maybeScope(assembled);
-    try { // retrolambda can't resolve this try/finally
+    try {
       downstream.onError(t);
     } finally {
       scope.close();
@@ -72,7 +72,7 @@ final class TraceContextObserver<T> implements Observer<T>, Disposable {
     done = true;
 
     Scope scope = contextScoper.maybeScope(assembled);
-    try { // retrolambda can't resolve this try/finally
+    try {
       downstream.onComplete();
     } finally {
       scope.close();

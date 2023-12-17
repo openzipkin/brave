@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -107,10 +107,13 @@ import static brave.internal.Throwables.propagateIfFatal;
     Throwable error = null;
     try {
       send.apply(delegate, destination, message);
-    } catch (Throwable t) {
-      propagateIfFatal(t);
-      error = t;
-      throw t;
+    } catch (RuntimeException e) {
+      error = e;
+      throw e;
+    } catch (Error e) {
+      propagateIfFatal(e);
+      error = e;
+      throw e;
     } finally {
       if (error != null) {
         span.error(error).finish(); // An error can happen regardless of async.

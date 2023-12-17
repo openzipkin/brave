@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -32,6 +32,8 @@ import io.netty.util.Attribute;
 import java.net.InetSocketAddress;
 import java.net.URI;
 
+import static brave.internal.Throwables.propagateIfFatal;
+
 final class TracingHttpServerHandler extends ChannelDuplexHandler {
   final CurrentTraceContext currentTraceContext;
   final HttpServerHandler<HttpServerRequest, HttpServerResponse> handler;
@@ -59,7 +61,11 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
     Throwable error = null;
     try {
       ctx.fireChannelRead(msg);
-    } catch (Throwable e) {
+    } catch (RuntimeException e) {
+      error = e;
+      throw e;
+    } catch (Error e) {
+      propagateIfFatal(e);
       error = e;
       throw e;
     } finally {
@@ -83,9 +89,13 @@ final class TracingHttpServerHandler extends ChannelDuplexHandler {
     Throwable error = null;
     try {
       ctx.write(msg, prm);
-    } catch (Throwable t) {
-      error = t;
-      throw t;
+    } catch (RuntimeException e) {
+      error = e;
+      throw e;
+    } catch (Error e) {
+      propagateIfFatal(e);
+      error = e;
+      throw e;
     } finally {
       HttpServerRequest request = ctx.channel().attr(NettyHttpTracing.REQUEST_ATTRIBUTE).get();
       handler.handleSend(new HttpResponseWrapper(request, response, error), span);

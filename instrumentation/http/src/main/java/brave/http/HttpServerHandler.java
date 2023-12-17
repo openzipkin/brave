@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -67,7 +67,7 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
   public static HttpServerHandler<HttpServerRequest, HttpServerResponse> create(
     HttpTracing httpTracing) {
     if (httpTracing == null) throw new NullPointerException("httpTracing == null");
-    return new HttpServerHandler<>(httpTracing, null);
+    return new HttpServerHandler<HttpServerRequest, HttpServerResponse>(httpTracing, null);
   }
 
   /**
@@ -79,7 +79,7 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
     HttpServerAdapter<Req, Resp> adapter) {
     if (httpTracing == null) throw new NullPointerException("httpTracing == null");
     if (adapter == null) throw new NullPointerException("adapter == null");
-    return new HttpServerHandler<>(httpTracing, adapter);
+    return new HttpServerHandler<Req, Resp>(httpTracing, adapter);
   }
 
   final Tracer tracer;
@@ -131,7 +131,7 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
     if (request instanceof HttpServerRequest) {
       serverRequest = (HttpServerRequest) request;
     } else {
-      serverRequest = new HttpServerAdapters.FromRequestAdapter<>(adapter, request);
+      serverRequest = new HttpServerAdapters.FromRequestAdapter<Req>(adapter, request);
     }
 
     Span span = nextSpan(extractor.extract(carrier), serverRequest);
@@ -178,7 +178,7 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
         span.error(error);
       }
     } else {
-      serverResponse = new FromResponseAdapter<>(adapter, response, error);
+      serverResponse = new FromResponseAdapter<Resp>(adapter, response, error);
     }
     handleFinish(serverResponse, span);
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -42,7 +42,7 @@ abstract class WebMvcRuntime {
     // Find spring-webmvc v3.1 new methods
     try {
       Class.forName("org.springframework.web.method.HandlerMethod");
-      return new WebMvc31(); // intentionally doesn't not access the type prior to the above guard
+      return new WebMvc31(); // intentionally doesn't access the type prior to the above guard
     } catch (ClassNotFoundException e) {
       // pre spring-webmvc v3.1
     }

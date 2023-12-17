@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class HttpTags {
   /** In worst case, holds 500 strings corresponding to all valid status codes. */
-  static final Map<Integer, String> CACHED_STATUS_CODES = new ConcurrentHashMap<>();
+  static final Map<Integer, String> CACHED_STATUS_CODES = new ConcurrentHashMap<Integer, String>();
 
   /**
    * This tags "http.method" as the value of  {@link HttpRequest#method()}, such as "GET" or
@@ -142,7 +142,7 @@ public final class HttpTags {
    * @see HttpResponse#request()
    * @since 5.11
    */
-  public static Tag<HttpRequest> requestHeader(String key, String headerName) {
+  public static Tag<HttpRequest> requestHeader(String key, final String headerName) {
     return new Tag<HttpRequest>(key) {
       String name = validateNonEmpty("headerName", headerName);
 

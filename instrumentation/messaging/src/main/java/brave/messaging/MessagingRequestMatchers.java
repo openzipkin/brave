@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -33,7 +33,7 @@ public final class MessagingRequestMatchers {
   public static <Req extends MessagingRequest> Matcher<Req> operationEquals(String operation) {
     if (operation == null) throw new NullPointerException("operation == null");
     if (operation.isEmpty()) throw new NullPointerException("operation is empty");
-    return new MessagingOperationEquals<>(operation);
+    return new MessagingOperationEquals<Req>(operation);
   }
 
   static final class MessagingOperationEquals<Req extends MessagingRequest>
@@ -73,7 +73,7 @@ public final class MessagingRequestMatchers {
   public static <Req extends MessagingRequest> Matcher<Req> channelKindEquals(String channelKind) {
     if (channelKind == null) throw new NullPointerException("channelKind == null");
     if (channelKind.isEmpty()) throw new NullPointerException("channelKind is empty");
-    return new MessagingChannelKindEquals<>(channelKind);
+    return new MessagingChannelKindEquals<Req>(channelKind);
   }
 
   static final class MessagingChannelKindEquals<Req extends MessagingRequest>
@@ -113,7 +113,7 @@ public final class MessagingRequestMatchers {
   public static <Req extends MessagingRequest> Matcher<Req> channelNameEquals(String channelName) {
     if (channelName == null) throw new NullPointerException("channelName == null");
     if (channelName.isEmpty()) throw new NullPointerException("channelName is empty");
-    return new MessagingChannelNameEquals<>(channelName);
+    return new MessagingChannelNameEquals<Req>(channelName);
   }
 
   static final class MessagingChannelNameEquals<Req extends MessagingRequest>

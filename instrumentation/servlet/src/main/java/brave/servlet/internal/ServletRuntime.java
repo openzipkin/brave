@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -187,7 +187,7 @@ public abstract class ServletRuntime {
 
     // copy-on-write global reflection cache outperforms thread local copies
     final AtomicReference<Map<Class<?>, Object>> classToGetStatus =
-      new AtomicReference<>(new LinkedHashMap<>());
+      new AtomicReference<Map<Class<?>, Object>>(new LinkedHashMap<Class<?>, Object>());
     static final String RETURN_NULL = "RETURN_NULL";
 
     /**
@@ -213,14 +213,14 @@ public abstract class ServletRuntime {
         try {
           // we don't check for accessibility as isAccessible is deprecated: just fail later
           getStatusMethod = clazz.getMethod("getStatus");
-          return (int) ((Method) getStatusMethod).invoke(response);
+          return (Integer) ((Method) getStatusMethod).invoke(response);
         } catch (Throwable throwable) {
           propagateIfFatal(throwable);
           getStatusMethod = RETURN_NULL;
           return 0;
         } finally {
           // regardless of success or fail, replace the cache
-          Map<Class<?>, Object> replacement = new LinkedHashMap<>(classesToCheck);
+          Map<Class<?>, Object> replacement = new LinkedHashMap<Class<?>, Object>(classesToCheck);
           replacement.put(clazz, getStatusMethod);
           classToGetStatus.set(replacement); // lost race will reset, but only up to size - 1 times
         }
@@ -228,10 +228,10 @@ public abstract class ServletRuntime {
 
       // if we are here, we have a cached method, that "should" never fail, but we check anyway
       try {
-        return (int) ((Method) getStatusMethod).invoke(response);
+        return (Integer) ((Method) getStatusMethod).invoke(response);
       } catch (Throwable throwable) {
         propagateIfFatal(throwable);
-        Map<Class<?>, Object> replacement = new LinkedHashMap<>(classesToCheck);
+        Map<Class<?>, Object> replacement = new LinkedHashMap<Class<?>, Object>(classesToCheck);
         replacement.put(clazz, RETURN_NULL);
         classToGetStatus.set(replacement); // prefer overriding on failure
         return 0;

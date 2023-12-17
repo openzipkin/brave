@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -97,7 +97,7 @@ final class TraceContextBinaryFormat {
       .traceId(traceId)
       .spanId(spanId);
     if (sampled != null) builder.sampled(sampled.booleanValue());
-    if (tags != null) builder.extra(Collections.singletonList(tags));
+    if (tags != null) builder.extra(Collections.<Object>singletonList(tags));
     return builder.build();
   }
 

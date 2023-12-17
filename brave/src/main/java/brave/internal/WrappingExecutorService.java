@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -104,7 +104,7 @@ public abstract class WrappingExecutorService implements ExecutorService {
   }
 
   <T> Collection<? extends Callable<T>> wrap(Collection<? extends Callable<T>> tasks) {
-    ArrayList<Callable<T>> result = new ArrayList<>(tasks.size());
+    ArrayList<Callable<T>> result = new ArrayList<Callable<T>>(tasks.size());
     for (Callable<T> task : tasks) {
       result.add(wrap(task));
     }

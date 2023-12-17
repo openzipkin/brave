@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -99,8 +99,8 @@ public final class BaggagePropagation<K> implements Propagation<K> {
 
   public static class FactoryBuilder { // not final to backport ExtraFieldPropagation
     final Propagation.Factory delegate;
-    final List<String> extractKeyNames = new ArrayList<>();
-    final Set<BaggagePropagationConfig> configs = new LinkedHashSet<>();
+    final List<String> extractKeyNames = new ArrayList<String>();
+    final Set<BaggagePropagationConfig> configs = new LinkedHashSet<BaggagePropagationConfig>();
 
     FactoryBuilder(Propagation.Factory delegate) {
       if (delegate == null) throw new NullPointerException("delegate == null");
@@ -115,7 +115,7 @@ public final class BaggagePropagation<K> implements Propagation<K> {
      * @since 5.11
      */
     public Set<BaggagePropagationConfig> configs() {
-      return Collections.unmodifiableSet(new LinkedHashSet<>(configs));
+      return Collections.unmodifiableSet(new LinkedHashSet<BaggagePropagationConfig>(configs));
     }
 
     /**
@@ -183,8 +183,8 @@ public final class BaggagePropagation<K> implements Propagation<K> {
       // Associate baggage fields with any remote propagation keys
       this.configs = factoryBuilder.configs.toArray(new BaggagePropagationConfig[0]);
 
-      List<BaggageField> fields = new ArrayList<>();
-      Set<String> localFieldNames = new LinkedHashSet<>();
+      List<BaggageField> fields = new ArrayList<BaggageField>();
+      Set<String> localFieldNames = new LinkedHashSet<String>();
       int maxDynamicFields = 0;
       for (BaggagePropagationConfig config : factoryBuilder.configs) {
         maxDynamicFields += config.maxDynamicFields;
@@ -199,11 +199,11 @@ public final class BaggagePropagation<K> implements Propagation<K> {
     }
 
     @Deprecated @Override public <K1> BaggagePropagation<K1> create(KeyFactory<K1> keyFactory) {
-      return new BaggagePropagation<>(StringPropagationAdapter.create(get(), keyFactory));
+      return new BaggagePropagation<K1>(StringPropagationAdapter.create(get(), keyFactory));
     }
 
     @Override public BaggagePropagation<String> get() {
-      return new BaggagePropagation<>(this);
+      return new BaggagePropagation<String>(this);
     }
 
     @Override public TraceContext decorate(TraceContext context) {
@@ -224,11 +224,11 @@ public final class BaggagePropagation<K> implements Propagation<K> {
     }
 
     @Override public <R> Injector<R> injector(Setter<R, String> setter) {
-      return new BaggageInjector<>(this, setter);
+      return new BaggageInjector<R>(this, setter);
     }
 
     @Override public <R> Extractor<R> extractor(Getter<R, String> getter) {
-      return new BaggageExtractor<>(this, getter);
+      return new BaggageExtractor<R>(this, getter);
     }
   }
 
@@ -280,14 +280,12 @@ public final class BaggagePropagation<K> implements Propagation<K> {
     List<String> baggageKeyNames = getAllKeyNames(emptyExtraction);
     if (baggageKeyNames.isEmpty()) return propagation.keys();
 
-    List<String> result = new ArrayList<>(propagation.keys().size() + baggageKeyNames.size());
+    List<String> result = new ArrayList<String>(propagation.keys().size() + baggageKeyNames.size());
     result.addAll(propagation.keys());
     result.addAll(baggageKeyNames);
     return Collections.unmodifiableList(result);
   }
 
-  // Not lambda as Retrolambda creates an OSGi dependency on jdk.internal.vm.annotation with JDK 14
-  // See https://github.com/luontola/retrolambda/issues/160
   enum NoopGetter implements Getter<Boolean, String> {
     INSTANCE;
 

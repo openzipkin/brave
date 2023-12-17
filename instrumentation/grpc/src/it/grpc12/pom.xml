@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright 2013-2020 The OpenZipkin Authors
+    Copyright 2013-2023 The OpenZipkin Authors
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
     in compliance with the License. You may obtain a copy of the License at
@@ -147,12 +147,18 @@
           <!-- workaround to SUREFIRE-1831 -->
           <useModulePath>false</useModulePath>
           <!-- Brave and OkHttp MockWebServer log with java.util.logging. Adding the bridge allows
-               allows us to change scope and format via log4j2.properties -->
+               us to change scope and format via log4j2.properties -->
           <systemPropertyVariables>
             <java.util.logging.manager>org.apache.logging.log4j.jul.LogManager</java.util.logging.manager>
           </systemPropertyVariables>
           <!-- Ensure scope leak cause ends up in the console -->
           <trimStackTrace>false</trimStackTrace>
+          <!-- add opens for old grpc to avoid below in JRE 21:
+               Could not initialize class io.netty.util.internal.PlatformDependent0 -->
+          <argLine>
+            --add-opens java.base/java.lang=ALL-UNNAMED
+            --add-opens java.base/java.nio=ALL-UNNAMED
+          </argLine>
         </configuration>
       </plugin>
     </plugins>

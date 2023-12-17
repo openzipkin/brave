@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -32,7 +32,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * @since 5.8
  */
 public class RpcTracing implements Closeable {
-  static final AtomicReference<RpcTracing> CURRENT = new AtomicReference<>();
+  static final AtomicReference<RpcTracing> CURRENT = new AtomicReference<RpcTracing>();
 
   /** @since 5.8 */
   public static RpcTracing create(Tracing tracing) {

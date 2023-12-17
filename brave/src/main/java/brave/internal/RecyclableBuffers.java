@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,7 +15,7 @@ package brave.internal;
 
 public final class RecyclableBuffers {
 
-  private static final ThreadLocal<char[]> PARSE_BUFFER = new ThreadLocal<>();
+  private static final ThreadLocal<char[]> PARSE_BUFFER = new ThreadLocal<char[]>();
 
   /**
    * Returns a {@link ThreadLocal} reused {@code char[]} for use when decoding bytes into an ID hex

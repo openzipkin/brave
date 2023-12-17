@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -33,6 +33,8 @@ import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 
+import static brave.internal.Throwables.propagateIfFatal;
+
 public final class TracingAsyncClientHttpRequestInterceptor
   implements AsyncClientHttpRequestInterceptor {
 
@@ -62,15 +64,29 @@ public final class TracingAsyncClientHttpRequestInterceptor
       ? currentTraceContext.get()
       : null;
 
-    try (Scope ws = currentTraceContext.maybeScope(span.context())) {
+    Scope ws = currentTraceContext.maybeScope(span.context());
+    Throwable error = null;
+    try {
       ListenableFuture<ClientHttpResponse> result = execution.executeAsync(req, body);
       result.addCallback(new TraceListenableFutureCallback(request, span, handler));
       return invocationContext != null
-        ? new TraceContextListenableFuture<>(result, currentTraceContext, invocationContext)
+        ? new TraceContextListenableFuture<ClientHttpResponse>(result, currentTraceContext, invocationContext)
         : result;
-    } catch (Throwable e) {
-      handler.handleReceive(new ClientHttpResponseWrapper(request, null, e), span);
+    } catch (RuntimeException e) {
+      error = e;
       throw e;
+    } catch (IOException e) {
+      error = e;
+      throw e;
+    } catch (Error e) {
+      propagateIfFatal(e);
+      error = e;
+      throw e;
+    } finally {
+      if (error != null) {
+        handler.handleReceive(new ClientHttpResponseWrapper(request, null, error), span);
+      }
+      ws.close();
     }
   }
 

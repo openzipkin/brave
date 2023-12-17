@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -35,6 +35,8 @@ import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.impl.execchain.ClientExecChain;
 
+import static brave.internal.Throwables.propagateIfFatal;
+
 /**
  * protocol exec is the last in the execution chain, so first to execute. We eagerly create a span
  * here so that user interceptors can see it.
@@ -62,13 +64,25 @@ final class TracingProtocolExec implements ClientExecChain {
 
     CloseableHttpResponse response = null;
     Throwable error = null;
-    try (SpanInScope ws = tracer.withSpanInScope(span)) {
+    SpanInScope ws = tracer.withSpanInScope(span);
+    try {
       return response = protocolExec.execute(route, req, context, execAware);
-    } catch (Throwable e) {
+    } catch (RuntimeException e) {
+      error = e;
+      throw e;
+    } catch (HttpException e) {
+      error = e;
+      throw e;
+    } catch (IOException e) {
+      error = e;
+      throw e;
+    } catch (Error e) {
+      propagateIfFatal(e);
       error = e;
       throw e;
     } finally {
       handler.handleReceive(new HttpResponseWrapper(response, context, error), span);
+      ws.close();
     }
   }
 

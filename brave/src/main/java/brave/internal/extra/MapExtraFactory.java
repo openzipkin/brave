@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -29,7 +29,7 @@ public abstract class MapExtraFactory<K, V, A extends MapExtra<K, V, A, F>,
 
   public static abstract class Builder<K, V, A extends MapExtra<K, V, A, F>,
       F extends MapExtraFactory<K, V, A, F>, B extends Builder<K, V, A, F, B>> {
-    List<Object> initialState = new ArrayList<>();
+    List<Object> initialState = new ArrayList<Object>();
     int maxDynamicEntries;
 
     public final B addInitialKey(K key) {
@@ -56,7 +56,7 @@ public abstract class MapExtraFactory<K, V, A extends MapExtra<K, V, A, F>,
 
   protected MapExtraFactory(Builder<K, V, A, F, ?> builder) {
     super(builder.initialState.toArray());
-    Map<K, Integer> initialFieldIndices = new LinkedHashMap<>();
+    Map<K, Integer> initialFieldIndices = new LinkedHashMap<K, Integer>();
     Object[] initialStateArray = (Object[]) initialState;
     this.initialArrayLength = initialStateArray.length;
     for (int i = 0; i < initialArrayLength; i += 2) {

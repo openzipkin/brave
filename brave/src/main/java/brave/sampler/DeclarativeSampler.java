@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -61,17 +61,17 @@ public abstract class DeclarativeSampler<M> implements SamplerFunction<M> {
   public static <M> DeclarativeSampler<M> createWithProbability(
     ProbabilityOfMethod<M> probabilityOfMethod) {
     if (probabilityOfMethod == null) throw new NullPointerException("probabilityOfMethod == null");
-    return new DeclarativeCountingSampler<>(probabilityOfMethod);
+    return new DeclarativeCountingSampler<M>(probabilityOfMethod);
   }
 
   /* @since 5.8 */
   public static <M> DeclarativeSampler<M> createWithRate(RateOfMethod<M> rateOfMethod) {
     if (rateOfMethod == null) throw new NullPointerException("rateOfMethod == null");
-    return new DeclarativeRateLimitingSampler<>(rateOfMethod);
+    return new DeclarativeRateLimitingSampler<M>(rateOfMethod);
   }
 
   // this assumes input are compared by identity as typically annotations do not override hashCode
-  final ConcurrentMap<M, Sampler> methodToSamplers = new ConcurrentHashMap<>();
+  final ConcurrentMap<M, Sampler> methodToSamplers = new ConcurrentHashMap<M, Sampler>();
 
   /**
    * {@inheritDoc}
@@ -170,7 +170,7 @@ public abstract class DeclarativeSampler<M> implements SamplerFunction<M> {
    * @since 4.19
    * @deprecated Since 5.8, use {@link Tracer#startScopedSpan(String, SamplerFunction, Object)}
    */
-  @Deprecated public Sampler toSampler(M method, Sampler fallback) {
+  @Deprecated public Sampler toSampler(final M method, final Sampler fallback) {
     if (fallback == null) throw new NullPointerException("fallback == null");
     if (method == null) return fallback;
     return new Sampler() {

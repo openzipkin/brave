@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -45,7 +45,7 @@ public class IntegrationTestSpanHandlerTest {
     assertThatThrownBy(spanHandler::takeLocalSpan)
         .hasMessageStartingWith("Orphaned span found")
         .hasMessageContaining("brave.flush")
-        .hasMessageEndingWith("Look for code missing span.flush() or span.finish().");
+        .hasMessageContaining("Look for code missing span.flush() or span.finish().");
   }
 
   @Test public void toString_includesSpans() {

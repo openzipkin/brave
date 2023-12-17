@@ -161,7 +161,7 @@ public final class JmsTracing {
     this.producerSampler = builder.messagingTracing.producerSampler();
     this.consumerSampler = builder.messagingTracing.consumerSampler();
     this.remoteServiceName = builder.remoteServiceName;
-    this.traceIdProperties = new LinkedHashSet<>(propagation.keys());
+    this.traceIdProperties = new LinkedHashSet<String>(propagation.keys());
   }
 
   public Connection connection(Connection connection) {

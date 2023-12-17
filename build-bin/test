@@ -4,5 +4,9 @@
 #
 # See [README.md] for an explanation of this and how CI should use it.
 
-# Don't use `-T1C ` because this project uses RetroLambda which is not threadsafe
-./mvnw verify -nsu "$@"
+# We use install, not verify, because maven-invoker-tests need brave-tests
+# installed into the local repository before it can run.
+#
+# We avoid -T1C because some plugins don't work in parallel and also ITs are
+# difficult to debug when failures are in parallel.
+./mvnw install -nsu "$@"

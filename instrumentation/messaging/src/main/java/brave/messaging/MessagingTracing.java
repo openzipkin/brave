@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -32,7 +32,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * @since 5.9
  */
 public class MessagingTracing implements Closeable {
-  static final AtomicReference<MessagingTracing> CURRENT = new AtomicReference<>();
+  static final AtomicReference<MessagingTracing> CURRENT = new AtomicReference<MessagingTracing>();
 
   /** @since 5.9 */
   public static MessagingTracing create(Tracing tracing) {

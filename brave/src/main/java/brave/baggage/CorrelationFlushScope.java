@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -46,7 +46,7 @@ final class CorrelationFlushScope extends AtomicBoolean implements Scope {
    * BaggageField#updateValue(String)}.
    */
   static void flush(BaggageField field, String value) {
-    Set<CorrelationContext> syncedContexts = new LinkedHashSet<>();
+    Set<CorrelationContext> syncedContexts = new LinkedHashSet<CorrelationContext>();
     for (Object o : updateScopeStack()) {
       CorrelationUpdateScope next = ((CorrelationUpdateScope) o);
       String name = next.name(field);
@@ -66,12 +66,13 @@ final class CorrelationFlushScope extends AtomicBoolean implements Scope {
     }
   }
 
-  static final ThreadLocal<ArrayDeque<Object>> updateScopeStack = new ThreadLocal<>();
+  static final ThreadLocal<ArrayDeque<Object>> updateScopeStack =
+    new ThreadLocal<ArrayDeque<Object>>();
 
   static ArrayDeque<Object> updateScopeStack() {
     ArrayDeque<Object> stack = updateScopeStack.get();
     if (stack == null) {
-      stack = new ArrayDeque<>();
+      stack = new ArrayDeque<Object>();
       updateScopeStack.set(stack);
     }
     return stack;

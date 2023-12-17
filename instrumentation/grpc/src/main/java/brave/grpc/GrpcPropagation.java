@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -48,7 +48,7 @@ final class GrpcPropagation implements Propagation<String> {
 
   /** Creates constant keys for use in propagating trace identifiers or baggage. */
   static Map<String, Key<String>> nameToKey(Propagation<String> propagation) {
-    Map<String, Key<String>> result = new LinkedHashMap<>();
+    Map<String, Key<String>> result = new LinkedHashMap<String, Key<String>>();
     for (String keyName : propagation.keys()) {
       result.put(keyName, Key.of(keyName, Metadata.ASCII_STRING_MARSHALLER));
     }
@@ -83,11 +83,11 @@ final class GrpcPropagation implements Propagation<String> {
   }
 
   @Override public <R> Injector<R> injector(Setter<R, String> setter) {
-    return new GrpcInjector<>(this, setter);
+    return new GrpcInjector<R>(this, setter);
   }
 
   @Override public <R> Extractor<R> extractor(Getter<R, String> getter) {
-    return new GrpcExtractor<>(this, getter);
+    return new GrpcExtractor<R>(this, getter);
   }
 
   static final class GrpcInjector<R> implements Injector<R> {

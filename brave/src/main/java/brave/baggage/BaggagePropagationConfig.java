@@ -99,7 +99,7 @@ public class BaggagePropagationConfig {
     /** @since 5.11 */
     public static final class Builder {
       final BaggageField field;
-      List<String> keyNames = new ArrayList<>();
+      List<String> keyNames = new ArrayList<String>();
 
       Builder(BaggageField field) {
         this.field = field;
@@ -107,7 +107,7 @@ public class BaggagePropagationConfig {
 
       Builder(SingleBaggageField input) {
         this.field = input.field;
-        this.keyNames = new ArrayList<>(input.keyNames());
+        this.keyNames = new ArrayList<String>(input.keyNames());
       }
 
       /**
@@ -137,8 +137,11 @@ public class BaggagePropagationConfig {
           ? BaggageCodec.NOOP
           : SingleFieldBaggageCodec.single(builder.field, builder.keyNames), 0);
       field = builder.field;
-      keyNames = builder.keyNames.isEmpty() ? Collections.emptySet()
-          : Collections.unmodifiableSet(new LinkedHashSet<>(builder.keyNames));
+      if (builder.keyNames.isEmpty()) {
+        keyNames = Collections.emptySet();
+      } else {
+        keyNames = Collections.<String>unmodifiableSet(new LinkedHashSet<String>(builder.keyNames));
+      }
     }
 
     public BaggageField field() {

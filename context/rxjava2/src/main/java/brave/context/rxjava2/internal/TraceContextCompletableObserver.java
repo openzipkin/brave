@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -40,7 +40,7 @@ final class TraceContextCompletableObserver implements CompletableObserver, Disp
 
   @Override public void onError(Throwable t) {
     Scope scope = contextScoper.maybeScope(assembled);
-    try { // retrolambda can't resolve this try/finally
+    try {
       downstream.onError(t);
     } finally {
       scope.close();
@@ -49,7 +49,7 @@ final class TraceContextCompletableObserver implements CompletableObserver, Disp
 
   @Override public void onComplete() {
     Scope scope = contextScoper.maybeScope(assembled);
-    try { // retrolambda can't resolve this try/finally
+    try {
       downstream.onComplete();
     } finally {
       scope.close();

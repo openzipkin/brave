@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -72,8 +72,8 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
   public static abstract class Builder {
     final CorrelationContext context;
     // Don't allow mixed case of the same name!
-    final Set<String> allNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    final Set<SingleCorrelationField> fields = new LinkedHashSet<>();
+    final Set<String> allNames = new TreeSet<String>(String.CASE_INSENSITIVE_ORDER);
+    final Set<SingleCorrelationField> fields = new LinkedHashSet<SingleCorrelationField>();
 
     /** Internal constructor used by subtypes. */
     protected Builder(CorrelationContext context) {
@@ -91,7 +91,7 @@ public abstract class CorrelationScopeDecorator implements ScopeDecorator {
      * @since 5.11
      */
     public Set<CorrelationScopeConfig> configs() {
-      return Collections.unmodifiableSet(new LinkedHashSet<>(fields));
+      return Collections.unmodifiableSet(new LinkedHashSet<CorrelationScopeConfig>(fields));
     }
 
     /**

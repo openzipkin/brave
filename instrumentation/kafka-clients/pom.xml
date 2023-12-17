@@ -94,15 +94,6 @@
   <build>
     <plugins>
       <plugin>
-        <groupId>net.orfjackal.retrolambda</groupId>
-        <artifactId>retrolambda-maven-plugin</artifactId>
-        <executions>
-          <execution>
-            <phase>none</phase>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
         <artifactId>maven-invoker-plugin</artifactId>
       </plugin>
       <plugin>
@@ -124,12 +115,14 @@
               <artifactId>kafka-clients</artifactId>
               <version>${old-kafka-clients.version}</version>
               <repositoryType>MAIN</repositoryType>
+              <type>jar</type>
             </DynamicDependency>
             <DynamicDependency>
               <groupId>com.github.charithe</groupId>
               <artifactId>kafka-junit</artifactId>
               <version>${old-kafka-junit.version}</version>
               <repositoryType>MAIN</repositoryType>
+              <type>jar</type>
             </DynamicDependency>
           </dynamicDependencies>
         </configuration>

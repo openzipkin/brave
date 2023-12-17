@@ -34,10 +34,14 @@ import org.jvnet.animal_sniffer.IgnoreJRERequirement;
  *
  * <p>Originally designed by OkHttp team, derived from {@code okhttp3.internal.platform.Platform}
  */
-public abstract class Platform {
+public abstract class Platform implements Clock {
   private static final Platform PLATFORM = findPlatform();
 
   volatile String linkLocalIp;
+
+  /** Returns the same value as {@link System#nanoTime()}. */
+  @Nullable public abstract long nanoTime();
+
 
   /** Guards {@link InetSocketAddress#getHostString()}, as it isn't available until Java 7 */
   @Nullable public abstract String getHostString(InetSocketAddress socket);
@@ -112,7 +116,7 @@ public abstract class Platform {
     try {
       Class zoneId = Class.forName("java.time.ZoneId");
       Class.forName("java.time.Clock").getMethod("tickMillis", zoneId);
-      return new Jre9(); // intentionally doesn't not access the type prior to the above guard
+      return new Jre9(); // intentionally doesn't access the type prior to the above guard
     } catch (ClassNotFoundException e) {
       // pre JRE 8
     } catch (NoSuchMethodException e) {
@@ -122,7 +126,7 @@ public abstract class Platform {
     // Find JRE 7 new methods
     try {
       Class.forName("java.util.concurrent.ThreadLocalRandom");
-      return new Jre7(); // intentionally doesn't not access the type prior to the above guard
+      return new Jre7(); // intentionally doesn't access the type prior to the above guard
     } catch (ClassNotFoundException e) {
       // pre JRE 7
     }
@@ -163,12 +167,16 @@ public abstract class Platform {
   }
 
   static class Jre9 extends Jre7 {
+    @Override public long currentTimeMicroseconds() {
+      java.time.Instant instant = java.time.Clock.systemUTC().instant();
+      return (instant.getEpochSecond() * 1000000) + (instant.getNano() / 1000);
+    }
+
     @IgnoreJRERequirement @Override public Clock clock() {
       return new Clock() {
         // we could use jdk.internal.misc.VM to do this more efficiently, but it is internal
         @Override public long currentTimeMicroseconds() {
-          java.time.Instant instant = java.time.Clock.systemUTC().instant();
-          return (instant.getEpochSecond() * 1000000) + (instant.getNano() / 1000);
+          return Jre9.this.currentTimeMicroseconds();
         }
 
         @Override public String toString() {
@@ -183,6 +191,14 @@ public abstract class Platform {
   }
 
   static class Jre7 extends Platform {
+    @Override public long currentTimeMicroseconds() {
+      return System.currentTimeMillis() * 1000;
+    }
+
+    @Override public long nanoTime() {
+      return System.nanoTime();
+    }
+
     @IgnoreJRERequirement @Override public String getHostString(InetSocketAddress socket) {
       return socket.getHostString();
     }
@@ -192,7 +208,7 @@ public abstract class Platform {
     }
 
     @IgnoreJRERequirement @Override public long nextTraceIdHigh() {
-      return nextTraceIdHigh(java.util.concurrent.ThreadLocalRandom.current().nextInt());
+      return nextTraceIdHigh(currentTimeMicroseconds(), java.util.concurrent.ThreadLocalRandom.current().nextInt());
     }
 
     @IgnoreJRERequirement @Override
@@ -205,13 +221,20 @@ public abstract class Platform {
     }
   }
 
-  static long nextTraceIdHigh(int random) {
-    long epochSeconds = System.currentTimeMillis() / 1000;
+  static long nextTraceIdHigh(long currentTimeMicroseconds, int random) {
+    long epochSeconds = currentTimeMicroseconds / 1000000;
     return (epochSeconds & 0xffffffffL) << 32
       | (random & 0xffffffffL);
   }
 
   static class Jre6 extends Platform {
+    @Override public long currentTimeMicroseconds() {
+      return System.currentTimeMillis() * 1000;
+    }
+
+    @Override public long nanoTime() {
+      return System.nanoTime();
+    }
 
     @Override public String getHostString(InetSocketAddress socket) {
       return socket.getAddress().getHostAddress();
@@ -222,13 +245,13 @@ public abstract class Platform {
     }
 
     @Override public long nextTraceIdHigh() {
-      return nextTraceIdHigh(prng.nextInt());
+      return nextTraceIdHigh(currentTimeMicroseconds(), prng.nextInt());
     }
 
     final Random prng;
 
     Jre6() {
-      this.prng = new Random(System.nanoTime());
+      this.prng = new Random(nanoTime());
     }
 
     @Override public String toString() {

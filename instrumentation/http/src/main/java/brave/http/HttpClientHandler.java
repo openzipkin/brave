@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -69,7 +69,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
   public static HttpClientHandler<HttpClientRequest, HttpClientResponse> create(
     HttpTracing httpTracing) {
     if (httpTracing == null) throw new NullPointerException("httpTracing == null");
-    return new HttpClientHandler<>(httpTracing, null);
+    return new HttpClientHandler<HttpClientRequest, HttpClientResponse>(httpTracing, null);
   }
 
   /**
@@ -81,7 +81,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
     HttpClientAdapter<Req, Resp> adapter) {
     if (httpTracing == null) throw new NullPointerException("httpTracing == null");
     if (adapter == null) throw new NullPointerException("adapter == null");
-    return new HttpClientHandler<>(httpTracing, adapter);
+    return new HttpClientHandler<Req, Resp>(httpTracing, adapter);
   }
 
   final Tracer tracer;
@@ -190,7 +190,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
     if (request instanceof HttpClientRequest) {
       clientRequest = (HttpClientRequest) request;
     } else {
-      clientRequest = new HttpClientAdapters.FromRequestAdapter<>(adapter, request);
+      clientRequest = new HttpClientAdapters.FromRequestAdapter<Req>(adapter, request);
     }
 
     return handleStart(clientRequest, span);
@@ -207,7 +207,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
     if (request instanceof HttpClientRequest) {
       clientRequest = (HttpClientRequest) request;
     } else {
-      clientRequest = new FromRequestAdapter<>(adapter, request);
+      clientRequest = new FromRequestAdapter<Req>(adapter, request);
     }
     return tracer.nextSpan(httpSampler, clientRequest);
   }
@@ -236,7 +236,7 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
         span.error(error);
       }
     } else {
-      clientResponse = new FromResponseAdapter<>(adapter, response, error);
+      clientResponse = new FromResponseAdapter<Resp>(adapter, response, error);
     }
     handleFinish(clientResponse, span);
   }

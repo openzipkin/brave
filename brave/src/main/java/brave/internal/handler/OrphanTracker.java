@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -87,7 +87,8 @@ public class OrphanTracker extends SpanHandler {
 
   final MutableSpan defaultSpan;
   final Clock clock;
-  final WeakConcurrentMap<MutableSpan, Throwable> spanToCaller = new WeakConcurrentMap<>();
+  final WeakConcurrentMap<MutableSpan, Throwable> spanToCaller =
+    new WeakConcurrentMap<MutableSpan, Throwable>();
   final Level logLevel;
 
   OrphanTracker(Builder builder) {

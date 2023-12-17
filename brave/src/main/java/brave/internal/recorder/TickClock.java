@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,18 +14,21 @@
 package brave.internal.recorder;
 
 import brave.Clock;
+import brave.internal.Platform;
 
 final class TickClock implements Clock {
+  final Platform platform;
   final long baseEpochMicros;
   final long baseTickNanos;
 
-  TickClock(long baseEpochMicros, long baseTickNanos) {
+  TickClock(Platform platform, long baseEpochMicros, long baseTickNanos) {
+    this.platform = platform;
     this.baseEpochMicros = baseEpochMicros;
     this.baseTickNanos = baseTickNanos;
   }
 
   @Override public long currentTimeMicroseconds() {
-    return ((System.nanoTime() - baseTickNanos) / 1000) + baseEpochMicros;
+    return ((platform.nanoTime() - baseTickNanos) / 1000) + baseEpochMicros;
   }
 
   @Override public String toString() {

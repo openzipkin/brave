@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -36,12 +36,12 @@ import java.util.Map;
 public final class ParameterizedSampler<P> implements SamplerFunction<P> {
   /** @since 5.8 */
   public static <P> Builder<P> newBuilder() {
-    return new Builder<>();
+    return new Builder<P>();
   }
 
   /** @since 5.8 */
   public static final class Builder<P> {
-    final Map<Matcher<P>, Sampler> rules = new LinkedHashMap<>();
+    final Map<Matcher<P>, Sampler> rules = new LinkedHashMap<Matcher<P>, Sampler>();
 
     /**
      * Adds or replaces all rules in this sampler with those of the input.
@@ -67,7 +67,7 @@ public final class ParameterizedSampler<P> implements SamplerFunction<P> {
     }
 
     public ParameterizedSampler<P> build() {
-      return new ParameterizedSampler<>(this);
+      return new ParameterizedSampler<P>(this);
     }
 
     Builder() {
@@ -90,7 +90,7 @@ public final class ParameterizedSampler<P> implements SamplerFunction<P> {
     this.rules = new R[builder.rules.size()];
     int i = 0;
     for (Map.Entry<Matcher<P>, Sampler> rule : builder.rules.entrySet()) {
-      rules[i++] = new R<>(rule.getKey(), rule.getValue());
+      rules[i++] = new R<P>(rule.getKey(), rule.getValue());
     }
   }
 
