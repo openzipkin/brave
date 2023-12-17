@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,22 +17,22 @@ import brave.propagation.SamplingFlags;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static brave.sampler.DeclarativeSampler.NULL_SENTINEL;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class DeclarativeSamplerTest {
+class DeclarativeSamplerTest {
 
   DeclarativeSampler<Traced> declarativeSampler =
     DeclarativeSampler.createWithProbability(t -> t.enabled() ? t.sampleProbability() : null);
 
-  @Before public void clear() {
+  @BeforeEach void clear() {
     declarativeSampler.methodToSamplers.clear();
   }
 
-  @Test public void honorsSampleRate() {
+  @Test void honorsSampleRate() {
     declarativeSampler = DeclarativeSampler.createWithRate(Traced::sampleRate);
 
     assertThat(declarativeSampler.sample(traced(0.0f, 1, true)))
@@ -42,7 +42,7 @@ public class DeclarativeSamplerTest {
       .isEqualTo(SamplingFlags.NOT_SAMPLED);
   }
 
-  @Test public void honorsSampleProbability() {
+  @Test void honorsSampleProbability() {
     declarativeSampler = DeclarativeSampler.createWithProbability(Traced::sampleProbability);
 
     assertThat(declarativeSampler.sample(traced(1.0f, 0, true)))
@@ -52,12 +52,12 @@ public class DeclarativeSamplerTest {
       .isEqualTo(SamplingFlags.NOT_SAMPLED);
   }
 
-  @Test public void nullOnNull() {
+  @Test void nullOnNull() {
     assertThat(declarativeSampler.trySample(null))
       .isNull();
   }
 
-  @Test public void unmatched() {
+  @Test void unmatched() {
     DeclarativeSampler<Object> declarativeSampler = DeclarativeSampler.createWithRate(o -> null);
 
     assertThat(declarativeSampler.sample(new Object()))
@@ -68,12 +68,12 @@ public class DeclarativeSamplerTest {
       .containsValue(NULL_SENTINEL);
   }
 
-  @Test public void acceptsFallback() {
+  @Test void acceptsFallback() {
     assertThat(declarativeSampler.sample(traced(1.0f, 0, false)))
       .isEqualTo(SamplingFlags.EMPTY);
   }
 
-  @Test public void toSampler() {
+  @Test void toSampler() {
     assertThat(declarativeSampler.toSampler(traced(1.0f, 0, true)).isSampled(0L))
       .isTrue();
 
@@ -85,7 +85,7 @@ public class DeclarativeSamplerTest {
       .isFalse();
   }
 
-  @Test public void toSampler_fallback() {
+  @Test void toSampler_fallback() {
     Sampler withFallback =
       declarativeSampler.toSampler(traced(0.0f, 0, false), Sampler.ALWAYS_SAMPLE);
 
@@ -93,7 +93,7 @@ public class DeclarativeSamplerTest {
       .isTrue();
   }
 
-  @Test public void toSampler_fallback_notUsed() {
+  @Test void toSampler_fallback_notUsed() {
     Sampler withFallback =
       declarativeSampler.toSampler(traced(1.0f, 0, true), Sampler.NEVER_SAMPLE);
 
@@ -101,7 +101,7 @@ public class DeclarativeSamplerTest {
       .isTrue();
   }
 
-  @Test public void samplerLoadsLazy() {
+  @Test void samplerLoadsLazy() {
     assertThat(declarativeSampler.methodToSamplers)
       .isEmpty();
 
@@ -116,7 +116,7 @@ public class DeclarativeSamplerTest {
       .hasSize(2);
   }
 
-  @Test public void cardinalityIsPerAnnotationNotInvocation() {
+  @Test void cardinalityIsPerAnnotationNotInvocation() {
     Traced traced = traced(1.0f, 0, true);
 
     declarativeSampler.sample(traced);

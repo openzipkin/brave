@@ -17,8 +17,6 @@ import brave.handler.MutableSpan;
 import brave.kafka.clients.KafkaTracing;
 import brave.messaging.MessagingTracing;
 import brave.propagation.TraceContext;
-import com.github.charithe.kafka.EphemeralKafkaBroker;
-import com.github.charithe.kafka.KafkaJunitRule;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,9 +47,11 @@ import org.apache.kafka.streams.kstream.ValueTransformerWithKeySupplier;
 import org.apache.kafka.streams.processor.AbstractProcessor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
-import org.junit.After;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import static brave.Span.Kind.CONSUMER;
 import static brave.Span.Kind.PRODUCER;
@@ -61,18 +61,23 @@ import static brave.kafka.streams.KafkaStreamsTracingTest.TEST_VALUE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public class ITKafkaStreamsTracing extends ITKafkaStreams {
-  @ClassRule public static KafkaJunitRule kafka = new KafkaJunitRule(EphemeralKafkaBroker.create());
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+class ITKafkaStreamsTracing extends ITKafkaStreams {
+  @RegisterExtension KafkaExtension kafka = new KafkaExtension();
 
-  Producer<String, String> producer = createProducer();
+  Producer<String, String> producer;
 
-  @After public void close() {
-    producer.close();
+  @BeforeEach void initProducer() {
+    producer = createProducer();
   }
 
-  @Test
-  public void should_create_span_from_stream_input_topic() {
-    String inputTopic = testName.getMethodName() + "-input";
+  @Override @AfterEach protected void close() throws Exception {
+    if (producer != null) producer.close();
+    super.close();
+  }
+
+  @Test void should_create_span_from_stream_input_topic() {
+    String inputTopic = testName + "-input";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic).foreach((k, v) -> {
@@ -92,9 +97,8 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_multiple_span_from_stream_input_topic_whenSharingDisabled() {
-    String inputTopic = testName.getMethodName() + "-input";
+  @Test void should_create_multiple_span_from_stream_input_topic_whenSharingDisabled() {
+    String inputTopic = testName + "-input";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic).foreach((k, v) -> {
@@ -121,9 +125,8 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_one_span_from_stream_input_topic_whenSharingEnabled() {
-    String inputTopic = testName.getMethodName() + "-input";
+  @Test void should_create_one_span_from_stream_input_topic_whenSharingEnabled() {
+    String inputTopic = testName + "-input";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic).foreach((k, v) -> {
@@ -149,9 +152,8 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_span_from_stream_input_topic_using_kafka_client_supplier() {
-    String inputTopic = testName.getMethodName() + "-input";
+  @Test void should_create_span_from_stream_input_topic_using_kafka_client_supplier() {
+    String inputTopic = testName + "-input";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic).foreach((k, v) -> {
@@ -172,10 +174,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_input_and_output_topics() {
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+  @Test void should_create_spans_from_stream_input_and_output_topics() {
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic).to(outputTopic);
@@ -201,8 +202,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     consumer.close();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_processor() {
+  @Test void should_create_spans_from_stream_with_tracing_processor() {
     ProcessorSupplier<String, String> processorSupplier =
       kafkaStreamsTracing.processor(
         "forward-1", () ->
@@ -217,7 +217,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
             }
           });
 
-    String inputTopic = testName.getMethodName() + "-input";
+    String inputTopic = testName + "-input";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -240,9 +240,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_v2_processor() {
-    org.apache.kafka.streams.processor.api.ProcessorSupplier<String, String, String, String> processorSupplier =
+  @Test void should_create_spans_from_stream_with_tracing_v2_processor() {
+    org.apache.kafka.streams.processor.api.ProcessorSupplier<String, String, String, String>
+      processorSupplier =
       kafkaStreamsTracing.process(
         "forward-1", () ->
           record -> {
@@ -253,7 +253,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
             }
           });
 
-    String inputTopic = testName.getMethodName() + "-input";
+    String inputTopic = testName + "-input";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -276,9 +276,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_v2_fixed_key_processor() {
-    org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier<String, String, String> processorSupplier =
+  @Test void should_create_spans_from_stream_with_tracing_v2_fixed_key_processor() {
+    org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier<String, String, String>
+      processorSupplier =
       kafkaStreamsTracing.processValues(
         "forward-1", () ->
           record -> {
@@ -289,7 +289,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
             }
           });
 
-    String inputTopic = testName.getMethodName() + "-input";
+    String inputTopic = testName + "-input";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -312,10 +312,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_filter_predicate_true() {
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+  @Test void should_create_spans_from_stream_with_tracing_filter_predicate_true() {
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -346,10 +345,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_filter_predicate_false() {
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+  @Test void should_create_spans_from_stream_with_tracing_filter_predicate_false() {
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -376,10 +374,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_and_propagate_extra_from_stream_with_multi_processor() {
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+  @Test void should_create_spans_and_propagate_extra_from_stream_with_multi_processor() {
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -420,10 +417,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_filter_not_predicate_true() {
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+  @Test void should_create_spans_from_stream_with_tracing_filter_not_predicate_true() {
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -450,10 +446,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_filter_not_predicate_false() {
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+  @Test void should_create_spans_from_stream_with_tracing_filter_not_predicate_false() {
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -484,10 +479,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_mark_as_filtered_predicate_true() {
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+  @Test void should_create_spans_from_stream_with_tracing_mark_as_filtered_predicate_true() {
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -519,10 +513,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_mark_as_filtered_predicate_false() {
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+  @Test void should_create_spans_from_stream_with_tracing_mark_as_filtered_predicate_false() {
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -550,10 +543,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_mark_as_not_filtered_predicate_true() {
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+  @Test void should_create_spans_from_stream_with_tracing_mark_as_not_filtered_predicate_true() {
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -581,10 +573,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_mark_as_not_filtered_predicate_false() {
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+  @Test void should_create_spans_from_stream_with_tracing_mark_as_not_filtered_predicate_false() {
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -617,10 +608,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_peek() {
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+  @Test void should_create_spans_from_stream_with_tracing_peek() {
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     long now = System.currentTimeMillis();
 
@@ -658,10 +648,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_mark() {
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+  @Test void should_create_spans_from_stream_with_tracing_mark() {
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -689,9 +678,8 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_foreach() {
-    String inputTopic = testName.getMethodName() + "-input";
+  @Test void should_create_spans_from_stream_with_tracing_foreach() {
+    String inputTopic = testName + "-input";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -720,8 +708,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_without_tracing_and_tracing_processor() {
+  @Test void should_create_spans_from_stream_without_tracing_and_tracing_processor() {
     ProcessorSupplier<String, String> processorSupplier =
       kafkaStreamsTracing.processor(
         "forward-1", () ->
@@ -736,7 +723,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
             }
           });
 
-    String inputTopic = testName.getMethodName() + "-input";
+    String inputTopic = testName + "-input";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -756,8 +743,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_transformer() {
+  @Test void should_create_spans_from_stream_with_tracing_transformer() {
     TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
       kafkaStreamsTracing.transformer(
         "transformer-1", () ->
@@ -784,8 +770,8 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
             }
           });
 
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -813,8 +799,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_throw_exception_upwards() {
+  @Test void should_throw_exception_upwards() {
     TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
       kafkaStreamsTracing.transformer(
         "exception-transformer", () ->
@@ -836,8 +821,8 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
             }
           });
 
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -864,8 +849,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_throw_sneaky_exception_upwards() {
+  @Test void should_throw_sneaky_exception_upwards() {
     TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
       kafkaStreamsTracing.transformer(
         "sneaky-exception-transformer", () ->
@@ -888,8 +872,8 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
             }
           });
 
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -923,8 +907,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     throw (E) cause;
   }
 
-  @Test
-  public void should_create_spans_from_stream_without_tracing_with_tracing_flattransformer() {
+  @Test void should_create_spans_from_stream_without_tracing_with_tracing_flattransformer() {
     TransformerSupplier<String, String, Iterable<KeyValue<String, String>>> transformerSupplier =
       kafkaStreamsTracing.transformer(
         "double-transformer-1", () ->
@@ -951,8 +934,8 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
             }
           });
 
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -984,8 +967,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_without_tracing_with_tracing_transformer() {
+  @Test void should_create_spans_from_stream_without_tracing_with_tracing_transformer() {
     TransformerSupplier<String, String, KeyValue<String, String>> transformerSupplier =
       kafkaStreamsTracing.transformer(
         "transformer-1", () ->
@@ -1012,8 +994,8 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
             }
           });
 
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -1034,8 +1016,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_valueTransformer() {
+  @Test void should_create_spans_from_stream_with_tracing_valueTransformer() {
     ValueTransformerSupplier<String, String> transformerSupplier =
       kafkaStreamsTracing.valueTransformer(
         "transformer-1", () ->
@@ -1062,8 +1043,8 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
             }
           });
 
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -1091,10 +1072,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_map() {
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+  @Test void should_create_spans_from_stream_with_tracing_map() {
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -1129,10 +1109,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_flatMap() {
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+  @Test void should_create_spans_from_stream_with_tracing_flatMap() {
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -1171,10 +1150,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_mapValues() {
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+  @Test void should_create_spans_from_stream_with_tracing_mapValues() {
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -1209,10 +1187,9 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_mapValues_withKey() {
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+  @Test void should_create_spans_from_stream_with_tracing_mapValues_withKey() {
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -1247,8 +1224,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_without_tracing_with_tracing_valueTransformer() {
+  @Test void should_create_spans_from_stream_without_tracing_with_tracing_valueTransformer() {
     ValueTransformerSupplier<String, String> transformerSupplier =
       kafkaStreamsTracing.valueTransformer(
         "transformer-1", () ->
@@ -1275,8 +1251,8 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
             }
           });
 
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -1297,8 +1273,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test
-  public void should_create_spans_from_stream_with_tracing_valueTransformerWithKey() {
+  @Test void should_create_spans_from_stream_with_tracing_valueTransformerWithKey() {
     ValueTransformerWithKeySupplier<String, String, String> transformerSupplier =
       kafkaStreamsTracing.valueTransformerWithKey(
         "transformer-1", () ->
@@ -1325,8 +1300,8 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
             }
           });
 
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -1355,7 +1330,7 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
   }
 
   @Test
-  public void should_create_spans_from_stream_without_tracing_with_tracing_valueTransformerWithKey() {
+  void should_create_spans_from_stream_without_tracing_with_tracing_valueTransformerWithKey() {
     ValueTransformerWithKeySupplier<String, String, String> transformerSupplier =
       kafkaStreamsTracing.valueTransformerWithKey(
         "transformer-1", () ->
@@ -1382,8 +1357,8 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
             }
           });
 
-    String inputTopic = testName.getMethodName() + "-input";
-    String outputTopic = testName.getMethodName() + "-output";
+    String inputTopic = testName + "-input";
+    String outputTopic = testName + "-output";
 
     StreamsBuilder builder = new StreamsBuilder();
     builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
@@ -1425,13 +1400,15 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
   Properties streamsProperties() {
     Properties properties = new Properties();
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG,
-      kafka.helper().consumerConfig().getProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
+      kafka.consumerConfig().getProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
     properties.put(StreamsConfig.STATE_DIR_CONFIG, "target/kafka-streams");
-    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, testName.getMethodName());
+    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, testName);
     properties.put(StreamsConfig.consumerPrefix(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG),
       Topology.AutoOffsetReset.EARLIEST.name().toLowerCase());
-    properties.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
-    properties.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+    properties.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG,
+      Serdes.String().getClass().getName());
+    properties.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG,
+      Serdes.String().getClass().getName());
     return properties;
   }
 
@@ -1441,14 +1418,14 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
   }
 
   Producer<String, String> createProducer() {
-    return kafka.helper().createStringProducer();
+    return kafka.createStringProducer();
   }
 
   Consumer<String, String> createTracingConsumer(String... topics) {
     if (topics.length == 0) {
-      topics = new String[] {testName.getMethodName()};
+      topics = new String[] {testName};
     }
-    KafkaConsumer<String, String> consumer = kafka.helper().createStringConsumer();
+    KafkaConsumer<String, String> consumer = kafka.createStringConsumer();
     List<TopicPartition> assignments = new ArrayList<>();
     for (String topic : topics) {
       assignments.add(new TopicPartition(topic, 0));

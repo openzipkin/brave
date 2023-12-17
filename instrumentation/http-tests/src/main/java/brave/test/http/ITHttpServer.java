@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2022 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -43,9 +43,9 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import okio.Buffer;
-import org.junit.AssumptionViolatedException;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.opentest4j.TestAbortedException;
 
 import static brave.Span.Kind.SERVER;
 import static brave.http.HttpRequestMatchers.pathStartsWith;
@@ -62,7 +62,7 @@ public abstract class ITHttpServer extends ITRemote {
   protected OkHttpClient client = new OkHttpClient();
   protected HttpTracing httpTracing = HttpTracing.create(tracing);
 
-  @Before public void setup() throws IOException {
+  @BeforeEach protected void setup() throws IOException {
     init();
   }
 
@@ -71,7 +71,7 @@ public abstract class ITHttpServer extends ITRemote {
 
   protected abstract String url(String path);
 
-  @Test public void reusesPropagatedSpanId() throws IOException {
+  @Test protected void reusesPropagatedSpanId() throws IOException {
     String path = "/foo";
 
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
@@ -82,7 +82,7 @@ public abstract class ITHttpServer extends ITRemote {
     assertSameIds(testSpanHandler.takeRemoteSpan(SERVER), parent);
   }
 
-  @Test public void createsChildWhenJoinDisabled() throws IOException {
+  @Test protected void createsChildWhenJoinDisabled() throws IOException {
     tracing = tracingBuilder(NEVER_SAMPLE).supportsJoin(false).build();
     httpTracing = HttpTracing.create(tracing);
     init();
@@ -99,21 +99,20 @@ public abstract class ITHttpServer extends ITRemote {
     assertThat(span.id()).isNotEqualTo(parent.spanIdString());
   }
 
-  @Test
-  public void readsBaggage_newTrace() throws IOException {
+  @Test protected void readsBaggage_newTrace() throws IOException {
     readsBaggage(new Request.Builder());
 
     testSpanHandler.takeRemoteSpan(SERVER);
   }
 
-  @Test public void readsBaggage_unsampled() throws IOException {
+  @Test protected void readsBaggage_unsampled() throws IOException {
     readsBaggage(new Request.Builder()
       .header("X-B3-Sampled", "0"));
 
     // @After will check that nothing is reported
   }
 
-  @Test public void readsBaggage_existingTrace() throws IOException {
+  @Test protected void readsBaggage_existingTrace() throws IOException {
     String traceId = "463ac35c9f6413ad";
 
     readsBaggage(new Request.Builder()
@@ -141,8 +140,7 @@ public abstract class ITHttpServer extends ITRemote {
       .isEqualTo("joey");
   }
 
-  @Test
-  public void samplingDisabled() throws IOException {
+  @Test protected void samplingDisabled() throws IOException {
     httpTracing = HttpTracing.create(tracingBuilder(Sampler.NEVER_SAMPLE).build());
     init();
 
@@ -151,7 +149,7 @@ public abstract class ITHttpServer extends ITRemote {
     // @After will check that nothing is reported
   }
 
-  @Test public void customSampler() throws IOException {
+  @Test protected void customSampler() throws IOException {
     String path = "/foo";
 
     SamplerFunction<HttpRequest> sampler = HttpRuleSampler.newBuilder()
@@ -172,7 +170,7 @@ public abstract class ITHttpServer extends ITRemote {
   /**
    * Tests that the span propagates between under asynchronous callbacks (even if explicitly)
    */
-  @Test public void async() throws IOException {
+  @Test protected void async() throws IOException {
     Response response = get("/async");
     assertThat(response.isSuccessful()).withFailMessage("not successful: " + response).isTrue();
 
@@ -185,7 +183,7 @@ public abstract class ITHttpServer extends ITRemote {
    * "current span", in this case the span representing an incoming server request. When thread
    * state isn't managed properly, the child span will appear as a new trace.
    */
-  @Test public void createsChildSpan() throws IOException {
+  @Test protected void createsChildSpan() throws IOException {
     get("/child");
 
     MutableSpan child = testSpanHandler.takeLocalSpan();
@@ -198,7 +196,7 @@ public abstract class ITHttpServer extends ITRemote {
    * The child completes before the response code is established, so it should be contained
    * completely by the server's interval.
    */
-  @Test public void childCompletesBeforeServer() throws IOException {
+  @Test protected void childCompletesBeforeServer() throws IOException {
     get("/child");
 
     MutableSpan child = testSpanHandler.takeLocalSpan();
@@ -209,14 +207,14 @@ public abstract class ITHttpServer extends ITRemote {
     assertSpanInInterval(child, server.startTimestamp(), server.finishTimestamp());
   }
 
-  @Test public void reportsClientAddress() throws IOException {
+  @Test protected void reportsClientAddress() throws IOException {
     get("/foo");
 
     assertThat(testSpanHandler.takeRemoteSpan(SERVER).remoteIp())
       .isNotNull();
   }
 
-  @Test public void reportsClientAddress_XForwardedFor() throws IOException {
+  @Test protected void reportsClientAddress_XForwardedFor() throws IOException {
     get(new Request.Builder().url(url("/foo"))
       .header("X-Forwarded-For", "1.2.3.4")
       .build());
@@ -225,13 +223,13 @@ public abstract class ITHttpServer extends ITRemote {
       .isEqualTo("1.2.3.4");
   }
 
-  @Test public void reportsServerKindToZipkin() throws IOException {
+  @Test protected void reportsServerKindToZipkin() throws IOException {
     get("/foo");
 
     testSpanHandler.takeRemoteSpan(SERVER);
   }
 
-  @Test public void defaultSpanNameIsMethodNameOrRoute() throws IOException {
+  @Test protected void defaultSpanNameIsMethodNameOrRoute() throws IOException {
     get("/foo");
 
     MutableSpan span = testSpanHandler.takeRemoteSpan(SERVER);
@@ -241,7 +239,7 @@ public abstract class ITHttpServer extends ITRemote {
     }
   }
 
-  @Test public void readsRequestAtResponseTime() throws IOException {
+  @Test protected void readsRequestAtResponseTime() throws IOException {
     httpTracing = httpTracing.toBuilder()
       .serverResponseParser((response, context, span) -> {
         HttpTags.URL.tag(response.request(), span); // just the path is tagged by default
@@ -256,7 +254,7 @@ public abstract class ITHttpServer extends ITRemote {
       .containsEntry("http.url", url(uri));
   }
 
-  @Test public void supportsPortableCustomization() throws IOException {
+  @Test protected void supportsPortableCustomization() throws IOException {
     httpTracing = httpTracing.toBuilder()
       .serverRequestParser((request, context, span) -> {
         span.name(request.method().toLowerCase() + " " + request.path());
@@ -279,7 +277,9 @@ public abstract class ITHttpServer extends ITRemote {
       .containsEntry("response_customizer.is_span", "false");
   }
 
-  @Test @Deprecated public void supportsPortableCustomizationDeprecated() throws IOException {
+  @Test
+  @Deprecated
+  public void supportsPortableCustomizationDeprecated() throws IOException {
     httpTracing = httpTracing.toBuilder().serverParser(new HttpServerParser() {
       @Override
       public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
@@ -312,7 +312,7 @@ public abstract class ITHttpServer extends ITRemote {
    * templating worked (including that it ignores query parameters). Note the route format is
    * framework specific, ex "/items/:itemId" in vert.x
    */
-  @Test public void httpRoute() throws IOException {
+  @Test protected void httpRoute() throws IOException {
     httpTracing = httpTracing.toBuilder().serverRequestParser(addHttpUrlTag).build();
     init();
 
@@ -323,7 +323,7 @@ public abstract class ITHttpServer extends ITRemote {
    * The "/nested/items/{itemId}" endpoint should be implemented by two route expressions: A path
    * prefix: "/nested" and then a relative expression "/items/{itemId}"
    */
-  @Test public void httpRoute_nested() throws IOException {
+  @Test protected void httpRoute_nested() throws IOException {
     httpTracing = httpTracing.toBuilder().serverRequestParser(addHttpUrlTag).build();
     init();
 
@@ -334,7 +334,7 @@ public abstract class ITHttpServer extends ITRemote {
    * Sometimes state used to carry http route data is different for async requests. This helps
    * ensure we don't miss issues like this.
    */
-  @Test public void httpRoute_async() throws IOException {
+  @Test protected void httpRoute_async() throws IOException {
     httpTracing = httpTracing.toBuilder().serverRequestParser(addHttpUrlTag).build();
     init();
 
@@ -384,7 +384,7 @@ public abstract class ITHttpServer extends ITRemote {
   };
 
   /** If http route is supported, then the span name should include it */
-  @Test public void notFound() throws IOException {
+  @Test protected void notFound() throws IOException {
     // we can't use get("/foo/bark") because get(path) throws assumption fail on 404
     assertThat(call("GET", "/foo/bark").code())
       .isEqualTo(404);
@@ -409,7 +409,7 @@ public abstract class ITHttpServer extends ITRemote {
    * This tests both that a root path ends up as "/" (slash) not "" (empty), as well that less
    * typical OPTIONS methods can be traced.
    */
-  @Test public void options() throws IOException {
+  @Test protected void options() throws IOException {
     assertThat(call("OPTIONS", "/").isSuccessful())
       .isTrue();
 
@@ -427,7 +427,7 @@ public abstract class ITHttpServer extends ITRemote {
     }
   }
 
-  @Test public void addsStatusCode_badRequest() throws IOException {
+  @Test protected void addsStatusCode_badRequest() throws IOException {
     try {
       get("/badrequest");
     } catch (RuntimeException e) {
@@ -438,7 +438,7 @@ public abstract class ITHttpServer extends ITRemote {
       .containsEntry("error", "400");
   }
 
-  @Test public void httpPathTagExcludesQueryParams() throws IOException {
+  @Test protected void httpPathTagExcludesQueryParams() throws IOException {
     get("/foo?z=2&yAA=1");
 
     assertThat(testSpanHandler.takeRemoteSpan(SERVER).tags())
@@ -452,12 +452,11 @@ public abstract class ITHttpServer extends ITRemote {
    * <p><em>Note</em>: Don't throw {@link UnavailableException} as Jetty ignores the exception
    * message!
    */
-  @Test public void httpStatusCodeTagMatchesResponse_onUncaughtException() throws IOException {
+  @Test protected void httpStatusCodeTagMatchesResponse_onUncaughtException() throws IOException {
     httpStatusCodeTagMatchesResponse_onUncaughtException("/exception");
   }
 
-  @Test
-  public void httpStatusCodeTagMatchesResponse_onUncaughtException_async() throws IOException {
+  @Test protected void httpStatusCodeTagMatchesResponse_onUncaughtException_async() throws IOException {
     httpStatusCodeTagMatchesResponse_onUncaughtException("/exceptionAsync");
   }
 
@@ -470,12 +469,12 @@ public abstract class ITHttpServer extends ITRemote {
    * <p><em>Note</em>: Some frameworks cannot control the status code upon unhandled error in a
    * controller at all. If this is the case, just override and ignore this test.
    */
-  @Test public void httpStatusCodeSettable_onUncaughtException() throws IOException {
+  @Test protected void httpStatusCodeSettable_onUncaughtException() throws IOException {
     assertThat(httpStatusCodeTagMatchesResponse_onUncaughtException("/exception").code())
         .isEqualTo(503);
   }
 
-  @Test public void httpStatusCodeSettable_onUncaughtException_async() throws IOException {
+  @Test protected void httpStatusCodeSettable_onUncaughtException_async() throws IOException {
     assertThat(httpStatusCodeTagMatchesResponse_onUncaughtException("/exceptionAsync").code())
         .isEqualTo(503);
   }
@@ -497,19 +496,19 @@ public abstract class ITHttpServer extends ITRemote {
     return response;
   }
 
-  @Test public void setsErrorAndHttpStatusOnUncaughtException() throws IOException {
+  @Test protected void setsErrorAndHttpStatusOnUncaughtException() throws IOException {
     httpStatusCodeTagMatchesResponse_onUncaughtException("/exception", ".*not ready");
   }
 
-  @Test public void setsErrorAndHttpStatusOnUncaughtException_async() throws IOException {
+  @Test protected void setsErrorAndHttpStatusOnUncaughtException_async() throws IOException {
     httpStatusCodeTagMatchesResponse_onUncaughtException("/exceptionAsync", ".*not ready");
   }
 
-  @Test public void spanHandlerSeesError() throws IOException {
+  @Test protected void spanHandlerSeesError() throws IOException {
     spanHandlerSeesError("/exception");
   }
 
-  @Test public void spanHandlerSeesError_async() throws IOException {
+  @Test protected void spanHandlerSeesError_async() throws IOException {
     spanHandlerSeesError("/exceptionAsync");
   }
 
@@ -557,7 +556,7 @@ public abstract class ITHttpServer extends ITRemote {
       // 404 path may or may not be instrumented. Ensure the AssumptionViolatedException isn't
       // masked by a failure to take a server span.
       testSpanHandler.ignoreAnySpans();
-      throw new AssumptionViolatedException(
+      throw new TestAbortedException(
         response.request().url().encodedPath() + " not supported"
       );
     }
@@ -573,7 +572,7 @@ public abstract class ITHttpServer extends ITRemote {
   @SuppressWarnings("deprecation")
   Response call(Request request) throws IOException {
     // Particularly during async debugging, knowing which test invoked a request is helpful.
-    request = request.newBuilder().header("test", testName.getMethodName()).build();
+    request = request.newBuilder().header("test", testName).build();
 
     try (Response response = client.newCall(request).execute()) {
       if (response.body() == null) return response;

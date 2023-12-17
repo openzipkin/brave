@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,11 +17,11 @@ import brave.internal.Nullable;
 import brave.test.propagation.PropagationTest;
 import java.util.Map;
 import java.util.function.Supplier;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class B3PropagationTest extends PropagationTest {
+class B3PropagationTest extends PropagationTest {
 
   @Override protected Class<? extends Supplier<Propagation<String>>> propagationSupplier() {
     return PropagationSupplier.class;
@@ -51,7 +51,7 @@ public class B3PropagationTest extends PropagationTest {
     }
   }
 
-  @Test public void extractTraceContext_sampledFalse() {
+  @Test void extractTraceContext_sampledFalse() {
     MapEntry mapEntry = new MapEntry();
     map.put("X-B3-Sampled", "false");
 
@@ -61,7 +61,7 @@ public class B3PropagationTest extends PropagationTest {
       .isEqualTo(SamplingFlags.NOT_SAMPLED);
   }
 
-  @Test public void extractTraceContext_sampledFalseUpperCase() {
+  @Test void extractTraceContext_sampledFalseUpperCase() {
     MapEntry mapEntry = new MapEntry();
     map.put("X-B3-Sampled", "FALSE");
 
@@ -71,7 +71,7 @@ public class B3PropagationTest extends PropagationTest {
       .isEqualTo(SamplingFlags.NOT_SAMPLED);
   }
 
-  @Test public void extractTraceContext_malformed() {
+  @Test void extractTraceContext_malformed() {
     MapEntry mapEntry = new MapEntry();
     map.put("X-B3-TraceId", "463ac35c9f6413ad48485a3953bb6124"); // ok
     map.put("X-B3-SpanId", "48485a3953bb6124"); // ok
@@ -83,7 +83,7 @@ public class B3PropagationTest extends PropagationTest {
       .isEqualTo(SamplingFlags.EMPTY);
   }
 
-  @Test public void extractTraceContext_malformed_sampled() {
+  @Test void extractTraceContext_malformed_sampled() {
     MapEntry mapEntry = new MapEntry();
     map.put("X-B3-TraceId", "-"); // not ok
     map.put("X-B3-Sampled", "1"); // ok
@@ -94,7 +94,7 @@ public class B3PropagationTest extends PropagationTest {
       .isEqualTo(SamplingFlags.EMPTY);
   }
 
-  @Test public void extractTraceContext_debug_with_ids() {
+  @Test void extractTraceContext_debug_with_ids() {
     MapEntry mapEntry = new MapEntry();
     map.put("X-B3-TraceId", "463ac35c9f6413ad48485a3953bb6124"); // ok
     map.put("X-B3-SpanId", "48485a3953bb6124"); // ok
@@ -106,7 +106,7 @@ public class B3PropagationTest extends PropagationTest {
       .isTrue();
   }
 
-  @Test public void extractTraceContext_singleHeaderFormat() {
+  @Test void extractTraceContext_singleHeaderFormat() {
     MapEntry mapEntry = new MapEntry();
 
     map.put("b3", "4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7");

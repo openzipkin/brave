@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,18 +18,18 @@ import brave.http.HttpTracing;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.test.IntegrationTestSpanHandler;
 import java.io.IOException;
-import okhttp3.Call;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.ResponseBody;
 import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import okhttp3.Call;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.ResponseBody;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import static brave.Span.Kind.CLIENT;
 import static brave.Span.Kind.SERVER;
@@ -37,9 +37,10 @@ import static brave.sampler.SamplerFunctions.neverSample;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** This is an example of http request sampling */
-public class RequestSamplingTest {
-  @Rule public MockWebServer server = new MockWebServer();
-  @Rule public IntegrationTestSpanHandler testSpanHandler = new IntegrationTestSpanHandler();
+class RequestSamplingTest {
+  MockWebServer server = new MockWebServer();
+
+  @RegisterExtension IntegrationTestSpanHandler testSpanHandler = new IntegrationTestSpanHandler();
 
   StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   Tracing tracing = Tracing.newBuilder()
@@ -56,12 +57,13 @@ public class RequestSamplingTest {
 
   OkHttpClient client = new OkHttpClient();
 
-  @Before public void setup() {
+  @BeforeEach void setup() {
     server.setDispatcher(new TracingDispatcher(httpTracing, new Dispatcher() {
       OkHttpClient tracedClient = client.newBuilder()
         .addNetworkInterceptor(new TracingInterceptor(httpTracing)).build();
 
-      @Override public MockResponse dispatch(RecordedRequest request) {
+      @Override
+      public MockResponse dispatch(RecordedRequest request) {
         if (request.getPath().equals("/next")) return new MockResponse().setBody("next");
         Call next = tracedClient.newCall(new Request.Builder().url(server.url("/next")).build());
         try (ResponseBody responseBody = next.execute().body()) {
@@ -73,24 +75,25 @@ public class RequestSamplingTest {
     }));
   }
 
-  @After public void close() {
+  @AfterEach void close() throws IOException {
     tracing.close();
     currentTraceContext.close();
+    server.close();
   }
 
-  @Test public void serverDoesntTraceFoo() throws Exception {
+  @Test void serverDoesntTraceFoo() throws Exception {
     callServer("/foo");
   }
 
-  @Test public void clientTracedWhenServerIs() throws Exception {
+  @Test void clientTracedWhenServerIs() throws Exception {
     callServer("/api");
 
     assertThat(testSpanHandler.takeRemoteSpan(SERVER).tags())
-        .containsEntry("http.path", "/next");
+      .containsEntry("http.path", "/next");
     assertThat(testSpanHandler.takeRemoteSpan(CLIENT).tags())
-        .containsEntry("http.path", "/next");
+      .containsEntry("http.path", "/next");
     assertThat(testSpanHandler.takeRemoteSpan(SERVER).tags())
-        .containsEntry("http.path", "/api");
+      .containsEntry("http.path", "/api");
   }
 
   void callServer(String path) throws IOException {

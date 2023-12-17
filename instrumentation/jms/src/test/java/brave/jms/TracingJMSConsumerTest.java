@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -22,8 +22,8 @@ import java.io.IOException;
 import javax.jms.JMSConsumer;
 import javax.jms.Message;
 import org.apache.activemq.command.ActiveMQTextMessage;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static brave.Span.Kind.CONSUMER;
 import static brave.propagation.B3SingleFormat.parseB3SingleFormat;
@@ -36,11 +36,12 @@ public class TracingJMSConsumerTest extends ITJms {
   JMSConsumer delegate = mock(JMSConsumer.class);
   JMSConsumer tracingJMSConsumer = new TracingJMSConsumer(delegate, null, jmsTracing);
 
-  @After public void close() {
+  @Override @AfterEach protected void close() throws Exception {
     tracing.close();
+    super.close();
   }
 
-  @Test public void receive_creates_consumer_span() throws Exception {
+  @Test void receive_creates_consumer_span() throws Exception {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     receive(message);
 
@@ -49,7 +50,7 @@ public class TracingJMSConsumerTest extends ITJms {
     assertThat(consumer.name()).isEqualTo("receive");
   }
 
-  @Test public void receive_continues_parent_trace_single_header() throws Exception {
+  @Test void receive_continues_parent_trace_single_header() throws Exception {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     message.setStringProperty("b3", B3SingleFormat.writeB3SingleFormatWithoutParentId(parent));
 
@@ -64,7 +65,7 @@ public class TracingJMSConsumerTest extends ITJms {
     assertThat(messageContext.spanIdString()).isEqualTo(consumer.id());
   }
 
-  @Test public void receive_retains_baggage_properties() throws Exception {
+  @Test void receive_retains_baggage_properties() throws Exception {
     ActiveMQTextMessage message = new ActiveMQTextMessage();
     B3Propagation.B3_STRING.injector(SETTER).inject(parent, message);
     message.setStringProperty(BAGGAGE_FIELD_KEY, "");

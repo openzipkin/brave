@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -26,24 +26,25 @@ import io.reactivex.internal.operators.flowable.FlowableScalarXMap;
 import io.reactivex.internal.operators.observable.ObservableScalarXMap;
 import io.reactivex.plugins.RxJavaPlugins;
 import io.reactivex.subscribers.TestSubscriber;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.reactivestreams.Subscriber;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class NotYetSupportedTest {
+class NotYetSupportedTest {
   CurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   TraceContext assemblyContext = TraceContext.newBuilder().traceId(1L).spanId(1L).build();
   TraceContext subscribeContext = assemblyContext.toBuilder().parentId(1L).spanId(2L).build();
 
-  @Before public void setup() {
+  @BeforeEach void setup() {
     RxJavaPlugins.reset();
     CurrentTraceContextAssemblyTracking.create(currentTraceContext).enable();
   }
 
-  @After public void tearDown() {
+  @AfterEach void tearDown() {
     CurrentTraceContextAssemblyTracking.disable();
   }
 
@@ -58,18 +59,19 @@ public class NotYetSupportedTest {
    *
    * @see ObservableScalarXMap#scalarXMap - references to this are operators which require stashing
    */
-  @Test(expected = AssertionError.class)
-  public void observable_scalarCallable_propagatesContextOnXMap() {
-    Observable<Integer> fuseable;
-    try (Scope scope1 = currentTraceContext.newScope(assemblyContext)) {
-      fuseable = Observable.just(1);
-      assertThat(fuseable).isInstanceOf(ScalarCallable.class);
-    }
+  @Test void observable_scalarCallable_propagatesContextOnXMap() {
+    assertThrows(AssertionError.class, () -> {
+      Observable<Integer> fuseable;
+      try (Scope scope1 = currentTraceContext.newScope(assemblyContext)) {
+        fuseable = Observable.just(1);
+        assertThat(fuseable).isInstanceOf(ScalarCallable.class);
+      }
 
-    // eventhough upstream is assembled with XMap, we still inherit the fused context.
-    fuseable = fuseable.concatMap(Observable::just);
+      // eventhough upstream is assembled with XMap, we still inherit the fused context.
+      fuseable = fuseable.concatMap(Observable::just);
 
-    assertXMapFusion(fuseable).test().assertValues(1).assertNoErrors();
+      assertXMapFusion(fuseable).test().assertValues(1).assertNoErrors();
+    });
   }
 
   /**
@@ -77,18 +79,19 @@ public class NotYetSupportedTest {
    *
    * @see FlowableScalarXMap#scalarXMap - references of this will break when assembly
    */
-  @Test(expected = AssertionError.class)
-  public void flowable_scalarCallable_propagatesContextOnXMap() {
-    Observable<Integer> fuseable;
-    try (Scope scope1 = currentTraceContext.newScope(assemblyContext)) {
-      fuseable = Observable.just(1);
-      assertThat(fuseable).isInstanceOf(ScalarCallable.class);
-    }
+  @Test void flowable_scalarCallable_propagatesContextOnXMap() {
+    assertThrows(AssertionError.class, () -> {
+      Observable<Integer> fuseable;
+      try (Scope scope1 = currentTraceContext.newScope(assemblyContext)) {
+        fuseable = Observable.just(1);
+        assertThat(fuseable).isInstanceOf(ScalarCallable.class);
+      }
 
-    // eventhough upstream is assembled with XMap, we still inherit the fused context.
-    fuseable = fuseable.concatMap(Observable::just);
+      // eventhough upstream is assembled with XMap, we still inherit the fused context.
+      fuseable = fuseable.concatMap(Observable::just);
 
-    assertXMapFusion(fuseable).test().assertValues(1).assertNoErrors();
+      assertXMapFusion(fuseable).test().assertValues(1).assertNoErrors();
+    });
   }
 
   /**
@@ -100,29 +103,30 @@ public class NotYetSupportedTest {
    * {@link ConditionalSubscriber#tryOnNext(Object)}, as if we wired things correctly, this will be
    * called instead of {@link Subscriber#onNext(Object)}.
    */
-  @Test(expected = AssertionError.class)
-  public void conditionalMicroFusion() {
-    Flowable<Integer> fuseable;
-    try (Scope scope1 = currentTraceContext.newScope(assemblyContext)) {
-      // we want the fitering to occur in the assembly context
-      fuseable = Flowable.just(1);
-      assertThat(fuseable).isInstanceOf(ScalarCallable.class);
-    }
+  @Test void conditionalMicroFusion() {
+    assertThrows(AssertionError.class, () -> {
+      Flowable<Integer> fuseable;
+      try (Scope scope1 = currentTraceContext.newScope(assemblyContext)) {
+        // we want the fitering to occur in the assembly context
+        fuseable = Flowable.just(1);
+        assertThat(fuseable).isInstanceOf(ScalarCallable.class);
+      }
 
-    // proves the assembly context is retained even after it is no longer in scope
-    // TODO: this lies as if you debug this you'll notice it isn't fusing with upstream
-    fuseable = fuseable.filter(i -> {
-      assertInAssemblyContext();
-      return i < 3;
+      // proves the assembly context is retained even after it is no longer in scope
+      // TODO: this lies as if you debug this you'll notice it isn't fusing with upstream
+      fuseable = fuseable.filter(i -> {
+        assertInAssemblyContext();
+        return i < 3;
+      });
+
+      ConditionalTestSubscriber<Integer> testSubscriber = new ConditionalTestSubscriber<>();
+      try (Scope scope2 = currentTraceContext.newScope(subscribeContext)) {
+        // subscribing in a different scope shouldn't affect the assembly context
+        fuseable.subscribe(testSubscriber);
+      }
+
+      testSubscriber.assertValues(1).assertNoErrors();
     });
-
-    ConditionalTestSubscriber<Integer> testSubscriber = new ConditionalTestSubscriber<>();
-    try (Scope scope2 = currentTraceContext.newScope(subscribeContext)) {
-      // subscribing in a different scope shouldn't affect the assembly context
-      fuseable.subscribe(testSubscriber);
-    }
-
-    testSubscriber.assertValues(1).assertNoErrors();
   }
 
   /** This ensures we don't accidentally think we tested tryOnNext */

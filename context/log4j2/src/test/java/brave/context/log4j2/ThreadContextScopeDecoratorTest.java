@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -23,7 +23,7 @@ import org.apache.logging.log4j.ThreadContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ThreadContextScopeDecoratorTest extends CurrentTraceContextTest {
+class ThreadContextScopeDecoratorTest extends CurrentTraceContextTest {
   @Override protected Class<? extends Supplier<CurrentTraceContext.Builder>> builderSupplier() {
     return BuilderSupplier.class;
   }

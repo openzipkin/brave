@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,8 +16,8 @@ package brave.spring.webmvc;
 import brave.SpanCustomizer;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -39,14 +39,13 @@ public class SpanCustomizingHandlerInterceptorTest {
   SpanCustomizer span = mock(SpanCustomizer.class);
   HandlerParser parser = mock(HandlerParser.class);
 
-  @Before
+  @BeforeEach
   public void setup() {
     interceptor = new SpanCustomizingHandlerInterceptor();
     interceptor.handlerParser = parser;
   }
 
-  @Test
-  public void preHandle_parsesAndAddsHttpRouteAttribute() {
+  @Test void preHandle_parsesAndAddsHttpRouteAttribute() {
     when(request.getAttribute("brave.SpanCustomizer")).thenReturn(span);
     when(request.getAttribute(BEST_MATCHING_PATTERN_ATTRIBUTE)).thenReturn("/items/{itemId}");
 
@@ -60,8 +59,7 @@ public class SpanCustomizingHandlerInterceptorTest {
     verifyNoMoreInteractions(request, response, parser, span);
   }
 
-  @Test
-  public void preHandle_parsesAndAddsHttpRouteAttribute_coercesNullToEmpty() {
+  @Test void preHandle_parsesAndAddsHttpRouteAttribute_coercesNullToEmpty() {
     when(request.getAttribute("brave.SpanCustomizer")).thenReturn(span);
 
     interceptor.preHandle(request, response, controller);
@@ -74,8 +72,7 @@ public class SpanCustomizingHandlerInterceptorTest {
     verifyNoMoreInteractions(request, response, parser, span);
   }
 
-  @Test
-  public void preHandle_nothingWhenNoSpanAttribute() {
+  @Test void preHandle_nothingWhenNoSpanAttribute() {
     interceptor.preHandle(request, response, controller);
 
     verify(request).getAttribute("brave.SpanCustomizer");

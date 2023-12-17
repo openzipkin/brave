@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,23 +18,23 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 
-public class UnsafeArrayMapTest {
+class UnsafeArrayMapTest {
   Object[] array = new Object[6];
   UnsafeArrayMap.Builder<String, String> builder = UnsafeArrayMap.newBuilder();
 
-  @Test public void empty() {
+  @Test void empty() {
     Map<String, String> map = builder.build(array);
     assertThat(map).isSameAs(Collections.emptyMap());
   }
 
-  @Test public void noNullValues() {
+  @Test void noNullValues() {
     array[0] = "1";
     array[1] = "one";
     array[2] = "2";
@@ -60,7 +60,7 @@ public class UnsafeArrayMapTest {
     assertThat(map.get("3")).isEqualTo("three");
   }
 
-  @Test public void equalValues() {
+  @Test void equalValues() {
     array[0] = "1";
     array[1] = "1";
     array[2] = "2";
@@ -86,7 +86,7 @@ public class UnsafeArrayMapTest {
     assertThat(map.get("3")).isEqualTo("3");
   }
 
-  @Test public void mapKeys() {
+  @Test void mapKeys() {
     array[0] = " 1";
     array[1] = "one";
     array[2] = "2 ";
@@ -112,7 +112,7 @@ public class UnsafeArrayMapTest {
     assertThat(map.get("3")).isEqualTo("three");
   }
 
-  @Test public void someNullValues() {
+  @Test void someNullValues() {
     array[0] = "1";
     array[1] = "one";
     array[2] = "2";
@@ -136,7 +136,7 @@ public class UnsafeArrayMapTest {
     assertThat(map.get("3")).isNull();
   }
 
-  @Test public void onlyNullValues() {
+  @Test void onlyNullValues() {
     array[0] = "1";
     array[2] = "2";
     array[4] = "3";
@@ -145,7 +145,7 @@ public class UnsafeArrayMapTest {
     assertThat(map).isSameAs(Collections.emptyMap());
   }
 
-  @Test public void allFiltered() {
+  @Test void allFiltered() {
     array[0] = "1";
     array[1] = "one";
     array[2] = "2";
@@ -157,7 +157,7 @@ public class UnsafeArrayMapTest {
     assertThat(map).isSameAs(Collections.emptyMap());
   }
 
-  @Test public void filter_tooMany() {
+  @Test void filter_tooMany() {
     String[] tooManyKeys = new String[65];
 
     assertThatThrownBy(() -> builder.filterKeys(tooManyKeys))
@@ -165,7 +165,7 @@ public class UnsafeArrayMapTest {
         .hasMessage("cannot filter more than 64 keys");
   }
 
-  @Test public void someFiltered() {
+  @Test void someFiltered() {
     array[0] = "1";
     array[1] = "one";
     array[2] = "2";
@@ -189,7 +189,7 @@ public class UnsafeArrayMapTest {
     assertThat(map.get("3")).isNull();
   }
 
-  @Test public void toArray() {
+  @Test void toArray() {
     array[0] = "1";
     array[1] = "one";
     array[2] = "2";
@@ -229,7 +229,7 @@ public class UnsafeArrayMapTest {
    * Since there's only one collection impl in {@link UnsafeArrayMap}, this is less work than it
    * seems.
    */
-  @Test public void unsupported() {
+  @Test void unsupported() {
     array[0] = "1";
     array[1] = "1";
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2022 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -42,8 +42,8 @@ import okhttp3.Response;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.log.Log;
-import org.junit.AfterClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Test;
 
 import static brave.Span.Kind.SERVER;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,17 +55,17 @@ public abstract class ITServlet5Container extends ITServletContainer {
     super(new Jetty11ServerController(), Log.getLogger("org.eclipse.jetty.util.log"));
   }
 
-  @AfterClass public static void shutdownExecutor() {
+  @AfterAll public static void shutdownExecutor() {
     executor.shutdownNow();
   }
 
-  @Test public void forward() throws Exception {
+  @Test protected void forward() throws Exception {
     get("/forward");
 
     testSpanHandler.takeRemoteSpan(SERVER);
   }
 
-  @Test public void forwardAsync() throws Exception {
+  @Test protected void forwardAsync() throws Exception {
     get("/forwardAsync");
 
     testSpanHandler.takeRemoteSpan(SERVER);
@@ -91,7 +91,7 @@ public abstract class ITServlet5Container extends ITServletContainer {
     @Override public void destroy() {
     }
   }
-  
+
   static class StatusServlet extends HttpServlet {
     final int status;
 
@@ -131,7 +131,7 @@ public abstract class ITServlet5Container extends ITServletContainer {
       throw NOT_READY_ISE;
     }
   }
-    
+
   static class ForwardServlet extends HttpServlet {
     @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp)
       throws ServletException, IOException {
@@ -181,7 +181,7 @@ public abstract class ITServlet5Container extends ITServletContainer {
     }
   }
 
-  @Test public void errorTag_onException_asyncTimeout() throws Exception {
+  @Test protected void errorTag_onException_asyncTimeout() throws Exception {
     Response response =
         httpStatusCodeTagMatchesResponse_onUncaughtException("/exceptionAsyncTimeout", "Timed out after 1ms");
 
@@ -212,23 +212,23 @@ public abstract class ITServlet5Container extends ITServletContainer {
   Filter userFilter = new Filter() {
     @Override public void init(FilterConfig filterConfig) {
     }
-    
+
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
       ((HttpServletResponse) response).setHeader(BAGGAGE_FIELD_KEY, BAGGAGE_FIELD.getValue());
       chain.doFilter(request, response);
     }
-    
+
     @Override public void destroy() {
     }
   };
-    
-  @Test public void currentSpanVisibleToOtherFilters() throws Exception {
+
+  @Test protected void currentSpanVisibleToOtherFilters() throws Exception {
     delegate = userFilter;
-    
+
     String path = "/foo";
-    
+
     Request request = new Request.Builder().url(url(path))
       .header(BAGGAGE_FIELD_KEY, "abcdefg").build();
     try (Response response = client.newCall(request).execute()) {
@@ -236,15 +236,15 @@ public abstract class ITServlet5Container extends ITServletContainer {
       assertThat(response.header(BAGGAGE_FIELD_KEY))
         .isEqualTo("abcdefg");
     }
-    
+
     testSpanHandler.takeRemoteSpan(SERVER);
     }
-    
+
     // copies the header to the response
     Filter traceContextFilter = new Filter() {
     @Override public void init(FilterConfig filterConfig) {
     }
-    
+
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
@@ -253,16 +253,16 @@ public abstract class ITServlet5Container extends ITServletContainer {
         ((HttpServletResponse) response).setHeader(BAGGAGE_FIELD_KEY, value);
         chain.doFilter(request, response);
     }
-    
+
     @Override public void destroy() {
     }
   };
-    
-  @Test public void traceContextVisibleToOtherFilters() throws Exception {
+
+  @Test protected void traceContextVisibleToOtherFilters() throws Exception {
     delegate = traceContextFilter;
-    
+
     String path = "/foo";
-    
+
     Request request = new Request.Builder().url(url(path))
       .header(BAGGAGE_FIELD_KEY, "abcdefg").build();
     try (Response response = client.newCall(request).execute()) {
@@ -270,68 +270,68 @@ public abstract class ITServlet5Container extends ITServletContainer {
       assertThat(response.header(BAGGAGE_FIELD_KEY))
          .isEqualTo("abcdefg");
     }
-    
+
     testSpanHandler.takeRemoteSpan(SERVER);
   }
-  
+
   // Shows how a framework can layer on "http.route" logic
   Filter customHttpRoute = new Filter() {
     @Override public void init(FilterConfig filterConfig) {
     }
-    
+
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
       request.setAttribute("http.route", ((HttpServletRequest) request).getRequestURI());
       chain.doFilter(request, response);
     }
-    
+
     @Override public void destroy() {
     }
   };
-    
+
   /**
    * Shows that by adding the request attribute "http.route" a layered framework can influence any
    * derived from the route, including the span name.
    */
-  @Test public void canSetCustomRoute() throws Exception {
+  @Test protected void canSetCustomRoute() throws Exception {
     delegate = customHttpRoute;
-    
+
     get("/foo");
-    
+
     assertThat(testSpanHandler.takeRemoteSpan(SERVER).name())
       .isEqualTo("GET /foo");
   }
-  
+
   Filter customHook = new Filter() {
     @Override public void init(FilterConfig filterConfig) {
   }
-  
+
   @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
     throws IOException, ServletException {
       ((brave.SpanCustomizer) request.getAttribute("brave.SpanCustomizer")).tag("foo", "bar");
       chain.doFilter(request, response);
     }
-    
+
     @Override public void destroy() {
     }
   };
-    
+
   /**
    * Shows that a framework can directly use the "brave.Span" rather than relying on the current
    * span.
    */
-  @Test public void canUseSpanAttribute() throws Exception {
+  @Test protected void canUseSpanAttribute() throws Exception {
     delegate = customHook;
-  
+
     get("/foo");
-  
+
     assertThat(testSpanHandler.takeRemoteSpan(SERVER).tags())
       .containsEntry("foo", "bar");
   }
-   
-  @Test public void errorTag_onException_asyncDispatch() throws Exception {
+
+  @Test protected void errorTag_onException_asyncDispatch() throws Exception {
     httpStatusCodeTagMatchesResponse_onUncaughtException("/exceptionAsyncDispatch", "not ready");
   }
 
@@ -372,7 +372,7 @@ public abstract class ITServlet5Container extends ITServletContainer {
     handler.addServlet(new ServletHolder(new DispatchExceptionAsyncServlet()),
       "/exceptionAsyncDispatch");
   }
-  
+
   protected abstract Filter newTracingFilter();
 
   // abstract because filter registration types were not introduced until servlet 3.0

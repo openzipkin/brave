@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -25,8 +25,8 @@ import com.alibaba.dubbo.config.ApplicationConfig;
 import com.alibaba.dubbo.config.ReferenceConfig;
 import com.alibaba.dubbo.rpc.Result;
 import com.alibaba.dubbo.rpc.RpcContext;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static brave.Span.Kind.SERVER;
 import static brave.rpc.RpcRequestMatchers.methodEquals;
@@ -36,8 +36,8 @@ import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class ITTracingFilter_Provider extends ITTracingFilter {
-  @Before public void setup() {
+class ITTracingFilter_Provider extends ITTracingFilter {
+  @BeforeEach void setup() {
     server.service.setFilter("tracing");
     server.service.setInterface(GreeterService.class);
     server.service.setRef((method, parameterTypes, args) -> {
@@ -62,7 +62,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     init();
   }
 
-  @Test public void reusesPropagatedSpanId() {
+  @Test void reusesPropagatedSpanId() {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
 
     RpcContext.getContext().getAttachments().put("b3", B3SingleFormat.writeB3SingleFormat(parent));
@@ -71,7 +71,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     assertSameIds(testSpanHandler.takeRemoteSpan(SERVER), parent);
   }
 
-  @Test public void createsChildWhenJoinDisabled() {
+  @Test void createsChildWhenJoinDisabled() {
     tracing = tracingBuilder(NEVER_SAMPLE).supportsJoin(false).build();
     init();
 
@@ -83,7 +83,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     assertChildOf(testSpanHandler.takeRemoteSpan(SERVER), parent);
   }
 
-  @Test public void samplingDisabled() {
+  @Test void samplingDisabled() {
     tracing = tracingBuilder(NEVER_SAMPLE).build();
     init();
 
@@ -92,28 +92,28 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     // @After will check that nothing is reported
   }
 
-  @Test public void currentSpanVisibleToImpl() {
+  @Test void currentSpanVisibleToImpl() {
     assertThat(client.get().sayHello("jorge"))
         .isNotEmpty();
 
     testSpanHandler.takeRemoteSpan(SERVER);
   }
 
-  @Test public void reportsServerKindToZipkin() {
+  @Test void reportsServerKindToZipkin() {
     client.get().sayHello("jorge");
 
     assertThat(testSpanHandler.takeRemoteSpan(SERVER).kind())
         .isEqualTo(SERVER);
   }
 
-  @Test public void defaultSpanNameIsMethodName() {
+  @Test void defaultSpanNameIsMethodName() {
     client.get().sayHello("jorge");
 
     assertThat(testSpanHandler.takeRemoteSpan(SERVER).name())
         .isEqualTo("brave.dubbo.rpc.GreeterService/sayHello");
   }
 
-  @Test public void setsErrorOnException() {
+  @Test void setsErrorOnException() {
     assertThatThrownBy(() -> client.get().sayHello("bad"))
         .isInstanceOf(IllegalArgumentException.class);
 
@@ -122,7 +122,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
   /* RpcTracing-specific feature tests */
 
-  @Test public void customSampler() {
+  @Test void customSampler() {
     RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).serverSampler(RpcRuleSampler.newBuilder()
         .putRule(methodEquals("sayGoodbye"), NEVER_SAMPLE)
         .putRule(serviceEquals("brave.dubbo"), ALWAYS_SAMPLE)
@@ -139,7 +139,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     // @After will also check that sayGoodbye was not sampled
   }
 
-  @Test public void customParser() {
+  @Test void customParser() {
     Tag<DubboResponse> javaValue = new Tag<DubboResponse>("dubbo.result_value") {
       @Override protected String parseValue(DubboResponse input, TraceContext context) {
         Result result = input.result();

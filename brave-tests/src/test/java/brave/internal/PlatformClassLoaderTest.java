@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,13 +14,13 @@
 package brave.internal;
 
 import brave.test.util.ClassLoaders;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static java.net.InetSocketAddress.createUnresolved;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class PlatformClassLoaderTest {
-  @Test public void unloadable_afterGet() {
+class PlatformClassLoaderTest {
+  @Test void unloadable_afterGet() {
     assertRunIsUnloadable(GetPlatform.class);
   }
 
@@ -31,7 +31,7 @@ public class PlatformClassLoaderTest {
     }
   }
 
-  @Test public void unloadable_afterGetLinkLocalIp() {
+  @Test void unloadable_afterGetLinkLocalIp() {
     assertRunIsUnloadable(GetPlatformLinkLocalIp.class);
   }
 
@@ -42,7 +42,7 @@ public class PlatformClassLoaderTest {
     }
   }
 
-  @Test public void unloadable_afterGetNextTraceIdHigh() {
+  @Test void unloadable_afterGetNextTraceIdHigh() {
     assertRunIsUnloadable(GetPlatformNextTraceIdHigh.class);
   }
 
@@ -53,7 +53,7 @@ public class PlatformClassLoaderTest {
     }
   }
 
-  @Test public void unloadable_afterGetHostString() {
+  @Test void unloadable_afterGetHostString() {
     assertRunIsUnloadable(GetPlatformHostString.class);
   }
 
@@ -65,7 +65,7 @@ public class PlatformClassLoaderTest {
     }
   }
 
-  @Test public void unloadable_afterGetClock() {
+  @Test void unloadable_afterGetClock() {
     assertRunIsUnloadable(GetPlatformClock.class);
   }
 

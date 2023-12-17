@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -52,9 +52,9 @@ import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static brave.Span.Kind.CLIENT;
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
@@ -65,19 +65,19 @@ import static brave.sampler.Sampler.ALWAYS_SAMPLE;
 import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.Assume.assumeTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-public abstract class BaseITTracingClientInterceptor extends ITRemote {
+public abstract class BaseITTracingClientInterceptor extends ITRemote { // public for src/it
   GrpcTracing grpcTracing = GrpcTracing.create(tracing);
   TestServer server = new TestServer(grpcTracing.nameToKey, grpcTracing.rpcTracing.propagation());
   ManagedChannel client;
 
-  @Before public void setup() throws IOException {
+  @BeforeEach protected void setup() throws IOException {
     server.start();
     client = newClient();
   }
 
-  @After public void close() {
+  @AfterEach protected void close() {
     closeClient(client);
     server.stop();
   }
@@ -94,7 +94,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
   /** Extracted as {@link ManagedChannelBuilder#usePlaintext()} is a version-specific signature */
   protected abstract ManagedChannelBuilder<?> usePlainText(ManagedChannelBuilder<?> localhost);
 
-  @Test public void propagatesNewTrace() {
+  @Test void propagatesNewTrace() {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
     TraceContext extracted = server.takeRequest().context();
@@ -103,7 +103,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     assertSameIds(testSpanHandler.takeRemoteSpan(CLIENT), extracted);
   }
 
-  @Test public void propagatesChildOfCurrentSpan() {
+  @Test void propagatesChildOfCurrentSpan() {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
@@ -116,7 +116,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
   }
 
   /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
-  @Test public void propagatesUnsampledContext() {
+  @Test void propagatesUnsampledContext() {
     TraceContext parent = newTraceContext(SamplingFlags.NOT_SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
@@ -127,7 +127,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     assertChildOf(extracted, parent);
   }
 
-  @Test public void propagatesBaggage() {
+  @Test void propagatesBaggage() {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       BAGGAGE_FIELD.updateValue(parent, "joey");
@@ -140,7 +140,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
-  @Test public void propagatesBaggage_unsampled() {
+  @Test void propagatesBaggage_unsampled() {
     TraceContext parent = newTraceContext(SamplingFlags.NOT_SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       BAGGAGE_FIELD.updateValue(parent, "joey");
@@ -152,7 +152,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
   }
 
   /** This prevents confusion as a blocking client should end before, the start of the next span. */
-  @Test public void clientTimestampAndDurationEnclosedByParent() {
+  @Test void clientTimestampAndDurationEnclosedByParent() {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     Clock clock = tracing.clock(parent);
 
@@ -171,7 +171,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
    * This tests that the parent is determined at the time the request was made, not when the request
    * was executed.
    */
-  @Test public void usesParentFromInvocationTime() {
+  @Test void usesParentFromInvocationTime() {
     server.enqueueDelay(TimeUnit.SECONDS.toMillis(1));
     GreeterGrpc.GreeterFutureStub futureStub = GreeterGrpc.newFutureStub(client);
 
@@ -194,20 +194,20 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     }
   }
 
-  @Test public void reportsClientKindToZipkin() {
+  @Test void reportsClientKindToZipkin() {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
     testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
-  @Test public void defaultSpanNameIsMethodName() {
+  @Test void defaultSpanNameIsMethodName() {
     GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
 
     assertThat(testSpanHandler.takeRemoteSpan(CLIENT).name())
         .isEqualTo("helloworld.Greeter/SayHello");
   }
 
-  @Test public void onTransportException_setsError() {
+  @Test void onTransportException_setsError() {
     server.stop();
 
     assertThatThrownBy(() -> GraterGrpc.newBlockingStub(client).seyHallo(HELLO_REQUEST))
@@ -218,7 +218,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     assertThat(span.tags()).containsEntry("grpc.status_code", "UNAVAILABLE");
   }
 
-  @Test public void setsErrorTag_onUnimplemented() {
+  @Test void setsErrorTag_onUnimplemented() {
     assertThatThrownBy(() -> GraterGrpc.newBlockingStub(client).seyHallo(HELLO_REQUEST))
         .isInstanceOf(StatusRuntimeException.class);
 
@@ -226,11 +226,11 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     assertThat(span.tags().get("grpc.status_code")).isEqualTo("UNIMPLEMENTED");
   }
 
-  @Test public void setsErrorTag_onCanceledFuture() {
+  @Test void setsErrorTag_onCanceledFuture() {
     server.enqueueDelay(TimeUnit.SECONDS.toMillis(1));
 
     ListenableFuture<HelloReply> resp = GreeterGrpc.newFutureStub(client).sayHello(HELLO_REQUEST);
-    assumeTrue("lost race on cancel", resp.cancel(true));
+    assumeTrue(resp.cancel(true), "lost race on cancel");
 
     MutableSpan span = testSpanHandler.takeRemoteSpanWithErrorTag(CLIENT, "CANCELLED");
     assertThat(span.tags().get("grpc.status_code")).isEqualTo("CANCELLED");
@@ -241,7 +241,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
    *
    * <p>Also notice that we are only making the current context available in the request side.
    */
-  @Test public void currentSpanVisibleToUserInterceptors() {
+  @Test void currentSpanVisibleToUserInterceptors() {
     closeClient(client);
 
     client = newClient(
@@ -272,7 +272,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
         .containsOnly("start", "sendMessage");
   }
 
-  @Test public void clientParserTest() {
+  @Test void clientParserTest() {
     closeClient(client);
     grpcTracing = grpcTracing.toBuilder().clientParser(new GrpcClientParser() {
       @Override protected <M> void onMessageSent(M message, SpanCustomizer span) {
@@ -312,7 +312,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     testSpanHandler.takeLocalSpan();
   }
 
-  @Test public void deprecated_grpcPropagationFormatEnabled() {
+  @Test void deprecated_grpcPropagationFormatEnabled() {
     closeClient(client);
     grpcTracing = grpcTracing.toBuilder().grpcPropagationFormatEnabled(true).build();
     client = newClient();
@@ -328,7 +328,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
-  @Test public void deprecated_clientParserTestStreamingResponse() {
+  @Test void deprecated_clientParserTestStreamingResponse() {
     closeClient(client);
     grpcTracing = grpcTracing.toBuilder().clientParser(new GrpcClientParser() {
       int receiveCount = 0;
@@ -349,7 +349,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
 
   // Make sure we work well with bad user interceptors.
 
-  @Test public void userInterceptor_throwsOnStart() {
+  @Test void userInterceptor_throwsOnStart() {
     closeClient(client);
     client = newClient(new ClientInterceptor() {
       @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
@@ -369,7 +369,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, "I'm a bad interceptor.");
   }
 
-  @Test public void userInterceptor_throwsOnHalfClose() {
+  @Test void userInterceptor_throwsOnHalfClose() {
     closeClient(client);
     client = newClient(new ClientInterceptor() {
       @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
@@ -393,7 +393,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
    * This shows that a {@link ClientInterceptor} can see the server server span when processing the
    * request and response.
    */
-  @Test public void messageTagging_unary() {
+  @Test void messageTagging_unary() {
     initMessageTaggingClient();
 
     ScopedSpan span = tracing.tracer().startScopedSpan("parent");
@@ -411,7 +411,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
         .containsKey("grpc.message_recv.1");
   }
 
-  @Test public void messageTagging_streaming() {
+  @Test void messageTagging_streaming() {
     initMessageTaggingClient();
 
     ScopedSpan span = tracing.tracer().startScopedSpan("parent");
@@ -478,7 +478,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
    * we would see a client span child of a client span, which could be confused with duplicate
    * instrumentation and affect dependency link counts.
    */
-  @Test public void callbackContextIsFromInvocationTime() {
+  @Test void callbackContextIsFromInvocationTime() {
     AssertableCallback<HelloReply> callback = new AssertableCallback<>();
 
     // Capture the current trace context when onSuccess or onError occur
@@ -496,7 +496,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
   }
 
   /** This ensures that response callbacks run when there is no invocation trace context. */
-  @Test public void callbackContextIsFromInvocationTime_root() {
+  @Test void callbackContextIsFromInvocationTime_root() {
     AssertableCallback<HelloReply> callback = new AssertableCallback<>();
 
     // Capture the current trace context when onSuccess or onError occur
@@ -512,7 +512,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
 
   /* RpcTracing-specific feature tests */
 
-  @Test public void customSampler() {
+  @Test void customSampler() {
     closeClient(client);
 
     RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).clientSampler(RpcRuleSampler.newBuilder()
@@ -535,7 +535,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote {
     // @After will also check that sayHelloWithManyReplies was not sampled
   }
 
-  @Test public void customParser() {
+  @Test void customParser() {
     closeClient(client);
 
     Tag<GrpcRequest> methodType = new Tag<GrpcRequest>("grpc.method_type") {

@@ -23,6 +23,7 @@ import brave.rpc.RpcResponseParser;
 import brave.rpc.RpcRuleSampler;
 import brave.rpc.RpcTracing;
 import brave.test.util.AssertableCallback;
+import java.util.Map;
 import org.apache.dubbo.common.beanutil.JavaBeanDescriptor;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.config.ReferenceConfig;
@@ -31,11 +32,9 @@ import org.apache.dubbo.rpc.Filter;
 import org.apache.dubbo.rpc.Result;
 import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.RpcException;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.util.Map;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static brave.Span.Kind.CLIENT;
 import static brave.rpc.RpcRequestMatchers.methodEquals;
@@ -45,10 +44,10 @@ import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class ITTracingFilter_Consumer extends ITTracingFilter {
+class ITTracingFilter_Consumer extends ITTracingFilter {
   ReferenceConfig<GraterService> wrongClient;
 
-  @Before public void setup() {
+  @BeforeEach void setup() {
     server.initService();
     init();
     server.start();
@@ -80,12 +79,12 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
-  @After public void stop() {
+  @AfterEach void stop() {
     if (wrongClient != null) wrongClient.destroy();
     super.stop();
   }
 
-  @Test public void propagatesNewTrace() {
+  @Test void propagatesNewTrace() {
     client.get().sayHello("jorge");
 
     TraceContext extracted = server.takeRequest().context();
@@ -94,7 +93,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     assertSameIds(testSpanHandler.takeRemoteSpan(CLIENT), extracted);
   }
 
-  @Test public void propagatesChildOfCurrentSpan() {
+  @Test void propagatesChildOfCurrentSpan() {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       client.get().sayHello("jorge");
@@ -107,7 +106,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
   }
 
   /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
-  @Test public void propagatesUnsampledContext() {
+  @Test void propagatesUnsampledContext() {
     TraceContext parent = newTraceContext(SamplingFlags.NOT_SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       client.get().sayHello("jorge");
@@ -118,7 +117,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     assertChildOf(extracted, parent);
   }
 
-  @Test public void propagatesBaggage() {
+  @Test void propagatesBaggage() {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       BAGGAGE_FIELD.updateValue(parent, "joey");
@@ -131,7 +130,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
-  @Test public void propagatesBaggage_unsampled() {
+  @Test void propagatesBaggage_unsampled() {
     TraceContext parent = newTraceContext(SamplingFlags.NOT_SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       BAGGAGE_FIELD.updateValue(parent, "joey");
@@ -143,7 +142,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
   }
 
   /** This prevents confusion as a blocking client should end before, the start of the next span. */
-  @Test public void clientTimestampAndDurationEnclosedByParent() {
+  @Test void clientTimestampAndDurationEnclosedByParent() {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     Clock clock = tracing.clock(parent);
 
@@ -162,7 +161,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
    * This tests that the parent is determined at the time the request was made, not when the request
    * was executed.
    */
-  @Test public void usesParentFromInvocationTime() {
+  @Test void usesParentFromInvocationTime() {
     AssertableCallback<String> items1 = new AssertableCallback<>();
     AssertableCallback<String> items2 = new AssertableCallback<>();
 
@@ -191,37 +190,37 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     }
   }
 
-  @Test public void reportsClientKindToZipkin() {
+  @Test void reportsClientKindToZipkin() {
     client.get().sayHello("jorge");
 
     testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
-  @Test public void defaultSpanNameIsMethodName() {
+  @Test void defaultSpanNameIsMethodName() {
     client.get().sayHello("jorge");
 
     assertThat(testSpanHandler.takeRemoteSpan(CLIENT).name())
         .isEqualTo("brave.dubbo.GreeterService/sayHello");
   }
 
-  @Test public void onTransportException_setError() {
+  @Test void onTransportException_setError() {
     server.stop();
 
     assertThatThrownBy(() -> client.get().sayHello("jorge"))
         .isInstanceOf(RpcException.class);
 
-    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Service brave.dubbo.GreeterService with version 0.0.0 not found, invocation rejected.*");
+    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Not found exported service: brave.dubbo.GreeterService.*");
   }
 
-  @Test public void onTransportException_setError_async() {
+  @Test void onTransportException_setError_async() {
     server.stop();
 
     RpcContext.getContext().asyncCall(() -> client.get().sayHello("romeo"));
 
-    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Service brave.dubbo.GreeterService with version 0.0.0 not found, invocation rejected.*");
+    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Not found exported service: brave.dubbo.GreeterService.*");
   }
 
-  @Test public void finishesOneWaySpan() {
+  @Test void finishesOneWaySpan() {
     RpcContext.getContext().asyncCall(() -> {
       client.get().sayHello("romeo");
     });
@@ -229,19 +228,19 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
-  @Test public void setError_onUnimplemented() {
+  @Test void setError_onUnimplemented() {
     assertThatThrownBy(() -> wrongClient.get().sayHello("jorge"))
         .isInstanceOf(RpcException.class);
 
     MutableSpan span =
-        testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Service brave.dubbo.GraterService with version 0.0.0 not found, invocation rejected.*");
+        testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Fail to decode request.*");
 
     assertThat(span.tags())
         .containsEntry("dubbo.error_code", "1");
   }
 
   /** Shows if you aren't using RpcTracing, the old "dubbo.error_code" works */
-  @Test public void setError_onUnimplemented_legacy() {
+  @Test void setError_onUnimplemented_legacy() {
     ((TracingFilter) ExtensionLoader.getExtensionLoader(Filter.class)
         .getExtension("tracing")).isInit = false;
 
@@ -253,14 +252,14 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
         .isInstanceOf(RpcException.class);
 
     MutableSpan span =
-        testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Service brave.dubbo.GraterService with version 0.0.0 not found, invocation rejected.*");
+        testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Fail to decode request.*");
     assertThat(span.tags())
         .containsEntry("dubbo.error_code", "1");
   }
 
   /* RpcTracing-specific feature tests */
 
-  @Test public void customSampler() {
+  @Test void customSampler() {
     RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).clientSampler(RpcRuleSampler.newBuilder()
         .putRule(methodEquals("sayGoodbye"), NEVER_SAMPLE)
         .putRule(serviceEquals("brave.dubbo"), ALWAYS_SAMPLE)
@@ -277,7 +276,7 @@ public class ITTracingFilter_Consumer extends ITTracingFilter {
     // @After will also check that sayGoodbye was not sampled
   }
 
-  @Test public void customParser() {
+  @Test void customParser() {
     Tag<DubboResponse> javaValue = new Tag<DubboResponse>("dubbo.result_value") {
       @Override protected String parseValue(DubboResponse input, TraceContext context) {
         Result result = input.result();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,16 +18,16 @@ import brave.sampler.RateLimitingSampler;
 import brave.sampler.Sampler;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static brave.rpc.RpcRequestMatchers.methodEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class RpcRuleSamplerTest {
 
   @Mock RpcServerRequest request;
@@ -35,7 +35,7 @@ public class RpcRuleSamplerTest {
       .putRule(methodEquals("health"), Sampler.ALWAYS_SAMPLE)
       .build();
 
-  @Test public void matches() {
+  @Test void matches() {
     Map<Sampler, Boolean> samplerToAnswer = new LinkedHashMap<>();
     samplerToAnswer.put(Sampler.ALWAYS_SAMPLE, true);
     samplerToAnswer.put(Sampler.NEVER_SAMPLE, false);
@@ -56,12 +56,12 @@ public class RpcRuleSamplerTest {
     });
   }
 
-  @Test public void nullOnNull() {
+  @Test void nullOnNull() {
     assertThat(sampler.trySample(null))
         .isNull();
   }
 
-  @Test public void unmatched() {
+  @Test void unmatched() {
     sampler = RpcRuleSampler.newBuilder()
         .putRule(methodEquals("log"), Sampler.ALWAYS_SAMPLE)
         .build();
@@ -76,7 +76,7 @@ public class RpcRuleSamplerTest {
         .isNull();
   }
 
-  @Test public void exampleCustomMatcher() {
+  @Test void exampleCustomMatcher() {
     Matcher<RpcRequest> playInTheUSA = request -> (!"health".equals(request.method()));
 
     sampler = RpcRuleSampler.newBuilder()
@@ -94,7 +94,7 @@ public class RpcRuleSamplerTest {
         .isNull(); // unmatched because country is health
   }
 
-  @Test public void putAllRules() {
+  @Test void putAllRules() {
     RpcRuleSampler base = RpcRuleSampler.newBuilder()
         .putRule(methodEquals("health"), Sampler.NEVER_SAMPLE)
         .build();
@@ -110,7 +110,7 @@ public class RpcRuleSamplerTest {
   }
 
   // empty may sound unintuitive, but it allows use of the same type when always deferring
-  @Test public void noRulesOk() {
+  @Test void noRulesOk() {
     RpcRuleSampler.newBuilder().build();
   }
 }

@@ -22,6 +22,9 @@ import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import jakarta.jms.BytesMessage;
+import jakarta.jms.JMSConsumer;
+import jakarta.jms.JMSContext;
+import jakarta.jms.JMSException;
 import jakarta.jms.Message;
 import jakarta.jms.MessageConsumer;
 import jakarta.jms.MessageProducer;
@@ -33,15 +36,12 @@ import jakarta.jms.TextMessage;
 import jakarta.jms.TopicPublisher;
 import jakarta.jms.TopicSession;
 import jakarta.jms.TopicSubscriber;
-import jakarta.jms.JMSConsumer;
-import jakarta.jms.JMSContext;
-import jakarta.jms.JMSException;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestName;
+import java.util.Collections;
+import java.util.Map;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import static brave.Span.Kind.CONSUMER;
 import static brave.jakarta.jms.MessageProperties.getPropertyIfString;
@@ -49,13 +49,9 @@ import static brave.jakarta.jms.MessageProperties.setStringProperty;
 import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Collections;
-import java.util.Map;
-
-/** When adding tests here, also add to {@linkplain brave.jms.ITTracingJMSConsumer} */
-public class ITTracingMessageConsumer extends ITJms {
-  @Rule public TestName testName = new TestName();
-  @Rule public JmsTestRule jms = newJmsTestRule(testName);
+/** When adding tests here, also add to {@linkplain brave.jakarta.jms.ITTracingJMSConsumer} */
+public class ITTracingMessageConsumer extends ITJms { // public for src/it
+  @RegisterExtension JmsExtension jms = new ArtemisJmsExtension();
 
   Session tracedSession;
   MessageProducer messageProducer;
@@ -69,14 +65,10 @@ public class ITTracingMessageConsumer extends ITJms {
   TopicPublisher topicPublisher;
   TopicSubscriber topicSubscriber;
 
-  JmsTestRule newJmsTestRule(TestName testName) {
-    return new ArtemisJmsTestRule(testName);
-  }
-
   TextMessage message;
   BytesMessage bytesMessage;
 
-  @Before public void setup() throws JMSException {
+  @BeforeEach void setup() throws JMSException {
     tracedSession = jmsTracing.connection(jms.connection)
       .createSession(false, Session.AUTO_ACKNOWLEDGE);
     tracedQueueSession = jmsTracing.queueConnection(jms.queueConnection)
@@ -105,7 +97,7 @@ public class ITTracingMessageConsumer extends ITJms {
     bytesMessage.reset();
   }
 
-  TraceContext resetB3PropertyWithNewSampledContext(JmsTestRule jms) throws JMSException {
+  TraceContext resetB3PropertyWithNewSampledContext(JmsExtension jms) throws JMSException {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     message = jms.newMessage("foo");
     bytesMessage = jms.newBytesMessage("foo");
@@ -116,21 +108,21 @@ public class ITTracingMessageConsumer extends ITJms {
     return parent;
   }
 
-  @After public void tearDownTraced() throws JMSException {
+  @AfterEach void tearDownTraced() throws JMSException {
     tracedSession.close();
     tracedQueueSession.close();
     tracedTopicSession.close();
   }
 
-  @Test public void messageListener_runsAfterConsumer() throws JMSException {
+  @Test void messageListener_runsAfterConsumer() throws JMSException {
     messageListener_runsAfterConsumer(() -> messageProducer.send(message), messageConsumer);
   }
 
-  @Test public void messageListener_runsAfterConsumer_queue() throws JMSException {
+  @Test void messageListener_runsAfterConsumer_queue() throws JMSException {
     messageListener_runsAfterConsumer(() -> queueSender.send(message), queueReceiver);
   }
 
-  @Test public void messageListener_runsAfterConsumer_topic() throws JMSException {
+  @Test void messageListener_runsAfterConsumer_topic() throws JMSException {
     messageListener_runsAfterConsumer(() -> topicPublisher.send(message), topicSubscriber);
   }
 
@@ -146,7 +138,7 @@ public class ITTracingMessageConsumer extends ITJms {
     assertSequential(consumerSpan, listenerSpan);
   }
 
-  @Test public void messageListener_startsNewTrace() throws JMSException {
+  @Test void messageListener_startsNewTrace() throws JMSException {
     messageListener_startsNewTrace(
       () -> messageProducer.send(message),
       messageConsumer,
@@ -154,7 +146,7 @@ public class ITTracingMessageConsumer extends ITJms {
     );
   }
 
-  @Test public void messageListener_startsNewTrace_bytes() throws JMSException {
+  @Test void messageListener_startsNewTrace_bytes() throws JMSException {
     messageListener_startsNewTrace(
       () -> messageProducer.send(bytesMessage),
       messageConsumer,
@@ -162,7 +154,7 @@ public class ITTracingMessageConsumer extends ITJms {
     );
   }
 
-  @Test public void messageListener_startsNewTrace_queue() throws JMSException {
+  @Test void messageListener_startsNewTrace_queue() throws JMSException {
     messageListener_startsNewTrace(
       () -> queueSender.send(message),
       queueReceiver,
@@ -170,7 +162,7 @@ public class ITTracingMessageConsumer extends ITJms {
     );
   }
 
-  @Test public void messageListener_startsNewTrace_topic() throws JMSException {
+  @Test void messageListener_startsNewTrace_topic() throws JMSException {
     messageListener_startsNewTrace(
       () -> topicPublisher.send(message),
       topicSubscriber,
@@ -205,19 +197,19 @@ public class ITTracingMessageConsumer extends ITJms {
       .containsEntry("b3", "false"); // b3 header not leaked to listener
   }
 
-  @Test public void messageListener_resumesTrace() throws JMSException {
+  @Test void messageListener_resumesTrace() throws JMSException {
     messageListener_resumesTrace(() -> messageProducer.send(message), messageConsumer);
   }
 
-  @Test public void messageListener_resumesTrace_bytes() throws JMSException {
+  @Test void messageListener_resumesTrace_bytes() throws JMSException {
     messageListener_resumesTrace(() -> messageProducer.send(bytesMessage), messageConsumer);
   }
 
-  @Test public void messageListener_resumesTrace_queue() throws JMSException {
+  @Test void messageListener_resumesTrace_queue() throws JMSException {
     messageListener_resumesTrace(() -> queueSender.send(message), queueReceiver);
   }
 
-  @Test public void messageListener_resumesTrace_topic() throws JMSException {
+  @Test void messageListener_resumesTrace_topic() throws JMSException {
     messageListener_resumesTrace(() -> topicPublisher.send(message), topicSubscriber);
   }
 
@@ -243,26 +235,26 @@ public class ITTracingMessageConsumer extends ITJms {
       .containsEntry("b3", "false"); // b3 header not leaked to listener
   }
 
-  @Test public void messageListener_readsBaggage() throws JMSException {
+  @Test void messageListener_readsBaggage() throws JMSException {
     messageListener_readsBaggage(() -> messageProducer.send(message), messageConsumer);
   }
 
-  @Test public void messageListener_readsBaggage_bytes() throws JMSException {
+  @Test void messageListener_readsBaggage_bytes() throws JMSException {
     messageListener_readsBaggage(() -> messageProducer.send(bytesMessage), messageConsumer);
   }
 
-  @Test public void messageListener_readsBaggage_queue() throws JMSException {
+  @Test void messageListener_readsBaggage_queue() throws JMSException {
     messageListener_readsBaggage(() -> queueSender.send(message), queueReceiver);
   }
 
-  @Test public void messageListener_readsBaggage_topic() throws JMSException {
+  @Test void messageListener_readsBaggage_topic() throws JMSException {
     messageListener_readsBaggage(() -> topicPublisher.send(message), topicSubscriber);
   }
 
   void messageListener_readsBaggage(JMSRunnable send, MessageConsumer messageConsumer)
-      throws JMSException {
+    throws JMSException {
     messageConsumer.setMessageListener(m ->
-        Tags.BAGGAGE_FIELD.tag(BAGGAGE_FIELD, tracing.tracer().currentSpan())
+      Tags.BAGGAGE_FIELD.tag(BAGGAGE_FIELD, tracing.tracer().currentSpan())
     );
 
     message = jms.newMessage("baggage");
@@ -279,10 +271,10 @@ public class ITTracingMessageConsumer extends ITJms {
     assertThat(consumerSpan.parentId()).isNull();
     assertChildOf(listenerSpan, consumerSpan);
     assertThat(listenerSpan.tags())
-        .containsEntry(BAGGAGE_FIELD.name(), baggage);
+      .containsEntry(BAGGAGE_FIELD.name(), baggage);
   }
 
-  @Test public void receive_startsNewTrace() throws JMSException {
+  @Test void receive_startsNewTrace() throws JMSException {
     receive_startsNewTrace(
       () -> messageProducer.send(message),
       messageConsumer,
@@ -290,7 +282,7 @@ public class ITTracingMessageConsumer extends ITJms {
     );
   }
 
-  @Test public void receive_startsNewTrace_queue() throws JMSException {
+  @Test void receive_startsNewTrace_queue() throws JMSException {
     receive_startsNewTrace(
       () -> queueSender.send(message),
       queueReceiver,
@@ -298,7 +290,7 @@ public class ITTracingMessageConsumer extends ITJms {
     );
   }
 
-  @Test public void receive_startsNewTrace_topic() throws JMSException {
+  @Test void receive_startsNewTrace_topic() throws JMSException {
     receive_startsNewTrace(
       () -> topicPublisher.send(message),
       topicSubscriber,
@@ -318,15 +310,15 @@ public class ITTracingMessageConsumer extends ITJms {
     assertThat(consumerSpan.tags()).containsAllEntriesOf(consumerTags);
   }
 
-  @Test public void receive_resumesTrace() throws JMSException {
+  @Test void receive_resumesTrace() throws JMSException {
     receive_resumesTrace(() -> messageProducer.send(message), messageConsumer);
   }
 
-  @Test public void receive_resumesTrace_queue() throws JMSException {
+  @Test void receive_resumesTrace_queue() throws JMSException {
     receive_resumesTrace(() -> queueSender.send(message), queueReceiver);
   }
 
-  @Test public void receive_resumesTrace_topic() throws JMSException {
+  @Test void receive_resumesTrace_topic() throws JMSException {
     receive_resumesTrace(() -> topicPublisher.send(message), topicSubscriber);
   }
 
@@ -343,11 +335,11 @@ public class ITTracingMessageConsumer extends ITJms {
   }
 
   // Inability to encode "b3" on a received BytesMessage only applies to ActiveMQ 5.x
-  @Test public void receive_resumesTrace_bytes() throws JMSException {
+  @Test void receive_resumesTrace_bytes() throws JMSException {
     receive_resumesTrace(() -> messageProducer.send(bytesMessage), messageConsumer);
   }
 
-  @Test public void receive_customSampler() throws JMSException {
+  @Test void receive_customSampler() throws JMSException {
     queueReceiver.close();
 
     MessagingRuleSampler consumerSampler = MessagingRuleSampler.newBuilder()
@@ -358,7 +350,7 @@ public class ITTracingMessageConsumer extends ITJms {
       .consumerSampler(consumerSampler)
       .build();
          JMSContext context = JmsTracing.create(messagingTracing)
-           .connectionFactory(((ArtemisJmsTestRule) jms).factory)
+           .connectionFactory(((ArtemisJmsExtension) jms).factory)
            .createContext(JMSContext.AUTO_ACKNOWLEDGE);
          JMSConsumer consumer = context.createConsumer(jms.queue)
     ) {

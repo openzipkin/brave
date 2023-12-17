@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -21,13 +21,13 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** This class is in a separate test to ensure the trace context is not inheritable. */
-public class CurrentTraceContextExecutorTest {
+class CurrentTraceContextExecutorTest {
   // Ensures one at-a-time, but also on a different thread
   ExecutorService wrappedExecutor = Executors.newSingleThreadExecutor();
   // override default so that it isn't inheritable
@@ -37,13 +37,12 @@ public class CurrentTraceContextExecutorTest {
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(1).build();
   TraceContext context2 = TraceContext.newBuilder().traceId(2).spanId(1).build();
 
-  @After public void shutdownExecutor() throws InterruptedException {
+  @AfterEach void shutdownExecutor() throws InterruptedException {
     wrappedExecutor.shutdown();
     wrappedExecutor.awaitTermination(1, TimeUnit.SECONDS);
   }
 
-  @Test
-  public void execute() throws Exception {
+  @Test void execute() throws Exception {
     final TraceContext[] threadValues = new TraceContext[2];
 
     CountDownLatch latch = new CountDownLatch(1);

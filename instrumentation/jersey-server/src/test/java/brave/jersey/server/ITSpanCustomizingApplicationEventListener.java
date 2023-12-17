@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -25,12 +25,12 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 import org.junit.AssumptionViolatedException;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ITSpanCustomizingApplicationEventListener extends ITServletContainer {
+class ITSpanCustomizingApplicationEventListener extends ITServletContainer {
   public ITSpanCustomizingApplicationEventListener() {
     super(new Jetty9ServerController());
   }
@@ -39,7 +39,7 @@ public class ITSpanCustomizingApplicationEventListener extends ITServletContaine
     throw new AssumptionViolatedException("TODO!");
   }
 
-  @Test public void tagsResource() throws Exception {
+  @Test void tagsResource() throws Exception {
     get("/foo");
 
     assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER).tags())
@@ -48,8 +48,8 @@ public class ITSpanCustomizingApplicationEventListener extends ITServletContaine
   }
 
   /** Tests that the span propagates between under asynchronous callbacks managed by jersey. */
-  @Ignore("TODO: investigate race condition")
-  @Test public void managedAsync() throws Exception {
+  @Disabled("TODO: investigate race condition")
+  @Test void managedAsync() throws Exception {
     get("/managedAsync");
 
     testSpanHandler.takeRemoteSpan(Span.Kind.SERVER);

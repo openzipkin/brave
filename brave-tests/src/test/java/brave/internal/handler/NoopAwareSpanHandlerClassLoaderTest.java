@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,12 +17,12 @@ import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
 import brave.propagation.TraceContext;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 
-public class NoopAwareSpanHandlerClassLoaderTest {
-  @Test public void unloadable_afterHandle() {
+class NoopAwareSpanHandlerClassLoaderTest {
+  @Test void unloadable_afterHandle() {
     assertRunIsUnloadable(Handle.class, getClass().getClassLoader());
   }
 
@@ -42,7 +42,7 @@ public class NoopAwareSpanHandlerClassLoaderTest {
     }
   }
 
-  @Test public void unloadable_afterErrorHandling() {
+  @Test void unloadable_afterErrorHandling() {
     assertRunIsUnloadable(ErrorHandling.class, getClass().getClassLoader());
   }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,20 +18,21 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class ListsTest {
+class ListsTest {
 
-  @Test public void ensureMutable_leavesArrayList() {
+  @Test void ensureMutable_leavesArrayList() {
     List<Object> list = new ArrayList<>();
 
     assertThat(Lists.ensureMutable(list))
       .isSameAs(list);
   }
 
-  @Test public void ensureMutable_copiesImmutable() {
+  @Test void ensureMutable_copiesImmutable() {
     List<Object> list = Collections.unmodifiableList(Arrays.asList("foo", "bar"));
 
     assertThat(Lists.ensureMutable(list))
@@ -39,19 +40,20 @@ public class ListsTest {
       .containsExactlyElementsOf(list);
   }
 
-  @Test(expected = UnsupportedOperationException.class)
-  public void ensureImmutable_returnsImmutableEmptyList() {
-    Lists.ensureImmutable(new ArrayList<>()).add("foo");
+  @Test void ensureImmutable_returnsImmutableEmptyList() {
+    assertThrows(UnsupportedOperationException.class, () -> {
+      Lists.ensureImmutable(new ArrayList<>()).add("foo");
+    });
   }
 
-  @Test public void ensureImmutable_convertsToSingletonList() {
+  @Test void ensureImmutable_convertsToSingletonList() {
     List<Object> list = new ArrayList<>();
     list.add("foo");
     assertThat(Lists.ensureImmutable(list).getClass().getSimpleName())
       .isEqualTo("SingletonList");
   }
 
-  @Test public void ensureImmutable_convertsToUnmodifiableList() {
+  @Test void ensureImmutable_convertsToUnmodifiableList() {
     List<Long> list = new ArrayList<>();
     list.add(1L);
     list.add(2L);
@@ -60,36 +62,36 @@ public class ListsTest {
       .startsWith("Unmodifiable");
   }
 
-  @Test public void ensureImmutable_returnsEmptyList() {
+  @Test void ensureImmutable_returnsEmptyList() {
     List<Object> list = Collections.emptyList();
     assertThat(Lists.ensureImmutable(list))
       .isSameAs(list);
   }
 
-  @Test public void ensureImmutable_returnsEmptyListForMutableInput() {
+  @Test void ensureImmutable_returnsEmptyListForMutableInput() {
     List<Object> list = new ArrayList<>();
     assertThat(Lists.ensureImmutable(list)).isSameAs(Collections.emptyList());
   }
 
-  @Test public void ensureImmutable_singletonListStaysSingleton() {
+  @Test void ensureImmutable_singletonListStaysSingleton() {
     List<Object> list = Collections.singletonList("foo");
     assertThat(Lists.ensureImmutable(list).getClass().getSimpleName())
       .isEqualTo("SingletonList");
   }
 
-  @Test public void ensureImmutable_doesntCopyUnmodifiableList() {
+  @Test void ensureImmutable_doesntCopyUnmodifiableList() {
     List<Object> list = Collections.unmodifiableList(Arrays.asList("foo", "bar"));
     assertThat(Lists.ensureImmutable(list))
       .isSameAs(list);
   }
 
-  @Test public void ensureImmutable_doesntCopyImmutableList() {
+  @Test void ensureImmutable_doesntCopyImmutableList() {
     List<Object> list = ImmutableList.of("foo", "bar");
     assertThat(Lists.ensureImmutable(list))
       .isSameAs(list);
   }
 
-  @Test public void concat_choosesNonEmpty() {
+  @Test void concat_choosesNonEmpty() {
     List<Object> list = ImmutableList.of("foo");
     assertThat(Lists.concat(list, Collections.emptyList()))
       .isSameAs(list);
@@ -97,7 +99,7 @@ public class ListsTest {
       .isSameAs(list);
   }
 
-  @Test public void concat_concatenates() {
+  @Test void concat_concatenates() {
     List<Object> list1 = ImmutableList.of("foo");
     List<Object> list2 = ImmutableList.of("bar", "baz");
 

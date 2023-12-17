@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -21,8 +21,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>Tests were ported from com.github.kristofa.brave.BraveExecutorServiceTest
  */
-public class CurrentTraceContextExecutorServiceTest {
+class CurrentTraceContextExecutorServiceTest {
   // Ensures one at-a-time, but also on a different thread
   ExecutorService wrappedExecutor = Executors.newSingleThreadExecutor();
 
@@ -43,7 +43,7 @@ public class CurrentTraceContextExecutorServiceTest {
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(1).build();
   TraceContext context2 = TraceContext.newBuilder().traceId(2).spanId(1).build();
 
-  @After public void shutdownExecutor() throws InterruptedException {
+  @AfterEach void shutdownExecutor() throws InterruptedException {
     wrappedExecutor.shutdown();
     wrappedExecutor.awaitTermination(1, TimeUnit.SECONDS);
   }
@@ -51,8 +51,7 @@ public class CurrentTraceContextExecutorServiceTest {
   final TraceContext[] threadValues = new TraceContext[2];
   CountDownLatch latch = new CountDownLatch(1);
 
-  @Test
-  public void execute() throws Exception {
+  @Test void execute() throws Exception {
     eachTaskHasCorrectSpanAttached(() -> {
       executor.execute(() -> {
         threadValues[0] = currentTraceContext.get();
@@ -69,8 +68,7 @@ public class CurrentTraceContextExecutorServiceTest {
     });
   }
 
-  @Test
-  public void submit_Runnable() throws Exception {
+  @Test void submit_Runnable() throws Exception {
     eachTaskHasCorrectSpanAttached(() -> {
       executor.submit(() -> {
         threadValues[0] = currentTraceContext.get();
@@ -86,8 +84,7 @@ public class CurrentTraceContextExecutorServiceTest {
     });
   }
 
-  @Test
-  public void submit_Callable() throws Exception {
+  @Test void submit_Callable() throws Exception {
     eachTaskHasCorrectSpanAttached(() -> {
       executor.submit(() -> {
         threadValues[0] = currentTraceContext.get();
@@ -99,8 +96,7 @@ public class CurrentTraceContextExecutorServiceTest {
     });
   }
 
-  @Test
-  public void invokeAll() throws Exception {
+  @Test void invokeAll() throws Exception {
     eachTaskHasCorrectSpanAttached(() -> executor.invokeAll(asList(
       () -> {
         threadValues[0] = currentTraceContext.get();

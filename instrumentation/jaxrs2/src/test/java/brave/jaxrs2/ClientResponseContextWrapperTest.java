@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,31 +16,31 @@ package brave.jaxrs2;
 import brave.jaxrs2.TracingClientFilter.ClientResponseContextWrapper;
 import javax.ws.rs.client.ClientRequestContext;
 import javax.ws.rs.client.ClientResponseContext;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class ClientResponseContextWrapperTest {
   @Mock ClientRequestContext request;
   @Mock ClientResponseContext response;
 
-  @Test public void request() {
+  @Test void request() {
     assertThat(new ClientResponseContextWrapper(request, response).request().unwrap())
       .isSameAs(request);
   }
 
-  @Test public void statusCode() {
+  @Test void statusCode() {
     when(response.getStatus()).thenReturn(200);
 
     assertThat(new ClientResponseContextWrapper(request, response).statusCode()).isEqualTo(200);
   }
 
-  @Test public void statusCode_zeroWhenNegative() {
+  @Test void statusCode_zeroWhenNegative() {
     when(response.getStatus()).thenReturn(-1);
 
     assertThat(new ClientResponseContextWrapper(request, response).statusCode()).isZero();

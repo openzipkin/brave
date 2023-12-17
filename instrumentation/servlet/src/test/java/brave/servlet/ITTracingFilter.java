@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -26,9 +26,9 @@ import org.eclipse.jetty.server.HttpChannelState;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.junit.Ignore;
+import org.junit.jupiter.api.Disabled;
 
-public class ITTracingFilter extends ITServlet3Container {
+class ITTracingFilter extends ITServlet3Container {
 
   @Override protected Filter newTracingFilter() {
     return TracingFilter.create(httpTracing);
@@ -51,11 +51,11 @@ public class ITTracingFilter extends ITServlet3Container {
    * UnavailableException} and swaps internally to a servlet instance that doesn't set the exception
    * cause.
    */
-  @Ignore("We can't set the error code for an uncaught exception with jetty-servlet")
+  @Disabled("We can't set the error code for an uncaught exception with jetty-servlet")
   @Override public void httpStatusCodeSettable_onUncaughtException() {
   }
 
-  @Ignore("We can't set the error code for an uncaught exception with jetty-servlet")
+  @Disabled("We can't set the error code for an uncaught exception with jetty-servlet")
   @Override public void httpStatusCodeSettable_onUncaughtException_async() {
   }
 }

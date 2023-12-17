@@ -30,6 +30,8 @@ import org.apache.dubbo.config.ServiceConfig;
 import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.service.GenericService;
 
+import static org.apache.dubbo.common.utils.SerializeCheckStatus.DISABLE;
+
 class TestServer {
   final BlockingQueue<TraceContextOrSamplingFlags> requestQueue = new LinkedBlockingQueue<>();
   final Extractor<Map<String, String>> extractor;
@@ -47,7 +49,7 @@ class TestServer {
     service = new ServiceConfig<>();
     service.setApplication(application);
     service.setRegistry(new RegistryConfig(RegistryConfig.NO_AVAILABLE));
-    service.setProtocol(new ProtocolConfig("dubbo",PickUnusedPort.get()));
+    service.setProtocol(new ProtocolConfig("dubbo", PickUnusedPort.get()));
   }
 
   public void initService() {

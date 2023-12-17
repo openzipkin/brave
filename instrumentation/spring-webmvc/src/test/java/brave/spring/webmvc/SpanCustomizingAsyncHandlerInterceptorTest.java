@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,8 +16,8 @@ package brave.spring.webmvc;
 import brave.SpanCustomizer;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -39,14 +39,13 @@ public class SpanCustomizingAsyncHandlerInterceptorTest {
   SpanCustomizer span = mock(SpanCustomizer.class);
   HandlerParser parser = mock(HandlerParser.class);
 
-  @Before
+  @BeforeEach
   public void setup() {
     interceptor = new SpanCustomizingAsyncHandlerInterceptor();
     interceptor.handlerParser = parser;
   }
 
-  @Test
-  public void preHandle_parses() {
+  @Test void preHandle_parses() {
     when(request.getAttribute("brave.SpanCustomizer")).thenReturn(span);
 
     interceptor.preHandle(request, response, controller);
@@ -57,8 +56,7 @@ public class SpanCustomizingAsyncHandlerInterceptorTest {
     verifyNoMoreInteractions(request, response, parser, span);
   }
 
-  @Test
-  public void afterCompletion_addsHttpRouteAttribute() {
+  @Test void afterCompletion_addsHttpRouteAttribute() {
     when(request.getAttribute("brave.SpanCustomizer")).thenReturn(span);
     when(request.getAttribute(BEST_MATCHING_PATTERN_ATTRIBUTE)).thenReturn("/items/{itemId}");
 
@@ -71,8 +69,7 @@ public class SpanCustomizingAsyncHandlerInterceptorTest {
     verifyNoMoreInteractions(request, response, parser, span);
   }
 
-  @Test
-  public void afterCompletion_addsHttpRouteAttribute_coercesNullToEmpty() {
+  @Test void afterCompletion_addsHttpRouteAttribute_coercesNullToEmpty() {
     when(request.getAttribute("brave.SpanCustomizer")).thenReturn(span);
 
     interceptor.afterCompletion(request, response, controller, null);
@@ -84,8 +81,7 @@ public class SpanCustomizingAsyncHandlerInterceptorTest {
     verifyNoMoreInteractions(request, response, parser, span);
   }
 
-  @Test
-  public void preHandle_nothingWhenNoSpanAttribute() {
+  @Test void preHandle_nothingWhenNoSpanAttribute() {
     interceptor.preHandle(request, response, controller);
 
     verify(request).getAttribute("brave.SpanCustomizer");

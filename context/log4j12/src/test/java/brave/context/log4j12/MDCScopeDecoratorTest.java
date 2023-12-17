@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -21,12 +21,13 @@ import brave.test.propagation.CurrentTraceContextTest;
 import java.util.function.Supplier;
 import org.apache.log4j.MDC;
 import org.apache.log4j.helpers.Loader;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assumptions.assumeThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class MDCScopeDecoratorTest extends CurrentTraceContextTest {
+class MDCScopeDecoratorTest extends CurrentTraceContextTest {
   public MDCScopeDecoratorTest() {
     assumeMDCWorks();
   }
@@ -57,9 +58,11 @@ public class MDCScopeDecoratorTest extends CurrentTraceContextTest {
     }
   }
 
-  @Test(expected = AssertionError.class) // Log4J 1.2.x MDC is inheritable by default
+  @Test // Log4J 1.2.x MDC is inheritable by default
   public void isnt_inheritable() throws Exception {
-    super.isnt_inheritable();
+    assertThrows(AssertionError.class, () -> {
+      super.isnt_inheritable();
+    });
   }
 
   @Override protected void verifyImplicitContext(@Nullable TraceContext context) {

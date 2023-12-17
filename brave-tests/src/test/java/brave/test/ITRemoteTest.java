@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,15 +14,15 @@
 package brave.test;
 
 import brave.handler.MutableSpan;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ITRemoteTest {
+class ITRemoteTest {
   static final class ITRemoteDummy extends ITRemote {
   }
 
-  @Test public void tracer_includesClassName() {
+  @Test void tracer_includesClassName() {
     ITRemoteDummy itRemote = new ITRemoteDummy();
     itRemote.tracing.tracer().newTrace().start(1L).finish(1L);
 

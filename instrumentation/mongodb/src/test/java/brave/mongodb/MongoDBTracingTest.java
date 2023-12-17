@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,32 +16,32 @@ package brave.mongodb;
 import brave.Tracer;
 import brave.Tracing;
 import com.mongodb.event.CommandListener;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class MongoDBTracingTest {
   @Mock Tracing tracing;
 
-  @Test public void create_buildsWithDefaults() {
+  @Test void create_buildsWithDefaults() {
     MongoDBTracing mongoDBTracing = MongoDBTracing.create(tracing);
 
     assertThat(mongoDBTracing).extracting("tracing").isEqualTo(tracing);
   }
 
-  @Test public void newBuilder_setsValuesCorrectly() {
+  @Test void newBuilder_setsValuesCorrectly() {
     MongoDBTracing mongoDBTracing = MongoDBTracing.newBuilder(tracing).build();
 
     assertThat(mongoDBTracing).extracting("tracing").isEqualTo(tracing);
   }
 
-  @Test public void commandListener_returnsTraceMongoCommandListener() {
+  @Test void commandListener_returnsTraceMongoCommandListener() {
     Tracer tracer = mock(Tracer.class);
     when(tracing.tracer()).thenReturn(tracer);
 

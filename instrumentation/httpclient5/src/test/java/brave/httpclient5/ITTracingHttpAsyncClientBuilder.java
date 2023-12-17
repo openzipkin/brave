@@ -31,13 +31,13 @@ import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder;
 import org.apache.hc.core5.concurrent.FutureCallback;
 import org.apache.hc.core5.http.ContentType;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.Span.Kind.CLIENT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<CloseableHttpAsyncClient> {
+class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<CloseableHttpAsyncClient> {
   static void invoke(CloseableHttpAsyncClient client, SimpleHttpRequest req) throws IOException {
     Future<SimpleHttpResponse> future = client.execute(req, null);
     blockOnFuture(future);
@@ -109,8 +109,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     });
   }
 
-  @Test
-  public void currentSpanVisibleToUserFilters() throws IOException {
+  @Test void currentSpanVisibleToUserFilters() throws IOException {
     server.enqueue(new MockResponse());
     closeClient(client);
 
@@ -154,8 +153,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
-  @Test
-  public void failedRequestInterceptorRemovesScope() {
+  @Test void failedRequestInterceptorRemovesScope() {
     assertThat(currentTraceContext.get()).isNull();
     RuntimeException error = new RuntimeException("Test");
     client = HttpClient5Tracing.newBuilder(httpTracing)
@@ -173,8 +171,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     testSpanHandler.takeRemoteSpanWithError(CLIENT, error);
   }
 
-  @Test
-  public void failedResponseInterceptorRemovesScope() throws IOException {
+  @Test void failedResponseInterceptorRemovesScope() throws IOException {
     server.enqueue(new MockResponse());
     closeClient(client);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,8 +19,8 @@ import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
 import brave.propagation.TraceContext;
 import brave.test.TestSpanHandler;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.entry;
  * This shows how you can add a tag once per span as it enters a process. This is helpful for
  * environment details that are not request-specific, such as region.
  */
-public class DefaultTagsTest {
+class DefaultTagsTest {
   TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing = Tracing.newBuilder()
     .addSpanHandler(new SpanHandler() {
@@ -45,11 +45,11 @@ public class DefaultTagsTest {
     .addSpanHandler(spans)
     .build();
 
-  @After public void close() {
+  @AfterEach void close() {
     tracing.close();
   }
 
-  @Test public void defaultTagsOnlyAddedOnce() {
+  @Test void defaultTagsOnlyAddedOnce() {
     ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
     try {
       tracing.tracer().startScopedSpan("child").finish();

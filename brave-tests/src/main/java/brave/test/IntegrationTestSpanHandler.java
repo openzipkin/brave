@@ -20,33 +20,36 @@ import brave.internal.Nullable;
 import brave.internal.Platform;
 import brave.internal.handler.OrphanTracker;
 import brave.propagation.TraceContext;
+import java.lang.reflect.Method;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
-import org.junit.After;
-import org.junit.AssumptionViolatedException;
-import org.junit.rules.TestRule;
-import org.junit.runner.Description;
-import org.junit.runners.model.Statement;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.InvocationInterceptor;
+import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
+;
 
 /**
  * This is a special span reporter for remote integration tests.
  *
  * <p>Ex. The following is similar to our base test class {@link ITRemote}:
  * <pre>{@code
- * @Rule public IntegrationTestSpanHandler testSpanHandler = new IntegrationTestSpanHandler();
+ * @RegisterExtension IntegrationTestSpanHandler testSpanHandler = new IntegrationTestSpanHandler();
  *
  * Tracing tracing = Tracing.newBuilder().addSpanHandler(testSpanHandler).build();
  *
- * @After public void close() {
+ * @AfterEach void close() {
  *   tracing.close();
  * }
  *
- * @Test public void onTransportException_setError() {
+ * @Test void onTransportException_setError() {
  *   server.stop();
  *
  *   assertThatThrownBy(() -> client.get().sayHello("jorge"))
@@ -82,7 +85,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * finished. An exception or bug could cause this (for example, the error handling route not calling
  * {@link brave.Span#finish()}).
  *
- * <p>If a test fails on {@link After}, it can mean that your test created a span, but didn't
+ * <p>If a test fails on {@link AfterEach}, it can mean that your test created a span, but didn't
  * {@link BlockingQueue#take()} it off the queue. If you are testing something that creates a span,
  * you may not want to verify each one. In this case, at least take them similar to below:
  *
@@ -103,18 +106,18 @@ import static org.assertj.core.api.Assertions.assertThat;
  * If something written to work on one thread is suddenly working on two threads, tests can fail
  * "randomly", perhaps not until an unrelated change to JRE. When tests fail, they also make it
  * impossible to release new code until we disable the test or fix it. Bugs or race conditions
- * instrumentation can be very time consuming to solve. For example, they can appear as "flakes" in
+ * instrumentation can be very time-consuming to solve. For example, they can appear as "flakes" in
  * CI servers such as Travis, which can be near impossible to debug.
  *
  * <p>Bottom-line is that we accept that strict tests are harder up front, and not necessary for a
  * few types of blocking client instrumentation. However, the majority of remote instrumentation
- * have to concern themselves with multi-threaded behavior and if we always do, the chances of
+ * have to concern themselves with multithreaded behavior and if we always do, the chances of
  * builds breaking are less.
  *
  * @see TestSpanHandler
  * @since 5.12
  */
-public final class IntegrationTestSpanHandler extends SpanHandler implements TestRule {
+public final class IntegrationTestSpanHandler extends SpanHandler implements InvocationInterceptor {
   static final String ANY_STRING = ".+";
 
   /**
@@ -142,7 +145,7 @@ public final class IntegrationTestSpanHandler extends SpanHandler implements Tes
   }
 
   /**
-   * Call this before throwing an {@link AssumptionViolatedException}, when there's a chance a span
+   * Call this before using an {@link Assumptions#assumeTrue(boolean)}, when there's a chance a span
    * was finished.
    *
    * <p>This was made for detecting features in HTTP server testing via 404. When 404 itself is
@@ -386,17 +389,16 @@ public final class IntegrationTestSpanHandler extends SpanHandler implements Tes
     return true;
   }
 
-  @Override public Statement apply(Statement base, Description description) {
-    return new Statement() {
-      @Override public void evaluate() throws Throwable {
-        try {
-          base.evaluate();
-          assertSpansConsumed();
-        } finally {
-          spans.clear();
-        }
-      }
-    };
+  @Override
+  public void interceptTestMethod(Invocation<Void> invocation,
+    ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext)
+    throws Throwable {
+    try {
+      invocation.proceed();
+      assertSpansConsumed();
+    } finally {
+      spans.clear();
+    }
   }
 
   @Override public String toString() {

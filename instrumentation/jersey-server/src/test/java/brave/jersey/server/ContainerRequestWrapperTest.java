@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,7 +17,7 @@ import brave.jersey.server.TracingApplicationEventListener.ContainerRequestWrapp
 import java.net.URI;
 import org.glassfish.jersey.server.ContainerRequest;
 import org.glassfish.jersey.server.ExtendedUriInfo;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -26,14 +26,14 @@ import static org.mockito.Mockito.when;
 public class ContainerRequestWrapperTest {
   ContainerRequest request = mock(ContainerRequest.class);
 
-  @Test public void path_prefixesSlashWhenMissing() {
+  @Test void path_prefixesSlashWhenMissing() {
     when(request.getPath(false)).thenReturn("bar");
 
     assertThat(new ContainerRequestWrapper(request).path())
       .isEqualTo("/bar");
   }
 
-  @Test public void url_derivedFromExtendedUriInfo() {
+  @Test void url_derivedFromExtendedUriInfo() {
     ExtendedUriInfo uriInfo = mock(ExtendedUriInfo.class);
     when(request.getUriInfo()).thenReturn(uriInfo);
     when(uriInfo.getRequestUri()).thenReturn(URI.create("http://foo:8080/bar?hello=world"));

@@ -60,12 +60,12 @@ Note: the command below is more complex than a normal project because this
 project has a bom.
 ```bash
 $ mvn=$PWD/mvnw
-$ for p in ./bom .; do
+$ for p in ./brave-bom .; do
  (cd $p
  $mvn versions:set -DnewVersion=2.17.1-SNAPSHOT -DgenerateBackupPoms=false
  $mvn -o clean install -DskipTests
  $mvn com.mycila:license-maven-plugin:format
- $mvn versions:set -DnewVersion=2.17.0-SNAPSHOT -DgenerateBackupPoms=false)
+ $mvn versions:set -DnewVersion=5.17.0-SNAPSHOT -DgenerateBackupPoms=false)
  done
 $ git commit -asm"Adjusts copyright headers for this year"
 ```

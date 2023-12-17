@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,37 +17,39 @@ import brave.Span;
 import brave.messaging.MessagingRuleSampler;
 import brave.messaging.MessagingTracing;
 import brave.sampler.Sampler;
+import java.lang.reflect.Method;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import javax.jms.CompletionListener;
 import javax.jms.JMSContext;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageProducer;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.rules.TestName;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** When adding tests here, also add to {@link brave.jms.ITTracingJMSProducer} */
-public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessageProducer {
-
-  @Override JmsTestRule newJmsTestRule(TestName testName) {
-    return new ArtemisJmsTestRule(testName);
+class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessageProducer {
+  @Override JmsExtension newJmsExtension() {
+    return new ArtemisJmsExtension();
   }
 
-  @Test public void should_complete_on_callback() throws JMSException {
+  @Test void should_complete_on_callback() throws JMSException {
     should_complete_on_callback(
       listener -> messageProducer.send(jms.destination, message, listener));
   }
 
-  @Test public void should_complete_on_callback_queue() throws JMSException {
+  @Test void should_complete_on_callback_queue() throws JMSException {
     should_complete_on_callback(
       listener -> queueSender.send(jms.queue, message, listener));
   }
 
-  @Test public void should_complete_on_callback_topic() throws JMSException {
+  @Test void should_complete_on_callback_topic() throws JMSException {
     should_complete_on_callback(
       listener -> topicPublisher.send(jms.topic, message, listener));
   }
@@ -68,8 +70,8 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
   }
 
   @Test
-  @Ignore("https://issues.apache.org/jira/browse/ARTEMIS-2054")
-  public void should_complete_on_error_callback() throws JMSException {
+  @Disabled("https://issues.apache.org/jira/browse/ARTEMIS-2054")
+  void should_complete_on_error_callback() throws Exception {
     CountDownLatch latch = new CountDownLatch(1);
 
     // To force error to be on callback thread, we need to wait until message is
@@ -101,7 +103,7 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
       }
     });
 
-    jms.after();
+    jms.afterEach(null);
     latch.countDown();
 
     testSpanHandler.takeRemoteSpanWithErrorTag(Span.Kind.PRODUCER, "onException");
@@ -116,7 +118,7 @@ public class ITJms_2_0_TracingMessageProducer extends ITJms_1_1_TracingMessagePr
       .producerSampler(producerSampler)
       .build();
          JMSContext context = JmsTracing.create(messagingTracing)
-           .connectionFactory(((ArtemisJmsTestRule) jms).factory)
+           .connectionFactory(((ArtemisJmsExtension) jms).factory)
            .createContext(JMSContext.AUTO_ACKNOWLEDGE)
     ) {
       context.createProducer().send(jms.queue, "foo");

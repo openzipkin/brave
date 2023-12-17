@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,16 +15,16 @@ package brave.rpc;
 
 import brave.SpanCustomizer;
 import brave.propagation.TraceContext;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class RpcResponseParserTest {
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).build();
   @Mock RpcResponse response;
@@ -32,14 +32,14 @@ public class RpcResponseParserTest {
 
   RpcResponseParser responseParser = RpcResponseParser.DEFAULT;
 
-  @Test public void responseParser_noData() {
+  @Test void responseParser_noData() {
     responseParser.parse(response, context, span);
 
     verify(response).errorCode();
     verifyNoMoreInteractions(response, span);
   }
 
-  @Test public void responseParser_errorCode_whenErrorNull() {
+  @Test void responseParser_errorCode_whenErrorNull() {
     when(response.errorCode()).thenReturn("CANCELLED");
 
     responseParser.parse(response, context, span);
@@ -52,7 +52,7 @@ public class RpcResponseParserTest {
   }
 
   /** Ensure we don't obviate a better "error" tag later when an exception is present. */
-  @Test public void responseParser_errorCode_whenError() {
+  @Test void responseParser_errorCode_whenError() {
     when(response.error()).thenReturn(new RuntimeException());
     when(response.errorCode()).thenReturn("CANCELLED");
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,33 +17,33 @@ import brave.http.HttpServerRequest;
 import brave.netty.http.TracingHttpServerHandler.HttpResponseWrapper;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class HttpResponseWrapperTest {
   @Mock HttpServerRequest request;
   @Mock HttpResponse response;
   @Mock HttpResponseStatus status;
 
-  @Test public void request() {
+  @Test void request() {
     assertThat(new HttpResponseWrapper(request, response, null).request())
       .isSameAs(request);
   }
 
-  @Test public void statusCode() {
+  @Test void statusCode() {
     when(response.status()).thenReturn(status);
     when(status.code()).thenReturn(200);
 
     assertThat(new HttpResponseWrapper(request, response, null).statusCode()).isEqualTo(200);
   }
 
-  @Test public void statusCode_zeroNoResponse() {
+  @Test void statusCode_zeroNoResponse() {
     assertThat(new HttpResponseWrapper(request, response, null).statusCode()).isZero();
   }
 }

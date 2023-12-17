@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,12 +14,12 @@
 package brave.test.propagation;
 
 import brave.propagation.B3SingleFormat;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 
-public class B3SingleFormatClassLoaderTest {
-  @Test public void unloadable_afterBasicUsage() {
+class B3SingleFormatClassLoaderTest {
+  @Test void unloadable_afterBasicUsage() {
     assertRunIsUnloadable(BasicUsage.class, getClass().getClassLoader());
   }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,14 +13,14 @@
  */
 package brave.propagation;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class TraceIdContextTest {
+class TraceIdContextTest {
   TraceIdContext base = TraceIdContext.newBuilder().traceId(333L).build();
 
-  @Test public void canUsePrimitiveOverloads_true() {
+  @Test void canUsePrimitiveOverloads_true() {
     TraceIdContext primitives = base.toBuilder()
       .sampled(true)
       .debug(true)
@@ -39,7 +39,7 @@ public class TraceIdContextTest {
       .isTrue();
   }
 
-  @Test public void canUsePrimitiveOverloads_false() {
+  @Test void canUsePrimitiveOverloads_false() {
     base = base.toBuilder().debug(true).build();
 
     TraceIdContext primitives = base.toBuilder()
@@ -60,7 +60,7 @@ public class TraceIdContextTest {
       .isFalse();
   }
 
-  @Test public void canSetSampledNull() {
+  @Test void canSetSampledNull() {
     base = base.toBuilder().sampled(true).build();
 
     TraceIdContext objects = base.toBuilder().sampled(null).build();
@@ -71,22 +71,22 @@ public class TraceIdContextTest {
       .isNull();
   }
 
-  @Test public void compareUnequalIds() {
+  @Test void compareUnequalIds() {
     assertThat(base)
       .isNotEqualTo(base.toBuilder().traceIdHigh(222L).build());
   }
 
-  @Test public void compareEqualIds() {
+  @Test void compareEqualIds() {
     assertThat(base)
       .isEqualTo(TraceIdContext.newBuilder().traceId(333L).build());
   }
 
-  @Test public void testToString_lo() {
+  @Test void testToString_lo() {
     assertThat(base.toString())
       .isEqualTo("000000000000014d");
   }
 
-  @Test public void testToString() {
+  @Test void testToString() {
     assertThat(base.toBuilder().traceIdHigh(222L).build().toString())
       .isEqualTo("00000000000000de000000000000014d");
   }

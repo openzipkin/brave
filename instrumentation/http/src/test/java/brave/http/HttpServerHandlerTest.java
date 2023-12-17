@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -23,12 +23,14 @@ import brave.sampler.SamplerFunctions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import static brave.http.HttpHandler.NULL_SENTINEL;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,7 +42,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT) // TODO: hunt down these
 public class HttpServerHandlerTest {
   List<zipkin2.Span> spans = new ArrayList<>();
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(1L).sampled(true).build();
@@ -51,7 +54,7 @@ public class HttpServerHandlerTest {
   @Mock(answer = CALLS_REAL_METHODS) HttpServerRequest request;
   @Mock(answer = CALLS_REAL_METHODS) HttpServerResponse response;
 
-  @Before public void init() {
+  @BeforeEach void init() {
     init(httpTracingBuilder(tracingBuilder()));
   }
 
@@ -70,12 +73,12 @@ public class HttpServerHandlerTest {
     return Tracing.newBuilder().spanReporter(spans::add);
   }
 
-  @After public void close() {
+  @AfterEach void close() {
     Tracing current = Tracing.current();
     if (current != null) current.close();
   }
 
-  @Test public void handleReceive_traceIdSamplerSpecialCased() {
+  @Test void handleReceive_traceIdSamplerSpecialCased() {
     Sampler sampler = mock(Sampler.class);
 
     init(httpTracingBuilder(tracingBuilder().sampler(sampler))
@@ -86,7 +89,7 @@ public class HttpServerHandlerTest {
     verify(sampler).isSampled(anyLong());
   }
 
-  @Test public void handleReceive_neverSamplerSpecialCased() {
+  @Test void handleReceive_neverSamplerSpecialCased() {
     Sampler sampler = mock(Sampler.class);
 
     init(httpTracingBuilder(tracingBuilder().sampler(sampler))
@@ -97,7 +100,7 @@ public class HttpServerHandlerTest {
     verifyNoMoreInteractions(sampler);
   }
 
-  @Test public void handleReceive_samplerSeesHttpServerRequest() {
+  @Test void handleReceive_samplerSeesHttpServerRequest() {
     SamplerFunction<HttpRequest> serverSampler = mock(SamplerFunction.class);
     init(httpTracingBuilder(tracingBuilder()).serverSampler(serverSampler));
 
@@ -106,7 +109,7 @@ public class HttpServerHandlerTest {
     verify(serverSampler).trySample(request);
   }
 
-  @Test public void externalTimestamps() {
+  @Test void externalTimestamps() {
     when(request.startTimestamp()).thenReturn(123000L);
     when(response.finishTimestamp()).thenReturn(124000L);
 
@@ -116,7 +119,7 @@ public class HttpServerHandlerTest {
     assertThat(spans.get(0).durationAsLong()).isEqualTo(1000L);
   }
 
-  @Test public void handleSend_finishesSpanEvenIfUnwrappedNull() {
+  @Test void handleSend_finishesSpanEvenIfUnwrappedNull() {
     brave.Span span = mock(brave.Span.class);
     when(span.context()).thenReturn(context);
     when(span.customizer()).thenReturn(span);
@@ -130,7 +133,7 @@ public class HttpServerHandlerTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void handleSend_finishesSpanEvenIfUnwrappedNull_withError() {
+  @Test void handleSend_finishesSpanEvenIfUnwrappedNull_withError() {
     brave.Span span = mock(brave.Span.class);
     when(span.context()).thenReturn(context);
     when(span.customizer()).thenReturn(span);
@@ -148,7 +151,7 @@ public class HttpServerHandlerTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void handleSend_oneOfResponseError() {
+  @Test void handleSend_oneOfResponseError() {
     brave.Span span = mock(brave.Span.class);
 
     assertThatThrownBy(() -> handler.handleSend(null, span))
@@ -156,7 +159,7 @@ public class HttpServerHandlerTest {
       .hasMessage("response == null");
   }
 
-  @Test public void deprecatedHandleSend_externalTimestamps() {
+  @Test void deprecatedHandleSend_externalTimestamps() {
     when(request.startTimestamp()).thenReturn(123000L);
     when(response.finishTimestamp()).thenReturn(124000L);
 
@@ -166,7 +169,7 @@ public class HttpServerHandlerTest {
     assertThat(spans.get(0).durationAsLong()).isEqualTo(1000L);
   }
 
-  @Test public void deprecatedHandleSend_finishesSpanEvenIfUnwrappedNull() {
+  @Test void deprecatedHandleSend_finishesSpanEvenIfUnwrappedNull() {
     brave.Span span = mock(brave.Span.class);
     when(span.context()).thenReturn(context);
     when(span.customizer()).thenReturn(span);
@@ -180,7 +183,7 @@ public class HttpServerHandlerTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void deprecatedHandleSend_finishesSpanEvenIfUnwrappedNull_withError() {
+  @Test void deprecatedHandleSend_finishesSpanEvenIfUnwrappedNull_withError() {
     brave.Span span = mock(brave.Span.class);
     when(span.context()).thenReturn(context);
     when(span.customizer()).thenReturn(span);
@@ -197,7 +200,7 @@ public class HttpServerHandlerTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void deprecatedHandleSend_oneOfResponseError() {
+  @Test void deprecatedHandleSend_oneOfResponseError() {
     brave.Span span = mock(brave.Span.class);
 
     assertThatThrownBy(() -> handler.handleSend(null, null, span))
@@ -205,7 +208,7 @@ public class HttpServerHandlerTest {
       .hasMessage("Either the response or error parameters may be null, but not both");
   }
 
-  @Test public void handleReceive_oldSamplerDoesntSeeNullWhenUnwrappedNull() {
+  @Test void handleReceive_oldSamplerDoesntSeeNullWhenUnwrappedNull() {
     AtomicBoolean reachedAssertion = new AtomicBoolean();
     init(httpTracingBuilder(tracingBuilder())
       .serverSampler(new HttpSampler() {
@@ -221,7 +224,7 @@ public class HttpServerHandlerTest {
     assertThat(reachedAssertion).isTrue();
   }
 
-  @Test public void handleReceive_requestParserDoesntSeeNullWhenUnwrappedNull() {
+  @Test void handleReceive_requestParserDoesntSeeNullWhenUnwrappedNull() {
     AtomicBoolean reachedAssertion = new AtomicBoolean();
     init(httpTracingBuilder(tracingBuilder())
       .serverParser(new HttpServerParser() {
@@ -237,7 +240,7 @@ public class HttpServerHandlerTest {
     assertThat(reachedAssertion).isTrue();
   }
 
-  @Test public void handleSend_responseParserDoesntSeeNullWhenUnwrappedNull() {
+  @Test void handleSend_responseParserDoesntSeeNullWhenUnwrappedNull() {
     AtomicBoolean reachedAssertion = new AtomicBoolean();
     init(httpTracingBuilder(tracingBuilder())
       .serverParser(new HttpServerParser() {

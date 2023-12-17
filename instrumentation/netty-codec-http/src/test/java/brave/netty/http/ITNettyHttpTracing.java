@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -24,10 +24,10 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.HttpServerCodec;
 import java.net.InetSocketAddress;
-import org.junit.After;
-import org.junit.Ignore;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 
-public class ITNettyHttpTracing extends ITHttpServer {
+class ITNettyHttpTracing extends ITHttpServer {
   EventLoopGroup bossGroup;
   EventLoopGroup workerGroup;
   int port;
@@ -65,20 +65,20 @@ public class ITNettyHttpTracing extends ITHttpServer {
     return "http://127.0.0.1:" + port + path;
   }
 
-  @After public void stop() {
+  @AfterEach void stop() {
     if (bossGroup != null) bossGroup.shutdownGracefully();
     if (workerGroup != null) workerGroup.shutdownGracefully();
   }
 
-  @Override @Ignore("TODO: last handler in the pipeline did not handle the exception")
+  @Override @Disabled("TODO: last handler in the pipeline did not handle the exception")
   public void httpStatusCodeSettable_onUncaughtException() {
   }
 
-  @Override @Ignore("TODO: last handler in the pipeline did not handle the exception")
+  @Override @Disabled("TODO: last handler in the pipeline did not handle the exception")
   public void setsErrorAndHttpStatusOnUncaughtException() {
   }
 
-  @Override @Ignore("TODO: last handler in the pipeline did not handle the exception")
+  @Override @Disabled("TODO: last handler in the pipeline did not handle the exception")
   public void spanHandlerSeesError() {
   }
 }

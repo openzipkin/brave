@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2022 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,8 +18,8 @@ import java.util.Collection;
 import java.util.List;
 
 import org.aopalliance.aop.Advice;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.amqp.rabbit.config.DirectRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
@@ -37,11 +37,11 @@ public class SpringRabbitTracingTest {
   Tracing tracing = Tracing.newBuilder().build();
   SpringRabbitTracing rabbitTracing = SpringRabbitTracing.create(tracing);
 
-  @After public void close() {
+  @AfterEach void close() {
     tracing.close();
   }
 
-  @Test public void decorateRabbitTemplate_adds_TracingMessagePostProcessor() {
+  @Test void decorateRabbitTemplate_adds_TracingMessagePostProcessor() {
     RabbitTemplate template = new RabbitTemplate();
     assertThat(rabbitTracing.decorateRabbitTemplate(template))
       .extracting("beforePublishPostProcessors")
@@ -50,7 +50,7 @@ public class SpringRabbitTracingTest {
       ));
   }
 
-  @Test public void decorateRabbitTemplate_skips_TracingMessagePostProcessor_when_present() {
+  @Test void decorateRabbitTemplate_skips_TracingMessagePostProcessor_when_present() {
     RabbitTemplate template = new RabbitTemplate();
     template.setBeforePublishPostProcessors(new TracingMessagePostProcessor(rabbitTracing));
 
@@ -59,7 +59,7 @@ public class SpringRabbitTracingTest {
       .satisfies(l -> assertThat((List<?>) l).hasSize(1));
   }
 
-  @Test public void decorateRabbitTemplate_prepends_TracingMessagePostProcessor_when_absent() {
+  @Test void decorateRabbitTemplate_prepends_TracingMessagePostProcessor_when_absent() {
     RabbitTemplate template = new RabbitTemplate();
     template.setBeforePublishPostProcessors(new UnzipPostProcessor());
 
@@ -69,14 +69,14 @@ public class SpringRabbitTracingTest {
       .anyMatch(postProcessor -> postProcessor instanceof TracingMessagePostProcessor);
   }
 
-  @Test public void decorateSimpleRabbitListenerContainerFactory_adds_by_default() {
+  @Test void decorateSimpleRabbitListenerContainerFactory_adds_by_default() {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
 
     assertThat(rabbitTracing.decorateSimpleRabbitListenerContainerFactory(factory).getAdviceChain())
       .allMatch(advice -> advice instanceof TracingRabbitListenerAdvice);
   }
 
-  @Test public void decorateSimpleRabbitListenerContainerFactory_skips_when_present() {
+  @Test void decorateSimpleRabbitListenerContainerFactory_skips_when_present() {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
     factory.setAdviceChain(new TracingRabbitListenerAdvice(rabbitTracing));
 
@@ -84,7 +84,7 @@ public class SpringRabbitTracingTest {
       .hasSize(1);
   }
 
-  @Test public void decorateSimpleRabbitListenerContainerFactory_prepends_as_first_when_absent() {
+  @Test void decorateSimpleRabbitListenerContainerFactory_prepends_as_first_when_absent() {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
     factory.setAdviceChain(new CacheInterceptor());
 
@@ -94,8 +94,7 @@ public class SpringRabbitTracingTest {
       .matches(adviceArray -> adviceArray[0] instanceof TracingRabbitListenerAdvice);
   }
 
-  @Test
-  public void decorateSimpleRabbitListenerContainerFactory_adds_TracingMessagePostProcessor() {
+  @Test void decorateSimpleRabbitListenerContainerFactory_adds_TracingMessagePostProcessor() {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
     assertThat(rabbitTracing.decorateSimpleRabbitListenerContainerFactory(factory))
       .extracting("beforeSendReplyPostProcessors")
@@ -103,8 +102,7 @@ public class SpringRabbitTracingTest {
       .allMatch(postProcessor -> postProcessor instanceof TracingMessagePostProcessor);
   }
 
-  @Test
-  public void decorateSimpleRabbitListenerContainerFactory_skips_TracingMessagePostProcessor_when_present() {
+  @Test void decorateSimpleRabbitListenerContainerFactory_skips_TracingMessagePostProcessor_when_present() {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
     factory.setBeforeSendReplyPostProcessors(new TracingMessagePostProcessor(rabbitTracing));
 
@@ -114,8 +112,7 @@ public class SpringRabbitTracingTest {
       .hasSize(1);
   }
 
-  @Test
-  public void decorateSimpleRabbitListenerContainerFactory_appends_TracingMessagePostProcessor_when_absent() {
+  @Test void decorateSimpleRabbitListenerContainerFactory_appends_TracingMessagePostProcessor_when_absent() {
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
     factory.setBeforeSendReplyPostProcessors(new UnzipPostProcessor());
 
@@ -126,14 +123,14 @@ public class SpringRabbitTracingTest {
   }
 
   // DirectRabbitListenerContainerFactory
-  @Test public void decorateDirectRabbitListenerContainerFactory_adds_by_default() {
+  @Test void decorateDirectRabbitListenerContainerFactory_adds_by_default() {
     DirectRabbitListenerContainerFactory factory = new DirectRabbitListenerContainerFactory();
 
     assertThat(rabbitTracing.decorateDirectRabbitListenerContainerFactory(factory).getAdviceChain())
       .allMatch(advice -> advice instanceof TracingRabbitListenerAdvice);
   }
 
-  @Test public void decorateDirectRabbitListenerContainerFactory_skips_when_present() {
+  @Test void decorateDirectRabbitListenerContainerFactory_skips_when_present() {
     DirectRabbitListenerContainerFactory factory = new DirectRabbitListenerContainerFactory();
     factory.setAdviceChain(new TracingRabbitListenerAdvice(rabbitTracing));
 
@@ -141,7 +138,7 @@ public class SpringRabbitTracingTest {
       .hasSize(1);
   }
 
-  @Test public void decorateDirectRabbitListenerContainerFactory_prepends_as_first_when_absent() {
+  @Test void decorateDirectRabbitListenerContainerFactory_prepends_as_first_when_absent() {
     DirectRabbitListenerContainerFactory factory = new DirectRabbitListenerContainerFactory();
     factory.setAdviceChain(new CacheInterceptor());
 
@@ -151,8 +148,7 @@ public class SpringRabbitTracingTest {
       .matches(adviceArray -> adviceArray[0] instanceof TracingRabbitListenerAdvice);
   }
 
-  @Test
-  public void decorateDirectRabbitListenerContainerFactory_adds_TracingMessagePostProcessor() {
+  @Test void decorateDirectRabbitListenerContainerFactory_adds_TracingMessagePostProcessor() {
     DirectRabbitListenerContainerFactory factory = new DirectRabbitListenerContainerFactory();
     assertThat(rabbitTracing.decorateDirectRabbitListenerContainerFactory(factory))
       .extracting("beforeSendReplyPostProcessors")
@@ -160,8 +156,7 @@ public class SpringRabbitTracingTest {
       .allMatch(postProcessor -> postProcessor instanceof TracingMessagePostProcessor);
   }
 
-  @Test
-  public void decorateDirectRabbitListenerContainerFactory_skips_TracingMessagePostProcessor_when_present() {
+  @Test void decorateDirectRabbitListenerContainerFactory_skips_TracingMessagePostProcessor_when_present() {
     DirectRabbitListenerContainerFactory factory = new DirectRabbitListenerContainerFactory();
     factory.setBeforeSendReplyPostProcessors(new TracingMessagePostProcessor(rabbitTracing));
 
@@ -171,8 +166,7 @@ public class SpringRabbitTracingTest {
       .hasSize(1);
   }
 
-  @Test
-  public void decorateDirectRabbitListenerContainerFactory_appends_TracingMessagePostProcessor_when_absent() {
+  @Test void decorateDirectRabbitListenerContainerFactory_appends_TracingMessagePostProcessor_when_absent() {
     DirectRabbitListenerContainerFactory factory = new DirectRabbitListenerContainerFactory();
     factory.setBeforeSendReplyPostProcessors(new UnzipPostProcessor());
 
@@ -183,7 +177,7 @@ public class SpringRabbitTracingTest {
   }
 
   // SimpleMessageListenerContainer
-  @Test public void decorateSimpleMessageListenerContainer__adds_by_default() {
+  @Test void decorateSimpleMessageListenerContainer__adds_by_default() {
     SimpleMessageListenerContainer listenerContainer = new SimpleMessageListenerContainer();
 
     assertThat(rabbitTracing.decorateMessageListenerContainer(listenerContainer))
@@ -193,7 +187,7 @@ public class SpringRabbitTracingTest {
   }
 
 
-  @Test public void decorateSimpleMessageListenerContainer_skips_when_present() {
+  @Test void decorateSimpleMessageListenerContainer_skips_when_present() {
     SimpleMessageListenerContainer listenerContainer = new SimpleMessageListenerContainer();
     listenerContainer.setAdviceChain(new TracingRabbitListenerAdvice(rabbitTracing));
 
@@ -203,7 +197,7 @@ public class SpringRabbitTracingTest {
       .hasSize(1);
   }
 
-  @Test public void decorateSimpleMessageListenerContainer_prepends_as_first_when_absent() {
+  @Test void decorateSimpleMessageListenerContainer_prepends_as_first_when_absent() {
     SimpleMessageListenerContainer listenerContainer = new SimpleMessageListenerContainer();
     listenerContainer.setAdviceChain(new CacheInterceptor());
 
@@ -215,7 +209,7 @@ public class SpringRabbitTracingTest {
   }
 
   // DirectRabbitListenerContainer
-  @Test public void decorateDirectMessageListenerContainer__adds_by_default() {
+  @Test void decorateDirectMessageListenerContainer__adds_by_default() {
     DirectMessageListenerContainer listenerContainer = new DirectMessageListenerContainer();
 
     assertThat(rabbitTracing.decorateMessageListenerContainer(listenerContainer))
@@ -225,7 +219,7 @@ public class SpringRabbitTracingTest {
   }
 
 
-  @Test public void decorateDirectMessageListenerContainer_skips_when_present() {
+  @Test void decorateDirectMessageListenerContainer_skips_when_present() {
     DirectMessageListenerContainer listenerContainer = new DirectMessageListenerContainer();
     listenerContainer.setAdviceChain(new TracingRabbitListenerAdvice(rabbitTracing));
 
@@ -235,7 +229,7 @@ public class SpringRabbitTracingTest {
       .hasSize(1);
   }
 
-  @Test public void decorateDirectMessageListenerContainer_prepends_as_first_when_absent() {
+  @Test void decorateDirectMessageListenerContainer_prepends_as_first_when_absent() {
     DirectMessageListenerContainer listenerContainer = new DirectMessageListenerContainer();
     listenerContainer.setAdviceChain(new CacheInterceptor());
 

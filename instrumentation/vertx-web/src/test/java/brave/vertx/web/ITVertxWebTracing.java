@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -30,15 +30,15 @@ import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Response;
-import org.junit.After;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
-@Ignore("Run manually until openzipkin/brave#1270")
-public class ITVertxWebTracing extends ITHttpServer {
+@Disabled("Run manually until openzipkin/brave#1270")
+class ITVertxWebTracing extends ITHttpServer {
   Vertx vertx;
   HttpServer server;
   volatile int port;
@@ -118,11 +118,11 @@ public class ITVertxWebTracing extends ITHttpServer {
   }
 
   // makes sure we don't accidentally rewrite the incoming http path
-  @Test public void handlesReroute() throws IOException {
+  @Test void handlesReroute() throws IOException {
     handlesReroute("/reroute");
   }
 
-  @Test public void handlesRerouteAsync() throws IOException {
+  @Test void handlesRerouteAsync() throws IOException {
     handlesReroute("/rerouteAsync");
   }
 
@@ -158,7 +158,7 @@ public class ITVertxWebTracing extends ITHttpServer {
     return "http://127.0.0.1:" + port + path;
   }
 
-  @After public void stop() {
+  @AfterEach void stop() {
     if (vertx == null) return;
 
     CountDownLatch latch = new CountDownLatch(2);

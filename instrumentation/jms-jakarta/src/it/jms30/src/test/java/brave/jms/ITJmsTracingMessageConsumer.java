@@ -13,5 +13,5 @@
  */
 package brave.jakarta.jms;
 
-public class ITJmsTracingMessageConsumer extends ITTracingMessageConsumer {
+class ITJmsTracingMessageConsumer extends ITTracingMessageConsumer {
 }

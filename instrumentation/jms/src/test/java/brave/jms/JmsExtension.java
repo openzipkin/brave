@@ -11,32 +11,31 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.jakarta.jms;
+package brave.jms;
 
-import jakarta.jms.BytesMessage;
-import jakarta.jms.Connection;
-import jakarta.jms.Destination;
-import jakarta.jms.JMSException;
-import jakarta.jms.Message;
-import jakarta.jms.Queue;
-import jakarta.jms.QueueConnection;
-import jakarta.jms.QueueSession;
-import jakarta.jms.Session;
-import jakarta.jms.TextMessage;
-import jakarta.jms.Topic;
-import jakarta.jms.TopicConnection;
-import jakarta.jms.TopicSession;
+import java.lang.reflect.Method;
+import java.util.Optional;
+import javax.jms.BytesMessage;
+import javax.jms.Connection;
+import javax.jms.Destination;
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.Queue;
+import javax.jms.QueueConnection;
+import javax.jms.QueueSession;
+import javax.jms.Session;
+import javax.jms.TextMessage;
+import javax.jms.Topic;
+import javax.jms.TopicConnection;
+import javax.jms.TopicSession;
+import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.command.ActiveMQMessage;
+import org.junit.jupiter.api.extension.AfterEachCallback;
+import org.junit.jupiter.api.extension.BeforeEachCallback;
+import org.junit.jupiter.api.extension.ExtensionContext;
 
-import java.lang.reflect.Field;
-
-import org.apache.activemq.artemis.jms.client.ActiveMQConnectionFactory;
-import org.apache.activemq.artemis.jms.client.ActiveMQMessage;
-import org.junit.rules.ExternalResource;
-import org.junit.rules.TestName;
-
-public abstract class JmsTestRule extends ExternalResource {
-
-  final TestName testName;
+public abstract class JmsExtension implements BeforeEachCallback, AfterEachCallback {
+  String testName;
   String destinationName, queueName, topicName;
 
   Connection connection;
@@ -51,10 +50,6 @@ public abstract class JmsTestRule extends ExternalResource {
   TopicSession topicSession;
   Topic topic;
 
-  JmsTestRule(TestName testName) {
-    this.testName = testName;
-  }
-
   TextMessage newMessage(String text) throws JMSException {
     return queueSession.createTextMessage(text);
   }
@@ -66,39 +61,44 @@ public abstract class JmsTestRule extends ExternalResource {
   }
 
   abstract void setReadOnlyProperties(Message message, boolean readOnlyProperties)
-          throws JMSException;
+    throws JMSException;
 
-  abstract Connection newConnection() throws JMSException;
+  abstract Connection newConnection() throws JMSException, Exception;
 
-  abstract QueueConnection newQueueConnection() throws JMSException;
+  abstract QueueConnection newQueueConnection() throws JMSException, Exception;
 
-  abstract TopicConnection newTopicConnection() throws JMSException;
+  abstract TopicConnection newTopicConnection() throws JMSException, Exception;
 
-  @Override public void before() throws JMSException {
+  @Override public void beforeEach(ExtensionContext context) throws Exception {
+    Optional<Method> testMethod = context.getTestMethod();
+    if (testMethod.isPresent()) {
+      this.testName = testMethod.get().getName();
+    }
+
     connection = newConnection();
     connection.start();
     // Pass redundant info as we can't user default method in activeMQ
     session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 
-    destinationName = testName.getMethodName() + "-d";
+    destinationName = testName + "-d";
     destination = session.createQueue(destinationName);
 
     queueConnection = newQueueConnection();
     queueConnection.start();
     queueSession = queueConnection.createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
 
-    queueName = testName.getMethodName() + "-q";
+    queueName = testName + "-q";
     queue = queueSession.createQueue(queueName);
 
     topicConnection = newTopicConnection();
     topicConnection.start();
     topicSession = topicConnection.createTopicSession(false, Session.AUTO_ACKNOWLEDGE);
 
-    topicName = testName.getMethodName() + "-t";
+    topicName = testName + "-t";
     topic = topicSession.createTopic(topicName);
   }
 
-  @Override public void after() {
+  @Override public void afterEach(ExtensionContext context) throws Exception {
     try {
       session.close();
       connection.close();
@@ -111,11 +111,7 @@ public abstract class JmsTestRule extends ExternalResource {
     }
   }
 
-  static class ActiveMQ extends JmsTestRule {
-    ActiveMQ(TestName testName) {
-      super(testName);
-    }
-
+  static class ActiveMQ extends JmsExtension {
     @Override Connection newConnection() throws JMSException {
       return new ActiveMQConnectionFactory("vm://localhost?broker.persistent=false")
         .createConnection();
@@ -130,15 +126,9 @@ public abstract class JmsTestRule extends ExternalResource {
       return new ActiveMQConnectionFactory("vm://localhost?broker.persistent=false")
         .createTopicConnection();
     }
-    
+
     @Override void setReadOnlyProperties(Message message, boolean readOnlyProperties) {
-        try {
-          Field propertiesReadOnly = ActiveMQMessage.class.getDeclaredField("propertiesReadOnly");
-          propertiesReadOnly.setAccessible(true);
-          propertiesReadOnly.set(message, readOnlyProperties);
-        } catch (Exception e) {
-          throw new AssertionError(e);
-        }
-      }
+      ((ActiveMQMessage) message).setReadOnlyProperties(readOnlyProperties);
+    }
   }
 }

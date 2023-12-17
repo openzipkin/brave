@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,20 +16,20 @@ package brave.httpasyncclient;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import org.apache.http.HttpHost;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class TracingHttpAsyncClientBuilderTest {
   @Mock brave.Span span;
 
-  @Test public void parseTargetAddress_skipsOnNoop() {
+  @Test void parseTargetAddress_skipsOnNoop() {
     when(span.isNoop()).thenReturn(true);
 
     TracingHttpAsyncClientBuilder.parseTargetAddress(null, span);
@@ -38,7 +38,7 @@ public class TracingHttpAsyncClientBuilderTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void parseTargetAddress_prefersAddress() throws UnknownHostException {
+  @Test void parseTargetAddress_prefersAddress() throws UnknownHostException {
     when(span.isNoop()).thenReturn(false);
     when(span.remoteIpAndPort("1.2.3.4", -1)).thenReturn(true);
     HttpHost host = new HttpHost(InetAddress.getByName("1.2.3.4"), "3.4.5.6", -1, "http");
@@ -50,7 +50,7 @@ public class TracingHttpAsyncClientBuilderTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void parseTargetAddress_acceptsHostname() {
+  @Test void parseTargetAddress_acceptsHostname() {
     when(span.isNoop()).thenReturn(false);
     HttpHost host = new HttpHost("1.2.3.4");
 
@@ -61,7 +61,7 @@ public class TracingHttpAsyncClientBuilderTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void parseTargetAddress_IpAndPortFromHost() {
+  @Test void parseTargetAddress_IpAndPortFromHost() {
     when(span.isNoop()).thenReturn(false);
     when(span.remoteIpAndPort("1.2.3.4", 9999)).thenReturn(true);
 

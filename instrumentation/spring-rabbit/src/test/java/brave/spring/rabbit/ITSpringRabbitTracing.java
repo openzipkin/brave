@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,7 +19,7 @@ import brave.sampler.Sampler;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
@@ -30,8 +30,8 @@ import static brave.messaging.MessagingRequestMatchers.operationEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public class ITSpringRabbitTracing extends ITSpringRabbit {
-  @Test public void propagates_trace_info_across_amqp_from_producer() {
+class ITSpringRabbitTracing extends ITSpringRabbit {
+  @Test void propagates_trace_info_across_amqp_from_producer() {
     produceMessage();
     awaitMessageConsumed();
 
@@ -43,7 +43,7 @@ public class ITSpringRabbitTracing extends ITSpringRabbit {
     assertChildOf(listenerSpan, consumerSpan);
   }
 
-  @Test public void clears_message_headers_after_propagation() {
+  @Test void clears_message_headers_after_propagation() {
     produceMessage();
     awaitMessageConsumed();
 
@@ -56,7 +56,7 @@ public class ITSpringRabbitTracing extends ITSpringRabbit {
     consumerSpanHandler.takeLocalSpan();
   }
 
-  @Test public void tags_spans_with_exchange_and_routing_key() {
+  @Test void tags_spans_with_exchange_and_routing_key() {
     produceMessage();
     awaitMessageConsumed();
 
@@ -74,7 +74,7 @@ public class ITSpringRabbitTracing extends ITSpringRabbit {
   }
 
   /** Technical implementation of clock sharing might imply a race. This ensures happens-after */
-  @Test public void listenerSpanHappensAfterConsumerSpan() {
+  @Test void listenerSpanHappensAfterConsumerSpan() {
     produceMessage();
     awaitMessageConsumed();
 
@@ -85,7 +85,7 @@ public class ITSpringRabbitTracing extends ITSpringRabbit {
     assertSequential(consumerSpan, listenerSpan);
   }
 
-  @Test public void creates_dependency_links() {
+  @Test void creates_dependency_links() {
     produceMessage();
     awaitMessageConsumed();
 
@@ -100,7 +100,7 @@ public class ITSpringRabbitTracing extends ITSpringRabbit {
     consumerSpanHandler.takeLocalSpan();
   }
 
-  @Test public void tags_spans_with_exchange_and_routing_key_from_default() {
+  @Test void tags_spans_with_exchange_and_routing_key_from_default() {
     produceMessageFromDefault();
     awaitMessageConsumed();
 
@@ -118,7 +118,7 @@ public class ITSpringRabbitTracing extends ITSpringRabbit {
   }
 
   // We will revisit this eventually, but these names mostly match the method names
-  @Test public void method_names_as_span_names() {
+  @Test void method_names_as_span_names() {
     produceMessage();
     awaitMessageConsumed();
 
@@ -132,7 +132,7 @@ public class ITSpringRabbitTracing extends ITSpringRabbit {
       .isEqualTo("on-message");
   }
 
-  @Test public void producerSampler() {
+  @Test void producerSampler() {
     producerSampler = MessagingRuleSampler.newBuilder()
       .putRule(operationEquals("send"), Sampler.NEVER_SAMPLE)
       .build();
@@ -144,7 +144,7 @@ public class ITSpringRabbitTracing extends ITSpringRabbit {
     // reporter rules verify nothing was reported
   }
 
-  @Test public void consumerSampler() {
+  @Test void consumerSampler() {
     consumerSampler = MessagingRuleSampler.newBuilder()
       .putRule(channelNameEquals(TEST_QUEUE), Sampler.NEVER_SAMPLE)
       .build();
@@ -154,7 +154,7 @@ public class ITSpringRabbitTracing extends ITSpringRabbit {
     // reporter rules verify nothing was reported
   }
 
-  @Test public void batchConsumerTest() {
+  @Test void batchConsumerTest() {
     produceUntracedMessage(exchange_batch.getName(), binding_batch);
     List<Message> messages = awaitBatchMessageConsumed();
     Map<String, Object> headers = messages.get(0).getMessageProperties().getHeaders();
@@ -166,7 +166,7 @@ public class ITSpringRabbitTracing extends ITSpringRabbit {
       .isEqualTo("on-message");
   }
 
-  @Test public void traceContinuesToReply() {
+  @Test void traceContinuesToReply() {
     produceUntracedMessage(TEST_EXCHANGE_REQUEST_REPLY, binding_request);
     awaitReplyMessageConsumed();
 

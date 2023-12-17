@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,12 +13,12 @@
  */
 package brave;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class RequestTest {
-  @Test public void toString_mentionsDelegate() {
+class RequestTest {
+  @Test void toString_mentionsDelegate() {
     class IceCreamRequest extends Request {
       @Override public Span.Kind spanKind() {
         return Span.Kind.SERVER;
@@ -32,7 +32,7 @@ public class RequestTest {
       .hasToString("IceCreamRequest{chocolate}");
   }
 
-  @Test public void toString_doesntStackoverflowWhenUnwrapIsThis() {
+  @Test void toString_doesntStackoverflowWhenUnwrapIsThis() {
     class BuggyRequest extends Request {
       @Override public Object unwrap() {
         return this;
@@ -46,7 +46,7 @@ public class RequestTest {
       .hasToString("BuggyRequest");
   }
 
-  @Test public void toString_doesntNPEWhenUnwrapIsNull() {
+  @Test void toString_doesntNPEWhenUnwrapIsNull() {
     class NoRequest extends Request {
       @Override public Object unwrap() {
         return null;

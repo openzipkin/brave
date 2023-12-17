@@ -16,7 +16,7 @@ package brave.jakarta.jms;
 import jakarta.jms.JMSException;
 import jakarta.jms.Queue;
 import jakarta.jms.Topic;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -28,11 +28,11 @@ public class MessageParserTest {
   interface QueueAndTopic extends Queue, Topic {
   }
 
-  @Test public void channelKind_queueAndTopic_null() {
+  @Test void channelKind_queueAndTopic_null() {
     assertThat(MessageParser.channelKind(null)).isNull();
   }
 
-  @Test public void channelKind_queueAndTopic_queueOnQueueName() throws JMSException {
+  @Test void channelKind_queueAndTopic_queueOnQueueName() throws JMSException {
     QueueAndTopic destination = mock(QueueAndTopic.class);
     when(destination.getQueueName()).thenReturn("queue-foo");
 
@@ -40,7 +40,7 @@ public class MessageParserTest {
       .isEqualTo("queue");
   }
 
-  @Test public void channelKind_queueAndTopic_topicOnNoQueueName() throws JMSException {
+  @Test void channelKind_queueAndTopic_topicOnNoQueueName() throws JMSException {
     QueueAndTopic destination = mock(QueueAndTopic.class);
     when(destination.getTopicName()).thenReturn("topic-foo");
 
@@ -48,11 +48,11 @@ public class MessageParserTest {
       .isEqualTo("topic");
   }
 
-  @Test public void channelName_queueAndTopic_null() {
+  @Test void channelName_queueAndTopic_null() {
     assertThat(MessageParser.channelName(null)).isNull();
   }
 
-  @Test public void channelName_queueAndTopic_queueOnQueueName() throws JMSException {
+  @Test void channelName_queueAndTopic_queueOnQueueName() throws JMSException {
     QueueAndTopic destination = mock(QueueAndTopic.class);
     when(destination.getQueueName()).thenReturn("queue-foo");
 
@@ -60,7 +60,7 @@ public class MessageParserTest {
       .isEqualTo("queue-foo");
   }
 
-  @Test public void channelName_queueAndTopic_topicOnNoQueueName() throws JMSException {
+  @Test void channelName_queueAndTopic_topicOnNoQueueName() throws JMSException {
     QueueAndTopic destination = mock(QueueAndTopic.class);
     when(destination.getTopicName()).thenReturn("topic-foo");
 

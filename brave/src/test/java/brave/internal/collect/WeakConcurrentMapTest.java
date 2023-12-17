@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,11 +17,11 @@ import brave.GarbageCollectors;
 import brave.internal.collect.WeakConcurrentMap.WeakKey;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class WeakConcurrentMapTest {
+class WeakConcurrentMapTest {
 
   static class TestKey {
     final String key;
@@ -50,7 +50,7 @@ public class WeakConcurrentMapTest {
   WeakConcurrentMap<TestKey, Object> map = new WeakConcurrentMap<>();
   TestKey key = new TestKey("a");
 
-  @Test public void getOrCreate_whenSomeReferencesAreCleared() {
+  @Test void getOrCreate_whenSomeReferencesAreCleared() {
     map.putIfProbablyAbsent(key, "1");
     pretendGCHappened();
     map.putIfProbablyAbsent(key, "1");
@@ -61,7 +61,7 @@ public class WeakConcurrentMapTest {
       .containsExactlyInAnyOrder(null, key);
   }
 
-  @Test public void remove_clearsReference() {
+  @Test void remove_clearsReference() {
     map.putIfProbablyAbsent(key, "1");
     map.remove(key);
 
@@ -69,13 +69,11 @@ public class WeakConcurrentMapTest {
     assertThat(map.poll()).isNull();
   }
 
-  @Test
-  public void remove_okWhenDoesntExist() {
+  @Test void remove_okWhenDoesntExist() {
     map.remove(key);
   }
 
-  @Test
-  public void remove_resolvesHashCodeCollisions() {
+  @Test void remove_resolvesHashCodeCollisions() {
     // intentionally clash on hashCode, but not equals
     TestKey key1 = new TestKey("a") {
       @Override public int hashCode() {
@@ -102,7 +100,7 @@ public class WeakConcurrentMapTest {
   }
 
   /** mainly ensures internals aren't dodgy on null */
-  @Test public void remove_whenSomeReferencesAreCleared() {
+  @Test void remove_whenSomeReferencesAreCleared() {
     map.putIfProbablyAbsent(key, "1");
     pretendGCHappened();
     map.remove(key);
@@ -112,14 +110,14 @@ public class WeakConcurrentMapTest {
       .containsNull();
   }
 
-  @Test public void weakKey_equalToItself() {
+  @Test void weakKey_equalToItself() {
     WeakKey<TestKey> key = new WeakKey<>(new TestKey("a"), map);
     assertThat(key).isEqualTo(key);
     key.clear();
     assertThat(key).isEqualTo(key);
   }
 
-  @Test public void weakKey_equalToEquivalent() {
+  @Test void weakKey_equalToEquivalent() {
     WeakKey<TestKey> key = new WeakKey<>(new TestKey("a"), map);
     WeakKey<TestKey> key2 = new WeakKey<>(new TestKey("a"), map);
     assertThat(key).isEqualTo(key2);
@@ -130,7 +128,7 @@ public class WeakConcurrentMapTest {
   }
 
   /** Debugging should show what the spans are, as well any references pending clear. */
-  @Test public void toString_saysWhatReferentsAre() {
+  @Test void toString_saysWhatReferentsAre() {
     assertThat(map.toString())
       .isEqualTo("WeakConcurrentMap[]");
 
@@ -148,8 +146,7 @@ public class WeakConcurrentMapTest {
   /**
    * This is a customized version of https://github.com/raphw/weak-lock-free/blob/master/src/test/java/com/blogspot/mydailyjava/weaklockfree/WeakConcurrentMapTest.java
    */
-  @Test
-  public void expungeStaleEntries_afterGC() {
+  @Test void expungeStaleEntries_afterGC() {
     TestKey key1 = new TestKey("a");
     Object value1 = new Object();
     map.putIfProbablyAbsent(key1, value1);

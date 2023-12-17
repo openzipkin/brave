@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,7 +17,7 @@ import brave.propagation.CurrentTraceContext;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import com.alibaba.dubbo.remoting.exchange.ResponseCallback;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -28,7 +28,7 @@ public class TracingResponseCallbackTest {
   TraceContext invocationContext = TraceContext.newBuilder().traceId(1).spanId(2).build();
   CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.create();
 
-  @Test public void done_should_finish_span() {
+  @Test void done_should_finish_span() {
     ResponseCallback callback =
       TracingResponseCallback.create(null, finishSpan, currentTraceContext, invocationContext);
 
@@ -37,7 +37,7 @@ public class TracingResponseCallbackTest {
     verify(finishSpan).accept(null, null);
   }
 
-  @Test public void done_should_finish_span_caught() {
+  @Test void done_should_finish_span_caught() {
     ResponseCallback callback =
       TracingResponseCallback.create(null, finishSpan, currentTraceContext, invocationContext);
 
@@ -47,7 +47,7 @@ public class TracingResponseCallbackTest {
     verify(finishSpan).accept(null, error);
   }
 
-  @Test public void done_should_forward_then_finish_span() {
+  @Test void done_should_forward_then_finish_span() {
     ResponseCallback delegate = mock(ResponseCallback.class);
 
     ResponseCallback callback =
@@ -60,7 +60,7 @@ public class TracingResponseCallbackTest {
     verify(finishSpan).accept(result, null);
   }
 
-  @Test public void done_should_have_span_in_scope() {
+  @Test void done_should_have_span_in_scope() {
     ResponseCallback delegate = new ResponseCallback() {
       @Override public void done(Object response) {
         assertThat(currentTraceContext.get()).isSameAs(invocationContext);
@@ -80,7 +80,7 @@ public class TracingResponseCallbackTest {
     verify(finishSpan).accept(result, null);
   }
 
-  @Test public void done_should_have_span_in_scope_caught() {
+  @Test void done_should_have_span_in_scope_caught() {
     ResponseCallback delegate = new ResponseCallback() {
       @Override public void done(Object response) {
         throw new AssertionError();

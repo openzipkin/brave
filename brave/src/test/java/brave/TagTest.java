@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,8 +16,8 @@ package brave;
 import brave.handler.MutableSpan;
 import brave.propagation.TraceContext;
 import java.util.function.BiFunction;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,7 +28,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-public class TagTest {
+class TagTest {
   Span span = mock(Span.class);
   ScopedSpan scopedSpan = mock(ScopedSpan.class);
   SpanCustomizer customizer = mock(SpanCustomizer.class);
@@ -43,12 +43,12 @@ public class TagTest {
     }
   };
 
-  @Before public void setup() {
+  @BeforeEach void setup() {
     when(span.context()).thenReturn(context);
     when(scopedSpan.context()).thenReturn(context);
   }
 
-  @Test public void trimsKey() {
+  @Test void trimsKey() {
     assertThat(new Tag<Object>(" x-foo  ") {
       @Override protected String parseValue(Object input, TraceContext context) {
         return null;
@@ -56,7 +56,7 @@ public class TagTest {
     }.key()).isEqualTo("x-foo");
   }
 
-  @Test public void key_invalid() {
+  @Test void key_invalid() {
     assertThatThrownBy(() -> new Tag<Object>(null) {
       @Override protected String parseValue(Object input, TraceContext context) {
         return null;
@@ -76,7 +76,7 @@ public class TagTest {
     }).isInstanceOf(IllegalArgumentException.class);
   }
 
-  @Test public void tag_span() {
+  @Test void tag_span() {
     when(parseValue.apply(input, context)).thenReturn("value");
 
     tag.tag(input, span);
@@ -89,7 +89,7 @@ public class TagTest {
     verifyNoMoreInteractions(span); // doesn't tag twice
   }
 
-  @Test public void tag_span_empty() {
+  @Test void tag_span_empty() {
     when(parseValue.apply(input, context)).thenReturn("");
 
     tag.tag(input, span);
@@ -102,14 +102,14 @@ public class TagTest {
     verifyNoMoreInteractions(span); // doesn't tag twice
   }
 
-  @Test public void tag_span_doesntParseNoop() {
+  @Test void tag_span_doesntParseNoop() {
     when(span.isNoop()).thenReturn(true);
 
     verifyNoMoreInteractions(parseValue); // parsing is lazy
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void tag_span_ignoredErrorParsing() {
+  @Test void tag_span_ignoredErrorParsing() {
     when(parseValue.apply(input, context)).thenThrow(new Error());
 
     tag.tag(input, span);
@@ -121,7 +121,7 @@ public class TagTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void tag_scopedSpan() {
+  @Test void tag_scopedSpan() {
     when(parseValue.apply(input, context)).thenReturn("value");
 
     tag.tag(input, scopedSpan);
@@ -134,7 +134,7 @@ public class TagTest {
     verifyNoMoreInteractions(scopedSpan); // doesn't tag twice
   }
 
-  @Test public void tag_scopedSpan_empty() {
+  @Test void tag_scopedSpan_empty() {
     when(parseValue.apply(input, context)).thenReturn("");
 
     tag.tag(input, scopedSpan);
@@ -147,14 +147,14 @@ public class TagTest {
     verifyNoMoreInteractions(scopedSpan); // doesn't tag twice
   }
 
-  @Test public void tag_scopedSpan_doesntParseNoop() {
+  @Test void tag_scopedSpan_doesntParseNoop() {
     when(scopedSpan.isNoop()).thenReturn(true);
 
     verifyNoMoreInteractions(parseValue); // parsing is lazy
     verifyNoMoreInteractions(scopedSpan);
   }
 
-  @Test public void tag_scopedSpan_ignoredErrorParsing() {
+  @Test void tag_scopedSpan_ignoredErrorParsing() {
     when(parseValue.apply(input, context)).thenThrow(new Error());
 
     tag.tag(input, scopedSpan);
@@ -166,7 +166,7 @@ public class TagTest {
     verifyNoMoreInteractions(scopedSpan);
   }
 
-  @Test public void tag_customizer() {
+  @Test void tag_customizer() {
     when(parseValue.apply(input, null)).thenReturn("value");
 
     tag.tag(input, customizer);
@@ -177,7 +177,7 @@ public class TagTest {
     verifyNoMoreInteractions(customizer); // doesn't tag twice
   }
 
-  @Test public void tag_customizer_empty() {
+  @Test void tag_customizer_empty() {
     when(parseValue.apply(input, null)).thenReturn("");
 
     tag.tag(input, customizer);
@@ -188,13 +188,13 @@ public class TagTest {
     verifyNoMoreInteractions(customizer); // doesn't tag twice
   }
 
-  @Test public void tag_customizer_doesntParseNoop() {
+  @Test void tag_customizer_doesntParseNoop() {
     tag.tag(input, context, NoopSpanCustomizer.INSTANCE);
 
     verifyNoMoreInteractions(parseValue); // parsing is lazy
   }
 
-  @Test public void tag_customizer_ignoredErrorParsing() {
+  @Test void tag_customizer_ignoredErrorParsing() {
     when(parseValue.apply(input, null)).thenThrow(new Error());
 
     tag.tag(input, customizer);
@@ -204,7 +204,7 @@ public class TagTest {
     verifyNoMoreInteractions(customizer);
   }
 
-  @Test public void tag_customizer_withNullContext() {
+  @Test void tag_customizer_withNullContext() {
     when(parseValue.apply(eq(input), isNull())).thenReturn("value");
 
     tag.tag(input, null, customizer);
@@ -215,7 +215,7 @@ public class TagTest {
     verifyNoMoreInteractions(customizer); // doesn't tag twice
   }
 
-  @Test public void tag_customizer_withContext() {
+  @Test void tag_customizer_withContext() {
     when(parseValue.apply(input, context)).thenReturn("value");
 
     tag.tag(input, context, customizer);
@@ -226,7 +226,7 @@ public class TagTest {
     verifyNoMoreInteractions(customizer); // doesn't tag twice
   }
 
-  @Test public void tag_customizer_withContext_empty() {
+  @Test void tag_customizer_withContext_empty() {
     when(parseValue.apply(input, context)).thenReturn("");
 
     tag.tag(input, context, customizer);
@@ -237,13 +237,13 @@ public class TagTest {
     verifyNoMoreInteractions(customizer); // doesn't tag twice
   }
 
-  @Test public void tag_customizer_withContext_doesntParseNoop() {
+  @Test void tag_customizer_withContext_doesntParseNoop() {
     tag.tag(input, context, NoopSpanCustomizer.INSTANCE);
 
     verifyNoMoreInteractions(parseValue); // parsing is lazy
   }
 
-  @Test public void tag_customizer_withContext_ignoredErrorParsing() {
+  @Test void tag_customizer_withContext_ignoredErrorParsing() {
     when(parseValue.apply(input, context)).thenThrow(new Error());
 
     tag.tag(input, context, customizer);
@@ -253,7 +253,7 @@ public class TagTest {
     verifyNoMoreInteractions(customizer);
   }
 
-  @Test public void tag_mutableSpan() {
+  @Test void tag_mutableSpan() {
     when(parseValue.apply(input, context)).thenReturn("value");
 
     tag.tag(input, context, mutableSpan);
@@ -266,7 +266,7 @@ public class TagTest {
     assertThat(mutableSpan).isEqualTo(expected);
   }
 
-  @Test public void tag_mutableSpan_nullContext() {
+  @Test void tag_mutableSpan_nullContext() {
     when(parseValue.apply(eq(input), isNull())).thenReturn("value");
 
     tag.tag(input, null, mutableSpan);
@@ -279,7 +279,7 @@ public class TagTest {
     assertThat(mutableSpan).isEqualTo(expected);
   }
 
-  @Test public void tag_mutableSpan_empty() {
+  @Test void tag_mutableSpan_empty() {
     when(parseValue.apply(input, context)).thenReturn("");
 
     tag.tag(input, context, mutableSpan);
@@ -292,7 +292,7 @@ public class TagTest {
     assertThat(mutableSpan).isEqualTo(expected);
   }
 
-  @Test public void tag_mutableSpan_ignoredErrorParsing() {
+  @Test void tag_mutableSpan_ignoredErrorParsing() {
     when(parseValue.apply(input, context)).thenThrow(new Error());
 
     tag.tag(input, context, mutableSpan);

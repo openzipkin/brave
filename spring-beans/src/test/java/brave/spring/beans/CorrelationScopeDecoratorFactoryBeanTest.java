@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,13 +18,14 @@ import brave.baggage.CorrelationScopeCustomizer;
 import brave.baggage.CorrelationScopeDecorator;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import org.assertj.core.api.InstanceOfAssertFactories;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.BeanCreationException;
 
 import static brave.baggage.BaggageFields.SPAN_ID;
 import static brave.baggage.BaggageFields.TRACE_ID;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -32,20 +33,22 @@ import static org.mockito.Mockito.verify;
 public class CorrelationScopeDecoratorFactoryBeanTest {
   XmlBeans context;
 
-  @After public void close() {
+  @AfterEach void close() {
     if (context != null) context.close();
   }
 
-  @Test(expected = BeanCreationException.class) public void builderRequired() {
-    context = new XmlBeans(""
-      + "<bean id=\"correlationDecorator\" class=\"brave.spring.beans.CorrelationScopeDecoratorFactoryBean\">\n"
-      + "</bean>"
-    );
+  @Test void builderRequired() {
+    assertThrows(BeanCreationException.class, () -> {
+      context = new XmlBeans(""
+        + "<bean id=\"correlationDecorator\" class=\"brave.spring.beans.CorrelationScopeDecoratorFactoryBean\">\n"
+        + "</bean>"
+      );
 
-    context.getBean("correlationDecorator", CorrelationScopeDecorator.class);
+      context.getBean("correlationDecorator", CorrelationScopeDecorator.class);
+    });
   }
 
-  @Test public void builder() {
+  @Test void builder() {
     context = new XmlBeans(""
       + "<bean id=\"correlationDecorator\" class=\"brave.spring.beans.CorrelationScopeDecoratorFactoryBean\">\n"
       + "  <property name=\"builder\">\n"
@@ -57,7 +60,7 @@ public class CorrelationScopeDecoratorFactoryBeanTest {
     context.getBean("correlationDecorator", CorrelationScopeDecorator.class);
   }
 
-  @Test public void defaultFields() {
+  @Test void defaultFields() {
     context = new XmlBeans(""
       + "<bean id=\"correlationDecorator\" class=\"brave.spring.beans.CorrelationScopeDecoratorFactoryBean\">\n"
       + "  <property name=\"builder\">\n"
@@ -74,7 +77,7 @@ public class CorrelationScopeDecoratorFactoryBeanTest {
       );
   }
 
-  @Test public void configs() {
+  @Test void configs() {
     context = new XmlBeans(""
       + "<util:constant id=\"traceId\" static-field=\"brave.baggage.BaggageFields.TRACE_ID\"/>\n"
       + "<bean id=\"correlationDecorator\" class=\"brave.spring.beans.CorrelationScopeDecoratorFactoryBean\">\n"
@@ -104,7 +107,7 @@ public class CorrelationScopeDecoratorFactoryBeanTest {
   public static final CorrelationScopeCustomizer
     CUSTOMIZER_TWO = mock(CorrelationScopeCustomizer.class);
 
-  @Test public void customizers() {
+  @Test void customizers() {
     context = new XmlBeans(""
       + "<bean id=\"correlationDecorator\" class=\"brave.spring.beans.CorrelationScopeDecoratorFactoryBean\">\n"
       + "  <property name=\"builder\">\n"

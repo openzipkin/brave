@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -21,12 +21,12 @@ import java.io.IOException;
 import java.util.Arrays;
 import okhttp3.mockwebserver.MockResponse;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.Span.Kind.CLIENT;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilder {
+public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilder { // public for src/it
   @Override protected CloseableHttpClient newClient(int port) {
     return TracingCachingHttpClientBuilder.create(httpTracing).disableAutomaticRetries().build();
   }
@@ -36,7 +36,7 @@ public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilde
    *
    * <p>See https://github.com/openzipkin/brave/issues/864
    */
-  @Test public void cacheControl() throws IOException {
+  @Test void cacheControl() throws IOException {
     server.enqueue(new MockResponse()
       .addHeader("Content-Type", "text/plain")
       .addHeader("Cache-Control", "max-age=600, stale-while-revalidate=1200")

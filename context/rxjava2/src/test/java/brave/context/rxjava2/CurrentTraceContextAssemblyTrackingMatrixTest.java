@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -52,9 +52,9 @@ import io.reactivex.observers.TestObserver;
 import io.reactivex.parallel.ParallelFlowable;
 import io.reactivex.plugins.RxJavaPlugins;
 import java.util.concurrent.Callable;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.reactivestreams.Subscriber;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -65,7 +65,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * behavior needs to be tested across all things, do it here. Keep interesting things in {@link
  * CurrentTraceContextAssemblyTrackingTest} so they don't get lost!
  */
-public class CurrentTraceContextAssemblyTrackingMatrixTest {
+class CurrentTraceContextAssemblyTrackingMatrixTest {
   CurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   CurrentTraceContext throwingCurrentTraceContext = new CurrentTraceContext() {
     @Override public TraceContext get() {
@@ -87,16 +87,16 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     return i < 3;
   };
 
-  @Before public void setup() {
+  @BeforeEach void setup() {
     RxJavaPlugins.reset();
     CurrentTraceContextAssemblyTracking.create(currentTraceContext).enable();
   }
 
-  @After public void tearDown() {
+  @AfterEach void tearDown() {
     CurrentTraceContextAssemblyTracking.disable();
   }
 
-  @Test public void completable_assembleInScope_subscribeNoScope() {
+  @Test void completable_assembleInScope_subscribeNoScope() {
     Completable source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Completable.complete()
@@ -109,7 +109,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInNoContext(source.toObservable(), errorSource.toObservable()).assertResult();
   }
 
-  @Test public void completable_assembleInScope_subscribeInScope() {
+  @Test void completable_assembleInScope_subscribeInScope() {
     Completable source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Completable.complete()
@@ -122,7 +122,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult();
   }
 
-  @Test public void completable_assembleNoScope_subscribeInScope() {
+  @Test void completable_assembleNoScope_subscribeInScope() {
     Completable source = Completable.complete()
       .doOnComplete(this::assertInSubscribeContext);
     Completable errorSource = Completable.error(new IllegalStateException())
@@ -132,11 +132,11 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult();
   }
 
-  @Test public void completable_unwrappedWhenNotInScope() {
+  @Test void completable_unwrappedWhenNotInScope() {
     assertThat(Completable.complete()).isEqualTo(CompletableEmpty.INSTANCE);
   }
 
-  @Test public void flowable_assembleInScope_subscribeNoScope() {
+  @Test void flowable_assembleInScope_subscribeNoScope() {
     Flowable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Flowable.range(1, 3)
@@ -151,7 +151,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
       .assertResult(1, 2, 3);
   }
 
-  @Test public void flowable_assembleInScope_subscribeInScope() {
+  @Test void flowable_assembleInScope_subscribeInScope() {
     Flowable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Flowable.range(1, 3)
@@ -166,7 +166,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
       .assertResult(1, 2, 3);
   }
 
-  @Test public void flowable_assembleNoScope_subscribeInScope() {
+  @Test void flowable_assembleNoScope_subscribeInScope() {
     Flowable<Integer> source = Flowable.range(1, 3)
       .doOnNext(e -> assertInSubscribeContext())
       .doOnComplete(this::assertInSubscribeContext);
@@ -178,11 +178,11 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
       .assertResult(1, 2, 3);
   }
 
-  @Test public void flowable_unwrappedWhenNotInScope() {
+  @Test void flowable_unwrappedWhenNotInScope() {
     assertThat(Flowable.range(1, 3)).isInstanceOf(FlowableRange.class);
   }
 
-  @Test public void flowable_conditional_assembleInScope_subscribeNoScope() {
+  @Test void flowable_conditional_assembleInScope_subscribeNoScope() {
     Flowable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Flowable.range(1, 3)
@@ -199,7 +199,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
       .assertResult(1, 2);
   }
 
-  @Test public void flowable_conditional_assembleInScope_subscribeInScope() {
+  @Test void flowable_conditional_assembleInScope_subscribeInScope() {
     Flowable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Flowable.range(1, 3)
@@ -216,7 +216,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
       .assertResult(1, 2);
   }
 
-  @Test public void flowable_conditional_assembleNoScope_subscribeInScope() {
+  @Test void flowable_conditional_assembleNoScope_subscribeInScope() {
     Flowable<Integer> source = Flowable.range(1, 3)
       .filter(lessThanThreeInSubscribeContext)
       .doOnNext(e -> assertInSubscribeContext())
@@ -230,12 +230,12 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
       .assertResult(1, 2);
   }
 
-  @Test public void flowable_conditional_unwrappedWhenNotInScope() {
+  @Test void flowable_conditional_unwrappedWhenNotInScope() {
     assertThat(Flowable.range(1, 3).filter(i -> i < 3))
       .isInstanceOf(FlowableFilter.class);
   }
 
-  @Test public void observable_assembleInScope_subscribeNoScope() {
+  @Test void observable_assembleInScope_subscribeNoScope() {
     Observable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Observable.range(1, 3)
@@ -249,7 +249,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInNoContext(source, errorSource).assertResult(1, 2, 3);
   }
 
-  @Test public void observable_assembleInScope_subscribeInScope() {
+  @Test void observable_assembleInScope_subscribeInScope() {
     Observable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Observable.range(1, 3)
@@ -263,7 +263,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source, errorSource).assertResult(1, 2, 3);
   }
 
-  @Test public void observable_assembleNoScope_subscribeInScope() {
+  @Test void observable_assembleNoScope_subscribeInScope() {
     Observable<Integer> source = Observable.range(1, 3)
       .doOnNext(e -> assertInSubscribeContext())
       .doOnComplete(this::assertInSubscribeContext);
@@ -274,11 +274,11 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source, errorSource).assertResult(1, 2, 3);
   }
 
-  @Test public void observable_unwrappedWhenNotInScope() {
+  @Test void observable_unwrappedWhenNotInScope() {
     assertThat(Observable.range(1, 3)).isInstanceOf(ObservableRange.class);
   }
 
-  @Test public void observable_conditional_assembleInScope_subscribeNoScope() {
+  @Test void observable_conditional_assembleInScope_subscribeNoScope() {
     Observable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Observable.range(1, 3)
@@ -294,7 +294,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInNoContext(source, errorSource).assertResult(1, 2);
   }
 
-  @Test public void observable_conditional_assembleInScope_subscribeInScope() {
+  @Test void observable_conditional_assembleInScope_subscribeInScope() {
     Observable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Observable.range(1, 3)
@@ -310,7 +310,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source, errorSource).assertResult(1, 2);
   }
 
-  @Test public void observable_conditional_assembleNoScope_subscribeInScope() {
+  @Test void observable_conditional_assembleNoScope_subscribeInScope() {
     Observable<Integer> source = Observable.range(1, 3)
       .filter(lessThanThreeInSubscribeContext)
       .doOnNext(e -> assertInSubscribeContext())
@@ -323,12 +323,12 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source, errorSource).assertResult(1, 2);
   }
 
-  @Test public void observable_conditional_unwrappedWhenNotInScope() {
+  @Test void observable_conditional_unwrappedWhenNotInScope() {
     assertThat(Observable.range(1, 3).filter(i -> i < 3))
       .isInstanceOf(ObservableFilter.class);
   }
 
-  @Test public void single_assembleInScope_subscribeNoScope() {
+  @Test void single_assembleInScope_subscribeNoScope() {
     Single<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Single.just(1)
@@ -340,7 +340,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInNoContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void single_assembleInScope_subscribeInScope() {
+  @Test void single_assembleInScope_subscribeInScope() {
     Single<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Single.just(1)
@@ -352,7 +352,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void single_assembleNoScope_subscribeInScope() {
+  @Test void single_assembleNoScope_subscribeInScope() {
     Single<Integer> source = Single.just(1)
       .doOnSuccess(e -> assertInSubscribeContext());
     Single<Integer> errorSource = Single.<Integer>error(new IllegalStateException())
@@ -361,11 +361,11 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void single_unwrappedWhenNotInScope() {
+  @Test void single_unwrappedWhenNotInScope() {
     assertThat(Single.just(1)).isInstanceOf(SingleJust.class);
   }
 
-  @Test public void single_conditional_assembleInScope_subscribeNoScope() {
+  @Test void single_conditional_assembleInScope_subscribeNoScope() {
     Maybe<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Single.just(1)
@@ -380,7 +380,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void single_conditional_assembleInScope_subscribeInScope() {
+  @Test void single_conditional_assembleInScope_subscribeInScope() {
     Maybe<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Single.just(1)
@@ -395,7 +395,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void single_conditional_assembleNoScope_subscribeInScope() {
+  @Test void single_conditional_assembleNoScope_subscribeInScope() {
     Maybe<Integer> source = Single.just(1)
       .filter(lessThanThreeInSubscribeContext)
       .doOnSuccess(e -> assertInSubscribeContext())
@@ -408,11 +408,11 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void single_conditionalunwrappedWhenNotInScope() {
+  @Test void single_conditionalunwrappedWhenNotInScope() {
     assertThat(Single.just(1).filter(i -> i < 3)).isInstanceOf(MaybeFilterSingle.class);
   }
 
-  @Test public void maybe_assembleInScope_subscribeNoScope() {
+  @Test void maybe_assembleInScope_subscribeNoScope() {
     Maybe<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Maybe.just(1)
@@ -426,7 +426,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInNoContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void maybe_assembleInScope_subscribeInScope() {
+  @Test void maybe_assembleInScope_subscribeInScope() {
     Maybe<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Maybe.just(1)
@@ -440,7 +440,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void maybe_assembleNoScope_subscribeInScope() {
+  @Test void maybe_assembleNoScope_subscribeInScope() {
     Maybe<Integer> source = Maybe.just(1)
       .doOnSuccess(e -> assertInSubscribeContext())
       .doOnComplete(this::assertInSubscribeContext);
@@ -451,11 +451,11 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void maybe_unwrappedWhenNotInScope() {
+  @Test void maybe_unwrappedWhenNotInScope() {
     assertThat(Maybe.just(1)).isInstanceOf(MaybeJust.class);
   }
 
-  @Test public void maybe_conditional_assembleInScope_subscribeNoScope() {
+  @Test void maybe_conditional_assembleInScope_subscribeNoScope() {
     Maybe<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Maybe.just(1)
@@ -471,7 +471,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void maybe_conditional_assembleInScope_subscribeInScope() {
+  @Test void maybe_conditional_assembleInScope_subscribeInScope() {
     Maybe<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Maybe.just(1)
@@ -487,7 +487,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void maybe_conditional_assembleNoScope_subscribeInScope() {
+  @Test void maybe_conditional_assembleNoScope_subscribeInScope() {
     Maybe<Integer> source = Maybe.just(1)
       .filter(lessThanThreeInSubscribeContext)
       .doOnSuccess(e -> assertInSubscribeContext())
@@ -500,11 +500,11 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void maybe_conditionalunwrappedWhenNotInScope() {
+  @Test void maybe_conditionalunwrappedWhenNotInScope() {
     assertThat(Maybe.just(1).filter(i -> i < 3)).isInstanceOf(MaybeFilter.class);
   }
 
-  @Test public void parallelFlowable_assembleInScope_subscribeNoScope() {
+  @Test void parallelFlowable_assembleInScope_subscribeNoScope() {
     ParallelFlowable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Flowable.range(1, 3).parallel()
@@ -520,7 +520,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInNoContext(source, errorSource).assertResult(1, 2, 3);
   }
 
-  @Test public void parallelFlowable_assembleInScope_subscribeInScope() {
+  @Test void parallelFlowable_assembleInScope_subscribeInScope() {
     ParallelFlowable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Flowable.range(1, 3).parallel()
@@ -536,7 +536,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source, errorSource).assertResult(1, 2, 3);
   }
 
-  @Test public void parallelFlowable_assembleNoScope_subscribeInScope() {
+  @Test void parallelFlowable_assembleNoScope_subscribeInScope() {
     ParallelFlowable<Integer> source = Flowable.range(1, 3).parallel()
       .doOnNext(e -> assertInSubscribeContext())
       .doOnComplete(this::assertInSubscribeContext);
@@ -549,11 +549,11 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source, errorSource).assertResult(1, 2, 3);
   }
 
-  @Test public void parallelFlowable_unwrappedWhenNotInScope() {
+  @Test void parallelFlowable_unwrappedWhenNotInScope() {
     assertThat(Flowable.range(1, 3).parallel()).isInstanceOf(ParallelFromPublisher.class);
   }
 
-  @Test public void parallelFlowable_conditional_assembleInScope_subscribeNoScope() {
+  @Test void parallelFlowable_conditional_assembleInScope_subscribeNoScope() {
     ParallelFlowable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Flowable.range(1, 3).parallel()
@@ -571,7 +571,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInNoContext(source, errorSource).assertResult(1, 2);
   }
 
-  @Test public void parallelFlowable_conditional_assembleInScope_subscribeInScope() {
+  @Test void parallelFlowable_conditional_assembleInScope_subscribeInScope() {
     ParallelFlowable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Flowable.range(1, 3).parallel()
@@ -589,7 +589,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source, errorSource).assertResult(1, 2);
   }
 
-  @Test public void parallelFlowable_conditional_assembleNoScope_subscribeInScope() {
+  @Test void parallelFlowable_conditional_assembleNoScope_subscribeInScope() {
     ParallelFlowable<Integer> source = Flowable.range(1, 3).parallel()
       .filter(lessThanThreeInSubscribeContext)
       .doOnNext(e -> assertInSubscribeContext())
@@ -604,12 +604,12 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source, errorSource).assertResult(1, 2);
   }
 
-  @Test public void parallelFlowable_conditional_unwrappedWhenNotInScope() {
+  @Test void parallelFlowable_conditional_unwrappedWhenNotInScope() {
     assertThat(Flowable.range(1, 3).parallel().filter(i -> i < 3))
       .isInstanceOf(ParallelFilter.class);
   }
 
-  @Test public void connectableFlowable_assembleInScope_subscribeNoScope() {
+  @Test void connectableFlowable_assembleInScope_subscribeNoScope() {
     ConnectableFlowable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Flowable.range(1, 3)
@@ -625,7 +625,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     ).assertResult(1, 2, 3);
   }
 
-  @Test public void connectableFlowable_assembleInScope_subscribeInScope() {
+  @Test void connectableFlowable_assembleInScope_subscribeInScope() {
     ConnectableFlowable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Flowable.range(1, 3)
@@ -641,7 +641,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     ).assertResult(1, 2, 3);
   }
 
-  @Test public void connectableFlowable_assembleNoScope_subscribeInScope() {
+  @Test void connectableFlowable_assembleNoScope_subscribeInScope() {
     ConnectableFlowable<Integer> source = Flowable.range(1, 3)
       .doOnNext(e -> assertInSubscribeContext())
       .doOnComplete(this::assertInSubscribeContext).publish();
@@ -654,14 +654,14 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     ).assertResult(1, 2, 3);
   }
 
-  @Test public void connectableFlowable_unwrappedWhenNotInScope() {
+  @Test void connectableFlowable_unwrappedWhenNotInScope() {
     assertThat(Flowable.range(1, 3).publish()).isInstanceOf(FlowablePublish.class);
   }
 
   // NOTE: we aren't doing separate tests for conditional ConnectableFlowable as there are no
   // operations on the type that are conditional (ex filter)
 
-  @Test public void connectableObservable_assembleInScope_subscribeNoScope() {
+  @Test void connectableObservable_assembleInScope_subscribeNoScope() {
     ConnectableObservable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Observable.range(1, 3)
@@ -675,7 +675,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInNoContext(source.autoConnect(), errorSource.autoConnect()).assertResult(1, 2, 3);
   }
 
-  @Test public void connectableObservable_assembleInScope_subscribeInScope() {
+  @Test void connectableObservable_assembleInScope_subscribeInScope() {
     ConnectableObservable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = Observable.range(1, 3)
@@ -690,7 +690,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
       .assertResult(1, 2, 3);
   }
 
-  @Test public void connectableObservable_assembleNoScope_subscribeInScope() {
+  @Test void connectableObservable_assembleNoScope_subscribeInScope() {
     ConnectableObservable<Integer> source = Observable.range(1, 3)
       .doOnNext(e -> assertInSubscribeContext())
       .doOnComplete(this::assertInSubscribeContext).publish();
@@ -703,14 +703,14 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
       .assertResult(1, 2, 3);
   }
 
-  @Test public void connectableObservable_unwrappedWhenNotInScope() {
+  @Test void connectableObservable_unwrappedWhenNotInScope() {
     assertThat(Observable.range(1, 3).publish()).isInstanceOf(ObservablePublish.class);
   }
 
   // NOTE: we aren't doing separate tests for conditional ConnectableObservable as there are no
   // operations on the type that are conditional (ex filter)
 
-  @Test public void callable_completable_assembleInScope_subscribeNoScope() {
+  @Test void callable_completable_assembleInScope_subscribeNoScope() {
     Completable source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = callableCompletable(null)
@@ -723,7 +723,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInNoContext(source.toObservable(), errorSource.toObservable()).assertResult();
   }
 
-  @Test public void callable_completable_assembleInScope_subscribeInScope() {
+  @Test void callable_completable_assembleInScope_subscribeInScope() {
     Completable source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = callableCompletable(subscribeContext)
@@ -736,7 +736,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult();
   }
 
-  @Test public void callable_completable_assembleNoScope_subscribeInScope() {
+  @Test void callable_completable_assembleNoScope_subscribeInScope() {
     Completable source = callableCompletable(subscribeContext)
       .doOnComplete(this::assertInSubscribeContext);
     Completable errorSource = callableCompletable(subscribeContext, new IllegalStateException())
@@ -746,12 +746,12 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult();
   }
 
-  @Test public void callable_completable_unwrappedWhenNotInScope() {
+  @Test void callable_completable_unwrappedWhenNotInScope() {
     assertThat(callableCompletable(null)).isInstanceOf(CallableCompletable.class);
   }
 
   // Callable should inherit the subscribing context. Ensure we don't accidentally instrument it.
-  @Test public void callable_completable_uninstrumented() throws Exception {
+  @Test void callable_completable_uninstrumented() throws Exception {
     currentTraceContext = throwingCurrentTraceContext;
     setup();
 
@@ -759,7 +759,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     ((Callable) callableCompletable(subscribeContext)).call();
   }
 
-  @Test public void callable_flowable_assembleInScope_subscribeNoScope() {
+  @Test void callable_flowable_assembleInScope_subscribeNoScope() {
     Flowable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = callableFlowable(null)
@@ -773,7 +773,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInNoContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void callable_flowable_assembleInScope_subscribeInScope() {
+  @Test void callable_flowable_assembleInScope_subscribeInScope() {
     Flowable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = callableFlowable(subscribeContext)
@@ -787,7 +787,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void callable_flowable_assembleNoScope_subscribeInScope() {
+  @Test void callable_flowable_assembleNoScope_subscribeInScope() {
     Flowable<Integer> source = callableFlowable(subscribeContext)
       .doOnNext(e -> assertInSubscribeContext())
       .doOnComplete(this::assertInSubscribeContext);
@@ -798,11 +798,11 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void callable_flowable_unwrappedWhenNotInScope() {
+  @Test void callable_flowable_unwrappedWhenNotInScope() {
     assertThat(callableFlowable(null)).isInstanceOf(CallableFlowable.class);
   }
 
-  @Test public void callable_flowable_conditional_assembleInScope_subscribeNoScope() {
+  @Test void callable_flowable_conditional_assembleInScope_subscribeNoScope() {
     Flowable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = callableFlowable(null)
@@ -818,7 +818,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInNoContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void callable_flowable_conditional_assembleInScope_subscribeInScope() {
+  @Test void callable_flowable_conditional_assembleInScope_subscribeInScope() {
     Flowable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = callableFlowable(subscribeContext)
@@ -834,7 +834,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void callable_flowable_conditional_assembleNoScope_subscribeInScope() {
+  @Test void callable_flowable_conditional_assembleNoScope_subscribeInScope() {
     Flowable<Integer> source = callableFlowable(subscribeContext)
       .filter(lessThanThreeInSubscribeContext)
       .doOnNext(e -> assertInSubscribeContext())
@@ -847,13 +847,13 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void callable_flowable_conditional_unwrappedWhenNotInScope() {
+  @Test void callable_flowable_conditional_unwrappedWhenNotInScope() {
     assertThat(callableFlowable(null).filter(i -> i < 3))
       .isInstanceOf(FlowableFilter.class);
   }
 
   // Callable should inherit the subscribing context. Ensure we don't accidentally instrument it.
-  @Test public void callable_flowable_uninstrumented() throws Exception {
+  @Test void callable_flowable_uninstrumented() throws Exception {
     currentTraceContext = throwingCurrentTraceContext;
     setup();
 
@@ -861,7 +861,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     ((Callable) callableFlowable(subscribeContext)).call();
   }
 
-  @Test public void callable_observable_assembleInScope_subscribeNoScope() {
+  @Test void callable_observable_assembleInScope_subscribeNoScope() {
     Observable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = callableObservable(null)
@@ -875,7 +875,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInNoContext(source, errorSource).assertResult(1);
   }
 
-  @Test public void callable_observable_assembleInScope_subscribeInScope() {
+  @Test void callable_observable_assembleInScope_subscribeInScope() {
     Observable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = callableObservable(subscribeContext)
@@ -889,7 +889,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source, errorSource).assertResult(1);
   }
 
-  @Test public void callable_observable_assembleNoScope_subscribeInScope() {
+  @Test void callable_observable_assembleNoScope_subscribeInScope() {
     Observable<Integer> source = callableObservable(subscribeContext)
       .doOnNext(e -> assertInSubscribeContext())
       .doOnComplete(this::assertInSubscribeContext);
@@ -901,11 +901,11 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source, errorSource).assertResult(1);
   }
 
-  @Test public void callable_observable_unwrappedWhenNotInScope() {
+  @Test void callable_observable_unwrappedWhenNotInScope() {
     assertThat(callableObservable(null)).isInstanceOf(CallableObservable.class);
   }
 
-  @Test public void callable_observable_conditional_assembleInScope_subscribeNoScope() {
+  @Test void callable_observable_conditional_assembleInScope_subscribeNoScope() {
     Observable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = callableObservable(null)
@@ -921,7 +921,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInNoContext(source, errorSource).assertResult(1);
   }
 
-  @Test public void callable_observable_conditional_assembleInScope_subscribeInScope() {
+  @Test void callable_observable_conditional_assembleInScope_subscribeInScope() {
     Observable<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = callableObservable(subscribeContext)
@@ -937,7 +937,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source, errorSource).assertResult(1);
   }
 
-  @Test public void callable_observable_conditional_assembleNoScope_subscribeInScope() {
+  @Test void callable_observable_conditional_assembleNoScope_subscribeInScope() {
     Observable<Integer> source = callableObservable(subscribeContext)
       .filter(lessThanThreeInSubscribeContext)
       .doOnNext(e -> assertInSubscribeContext())
@@ -951,13 +951,13 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source, errorSource).assertResult(1);
   }
 
-  @Test public void callable_observable_conditional_unwrappedWhenNotInScope() {
+  @Test void callable_observable_conditional_unwrappedWhenNotInScope() {
     assertThat(callableObservable(null).filter(i -> i < 3))
       .isInstanceOf(ObservableFilter.class);
   }
 
   // Callable should inherit the subscribing context. Ensure we don't accidentally instrument it.
-  @Test public void callable_observable_uninstrumented() throws Exception {
+  @Test void callable_observable_uninstrumented() throws Exception {
     currentTraceContext = throwingCurrentTraceContext;
     setup();
 
@@ -965,7 +965,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     ((Callable) callableObservable(subscribeContext)).call();
   }
 
-  @Test public void callable_single_assembleInScope_subscribeNoScope() {
+  @Test void callable_single_assembleInScope_subscribeNoScope() {
     Single<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = callableSingle(null)
@@ -977,7 +977,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInNoContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void callable_single_assembleInScope_subscribeInScope() {
+  @Test void callable_single_assembleInScope_subscribeInScope() {
     Single<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = callableSingle(subscribeContext)
@@ -989,7 +989,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void callable_single_assembleNoScope_subscribeInScope() {
+  @Test void callable_single_assembleNoScope_subscribeInScope() {
     Single<Integer> source = callableSingle(subscribeContext)
       .doOnSuccess(e -> assertInSubscribeContext());
     Single<Integer> errorSource = callableSingle(subscribeContext, new IllegalStateException())
@@ -998,11 +998,11 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void callable_single_unwrappedWhenNotInScope() {
+  @Test void callable_single_unwrappedWhenNotInScope() {
     assertThat(callableSingle(null)).isInstanceOf(CallableSingle.class);
   }
 
-  @Test public void callable_single_conditional_assembleInScope_subscribeNoScope() {
+  @Test void callable_single_conditional_assembleInScope_subscribeNoScope() {
     Maybe<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = callableSingle(null)
@@ -1018,7 +1018,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInNoContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void callable_single_conditional_assembleInScope_subscribeInScope() {
+  @Test void callable_single_conditional_assembleInScope_subscribeInScope() {
     Maybe<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = callableSingle(subscribeContext)
@@ -1034,7 +1034,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void callable_single_conditional_assembleNoScope_subscribeInScope() {
+  @Test void callable_single_conditional_assembleNoScope_subscribeInScope() {
     Maybe<Integer> source = callableSingle(subscribeContext)
       .filter(lessThanThreeInSubscribeContext)
       .doOnSuccess(e -> assertInSubscribeContext())
@@ -1046,13 +1046,13 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void callable_single_conditional_unwrappedWhenNotInScope() {
+  @Test void callable_single_conditional_unwrappedWhenNotInScope() {
     assertThat(callableSingle(null).filter(i -> i < 3))
       .isInstanceOf(MaybeFilterSingle.class);
   }
 
   // Callable should inherit the subscribing context. Ensure we don't accidentally instrument it.
-  @Test public void callable_single_uninstrumented() throws Exception {
+  @Test void callable_single_uninstrumented() throws Exception {
     currentTraceContext = throwingCurrentTraceContext;
     setup();
 
@@ -1060,7 +1060,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     ((Callable) callableSingle(subscribeContext)).call();
   }
 
-  @Test public void callable_maybe_assembleInScope_subscribeNoScope() {
+  @Test void callable_maybe_assembleInScope_subscribeNoScope() {
     Maybe<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = callableMaybe(null)
@@ -1074,7 +1074,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInNoContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void callable_maybe_assembleInScope_subscribeInScope() {
+  @Test void callable_maybe_assembleInScope_subscribeInScope() {
     Maybe<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = callableMaybe(subscribeContext)
@@ -1088,7 +1088,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void callable_maybe_assembleNoScope_subscribeInScope() {
+  @Test void callable_maybe_assembleNoScope_subscribeInScope() {
     Maybe<Integer> source = callableMaybe(subscribeContext)
       .doOnSuccess(e -> assertInSubscribeContext())
       .doOnComplete(this::assertInSubscribeContext);
@@ -1099,11 +1099,11 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void callable_maybe_unwrappedWhenNotInScope() {
+  @Test void callable_maybe_unwrappedWhenNotInScope() {
     assertThat(callableMaybe(null)).isInstanceOf(CallableMaybe.class);
   }
 
-  @Test public void callable_maybe_conditional_assembleInScope_subscribeNoScope() {
+  @Test void callable_maybe_conditional_assembleInScope_subscribeNoScope() {
     Maybe<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = callableMaybe(null)
@@ -1119,7 +1119,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInNoContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void callable_maybe_conditional_assembleInScope_subscribeInScope() {
+  @Test void callable_maybe_conditional_assembleInScope_subscribeInScope() {
     Maybe<Integer> source, errorSource;
     try (Scope scope = currentTraceContext.newScope(assemblyContext)) {
       source = callableMaybe(subscribeContext)
@@ -1135,7 +1135,7 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void callable_maybe_conditional_assembleNoScope_subscribeInScope() {
+  @Test void callable_maybe_conditional_assembleNoScope_subscribeInScope() {
     Maybe<Integer> source = callableMaybe(subscribeContext)
       .filter(lessThanThreeInSubscribeContext)
       .doOnSuccess(e -> assertInSubscribeContext())
@@ -1148,13 +1148,13 @@ public class CurrentTraceContextAssemblyTrackingMatrixTest {
     subscribeInDifferentContext(source.toObservable(), errorSource.toObservable()).assertResult(1);
   }
 
-  @Test public void callable_maybe_conditional_unwrappedWhenNotInScope() {
+  @Test void callable_maybe_conditional_unwrappedWhenNotInScope() {
     assertThat(callableMaybe(null).filter(i -> i < 3))
       .isInstanceOf(MaybeFilter.class);
   }
 
   // Callable should inherit the subscribing context. Ensure we don't accidentally instrument it.
-  @Test public void callable_maybe_uninstrumented() throws Exception {
+  @Test void callable_maybe_uninstrumented() throws Exception {
     currentTraceContext = throwingCurrentTraceContext;
     setup();
 

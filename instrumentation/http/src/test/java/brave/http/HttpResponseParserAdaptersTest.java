@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,7 +20,7 @@ import brave.propagation.CurrentTraceContext;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.http.HttpHandler.NULL_SENTINEL;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,7 +40,7 @@ public class HttpResponseParserAdaptersTest {
    * The old http handler always parsed in scope because the parser had no argument for a trace
    * context.
    */
-  @Test public void parse_parsesInScope() {
+  @Test void parse_parsesInScope() {
     AtomicBoolean parsed = new AtomicBoolean();
     ClientAdapter parserAdapter = new ClientAdapter(currentTraceContext, new HttpParser() {
       @Override
@@ -56,7 +56,7 @@ public class HttpResponseParserAdaptersTest {
     assertThat(parsed).isTrue();
   }
 
-  @Test public void parse_HttpClientResponseAdapter() {
+  @Test void parse_HttpClientResponseAdapter() {
     ClientAdapter parserAdapter = new ClientAdapter(currentTraceContext, parser);
 
     HttpClientAdapter adapter = mock(HttpClientAdapter.class);
@@ -68,7 +68,7 @@ public class HttpResponseParserAdaptersTest {
     verify(parser).response(adapter, res, null, span);
   }
 
-  @Test public void parse_HttpClientResponse() {
+  @Test void parse_HttpClientResponse() {
     ClientAdapter parserAdapter = new ClientAdapter(currentTraceContext, parser);
 
     HttpClientResponse response = mock(HttpClientResponse.class);
@@ -82,7 +82,7 @@ public class HttpResponseParserAdaptersTest {
     verify(parser).response(refEq(a), eq(res), eq(null), eq(span));
   }
 
-  @Test public void parse_HttpClientParse_error() {
+  @Test void parse_HttpClientParse_error() {
     ClientAdapter parserAdapter = new ClientAdapter(currentTraceContext, parser);
 
     HttpClientResponse response = mock(HttpClientResponse.class);
@@ -98,7 +98,7 @@ public class HttpResponseParserAdaptersTest {
     verify(parser).response(refEq(a), eq(res), eq(error), eq(span));
   }
 
-  @Test public void parse_HttpClientParse_unwrapNull() {
+  @Test void parse_HttpClientParse_unwrapNull() {
     ClientAdapter parserAdapter = new ClientAdapter(currentTraceContext, parser);
 
     HttpClientResponse response = mock(HttpClientResponse.class);
@@ -111,7 +111,7 @@ public class HttpResponseParserAdaptersTest {
     verify(parser).response(refEq(a), eq(res), eq(null), eq(span));
   }
 
-  @Test public void parse_HttpServerResponseAdapter() {
+  @Test void parse_HttpServerResponseAdapter() {
     ServerAdapter parserAdapter = new ServerAdapter(currentTraceContext, parser);
 
     HttpServerAdapter adapter = mock(HttpServerAdapter.class);
@@ -123,7 +123,7 @@ public class HttpResponseParserAdaptersTest {
     verify(parser).response(adapter, res, null, span);
   }
 
-  @Test public void parse_HttpServerResponse() {
+  @Test void parse_HttpServerResponse() {
     ServerAdapter parserAdapter = new ServerAdapter(currentTraceContext, parser);
 
     HttpServerResponse response = mock(HttpServerResponse.class);
@@ -137,7 +137,7 @@ public class HttpResponseParserAdaptersTest {
     verify(parser).response(refEq(a), eq(res), eq(null), eq(span));
   }
 
-  @Test public void parse_HttpServerParse_unwrapNull() {
+  @Test void parse_HttpServerParse_unwrapNull() {
     ServerAdapter parserAdapter = new ServerAdapter(currentTraceContext, parser);
 
     HttpServerResponse response = mock(HttpServerResponse.class);

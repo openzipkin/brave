@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,8 +18,8 @@ import brave.Tracing;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.test.TestSpanHandler;
 import java.util.UUID;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -30,13 +30,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>See https://github.com/openzipkin/brave/issues/564
  */
-public class CustomScopedClockTracingTest {
+class CustomScopedClockTracingTest {
   TestSpanHandler spans = new TestSpanHandler();
   StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   Tracing tracing = Tracing.newBuilder()
     .addSpanHandler(spans).currentTraceContext(currentTraceContext).build();
 
-  @After public void close() {
+  @AfterEach void close() {
     tracing.close();
     currentTraceContext.close();
   }
@@ -80,7 +80,7 @@ public class CustomScopedClockTracingTest {
    * This allows alignment of timestamps at microsecond granularity, but still expire when the
    * connection does.
    */
-  @Test public void customClock() {
+  @Test void customClock() {
     class TracedConnection extends Connection {
       final brave.Span span;
       final brave.Clock clock;

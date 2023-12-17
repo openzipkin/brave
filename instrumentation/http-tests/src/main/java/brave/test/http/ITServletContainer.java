@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2022 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,7 +17,7 @@ import brave.test.http.ServletContainer.ServerController;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.util.log.Log;
 import org.eclipse.jetty.util.log.Logger;
-import org.junit.After;
+import org.junit.jupiter.api.AfterEach;
 
 /** Starts a jetty server which runs a servlet container */
 public abstract class ITServletContainer extends ITHttpServer {
@@ -55,7 +55,7 @@ public abstract class ITServletContainer extends ITHttpServer {
   /** Implement by registering a servlet for the test resource and anything needed for tracing */
   public abstract void init(ServletContextHandler handler);
 
-  @After
+  @AfterEach
   public void stop() {
     container.stop();
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2022 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,7 +17,7 @@ import brave.http.HttpServerResponse;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -27,14 +27,14 @@ public class HttpServletResponseWrapperTest {
   HttpServletRequest request = mock(HttpServletRequest.class);
   HttpServletResponse response = mock(HttpServletResponse.class);
 
-  @Test public void unwrap() {
+  @Test void unwrap() {
     HttpServerResponse wrapper = HttpServletResponseWrapper.create(request, response, null);
 
     assertThat(wrapper.unwrap())
       .isEqualTo(response);
   }
 
-  @Test public void statusCode() {
+  @Test void statusCode() {
     when(response.getStatus()).thenReturn(200);
 
     HttpServerResponse wrapper = HttpServletResponseWrapper.create(request, response, null);
@@ -42,17 +42,17 @@ public class HttpServletResponseWrapperTest {
     assertThat(wrapper.statusCode()).isEqualTo(200);
   }
 
-  @Test public void statusCode_zeroNoResponse() {
+  @Test void statusCode_zeroNoResponse() {
     HttpServerResponse wrapper = HttpServletResponseWrapper.create(request, response, null);
 
     assertThat(wrapper.statusCode()).isZero();
   }
 
-  @Test public void nullRequestOk() {
+  @Test void nullRequestOk() {
     HttpServletResponseWrapper.create(null, response, null);
   }
 
-  @Test public void method_isRequestMethod() {
+  @Test void method_isRequestMethod() {
     HttpServerResponse wrapper = HttpServletResponseWrapper.create(request, response, null);
 
     when(request.getMethod()).thenReturn("POST");
@@ -60,14 +60,14 @@ public class HttpServletResponseWrapperTest {
     assertThat(wrapper.method()).isEqualTo("POST");
   }
 
-  @Test public void error_noRequest() {
+  @Test void error_noRequest() {
     Exception error = new Exception();
     HttpServerResponse wrapper = HttpServletResponseWrapper.create(null, response, error);
 
     assertThat(wrapper.error()).isSameAs(error);
   }
 
-  @Test public void error_fromRequestAttribute() {
+  @Test void error_fromRequestAttribute() {
     HttpServerResponse wrapper = HttpServletResponseWrapper.create(request, response, null);
 
     Exception requestError = new Exception();
@@ -76,7 +76,7 @@ public class HttpServletResponseWrapperTest {
     assertThat(wrapper.error()).isSameAs(requestError);
   }
 
-  @Test public void error_badRequestAttribute() {
+  @Test void error_badRequestAttribute() {
     HttpServerResponse wrapper = HttpServletResponseWrapper.create(request, response, null);
 
     when(request.getAttribute("error")).thenReturn(new Object());
@@ -84,7 +84,7 @@ public class HttpServletResponseWrapperTest {
     assertThat(wrapper.error()).isNull();
   }
 
-  @Test public void error_overridesRequestAttribute() {
+  @Test void error_overridesRequestAttribute() {
     Exception error = new Exception();
 
     HttpServerResponse wrapper = HttpServletResponseWrapper.create(request, response, error);
@@ -95,7 +95,7 @@ public class HttpServletResponseWrapperTest {
     assertThat(wrapper.error()).isSameAs(error);
   }
 
-  @Test public void route_okOnBadAttribute() {
+  @Test void route_okOnBadAttribute() {
     HttpServerResponse wrapper = HttpServletResponseWrapper.create(request, response, null);
 
     when(request.getAttribute("http.route")).thenReturn(new Object());
@@ -103,7 +103,7 @@ public class HttpServletResponseWrapperTest {
     assertThat(wrapper.route()).isNull();
   }
 
-  @Test public void route_isHttpRouteAttribute() {
+  @Test void route_isHttpRouteAttribute() {
     HttpServerResponse wrapper = HttpServletResponseWrapper.create(request, response, null);
 
     when(request.getAttribute("http.route")).thenReturn("/users/{userId}");

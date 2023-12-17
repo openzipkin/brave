@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -27,32 +27,27 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.Import;
 import org.springframework.stereotype.Component;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration(classes = AspectJSamplerTest.Config.class)
-public class AspectJSamplerTest {
+class AspectJSamplerTest {
 
   // Don't use static configuration in real life. This is only to satisfy the unit test runner
   static StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   static TestSpanHandler spans = new TestSpanHandler();
   static AtomicReference<Tracing> tracing = new AtomicReference<>();
 
-  @Autowired Service service;
+  AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
 
-  @Before public void clear() {
+  @BeforeEach void clear() {
     tracing.set(Tracing.newBuilder()
       .currentTraceContext(currentTraceContext)
       .addSpanHandler(spans)
@@ -62,21 +57,29 @@ public class AspectJSamplerTest {
         }
       }).build());
     spans.clear();
+
+    context.register(Config.class);
+    context.refresh();
   }
 
-  @After public void close() {
+  @AfterEach void close() {
+    context.close();
     Tracing currentTracing = tracing.get();
     if (currentTracing != null) currentTracing.close();
     currentTraceContext.close();
   }
 
-  @Test public void traced() {
+  @Test void traced() {
+    Service service = context.getBean(Service.class);
+
     service.traced();
 
     assertThat(spans).isNotEmpty();
   }
 
-  @Test public void notTraced() {
+  @Test void notTraced() {
+    Service service = context.getBean(Service.class);
+
     service.notTraced();
 
     assertThat(spans).isEmpty();

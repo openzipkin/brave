@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,24 +13,24 @@
  */
 package brave.http;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.http.HttpResponseParser.Default.catchAllName;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class HttpResponseParserTest {
 
-  @Test public void catchAllName_redirect() {
+  @Test void catchAllName_redirect() {
     assertThat(catchAllName("GET", 307))
       .isEqualTo("GET redirected"); // zipkin will implicitly lowercase this
   }
 
-  @Test public void routeBasedName_notFound() {
+  @Test void routeBasedName_notFound() {
     assertThat(catchAllName("DELETE", 404))
       .isEqualTo("DELETE not_found"); // zipkin will implicitly lowercase this
   }
 
-  @Test public void notCatchAll() {
+  @Test void notCatchAll() {
     assertThat(catchAllName("GET", 304))
       .isNull(); // not redirect
     assertThat(catchAllName("DELETE", 500))

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  */
 package brave.propagation;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.internal.InternalPropagation.FLAG_DEBUG;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
@@ -22,9 +22,9 @@ import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 import static brave.propagation.SamplingFlags.toSamplingFlags;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class SamplingFlagsTest {
+class SamplingFlagsTest {
 
-  @Test public void builder_defaultIsEmpty() {
+  @Test void builder_defaultIsEmpty() {
     SamplingFlags flags = new SamplingFlags.Builder().build();
 
     assertThat(flags).isSameAs(SamplingFlags.EMPTY);
@@ -32,7 +32,7 @@ public class SamplingFlagsTest {
     assertThat(flags.debug()).isFalse();
   }
 
-  @Test public void builder_debugImpliesSampled() {
+  @Test void builder_debugImpliesSampled() {
     SamplingFlags flags = new SamplingFlags.Builder().debug(true).build();
 
     assertThat(flags).isSameAs(SamplingFlags.DEBUG);
@@ -40,7 +40,7 @@ public class SamplingFlagsTest {
     assertThat(flags.debug()).isTrue();
   }
 
-  @Test public void builder_sampled() {
+  @Test void builder_sampled() {
     SamplingFlags flags = new SamplingFlags.Builder().sampled(true).build();
 
     assertThat(flags).isSameAs(SamplingFlags.SAMPLED);
@@ -48,7 +48,7 @@ public class SamplingFlagsTest {
     assertThat(flags.debug()).isFalse();
   }
 
-  @Test public void builder_notSampled() {
+  @Test void builder_notSampled() {
     SamplingFlags flags = new SamplingFlags.Builder().sampled(false).build();
 
     assertThat(flags).isSameAs(SamplingFlags.NOT_SAMPLED);
@@ -56,7 +56,7 @@ public class SamplingFlagsTest {
     assertThat(flags.debug()).isFalse();
   }
 
-  @Test public void builder_nullSampled() {
+  @Test void builder_nullSampled() {
     SamplingFlags flags = new SamplingFlags.Builder().sampled(true).sampled(null).build();
 
     assertThat(flags).isSameAs(SamplingFlags.EMPTY);
@@ -64,20 +64,20 @@ public class SamplingFlagsTest {
     assertThat(flags.debug()).isFalse();
   }
 
-  @Test public void debug_set_true() {
+  @Test void debug_set_true() {
     assertThat(SamplingFlags.debug(true, SamplingFlags.EMPTY.flags))
       .isEqualTo(SamplingFlags.DEBUG.flags)
       .isEqualTo(FLAG_SAMPLED_SET | FLAG_SAMPLED | FLAG_DEBUG);
   }
 
-  @Test public void sampled_flags() {
+  @Test void sampled_flags() {
     assertThat(SamplingFlags.debug(false, SamplingFlags.DEBUG.flags))
       .isEqualTo(SamplingFlags.SAMPLED.flags)
       .isEqualTo(FLAG_SAMPLED_SET | FLAG_SAMPLED);
   }
 
   /** Ensures constants are used */
-  @Test public void toSamplingFlags_returnsConstantsAndHasNiceToString() {
+  @Test void toSamplingFlags_returnsConstantsAndHasNiceToString() {
     assertThat(toSamplingFlags(SamplingFlags.EMPTY.flags))
       .isSameAs(SamplingFlags.EMPTY)
       .hasToString("");
@@ -104,7 +104,7 @@ public class SamplingFlagsTest {
       .hasToString("DEBUG|SAMPLED_LOCAL");
   }
 
-  @Test public void sampledLocal() {
+  @Test void sampledLocal() {
     SamplingFlags.Builder flagsBuilder = new SamplingFlags.Builder();
     flagsBuilder.flags |= FLAG_SAMPLED_LOCAL;
     SamplingFlags flags = flagsBuilder.build();

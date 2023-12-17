@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -27,10 +27,10 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.assertj.core.api.InstanceOfAssertFactories;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,8 +39,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
-public class StringPropagationAdapterTest {
+@ExtendWith(MockitoExtension.class)
+class StringPropagationAdapterTest {
   @Mock Propagation<String> delegate;
   @Mock Injector<Map<String, String>> delegateInjector;
   @Mock Extractor<Map<String, String>> delegateExtractor;
@@ -49,7 +49,7 @@ public class StringPropagationAdapterTest {
   Setter<Map<Integer, String>, Integer> setter = (m, k, v) -> m.put(k, v);
   Getter<Map<Integer, String>, Integer> getter = (m, k) -> m.get(k);
 
-  @Test public void propagation() {
+  @Test void propagation() {
     when(delegate.keys()).thenReturn(asList("1", "2"));
 
     Propagation<Integer> propagation = StringPropagationAdapter.create(delegate, keyFactory);
@@ -79,7 +79,7 @@ public class StringPropagationAdapterTest {
     verify(delegate).extractor(new GetterAdapter<>(getter, map));
   }
 
-  @Test public void getterAdapter() {
+  @Test void getterAdapter() {
     Map<String, Integer> map = new LinkedHashMap<>();
     map.put("1", 1);
     map.put("2", 2);
@@ -95,7 +95,7 @@ public class StringPropagationAdapterTest {
     assertThat(wrappedGetter.get(request, "3")).isNull();
   }
 
-  @Test public void setterAdapter() {
+  @Test void setterAdapter() {
     Map<String, Integer> map = new LinkedHashMap<>();
     map.put("1", 1);
     map.put("2", 2);
@@ -114,21 +114,21 @@ public class StringPropagationAdapterTest {
         .containsEntry(2, "two");
   }
 
-  @Test public void propagation_equalsHashCodeString() {
+  @Test void propagation_equalsHashCodeString() {
     assertDelegates(
         () -> mock(Propagation.class),
         p -> StringPropagationAdapter.create(p, keyFactory)
     );
   }
 
-  @Test public void getter_equalsHashCodeString() {
+  @Test void getter_equalsHashCodeString() {
     assertDelegates(
         () -> mock(Getter.class),
         g -> new StringPropagationAdapter.GetterAdapter<>(g, Collections.emptyMap())
     );
   }
 
-  @Test public void setter_equalsHashCodeString() {
+  @Test void setter_equalsHashCodeString() {
     assertDelegates(
         () -> mock(Setter.class),
         g -> new SetterAdapter<>(g, Collections.emptyMap())

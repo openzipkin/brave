@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2022 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -32,7 +32,7 @@ import okhttp3.Request;
 import okhttp3.Response;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.Span.Kind.SERVER;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -126,7 +126,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
     }
   };
 
-  @Test public void currentSpanVisibleToOtherFilters() throws Exception {
+  @Test protected void currentSpanVisibleToOtherFilters() throws Exception {
     delegate = userFilter;
 
     String path = "/foo";
@@ -160,7 +160,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
     }
   };
 
-  @Test public void traceContextVisibleToOtherFilters() throws Exception {
+  @Test protected void traceContextVisibleToOtherFilters() throws Exception {
     delegate = traceContextFilter;
 
     String path = "/foo";
@@ -196,7 +196,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
    * Shows that by adding the request attribute "http.route" a layered framework can influence any
    * derived from the route, including the span name.
    */
-  @Test public void canSetCustomRoute() throws Exception {
+  @Test protected void canSetCustomRoute() throws Exception {
     delegate = customHttpRoute;
 
     get("/foo");
@@ -224,7 +224,7 @@ public abstract class ITServlet25Container extends ITServletContainer {
    * Shows that a framework can directly use the "brave.Span" rather than relying on the current
    * span.
    */
-  @Test public void canUseSpanAttribute() throws Exception {
+  @Test protected void canUseSpanAttribute() throws Exception {
     delegate = customHook;
 
     get("/foo");

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,7 +15,7 @@ package brave.spring.webmvc;
 
 import brave.SpanCustomizer;
 import javax.servlet.http.HttpServletRequest;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -41,7 +41,7 @@ public class HandlerParserTest {
   }
 
   /** For Spring WebMVC 3.1+ */
-  @Test public void preHandle_HandlerMethod_addsClassAndMethodTags() throws Exception {
+  @Test void preHandle_HandlerMethod_addsClassAndMethodTags() throws Exception {
     parser.preHandle(
       request,
       new HandlerMethod(controller, TestController.class.getMethod("items", String.class)),
@@ -54,14 +54,14 @@ public class HandlerParserTest {
   }
 
   /** For Spring WebMVC 2.5 */
-  @Test public void preHandle_Handler_addsClassTag() {
+  @Test void preHandle_Handler_addsClassTag() {
     parser.preHandle(request, controller, customizer);
 
     verify(customizer).tag("mvc.controller.class", "TestController");
     verifyNoMoreInteractions(request, customizer);
   }
 
-  @Test public void preHandle_NOOP_addsNothing() {
+  @Test void preHandle_NOOP_addsNothing() {
     HandlerParser.NOOP.preHandle(request, controller, customizer);
 
     verifyNoMoreInteractions(request, customizer);

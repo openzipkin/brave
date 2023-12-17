@@ -23,12 +23,12 @@ import java.util.Arrays;
 import okhttp3.mockwebserver.MockResponse;
 import org.apache.hc.client5.http.impl.cache.CachingHttpClientBuilder;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.Span.Kind.CLIENT;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilder {
+class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilder {
   @Override
   protected CloseableHttpClient newClient(int port) {
     return HttpClient5Tracing.newBuilder(httpTracing)
@@ -38,8 +38,7 @@ public class ITTracingCachingHttpClientBuilder extends ITTracingHttpClientBuilde
   /**
    * Handle when the client doesn't actually make a client span
    */
-  @Test
-  public void cacheControl() throws IOException {
+  @Test void cacheControl() throws IOException {
     server.enqueue(new MockResponse()
       .addHeader("Content-Type", "text/plain")
       .addHeader("Cache-Control", "max-age=600, stale-while-revalidate=1200")

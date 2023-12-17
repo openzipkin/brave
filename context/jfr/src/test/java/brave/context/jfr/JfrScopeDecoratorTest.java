@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,6 +18,7 @@ import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
+import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -28,16 +29,16 @@ import java.util.concurrent.TimeUnit;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordingFile;
-import org.junit.After;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
-public class JfrScopeDecoratorTest {
-  @Rule public TemporaryFolder folder = new TemporaryFolder();
+class JfrScopeDecoratorTest {
+  @TempDir
+  public File folder;
 
   ExecutorService wrappedExecutor = Executors.newSingleThreadExecutor();
   ScopeDecorator decorator = JfrScopeDecorator.get();
@@ -50,13 +51,13 @@ public class JfrScopeDecoratorTest {
   TraceContext context2 = TraceContext.newBuilder().traceId(1).parentId(1).spanId(2).build();
   TraceContext context3 = TraceContext.newBuilder().traceId(2).spanId(3).build();
 
-  @After public void shutdownExecutor() throws InterruptedException {
+  @AfterEach void shutdownExecutor() throws InterruptedException {
     wrappedExecutor.shutdown();
     wrappedExecutor.awaitTermination(1, TimeUnit.SECONDS);
   }
 
-  @Test public void endToEndTest() throws Exception {
-    Path destination = folder.newFile("execute.jfr").toPath();
+  @Test void endToEndTest() throws Exception {
+    Path destination = File.createTempFile("execute.jfr", null, folder).toPath();
 
     try (Recording recording = new Recording()) {
       recording.start();
@@ -78,7 +79,7 @@ public class JfrScopeDecoratorTest {
       );
   }
 
-  @Test public void doesntDecorateNoop() {
+  @Test void doesntDecorateNoop() {
     assertThat(decorator.decorateScope(context, Scope.NOOP)).isSameAs(Scope.NOOP);
     assertThat(decorator.decorateScope(null, Scope.NOOP)).isSameAs(Scope.NOOP);
   }

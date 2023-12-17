@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -25,8 +25,8 @@ import com.twitter.finagle.tracing.TraceId;
 import com.twitter.io.Buf;
 import com.twitter.util.Local;
 import java.lang.reflect.Field;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import scala.Option;
 import scala.Some;
 import scala.collection.immutable.Map;
@@ -36,15 +36,15 @@ import scala.runtime.AbstractFunction1;
 import static com.twitter.finagle.context.Contexts.broadcast;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class FinagleContextInteropTest {
+class FinagleContextInteropTest {
   FinagleCurrentTraceContext currentTraceContext;
   TraceContext parent = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
 
-  @Before public void setup() throws NoSuchFieldException, IllegalAccessException {
+  @BeforeEach void setup() throws NoSuchFieldException, IllegalAccessException {
     currentTraceContext = new FinagleCurrentTraceContext();
   }
 
-  @Test public void finagleBraveInterop() throws Exception {
+  @Test void finagleBraveInterop() throws Exception {
     try (Scope scope = currentTraceContext.newScope(parent)) {
       // Inside the parent scope, trace context is consistent between finagle and brave
       assertThat(currentTraceContext.get().spanId())

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,14 +16,14 @@ package brave.internal.codec;
 import brave.internal.codec.CharSequences.SubSequence;
 import brave.internal.codec.CharSequences.WithoutSubSequence;
 import java.nio.CharBuffer;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class CharSequencesTest {
-  @Test public void regionMatches() {
+class CharSequencesTest {
+  @Test void regionMatches() {
     assertThat(CharSequences.regionMatches("b3", "b3=1", 0, 2)).isTrue();
     assertThat(CharSequences.regionMatches("b3", "b3=1", 1, 3)).isFalse();
     assertThat(CharSequences.regionMatches("1", "b3=1", 3, 4)).isTrue();
@@ -37,7 +37,7 @@ public class CharSequencesTest {
     assertThat(CharSequences.regionMatches("1", CharBuffer.wrap("b3=1"), 3, 4)).isTrue();
   }
 
-  @Test public void regionMatches_badParameters() {
+  @Test void regionMatches_badParameters() {
     assertThatThrownBy(() -> CharSequences.regionMatches(null, "b3", 0, 0))
       .isInstanceOf(NullPointerException.class)
       .hasMessage("expected == null");
@@ -62,7 +62,7 @@ public class CharSequencesTest {
       .hasMessage("endIndex > input");
   }
 
-  @Test public void withoutSubSequence() {
+  @Test void withoutSubSequence() {
     String input = "b3=1,es=2";
     assertThat(CharSequences.withoutSubSequence(input, 0, 0))
       .isSameAs(input);
@@ -84,7 +84,7 @@ public class CharSequencesTest {
       .isInstanceOf(SubSequence.class).hasToString("2");
   }
 
-  @Test public void withoutSubSequence_charAt() {
+  @Test void withoutSubSequence_charAt() {
     String input = "b3=1,es=2";
 
     for (CharSequence sequence : asList(
@@ -102,7 +102,7 @@ public class CharSequencesTest {
     }
   }
 
-  @Test public void withoutSubSequence_length() {
+  @Test void withoutSubSequence_length() {
     String input = "b3=1,es=2";
 
     for (CharSequence sequence : asList(
@@ -117,7 +117,7 @@ public class CharSequencesTest {
     }
   }
 
-  @Test public void withoutSubSequence_subsequence() {
+  @Test void withoutSubSequence_subsequence() {
     String realInput = "~b3=1!@#$%^&*,es=2"; // fill skipped area with junk so failures are obvious
 
     CharSequence input = new WithoutSubSequence(realInput, 1, 5, 13, realInput.length());
@@ -134,7 +134,7 @@ public class CharSequencesTest {
     assertThat(input.subSequence(8, 9)).isInstanceOf(SubSequence.class).hasToString("2");
   }
 
-  @Test public void withoutSubSequence_badParameters() {
+  @Test void withoutSubSequence_badParameters() {
     assertThatThrownBy(() -> CharSequences.withoutSubSequence(null, 0, 0))
       .isInstanceOf(NullPointerException.class)
       .hasMessage("input == null");

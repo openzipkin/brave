@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,19 +16,19 @@ package brave.spring.beans;
 import brave.baggage.BaggageFields;
 import brave.baggage.CorrelationScopeConfig;
 import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class SingleCorrelationFieldFactoryBeanTest {
   XmlBeans context;
 
-  @After public void close() {
+  @AfterEach void close() {
     if (context != null) context.close();
   }
 
-  @Test public void leastProperties() {
+  @Test void leastProperties() {
     context = new XmlBeans(""
       + "<util:constant id=\"traceId\" static-field=\"brave.baggage.BaggageFields.TRACE_ID\"/>\n"
       + "<bean id=\"traceIdCorrelationConfig\" class=\"brave.spring.beans.SingleCorrelationFieldFactoryBean\">\n"
@@ -41,7 +41,7 @@ public class SingleCorrelationFieldFactoryBeanTest {
       .isEqualTo(SingleCorrelationField.create(BaggageFields.TRACE_ID));
   }
 
-  @Test public void allProperties() {
+  @Test void allProperties() {
     context = new XmlBeans(""
       + "<util:constant id=\"traceId\" static-field=\"brave.baggage.BaggageFields.TRACE_ID\"/>\n"
       + "<bean id=\"traceIdCorrelationConfig\" class=\"brave.spring.beans.SingleCorrelationFieldFactoryBean\">\n"

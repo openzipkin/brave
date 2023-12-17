@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -24,12 +24,12 @@ import javax.ws.rs.client.InvocationCallback;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.jboss.resteasy.client.jaxrs.ResteasyClientBuilder;
-import org.junit.After;
-import org.junit.Ignore;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
-public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
+class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
   ExecutorService executorService = currentTraceContext.executorService(newCachedThreadPool());
 
   @Override protected Client newClient(int port) {
@@ -41,7 +41,7 @@ public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
         .build();
   }
 
-  @After @Override public void close() throws Exception {
+  @AfterEach @Override public void close() throws Exception {
     executorService.shutdown();
     executorService.awaitTermination(1, TimeUnit.SECONDS);
     super.close();
@@ -86,19 +86,19 @@ public class ITTracingJaxRSClientBuilder extends ITHttpAsyncClient<Client> {
         .post(Entity.text(body), String.class);
   }
 
-  @Override @Ignore("automatic error propagation is impossible")
+  @Override @Disabled("automatic error propagation is impossible")
   public void setsError_onTransportException() {
   }
 
-  @Override @Ignore("automatic error propagation is impossible")
+  @Override @Disabled("automatic error propagation is impossible")
   public void spanHandlerSeesError() {
   }
 
-  @Override @Ignore("blind to the implementation of redirects")
+  @Override @Disabled("blind to the implementation of redirects")
   public void redirect() {
   }
 
-  @Override @Ignore("doesn't know the remote address")
+  @Override @Disabled("doesn't know the remote address")
   public void reportsServerAddress() {
   }
 }

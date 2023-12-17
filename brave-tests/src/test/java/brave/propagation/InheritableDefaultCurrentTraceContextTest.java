@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,13 +15,13 @@ package brave.propagation;
 
 import brave.test.propagation.CurrentTraceContextTest;
 import java.util.function.Supplier;
-import org.junit.Before;
-import org.junit.ComparisonFailure;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static brave.propagation.CurrentTraceContext.Default.INHERITABLE;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class InheritableDefaultCurrentTraceContextTest extends CurrentTraceContextTest {
+class InheritableDefaultCurrentTraceContextTest extends CurrentTraceContextTest {
   @Override protected Class<? extends Supplier<CurrentTraceContext.Builder>> builderSupplier() {
     return BuilderSupplier.class;
   }
@@ -32,16 +32,17 @@ public class InheritableDefaultCurrentTraceContextTest extends CurrentTraceConte
     }
   }
 
-  @Test(expected = AssertionError.class)
-  public void isnt_inheritable() throws Exception {
-    super.isnt_inheritable();
+  @Test protected void isnt_inheritable()  {
+    assertThrows(AssertionError.class, () -> {
+      super.isnt_inheritable();
+    });
   }
 
-  @Test public void is_inheritable() throws Exception {
+  @Test void is_inheritable() throws Exception {
     super.is_inheritable(currentTraceContext);
   }
 
-  @Before public void ensureNoOtherTestsTaint() {
+  @BeforeEach void ensureNoOtherTestsTaint() {
     INHERITABLE.set(null);
     CurrentTraceContext.Default.DEFAULT.set(null);
   }

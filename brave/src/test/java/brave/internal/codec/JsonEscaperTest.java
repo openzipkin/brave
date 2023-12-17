@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,16 +13,16 @@
  */
 package brave.internal.codec;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.internal.codec.JsonEscaper.jsonEscape;
 import static brave.internal.codec.JsonEscaper.jsonEscapedSizeInBytes;
 import static org.assertj.core.api.Assertions.assertThat;
 
 // initially a copy of zipkin2.internal.JsonEscaperTest
-public class JsonEscaperTest {
+class JsonEscaperTest {
 
-  @Test public void testJsonEscapedSizeInBytes() {
+  @Test void testJsonEscapedSizeInBytes() {
     assertThat(jsonEscapedSizeInBytes(new String(new char[] {0, 'a', 1})))
         .isEqualTo(13);
     assertThat(jsonEscapedSizeInBytes(new String(new char[] {'"', '\\', '\t', '\b'})))
@@ -37,7 +37,7 @@ public class JsonEscaperTest {
 
   byte[] buf = new byte[20];
 
-  @Test public void testJsonEscape() {
+  @Test void testJsonEscape() {
     WriteBuffer buffer = new WriteBuffer(buf, 0);
     jsonEscape(new String(new char[] {0, 'a', 1}), buffer);
     assertThat(buffer).hasToString("\\u0000a\\u0001");

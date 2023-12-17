@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2022 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -22,7 +22,6 @@ import brave.propagation.Propagation;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.test.TestSpanHandler;
-import com.google.common.base.Charsets;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,7 +35,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
-import org.junit.After;
+import org.junit.jupiter.api.AfterEach;
 
 import static brave.test.ITRemote.BAGGAGE_FIELD;
 import static brave.test.ITRemote.BAGGAGE_FIELD_KEY;
@@ -68,7 +67,7 @@ public class KafkaTest {
       producerRecord = new ProducerRecord<>(TEST_TOPIC, TEST_KEY, TEST_VALUE);
   RuntimeException error = new RuntimeException("Test exception");
 
-  @After public void close() {
+  @AfterEach void close() {
     tracing.close();
     currentTraceContext.close();
   }
@@ -94,7 +93,7 @@ public class KafkaTest {
 
   static Set<Entry<String, String>> lastHeaders(Headers headers) {
     Map<String, String> result = new LinkedHashMap<>();
-    headers.forEach(h -> result.put(h.key(), new String(h.value(), Charsets.UTF_8)));
+    headers.forEach(h -> result.put(h.key(), new String(h.value(), StandardCharsets.UTF_8)));
     return result.entrySet();
   }
 

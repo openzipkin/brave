@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,7 +19,7 @@ import brave.test.http.ITServletContainer;
 import brave.test.http.ServletContainer.ServerController;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.context.ContextLoaderListener;
@@ -33,12 +33,12 @@ import static brave.Span.Kind.SERVER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** This tests when you use servlet for tracing but MVC for tagging */
-public abstract class BaseITSpanCustomizingHandlerInterceptor extends ITServletContainer {
+public abstract class BaseITSpanCustomizingHandlerInterceptor extends ITServletContainer { // public for src/it
   protected BaseITSpanCustomizingHandlerInterceptor(ServerController serverController) {
     super(serverController);
   }
 
-  @Test public void addsControllerTags() throws Exception {
+  @Test void addsControllerTags() throws Exception {
     get("/foo");
 
     MutableSpan span = testSpanHandler.takeRemoteSpan(SERVER);

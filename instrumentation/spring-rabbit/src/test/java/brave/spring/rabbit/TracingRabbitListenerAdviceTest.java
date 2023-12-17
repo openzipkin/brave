@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -21,8 +21,8 @@ import brave.propagation.B3Propagation;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.test.TestSpanHandler;
 import org.aopalliance.intercept.MethodInvocation;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageProperties;
@@ -35,7 +35,7 @@ import static brave.test.ITRemote.BAGGAGE_FIELD;
 import static brave.test.ITRemote.BAGGAGE_FIELD_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -65,12 +65,12 @@ public class TracingRabbitListenerAdviceTest {
   );
   MethodInvocation methodInvocation = mock(MethodInvocation.class);
 
-  @After public void close() {
+  @AfterEach void close() {
     tracing.close();
     currentTraceContext.close();
   }
 
-  @Test public void starts_new_trace_if_none_exists() throws Throwable {
+  @Test void starts_new_trace_if_none_exists() throws Throwable {
     Message message = MessageBuilder.withBody(new byte[0]).build();
     onMessageConsumed(message);
 
@@ -79,7 +79,7 @@ public class TracingRabbitListenerAdviceTest {
       .containsExactly(CONSUMER, null);
   }
 
-  @Test public void consumer_and_listener_have_names() throws Throwable {
+  @Test void consumer_and_listener_have_names() throws Throwable {
     Message message = MessageBuilder.withBody(new byte[0]).build();
     onMessageConsumed(message);
 
@@ -88,7 +88,7 @@ public class TracingRabbitListenerAdviceTest {
       .containsExactly("next-message", "on-message");
   }
 
-  @Test public void consumer_has_remote_service_name() throws Throwable {
+  @Test void consumer_has_remote_service_name() throws Throwable {
     Message message = MessageBuilder.withBody(new byte[0]).build();
     onMessageConsumed(message);
 
@@ -97,7 +97,7 @@ public class TracingRabbitListenerAdviceTest {
       .containsExactly("my-exchange", null);
   }
 
-  @Test public void tags_consumer_span_but_not_listener() throws Throwable {
+  @Test void tags_consumer_span_but_not_listener() throws Throwable {
     MessageProperties properties = new MessageProperties();
     properties.setConsumerQueue("foo");
 
@@ -110,7 +110,7 @@ public class TracingRabbitListenerAdviceTest {
       .isEmpty();
   }
 
-  @Test public void consumer_span_starts_before_listener() throws Throwable {
+  @Test void consumer_span_starts_before_listener() throws Throwable {
     Message message = MessageBuilder.withBody(new byte[0]).build();
     onMessageConsumed(message);
 
@@ -125,7 +125,7 @@ public class TracingRabbitListenerAdviceTest {
       .isPositive();
   }
 
-  @Test public void continues_parent_trace() throws Throwable {
+  @Test void continues_parent_trace() throws Throwable {
     MessageProperties props = new MessageProperties();
     props.setHeader("X-B3-TraceId", TRACE_ID);
     props.setHeader("X-B3-SpanId", SPAN_ID);
@@ -144,7 +144,7 @@ public class TracingRabbitListenerAdviceTest {
       .contains(SPAN_ID);
   }
 
-  @Test public void continues_parent_trace_single_header() throws Throwable {
+  @Test void continues_parent_trace_single_header() throws Throwable {
     MessageProperties props = new MessageProperties();
     props.setHeader("b3", TRACE_ID + "-" + SPAN_ID + "-" + SAMPLED);
 
@@ -160,7 +160,7 @@ public class TracingRabbitListenerAdviceTest {
       .contains(SPAN_ID);
   }
 
-  @Test public void retains_baggage_headers() throws Throwable {
+  @Test void retains_baggage_headers() throws Throwable {
     MessageProperties props = new MessageProperties();
     props.setHeader("b3", TRACE_ID + "-" + SPAN_ID + "-" + SAMPLED);
     props.setHeader(BAGGAGE_FIELD_KEY, "");
@@ -173,7 +173,7 @@ public class TracingRabbitListenerAdviceTest {
       .containsEntry(BAGGAGE_FIELD_KEY, "");
   }
 
-  @Test public void reports_span_if_consume_fails() throws Throwable {
+  @Test void reports_span_if_consume_fails() throws Throwable {
     Message message = MessageBuilder.withBody(new byte[0]).build();
     RuntimeException error = new RuntimeException("Test exception");
     onMessageConsumeFailed(message, error);
@@ -188,7 +188,7 @@ public class TracingRabbitListenerAdviceTest {
       .containsExactly(error);
   }
 
-  @Test public void reports_span_if_consume_fails_with_no_message() throws Throwable {
+  @Test void reports_span_if_consume_fails_with_no_message() throws Throwable {
     Message message = MessageBuilder.withBody(new byte[0]).build();
     RuntimeException error = new RuntimeException("Test exception");
     onMessageConsumeFailed(message, error);
@@ -203,7 +203,7 @@ public class TracingRabbitListenerAdviceTest {
       .containsExactly(error);
   }
 
-  @Test public void batch_starts_new_trace_if_none_exists() throws Throwable {
+  @Test void batch_starts_new_trace_if_none_exists() throws Throwable {
     // non traced that listener is a new trace
     onBatchMessageConsumed(Arrays.asList(MessageBuilder.withBody(new byte[0]).build(),
       MessageBuilder.withBody(new byte[0]).build()));
@@ -213,7 +213,7 @@ public class TracingRabbitListenerAdviceTest {
       .containsExactly(CONSUMER, null);
   }
 
-  @Test public void batch_continue_parent_trace() throws Throwable {
+  @Test void batch_continue_parent_trace() throws Throwable {
     MessageProperties props = new MessageProperties();
     props.setHeader("X-B3-TraceId", TRACE_ID);
     props.setHeader("X-B3-SpanId", SPAN_ID);
@@ -238,7 +238,7 @@ public class TracingRabbitListenerAdviceTest {
       .isEqualTo(SPAN_ID);
   }
 
-  @Test public void batch_continue_first_traced() throws Throwable {
+  @Test void batch_continue_first_traced() throws Throwable {
     MessageProperties props = new MessageProperties();
     props.setHeader("X-B3-TraceId", TRACE_ID);
     props.setHeader("X-B3-SpanId", SPAN_ID);
@@ -258,7 +258,7 @@ public class TracingRabbitListenerAdviceTest {
       .isEqualTo(SPAN_ID);
   }
 
-  @Test public void batch_new_trace_last_traced() throws Throwable {
+  @Test void batch_new_trace_last_traced() throws Throwable {
     MessageProperties props = new MessageProperties();
     props.setHeader("X-B3-TraceId", TRACE_ID_2);
     props.setHeader("X-B3-SpanId", SPAN_ID_2);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2022 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -42,7 +42,7 @@ import org.springframework.web.servlet.mvc.annotation.DefaultAnnotationHandlerMa
 import static org.springframework.web.servlet.DispatcherServlet.HANDLER_ADAPTER_BEAN_NAME;
 import static org.springframework.web.servlet.DispatcherServlet.HANDLER_MAPPING_BEAN_NAME;
 
-public class ITSpanCustomizingHandlerInterceptor extends ITServletContainer {
+class ITSpanCustomizingHandlerInterceptor extends ITServletContainer {
   public ITSpanCustomizingHandlerInterceptor() {
     super(new Jetty7ServerController());
   }

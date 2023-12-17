@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,24 +14,24 @@
 package brave.internal.extra;
 
 import java.util.Set;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class MapExtraTest {
+class MapExtraTest {
   BasicMapExtra.Factory factory = new BasicMapExtra.FactoryBuilder()
       .addInitialKey("1")
       .addInitialKey("2")
       .build();
   BasicMapExtra extra = factory.create(), extra2 = factory.create();
 
-  @Test public void put() {
+  @Test void put() {
     extra.put("1", "one");
     assertThat(extra.get("1")).isEqualTo("one");
     assertThat(extra.isEmpty()).isFalse();
   }
 
-  @Test public void put_multiple() {
+  @Test void put_multiple() {
     extra.put("1", "one");
     extra.put("2", "two");
     assertThat(extra.get("1")).isEqualTo("one");
@@ -48,13 +48,13 @@ public class MapExtraTest {
     assertThat(extra.isEmpty()).isTrue();
   }
 
-  @Test public void put_null_clearsState() {
+  @Test void put_null_clearsState() {
     extra.put("1", "one");
     extra.put("1", null);
     assertThat(extra.isEmpty()).isTrue();
   }
 
-  @Test public void empty() {
+  @Test void empty() {
     assertThat(extra.isEmpty()).isTrue();
     extra.put("1", "one");
 
@@ -64,7 +64,7 @@ public class MapExtraTest {
     assertThat(extra.isEmpty()).isTrue();
   }
 
-  @Test public void putNoop() {
+  @Test void putNoop() {
     extra.put("1", null);
     assertThat(extra.isEmpty()).isTrue();
 
@@ -74,15 +74,15 @@ public class MapExtraTest {
     assertThat(extra.state()).isSameAs(before);
   }
 
-  @Test public void get_ignored_if_unconfigured() {
+  @Test void get_ignored_if_unconfigured() {
     assertThat(extra.get("three")).isNull();
   }
 
-  @Test public void get_null_if_not_set() {
+  @Test void get_null_if_not_set() {
     assertThat(extra.get("1")).isNull();
   }
 
-  @Test public void mergeStateKeepingOursOnConflict_bothEmpty() {
+  @Test void mergeStateKeepingOursOnConflict_bothEmpty() {
     Object before = extra.state();
     extra.mergeStateKeepingOursOnConflict(extra2);
     assertThat(before).isSameAs(extra.state());
@@ -90,7 +90,7 @@ public class MapExtraTest {
     assertThat(extra.isEmpty()).isTrue();
   }
 
-  @Test public void mergeStateKeepingOursOnConflict_empty_nonEmpty() {
+  @Test void mergeStateKeepingOursOnConflict_empty_nonEmpty() {
     extra2.put("1", "one");
     extra2.put("2", "two");
 
@@ -102,7 +102,7 @@ public class MapExtraTest {
     assertThat(extra.get("2")).isEqualTo("two");
   }
 
-  @Test public void mergeStateKeepingOursOnConflict_nonEmpty_empty() {
+  @Test void mergeStateKeepingOursOnConflict_nonEmpty_empty() {
     extra.put("1", "one");
     extra.put("2", "two");
 
@@ -114,7 +114,7 @@ public class MapExtraTest {
     assertThat(extra.get("2")).isEqualTo("two");
   }
 
-  @Test public void mergeStateKeepingOursOnConflict_noConflict() {
+  @Test void mergeStateKeepingOursOnConflict_noConflict() {
     extra.put("1", "one");
     extra.put("2", "two");
     extra2.put("2", "two");
@@ -127,7 +127,7 @@ public class MapExtraTest {
     assertThat(extra.get("2")).isEqualTo("two");
   }
 
-  @Test public void mergeStateKeepingOursOnConflict_oursWinsOnConflict() {
+  @Test void mergeStateKeepingOursOnConflict_oursWinsOnConflict() {
     extra.put("1", "one");
     extra.put("2", "two");
     extra2.put("2", "one");
@@ -144,7 +144,7 @@ public class MapExtraTest {
    * Ensures only key and value comparison are used in equals and hashCode. This makes sure we can
    * know if an extraction with extra is empty or not.
    */
-  @Test public void equalsAndHashCode() {
+  @Test void equalsAndHashCode() {
     // empty extraction is equivalent
     assertThat(factory.create())
         .isEqualTo(factory.create());
@@ -168,7 +168,7 @@ public class MapExtraTest {
     assertThat(extra.hashCode()).isNotEqualTo(extra2.hashCode());
   }
 
-  @Test public void keySet_constantWhenNotDynamic() {
+  @Test void keySet_constantWhenNotDynamic() {
     Set<String> withNoValues = extra.keySet();
     extra.put("1", "one");
     extra.put("3", "three");
@@ -177,7 +177,7 @@ public class MapExtraTest {
         .isSameAs(withNoValues);
   }
 
-  @Test public void keySet_dynamic() {
+  @Test void keySet_dynamic() {
     factory = new BasicMapExtra.FactoryBuilder()
         .addInitialKey("1")
         .maxDynamicEntries(32).build();
@@ -200,7 +200,7 @@ public class MapExtraTest {
     assertThat(extra.keySet()).containsOnly("1", "2", "3");
   }
 
-  @Test public void putValue_ignores_if_not_defined() {
+  @Test void putValue_ignores_if_not_defined() {
     extra.put("3", "three");
 
     assertThat(extra.isEmpty()).isTrue();

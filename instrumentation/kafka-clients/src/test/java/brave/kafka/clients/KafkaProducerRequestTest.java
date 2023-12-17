@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,7 +14,7 @@
 package brave.kafka.clients;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -22,11 +22,11 @@ public class KafkaProducerRequestTest {
   ProducerRecord<String, String> record = new ProducerRecord<>("top", "key", "value");
   KafkaProducerRequest request = new KafkaProducerRequest(record);
 
-  @Test public void operation() {
+  @Test void operation() {
     assertThat(request.operation()).isEqualTo("send");
   }
 
-  @Test public void topic() {
+  @Test void topic() {
     assertThat(request.channelKind()).isEqualTo("topic");
     assertThat(request.channelName()).isEqualTo(record.topic());
   }

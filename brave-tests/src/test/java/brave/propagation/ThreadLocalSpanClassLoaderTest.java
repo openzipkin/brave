@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,13 +14,14 @@
 package brave.propagation;
 
 import brave.Tracing;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class ThreadLocalSpanClassLoaderTest {
+class ThreadLocalSpanClassLoaderTest {
 
-  @Test public void noop_unloadable() {
+  @Test void noop_unloadable() {
     assertRunIsUnloadable(CurrentTracerUnassigned.class, getClass().getClassLoader());
   }
 
@@ -30,7 +31,7 @@ public class ThreadLocalSpanClassLoaderTest {
     }
   }
 
-  @Test public void currentTracer_basicUsage_unloadable() {
+  @Test void currentTracer_basicUsage_unloadable() {
     assertRunIsUnloadable(ExplicitTracerBasicUsage.class, getClass().getClassLoader());
   }
 
@@ -45,7 +46,7 @@ public class ThreadLocalSpanClassLoaderTest {
     }
   }
 
-  @Test public void explicitTracer_basicUsage_unloadable() {
+  @Test void explicitTracer_basicUsage_unloadable() {
     assertRunIsUnloadable(CurrentTracerBasicUsage.class, getClass().getClassLoader());
   }
 
@@ -64,8 +65,10 @@ public class ThreadLocalSpanClassLoaderTest {
    * TODO: While it is an instrumentation bug to not complete a thread-local span, we should be
    * tolerant, for example considering weak references or similar.
    */
-  @Test(expected = AssertionError.class) public void unfinishedSpan_preventsUnloading() {
-    assertRunIsUnloadable(CurrentTracerDoesntFinishSpan.class, getClass().getClassLoader());
+  @Test void unfinishedSpan_preventsUnloading() {
+    assertThrows(AssertionError.class, () -> {
+      assertRunIsUnloadable(CurrentTracerDoesntFinishSpan.class, getClass().getClassLoader());
+    });
   }
 
   static class CurrentTracerDoesntFinishSpan implements Runnable {

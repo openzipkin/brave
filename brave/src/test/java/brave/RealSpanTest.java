@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,15 +17,16 @@ import brave.handler.MutableSpan;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import brave.test.TestSpanHandler;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+
 import zipkin2.Endpoint;
 
 import static brave.Span.Kind;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public class RealSpanTest {
+class RealSpanTest {
   TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing = Tracing.newBuilder().addSpanHandler(spans).build();
 
@@ -34,23 +35,23 @@ public class RealSpanTest {
 
   Span span = tracing.tracer().newTrace();
 
-  @After public void close() {
+  @AfterEach void close() {
     tracing.close();
   }
 
-  @Test public void isNotNoop() {
+  @Test void isNotNoop() {
     assertThat(span.isNoop()).isFalse();
   }
 
-  @Test public void hasRealContext() {
+  @Test void hasRealContext() {
     assertThat(span.context().spanId()).isNotZero();
   }
 
-  @Test public void hasRealCustomizer() {
+  @Test void hasRealCustomizer() {
     assertThat(span.customizer()).isInstanceOf(SpanCustomizerShield.class);
   }
 
-  @Test public void start() {
+  @Test void start() {
     span.start();
     span.flush();
 
@@ -58,7 +59,7 @@ public class RealSpanTest {
       .isPositive();
   }
 
-  @Test public void start_timestamp() {
+  @Test void start_timestamp() {
     span.start(2);
     span.flush();
 
@@ -66,7 +67,7 @@ public class RealSpanTest {
       .isEqualTo(2);
   }
 
-  @Test public void finish() {
+  @Test void finish() {
     span.start();
     span.finish();
 
@@ -74,7 +75,7 @@ public class RealSpanTest {
       .isPositive();
   }
 
-  @Test public void finish_timestamp() {
+  @Test void finish_timestamp() {
     span.start(2);
     span.finish(5);
 
@@ -84,14 +85,14 @@ public class RealSpanTest {
       .isEqualTo(5);
   }
 
-  @Test public void abandon() {
+  @Test void abandon() {
     span.start();
     span.abandon();
 
     assertThat(spans).isEmpty();
   }
 
-  @Test public void annotate() {
+  @Test void annotate() {
     span.annotate("foo");
     span.flush();
 
@@ -99,7 +100,8 @@ public class RealSpanTest {
       .isTrue();
   }
 
-  @Deprecated @Test public void remoteEndpoint_nulls() {
+  @Deprecated
+  @Test void remoteEndpoint_nulls() {
     span.remoteEndpoint(Endpoint.newBuilder().build());
     span.flush();
 
@@ -108,7 +110,7 @@ public class RealSpanTest {
     assertThat(spans.get(0).remotePort()).isZero();
   }
 
-  @Test public void annotate_timestamp() {
+  @Test void annotate_timestamp() {
     span.annotate(2, "foo");
     span.flush();
 
@@ -116,7 +118,7 @@ public class RealSpanTest {
       .containsExactly(entry(2L, "foo"));
   }
 
-  @Test public void tag() {
+  @Test void tag() {
     span.tag("foo", "bar");
     span.flush();
 
@@ -124,11 +126,11 @@ public class RealSpanTest {
       .containsExactly(entry("foo", "bar"));
   }
 
-  @Test public void finished_client_annotation() {
+  @Test void finished_client_annotation() {
     finish("cs", "cr", Kind.CLIENT);
   }
 
-  @Test public void finished_server_annotation() {
+  @Test void finished_server_annotation() {
     finish("sr", "ss", Kind.SERVER);
   }
 
@@ -144,7 +146,7 @@ public class RealSpanTest {
     assertThat(span2.kind()).isEqualTo(span2Kind);
   }
 
-  @Test public void doubleFinishDoesntDoubleReport() {
+  @Test void doubleFinishDoesntDoubleReport() {
     Span span = tracing.tracer().newTrace().name("foo").start();
 
     span.finish();
@@ -153,7 +155,7 @@ public class RealSpanTest {
     assertThat(spans).hasSize(1);
   }
 
-  @Test public void finishAfterAbandonDoesntReport() {
+  @Test void finishAfterAbandonDoesntReport() {
     span.start();
     span.abandon();
     span.finish();
@@ -161,7 +163,7 @@ public class RealSpanTest {
     assertThat(spans).isEmpty();
   }
 
-  @Test public void abandonAfterFinishDoesNothing() {
+  @Test void abandonAfterFinishDoesNothing() {
     span.start();
     span.finish();
     span.abandon();
@@ -169,7 +171,7 @@ public class RealSpanTest {
     assertThat(spans).hasSize(1);
   }
 
-  @Test public void error() {
+  @Test void error() {
     RuntimeException error = new RuntimeException("this cake is a lie");
     span.error(error);
     span.flush();
@@ -180,7 +182,7 @@ public class RealSpanTest {
       .doesNotContainKey("error");
   }
 
-  @Test public void equals_sameContext() {
+  @Test void equals_sameContext() {
     Span one = tracing.tracer().toSpan(context), two = tracing.tracer().toSpan(context);
 
     assertThat(one)
@@ -189,13 +191,13 @@ public class RealSpanTest {
       .isEqualTo(two);
   }
 
-  @Test public void equals_notSameContext() {
+  @Test void equals_notSameContext() {
     Span one = tracing.tracer().toSpan(context), two = tracing.tracer().toSpan(context2);
 
     assertThat(one).isNotEqualTo(two);
   }
 
-  @Test public void equals_lazySpan_sameContext() {
+  @Test void equals_lazySpan_sameContext() {
     Span current;
     try (Scope ws = tracing.currentTraceContext().newScope(context)) {
       current = tracing.tracer().currentSpan();
@@ -204,7 +206,7 @@ public class RealSpanTest {
     assertThat(tracing.tracer().toSpan(context)).isEqualTo(current);
   }
 
-  @Test public void equals_lazySpan_notSameContext() {
+  @Test void equals_lazySpan_notSameContext() {
     Span current;
     try (Scope ws = tracing.currentTraceContext().newScope(context2)) {
       current = tracing.tracer().currentSpan();

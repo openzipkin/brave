@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,16 +18,16 @@ import com.mysql.jdbc.Connection;
 import com.mysql.jdbc.DatabaseMetaData;
 import java.sql.SQLException;
 import java.util.Properties;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class TracingStatementInterceptorTest {
   @Mock Connection connection;
   @Mock DatabaseMetaData metaData;
@@ -35,7 +35,7 @@ public class TracingStatementInterceptorTest {
   @Mock Span span;
   String url = "jdbc:mysql://myhost:5555/mydatabase";
 
-  @Test public void parseServerIpAndPort_ipFromHost_portFromUrl() throws SQLException {
+  @Test void parseServerIpAndPort_ipFromHost_portFromUrl() throws SQLException {
     setupAndReturnPropertiesForHost("1.2.3.4");
 
     TracingStatementInterceptor.parseServerIpAndPort(connection, span);
@@ -44,7 +44,7 @@ public class TracingStatementInterceptorTest {
     verify(span).remoteIpAndPort("1.2.3.4", 5555);
   }
 
-  @Test public void parseServerIpAndPort_serviceNameFromDatabaseName() throws SQLException {
+  @Test void parseServerIpAndPort_serviceNameFromDatabaseName() throws SQLException {
     setupAndReturnPropertiesForHost("1.2.3.4");
     when(connection.getCatalog()).thenReturn("mydatabase");
 
@@ -54,7 +54,7 @@ public class TracingStatementInterceptorTest {
     verify(span).remoteIpAndPort("1.2.3.4", 5555);
   }
 
-  @Test public void parseServerIpAndPort_propertiesOverrideServiceName() throws SQLException {
+  @Test void parseServerIpAndPort_propertiesOverrideServiceName() throws SQLException {
     setupAndReturnPropertiesForHost("1.2.3.4").setProperty("zipkinServiceName", "foo");
 
     TracingStatementInterceptor.parseServerIpAndPort(connection, span);
@@ -63,7 +63,7 @@ public class TracingStatementInterceptorTest {
     verify(span).remoteIpAndPort("1.2.3.4", 5555);
   }
 
-  @Test public void parseServerIpAndPort_emptyZipkinServiceNameIgnored() throws SQLException {
+  @Test void parseServerIpAndPort_emptyZipkinServiceNameIgnored() throws SQLException {
     setupAndReturnPropertiesForHost("1.2.3.4").setProperty("zipkinServiceName", "");
 
     TracingStatementInterceptor.parseServerIpAndPort(connection, span);
@@ -72,7 +72,7 @@ public class TracingStatementInterceptorTest {
     verify(span).remoteIpAndPort("1.2.3.4", 5555);
   }
 
-  @Test public void parseServerIpAndPort_doesntCrash() throws SQLException {
+  @Test void parseServerIpAndPort_doesntCrash() throws SQLException {
     when(connection.getMetaData()).thenThrow(new SQLException());
 
     TracingStatementInterceptor.parseServerIpAndPort(connection, span);

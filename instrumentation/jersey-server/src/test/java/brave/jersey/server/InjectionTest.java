@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,8 +18,8 @@ import brave.http.HttpTracing;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,11 +33,11 @@ public class InjectionTest {
     }
   });
 
-  @After public void close() {
+  @AfterEach void close() {
     tracing.close();
   }
 
-  @Test public void spanCustomizingApplicationEventListener() {
+  @Test void spanCustomizingApplicationEventListener() {
     SpanCustomizingApplicationEventListener filter =
       injector.getInstance(SpanCustomizingApplicationEventListener.class);
 
@@ -45,7 +45,7 @@ public class InjectionTest {
       .isSameAs(EventParser.class);
   }
 
-  @Test public void spanCustomizingApplicationEventListener_resource() {
+  @Test void spanCustomizingApplicationEventListener_resource() {
     SpanCustomizingApplicationEventListener filter =
       injector.createChildInjector(new AbstractModule() {
         @Override protected void configure() {
@@ -57,7 +57,7 @@ public class InjectionTest {
       .isSameAs(EventParser.NOOP);
   }
 
-  @Test public void tracingApplicationEventListener() {
+  @Test void tracingApplicationEventListener() {
     TracingApplicationEventListener filter =
       injector.getInstance(TracingApplicationEventListener.class);
 
@@ -65,7 +65,7 @@ public class InjectionTest {
       .isSameAs(EventParser.class);
   }
 
-  @Test public void tracingApplicationEventListener_resource() {
+  @Test void tracingApplicationEventListener_resource() {
     TracingApplicationEventListener filter = injector.createChildInjector(new AbstractModule() {
       @Override protected void configure() {
         bind(EventParser.class).toInstance(EventParser.NOOP);

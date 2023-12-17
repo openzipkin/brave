@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -26,7 +26,7 @@ import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.handler.MutableSpan.normalizeIdField;
 import static java.util.Arrays.asList;
@@ -46,7 +46,7 @@ public class MutableSpanTest {
    * This shows an edge case of someone implementing a {@link SpanHandler} whose intent is only
    * handle orphans.
    */
-  @Test public void hasAnnotation_usageExplained() {
+  @Test void hasAnnotation_usageExplained() {
     class AbandonCounter extends SpanHandler {
       int orphans;
 
@@ -86,7 +86,7 @@ public class MutableSpanTest {
    * This shows how {@link MutableSpan#tagKeyAt(int)} and {@link MutableSpan#tagValueAt(int)} are
    * intended to be used
    */
-  @Test public void tagValueAt_usageExplained() {
+  @Test void tagValueAt_usageExplained() {
     MutableSpan span = new MutableSpan();
     span.tag("a", "1");
     span.tag("b", "2");
@@ -108,7 +108,7 @@ public class MutableSpanTest {
    * This shows how the {@link MutableSpan#forEachTag(MutableSpan.TagConsumer, Object)}  is intended
    * to be used
    */
-  @Test public void forEachTag_consumer_usageExplained() {
+  @Test void forEachTag_consumer_usageExplained() {
     MutableSpan span = new MutableSpan();
     span.tag("a", "1");
     span.tag("b", "2");
@@ -128,7 +128,7 @@ public class MutableSpanTest {
   }
 
   /** This shows how {@link MutableSpan#removeTag(String)} is intended to be used */
-  @Test public void removeTag_usageExplained() {
+  @Test void removeTag_usageExplained() {
     MutableSpan span = new MutableSpan();
     span.tag("peer.service", "amazon-s3");
 
@@ -141,7 +141,7 @@ public class MutableSpanTest {
   }
 
   /** This shows how {@link MutableSpan#forEachTag(MutableSpan.TagUpdater)} is intended to be used */
-  @Test public void forEachTag_updater_usageExplained() {
+  @Test void forEachTag_updater_usageExplained() {
     MutableSpan span = new MutableSpan();
     span.tag("a", "1");
     span.tag("cc", "4121-2319-1483-3421");
@@ -167,7 +167,7 @@ public class MutableSpanTest {
     );
   }
 
-  @Test public void annotations_copyOnWrite() {
+  @Test void annotations_copyOnWrite() {
     MutableSpan span = new MutableSpan();
     span.annotate(1L, "ws");
 
@@ -187,7 +187,7 @@ public class MutableSpanTest {
     );
   }
 
-  @Test public void annotations() {
+  @Test void annotations() {
     MutableSpan span = new MutableSpan();
     assertThat(span.annotationCount()).isZero();
     assertThat(span.annotations()).isEmpty();
@@ -213,7 +213,7 @@ public class MutableSpanTest {
   }
 
   /** See {@link #tagValueAt_usageExplained()} */
-  @Test public void annotationValueAt_usageExplained() {
+  @Test void annotationValueAt_usageExplained() {
     TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
 
     MutableSpan span = new MutableSpan();
@@ -236,7 +236,7 @@ public class MutableSpanTest {
   }
 
   /** See {@link #forEachTag_consumer_usageExplained()} */
-  @Test public void forEachAnnotation_consumer_usageExplained() {
+  @Test void forEachAnnotation_consumer_usageExplained() {
     TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
 
     MutableSpan span = new MutableSpan();
@@ -259,7 +259,7 @@ public class MutableSpanTest {
   }
 
   /** See {@link #forEachTag_updater_usageExplained()} */
-  @Test public void forEachAnnotation_updater_usageExplained() {
+  @Test void forEachAnnotation_updater_usageExplained() {
     MutableSpan span = new MutableSpan();
     span.annotate(1L, "1");
     span.annotate(2L, "4121-2319-1483-3421");
@@ -285,14 +285,14 @@ public class MutableSpanTest {
     );
   }
 
-  @Test public void localServiceNamePreservesCase() {
+  @Test void localServiceNamePreservesCase() {
     String expectedLocalServiceName = "FavStar";
     MutableSpan span = new MutableSpan();
     span.localServiceName(expectedLocalServiceName);
     assertThat(span.localServiceName()).isEqualTo(expectedLocalServiceName);
   }
 
-  @Test public void remoteServiceNamePreservesCase() {
+  @Test void remoteServiceNamePreservesCase() {
     String expectedRemoteServiceName = "FavStar";
     MutableSpan span = new MutableSpan();
     span.remoteServiceName(expectedRemoteServiceName);
@@ -305,7 +305,7 @@ public class MutableSpanTest {
    * <p>This allows you to change the decision later if a span is not remote, for example, when
    * served from cache.
    */
-  @Test public void unsetKind() {
+  @Test void unsetKind() {
     MutableSpan span = new MutableSpan();
     span.kind(Span.Kind.CLIENT);
     span.kind(null);
@@ -313,7 +313,7 @@ public class MutableSpanTest {
     assertThat(span.kind()).isNull();
   }
 
-  @Test public void isEmpty() {
+  @Test void isEmpty() {
     assertThat(PERMUTATIONS.get(0).get().isEmpty()).isTrue();
 
     for (int i = 1, length = PERMUTATIONS.size(); i < length; i++) {
@@ -323,7 +323,7 @@ public class MutableSpanTest {
 
   static final Exception EX1 = new Exception(), EX2 = new Exception();
 
-  @Test public void equalsOnHashCodeClash() {
+  @Test void equalsOnHashCodeClash() {
     // Not as good as property testing, but easier to see changes later when fields are added!
     List<Function<String, MutableSpan>> permutations = asList(
       string -> {
@@ -555,7 +555,7 @@ public class MutableSpanTest {
     }
   );
 
-  @Test public void equalsAndHashCode() {
+  @Test void equalsAndHashCode() {
     for (Supplier<MutableSpan> constructor : PERMUTATIONS) {
       // same instance are equivalent
       MutableSpan span = constructor.get();
@@ -584,7 +584,7 @@ public class MutableSpanTest {
     }
   }
 
-  @Test public void copyConstructor() {
+  @Test void copyConstructor() {
     for (Supplier<MutableSpan> constructor : PERMUTATIONS) {
       MutableSpan span = constructor.get();
       assertThat(span).isEqualTo(new MutableSpan(span));
@@ -613,7 +613,7 @@ public class MutableSpanTest {
     assertEqualWithSameHashCode(span, span2);
   }
 
-  @Test public void contextConstructor() {
+  @Test void contextConstructor() {
     TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
     MutableSpan span = new MutableSpan();
     span.traceId("0000000000000001");
@@ -645,7 +645,7 @@ public class MutableSpanTest {
     assertThat(new MutableSpan(context, null)).isEqualTo(span);
   }
 
-  @Test public void contextConstructor_contextWins() {
+  @Test void contextConstructor_contextWins() {
     MutableSpan span = new MutableSpan();
     span.traceId("0000000000000001");
     span.localRootId("0000000000000002");
@@ -660,7 +660,7 @@ public class MutableSpanTest {
       .isEqualTo(new MutableSpan(context, null));
   }
 
-  @Test public void tags() {
+  @Test void tags() {
     MutableSpan span = new MutableSpan();
     assertThat(span.tagCount()).isZero();
     assertThat(span.tags()).isEmpty();
@@ -685,7 +685,7 @@ public class MutableSpanTest {
     );
   }
 
-  @Test public void accessorScansTags() {
+  @Test void accessorScansTags() {
     MutableSpan span = new MutableSpan();
     span.tag("http.method", "GET");
     span.tag("error", "500");
@@ -695,7 +695,7 @@ public class MutableSpanTest {
     assertThat(span.tag("whoops")).isNull();
   }
 
-  @Test public void toString_testCases() {
+  @Test void toString_testCases() {
     assertThat(PERMUTATIONS.get(0).get()).hasToString("{}");
 
     // check for simple bugs
@@ -739,7 +739,7 @@ public class MutableSpanTest {
       + "}"));
   }
 
-  @Test public void remove() {
+  @Test void remove() {
     // internally, remove is never called on odd number, or at or after array length
     {
       Object[] array = new Object[] {1, 2, 3, 4, 5, 6};
@@ -772,28 +772,28 @@ public class MutableSpanTest {
   }
 
   /** Some tools like rsocket redundantly pass high bits as zero. */
-  @Test public void normalizeIdField_truncates64BitZeroPrefix() {
+  @Test void normalizeIdField_truncates64BitZeroPrefix() {
     assertThat(normalizeIdField("traceId", "0000000000000000000000000000162e", false))
         .isEqualTo("000000000000162e");
   }
 
-  @Test public void normalizeIdField_padsTo64() {
+  @Test void normalizeIdField_padsTo64() {
     assertThat(normalizeIdField("spanId", "162e", false))
         .isEqualTo("000000000000162e");
   }
 
-  @Test public void normalizeIdField_padsTo128() {
+  @Test void normalizeIdField_padsTo128() {
     assertThat(normalizeIdField("traceId", "4d2000000000000162e", false))
         .isEqualTo("00000000000004d2000000000000162e");
   }
 
-  @Test public void normalizeIdField_badCharacters() {
+  @Test void normalizeIdField_badCharacters() {
     assertThatThrownBy(() -> normalizeIdField("traceId", "000-0000000004d20000000ss000162e", false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("traceId should be lower-hex encoded with no prefix");
   }
 
-  @Test public void ids_nullable() {
+  @Test void ids_nullable() {
     MutableSpan span = new MutableSpan();
     assertThatThrownBy(() -> span.traceId(null))
         .isInstanceOf(NullPointerException.class)
@@ -825,7 +825,7 @@ public class MutableSpanTest {
         .hasMessage("id is empty");
   }
 
-  @Test public void shared() {
+  @Test void shared() {
     MutableSpan span = new MutableSpan();
     span.setShared();
     assertThat(span.shared()).isTrue();
@@ -835,7 +835,7 @@ public class MutableSpanTest {
     assertThat(span.flags).isZero();
   }
 
-  @Test public void debug() {
+  @Test void debug() {
     MutableSpan span = new MutableSpan();
     span.setDebug();
     assertThat(span.debug()).isTrue();

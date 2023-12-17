@@ -16,7 +16,7 @@ package brave.test;
 import brave.Span;
 import brave.handler.MutableSpan;
 import brave.propagation.TraceContext;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.Span.Kind.CLIENT;
 import static brave.handler.SpanHandler.Cause.FINISHED;
@@ -24,12 +24,12 @@ import static brave.handler.SpanHandler.Cause.ORPHANED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class IntegrationTestSpanHandlerTest {
+class IntegrationTestSpanHandlerTest {
   IntegrationTestSpanHandler spanHandler = new IntegrationTestSpanHandler();
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
   MutableSpan span = new MutableSpan(context, null);
 
-  @Test public void goodMessageForUnstartedSpan() {
+  @Test void goodMessageForUnstartedSpan() {
     spanHandler.end(context, span, FINISHED); // NOT ORPHANED!
 
     assertThatThrownBy(spanHandler::takeLocalSpan)
@@ -38,7 +38,7 @@ public class IntegrationTestSpanHandlerTest {
                 + "Look for code missing span.start().");
   }
 
-  @Test public void goodMessageForOrphanedSpan() {
+  @Test void goodMessageForOrphanedSpan() {
     spanHandler.begin(context, span, null);
     spanHandler.end(context, span, ORPHANED);
 
@@ -48,7 +48,7 @@ public class IntegrationTestSpanHandlerTest {
         .hasMessageContaining("Look for code missing span.flush() or span.finish().");
   }
 
-  @Test public void toString_includesSpans() {
+  @Test void toString_includesSpans() {
     spanHandler.end(context, span, FINISHED);
 
     assertThat(spanHandler)
@@ -56,7 +56,7 @@ public class IntegrationTestSpanHandlerTest {
   }
 
   /** Shows the argument is a pattern, not equals */
-  @Test public void takeRemoteSpanWithErrorMessage_pattern() {
+  @Test void takeRemoteSpanWithErrorMessage_pattern() {
     span.kind(CLIENT);
     span.startTimestamp(1L);
     span.error(new RuntimeException("ice ice baby"));
@@ -70,7 +70,7 @@ public class IntegrationTestSpanHandlerTest {
    * Some exceptions, like Dubbo, are multi-line where the line of interest isn't even always on the
    * last line.
    */
-  @Test public void takeRemoteSpanWithErrorMessage_multiline() {
+  @Test void takeRemoteSpanWithErrorMessage_multiline() {
     span.kind(CLIENT);
     span.startTimestamp(1L);
     span.error(new RuntimeException("ice ice baby\nvanilla\nice ice baby"));
@@ -85,7 +85,7 @@ public class IntegrationTestSpanHandlerTest {
    * IntegrationTestSpanHandler#takeRemoteSpanWithError(Span.Kind)}, not {@link
    * IntegrationTestSpanHandler#takeRemoteSpanWithErrorMessage(Span.Kind, String)} (regex).
    */
-  @Test public void takeRemoteSpanWithErrorMessage_null_notOk() {
+  @Test void takeRemoteSpanWithErrorMessage_null_notOk() {
     span.kind(CLIENT);
     span.startTimestamp(1L);
     span.error(new RuntimeException());
@@ -97,7 +97,7 @@ public class IntegrationTestSpanHandlerTest {
         .hasMessageEndingWith("to have an error message matching [.+], but was [null]");
   }
 
-  @Test public void takeRemoteSpanWithError_nullMessage() {
+  @Test void takeRemoteSpanWithError_nullMessage() {
     span.kind(CLIENT);
     span.startTimestamp(1L);
     span.error(new RuntimeException());

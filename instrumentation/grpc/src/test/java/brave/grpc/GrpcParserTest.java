@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,27 +13,27 @@
  */
 package brave.grpc;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.grpc.TestObjects.METHOD_DESCRIPTOR;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class GrpcParserTest {
-  @Test public void method() {
+  @Test void method() {
     assertThat(GrpcParser.method(METHOD_DESCRIPTOR.getFullMethodName()))
       .isEqualTo("SayHello");
   }
 
-  @Test public void method_malformed() {
+  @Test void method_malformed() {
     assertThat(GrpcParser.method("/")).isNull();
   }
 
-  @Test public void service() {
+  @Test void service() {
     assertThat(GrpcParser.service(METHOD_DESCRIPTOR.getFullMethodName()))
       .isEqualTo("helloworld.Greeter");
   }
 
-  @Test public void service_malformed() {
+  @Test void service_malformed() {
     assertThat(GrpcParser.service("/")).isNull();
   }
 }

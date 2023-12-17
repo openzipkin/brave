@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,14 +18,14 @@ import brave.Tracing;
 import brave.http.HttpClientAdapters.FromRequestAdapter;
 import brave.propagation.TraceContext;
 import brave.test.IntegrationTestSpanHandler;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.Mock;
 import org.mockito.Spy;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static brave.Span.Kind.CLIENT;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,9 +37,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
-@Deprecated public class DeprecatedHttpClientHandlerTest {
-  @Rule public IntegrationTestSpanHandler spanHandler = new IntegrationTestSpanHandler();
+@ExtendWith(MockitoExtension.class)
+@Deprecated
+class DeprecatedHttpClientHandlerTest {
+  @RegisterExtension IntegrationTestSpanHandler spanHandler = new IntegrationTestSpanHandler();
 
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(1L).sampled(true).build();
   @Mock HttpSampler sampler;
@@ -52,9 +53,8 @@ import static org.mockito.Mockito.when;
   @Mock Object request;
   @Mock Object response;
 
-  @Before public void init() {
+  @BeforeEach void init() {
     init(httpTracingBuilder(tracingBuilder()));
-    when(adapter.method(request)).thenReturn("GET");
   }
 
   void init(HttpTracing.Builder builder) {
@@ -72,12 +72,12 @@ import static org.mockito.Mockito.when;
     return Tracing.newBuilder().addSpanHandler(spanHandler);
   }
 
-  @After public void close() {
+  @AfterEach void close() {
     Tracing current = Tracing.current();
     if (current != null) current.close();
   }
 
-  @Test public void handleSend_defaultsToMakeNewTrace() {
+  @Test void handleSend_defaultsToMakeNewTrace() {
     when(sampler.trySample(any(FromRequestAdapter.class))).thenReturn(null);
 
     assertThat(handler.handleSend(injector, request))
@@ -85,7 +85,7 @@ import static org.mockito.Mockito.when;
       .containsExactly(false, null);
   }
 
-  @Test public void handleSend_makesAChild() {
+  @Test void handleSend_makesAChild() {
     ScopedSpan parent = httpTracing.tracing().tracer().startScopedSpan("test");
     try {
       assertThat(handler.handleSend(injector, request))
@@ -97,7 +97,7 @@ import static org.mockito.Mockito.when;
     spanHandler.takeLocalSpan();
   }
 
-  @Test public void handleSend_makesRequestBasedSamplingDecision() {
+  @Test void handleSend_makesRequestBasedSamplingDecision() {
     // request sampler says false eventhough trace ID sampler would have said true
     when(sampler.trySample(any(FromRequestAdapter.class))).thenReturn(false);
     init(httpTracingBuilder(tracingBuilder()));
@@ -105,20 +105,20 @@ import static org.mockito.Mockito.when;
     assertThat(handler.handleSend(injector, request).isNoop()).isTrue();
   }
 
-  @Test public void handleSend_injectsTheTraceContext() {
+  @Test void handleSend_injectsTheTraceContext() {
     TraceContext context = handler.handleSend(injector, request).context();
 
     verify(injector).inject(context, request);
   }
 
-  @Test public void handleSend_injectsTheTraceContext_onTheRequest() {
+  @Test void handleSend_injectsTheTraceContext_onTheRequest() {
     HttpClientRequest customRequest = mock(HttpClientRequest.class);
     TraceContext context = handler.handleSend(injector, customRequest, request).context();
 
     verify(injector).inject(context, customRequest);
   }
 
-  @Test public void handleSend_addsClientAddressWhenOnlyServiceName() {
+  @Test void handleSend_addsClientAddressWhenOnlyServiceName() {
     when(sampler.trySample(any(FromRequestAdapter.class))).thenReturn(null);
 
     httpTracing = httpTracing.clientOf("remote-service");
@@ -129,7 +129,7 @@ import static org.mockito.Mockito.when;
       .isEqualTo("remote-service");
   }
 
-  @Test public void handleSend_skipsClientAddressWhenUnparsed() {
+  @Test void handleSend_skipsClientAddressWhenUnparsed() {
     when(sampler.trySample(any(FromRequestAdapter.class))).thenReturn(null);
 
     handler.handleSend(injector, request).finish();
@@ -138,7 +138,7 @@ import static org.mockito.Mockito.when;
       .isNull();
   }
 
-  @Test public void handleReceive() {
+  @Test void handleReceive() {
     brave.Span span = mock(brave.Span.class);
     when(span.context()).thenReturn(context);
     when(span.customizer()).thenReturn(span);
@@ -148,7 +148,7 @@ import static org.mockito.Mockito.when;
     verify(parser).response(eq(adapter), eq(response), isNull(), eq(span));
   }
 
-  @Test public void handleReceive_oneOfResponseError() {
+  @Test void handleReceive_oneOfResponseError() {
     brave.Span span = mock(brave.Span.class);
 
     assertThatThrownBy(() -> handler.handleReceive(null, null, span))

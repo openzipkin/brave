@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,12 +18,12 @@ import brave.propagation.CurrentTraceContext;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import java.util.List;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ExtraFactoryTest {
+class ExtraFactoryTest {
   BasicMapExtra.Factory factory = new BasicMapExtra.FactoryBuilder()
       .addInitialKey("1")
       .addInitialKey("2")
@@ -42,7 +42,7 @@ public class ExtraFactoryTest {
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true).build();
   TraceContext context2 = context.toBuilder().parentId(2L).spanId(3L).build();
 
-  @Test public void contextsAreIndependent() {
+  @Test void contextsAreIndependent() {
     TraceContext decorated = propagationFactory.decorate(context);
     BasicMapExtra extra1 = decorated.findExtra(BasicMapExtra.class);
     extra1.put("1", "one");
@@ -64,7 +64,7 @@ public class ExtraFactoryTest {
     assertThat(extra2.get("1")).isEqualTo("three");
   }
 
-  @Test public void contextsHaveIndependentValue() {
+  @Test void contextsHaveIndependentValue() {
     TraceContext decorated = propagationFactory.decorate(context);
     BasicMapExtra extra1 = decorated.findExtra(BasicMapExtra.class);
     extra1.put("1", "two");
@@ -100,7 +100,7 @@ public class ExtraFactoryTest {
    * <p>Extracted extra should merge into the current extra state instead creating multiple
    * entries in {@link TraceContext#extra()}.
    */
-  @Test public void decorate_extractedExtra_plus_parent_merge() {
+  @Test void decorate_extractedExtra_plus_parent_merge() {
     TraceContext decorated = propagationFactory.decorate(context);
     BasicMapExtra extra1 = decorated.findExtra(BasicMapExtra.class);
 
@@ -120,7 +120,7 @@ public class ExtraFactoryTest {
     assertExtraClaimed(context2);
   }
 
-  @Test public void decorate_extractedExtra_plus_emptyParent() {
+  @Test void decorate_extractedExtra_plus_emptyParent() {
     TraceContext decorated = propagationFactory.decorate(context);
     BasicMapExtra extra1 = decorated.findExtra(BasicMapExtra.class);
 
@@ -137,7 +137,7 @@ public class ExtraFactoryTest {
     assertExtraClaimed(context2);
   }
 
-  @Test public void decorate_parent() {
+  @Test void decorate_parent() {
     TraceContext decorated = propagationFactory.decorate(context);
     BasicMapExtra extra1 = decorated.findExtra(BasicMapExtra.class);
     extra1.put("1", "one");
@@ -151,14 +151,14 @@ public class ExtraFactoryTest {
     assertExtraClaimed(context2);
   }
 
-  @Test public void idempotent() {
+  @Test void idempotent() {
     TraceContext decorated = propagationFactory.decorate(context);
     List<Object> originalExtra = decorated.extra();
     assertThat(propagationFactory.decorate(decorated).extra())
         .isSameAs(originalExtra);
   }
 
-  @Test public void decorate_makesNewExtra() {
+  @Test void decorate_makesNewExtra() {
     List<TraceContext> contexts = asList(
         context.toBuilder().build(),
         context.toBuilder().addExtra(1L).build(),
@@ -176,7 +176,7 @@ public class ExtraFactoryTest {
     }
   }
 
-  @Test public void decorate_claimsFields() {
+  @Test void decorate_claimsFields() {
     List<TraceContext> contexts = asList(
         context.toBuilder().addExtra(factory.create()).build(),
         context.toBuilder().addExtra(1L).addExtra(factory.create()).build(),
@@ -193,7 +193,7 @@ public class ExtraFactoryTest {
     }
   }
 
-  @Test public void decorate_redundant() {
+  @Test void decorate_redundant() {
     List<TraceContext> contexts = asList(
         context.toBuilder().addExtra(factory.create()).build(),
         context.toBuilder().addExtra(1L).addExtra(factory.create()).build(),
@@ -208,7 +208,7 @@ public class ExtraFactoryTest {
     }
   }
 
-  @Test public void decorate_returnsInputOnCreateNull() {
+  @Test void decorate_returnsInputOnCreateNull() {
     BadFactory badFactory = new BadFactory();
     assertThat(badFactory.create()).isNull(); // sanity check
 
@@ -233,7 +233,7 @@ public class ExtraFactoryTest {
   }
 
   /** Logs instead of crashing on bad usage */
-  @Test public void decorate_returnsInputOnRedundantExtra() {
+  @Test void decorate_returnsInputOnRedundantExtra() {
     context = context.toBuilder()
         .addExtra(factory.create())
         .addExtra(factory.create())
@@ -244,7 +244,7 @@ public class ExtraFactoryTest {
         .isSameAs(context);
   }
 
-  @Test public void decorate_forksWhenFieldsAlreadyClaimed() {
+  @Test void decorate_forksWhenFieldsAlreadyClaimed() {
     TraceContext other = TraceContext.newBuilder().traceId(98L).spanId(99L).build();
     BasicMapExtra claimed = factory.decorate(other).findExtra(BasicMapExtra.class);
 
@@ -266,7 +266,7 @@ public class ExtraFactoryTest {
     }
   }
 
-  @Test public void decorate_claimsContext() {
+  @Test void decorate_claimsContext() {
     assertExtraClaimed(propagationFactory.decorate(context));
   }
 

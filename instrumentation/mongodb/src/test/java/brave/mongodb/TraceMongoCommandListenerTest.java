@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -27,11 +27,11 @@ import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonElement;
 import org.bson.BsonString;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static brave.mongodb.TraceMongoCommandListener.getNonEmptyBsonString;
 import static brave.mongodb.TraceMongoCommandListener.getSpanName;
@@ -42,7 +42,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class TraceMongoCommandListenerTest {
   static BsonDocument LONG_COMMAND = BsonDocument.parse("{" +
     "   \"insert\": \"myCollection\",\n" +
@@ -58,40 +58,40 @@ public class TraceMongoCommandListenerTest {
 
   TraceMongoCommandListener listener;
 
-  @Before public void setUp() {
+  @BeforeEach void setUp() {
     listener = new TraceMongoCommandListener(threadLocalSpan);
   }
 
-  @Test public void getCollectionName_missingCommand() {
+  @Test void getCollectionName_missingCommand() {
     assertThat(listener.getCollectionName(new BsonDocument(), "find")).isNull();
   }
 
-  @Test public void getCollectionName_notStringCommandArgument() {
+  @Test void getCollectionName_notStringCommandArgument() {
     assertThat(
       listener.getCollectionName(new BsonDocument("find", BsonBoolean.TRUE), "find")).isNull();
   }
 
-  @Test public void getCollectionName_emptyStringCommandArgument() {
+  @Test void getCollectionName_emptyStringCommandArgument() {
     assertThat(
       listener.getCollectionName(new BsonDocument("find", new BsonString("  ")), "find")).isNull();
   }
 
-  @Test public void getCollectionName_notAllowListedCommand() {
+  @Test void getCollectionName_notAllowListedCommand() {
     assertThat(
       listener.getCollectionName(new BsonDocument("cmd", new BsonString(" bar ")), "cmd")).isNull();
   }
 
-  @Test public void getCollectionName_allowListedCommand() {
+  @Test void getCollectionName_allowListedCommand() {
     assertThat(listener.getCollectionName(new BsonDocument("find", new BsonString(" bar ")),
       "find")).isEqualTo("bar");
   }
 
-  @Test public void getCollectionName_collectionFieldOnly() {
+  @Test void getCollectionName_collectionFieldOnly() {
     assertThat(listener.getCollectionName(new BsonDocument("collection", new BsonString(" bar ")),
       "find")).isEqualTo("bar");
   }
 
-  @Test public void getCollectionName_allowListedCommandAndCollectionField() {
+  @Test void getCollectionName_allowListedCommandAndCollectionField() {
     BsonDocument command = new BsonDocument(Arrays.asList(
       new BsonElement("collection", new BsonString("coll")),
       new BsonElement("find", new BsonString("bar"))
@@ -99,7 +99,7 @@ public class TraceMongoCommandListenerTest {
     assertThat(listener.getCollectionName(command, "find")).isEqualTo("bar"); // command wins
   }
 
-  @Test public void getCollectionName_notAllowListedCommandAndCollectionField() {
+  @Test void getCollectionName_notAllowListedCommandAndCollectionField() {
     BsonDocument command = new BsonDocument(Arrays.asList(
       new BsonElement("collection", new BsonString("coll")),
       new BsonElement("cmd", new BsonString("bar"))
@@ -108,31 +108,31 @@ public class TraceMongoCommandListenerTest {
       "coll"); // collection field wins
   }
 
-  @Test public void getNonEmptyBsonString_null() {
+  @Test void getNonEmptyBsonString_null() {
     assertThat(getNonEmptyBsonString(null)).isNull();
   }
 
-  @Test public void getNonEmptyBsonString_notString() {
+  @Test void getNonEmptyBsonString_notString() {
     assertThat(getNonEmptyBsonString(BsonBoolean.TRUE)).isNull();
   }
 
-  @Test public void getNonEmptyBsonString_empty() {
+  @Test void getNonEmptyBsonString_empty() {
     assertThat(getNonEmptyBsonString(new BsonString("  "))).isNull();
   }
 
-  @Test public void getNonEmptyBsonString_normal() {
+  @Test void getNonEmptyBsonString_normal() {
     assertThat(getNonEmptyBsonString(new BsonString(" foo  "))).isEqualTo("foo");
   }
 
-  @Test public void getSpanName_emptyCollectionName() {
+  @Test void getSpanName_emptyCollectionName() {
     assertThat(getSpanName("foo", null)).isEqualTo("foo");
   }
 
-  @Test public void getSpanName_presentCollectionName() {
+  @Test void getSpanName_presentCollectionName() {
     assertThat(getSpanName("foo", "bar")).isEqualTo("foo bar");
   }
 
-  @Test public void commandStarted_noopSpan() {
+  @Test void commandStarted_noopSpan() {
     when(threadLocalSpan.next()).thenReturn(span);
     when(span.isNoop()).thenReturn(true);
 
@@ -143,7 +143,7 @@ public class TraceMongoCommandListenerTest {
     verifyNoMoreInteractions(threadLocalSpan, span);
   }
 
-  @Test public void commandStarted_normal() {
+  @Test void commandStarted_normal() {
     setupCommandStartedMocks();
 
     listener.commandStarted(createCommandStartedEvent());
@@ -152,14 +152,14 @@ public class TraceMongoCommandListenerTest {
     verifyNoMoreInteractions(threadLocalSpan, span);
   }
 
-  @Test public void commandSucceeded_withoutCommandStarted() {
+  @Test void commandSucceeded_withoutCommandStarted() {
     listener.commandSucceeded(createCommandSucceededEvent());
 
     verify(threadLocalSpan).remove();
     verifyNoMoreInteractions(threadLocalSpan);
   }
 
-  @Test public void commandSucceeded_normal() {
+  @Test void commandSucceeded_normal() {
     setupCommandStartedMocks();
 
     listener.commandStarted(createCommandStartedEvent());
@@ -174,14 +174,14 @@ public class TraceMongoCommandListenerTest {
     verifyNoMoreInteractions(threadLocalSpan);
   }
 
-  @Test public void commandFailed_withoutCommandStarted() {
+  @Test void commandFailed_withoutCommandStarted() {
     listener.commandFailed(createCommandFailedEvent(EXCEPTION));
 
     verify(threadLocalSpan).remove();
     verifyNoMoreInteractions(threadLocalSpan);
   }
 
-  @Test public void commandFailed_normal() {
+  @Test void commandFailed_normal() {
     setupCommandStartedMocks();
 
     listener.commandStarted(createCommandStartedEvent());

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,13 +14,13 @@
 package brave.sampler;
 
 import brave.propagation.SamplingFlags;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ParameterizedSamplerTest {
+class ParameterizedSamplerTest {
 
-  @Test public void matchesParameters() {
+  @Test void matchesParameters() {
     ParameterizedSampler<Boolean> sampler = ParameterizedSampler.<Boolean>newBuilder()
       .putRule(Boolean::booleanValue, Sampler.ALWAYS_SAMPLE)
       .build();
@@ -29,7 +29,7 @@ public class ParameterizedSamplerTest {
       .isEqualTo(SamplingFlags.SAMPLED);
   }
 
-  @Test public void emptyOnNoMatch() {
+  @Test void emptyOnNoMatch() {
     ParameterizedSampler<Boolean> sampler = ParameterizedSampler.<Boolean>newBuilder()
       .putRule(Boolean::booleanValue, Sampler.ALWAYS_SAMPLE)
       .build();
@@ -38,7 +38,7 @@ public class ParameterizedSamplerTest {
       .isEqualTo(SamplingFlags.EMPTY);
   }
 
-  @Test public void emptyOnNull() {
+  @Test void emptyOnNull() {
     ParameterizedSampler<Void> sampler = ParameterizedSampler.<Void>newBuilder()
       .putRule(v -> true, Sampler.ALWAYS_SAMPLE)
       .build();
@@ -47,7 +47,7 @@ public class ParameterizedSamplerTest {
       .isEqualTo(SamplingFlags.EMPTY);
   }
 
-  @Test public void nullOnNull() {
+  @Test void nullOnNull() {
     ParameterizedSampler<Void> sampler = ParameterizedSampler.<Void>newBuilder()
       .putRule(v -> true, Sampler.ALWAYS_SAMPLE)
       .build();
@@ -56,7 +56,7 @@ public class ParameterizedSamplerTest {
       .isNull();
   }
 
-  @Test public void multipleRules() {
+  @Test void multipleRules() {
     ParameterizedSampler<Boolean> sampler = ParameterizedSampler.<Boolean>newBuilder()
       .putRule(v -> false, Sampler.ALWAYS_SAMPLE) // doesn't match
       .putRule(v -> true, Sampler.NEVER_SAMPLE) // match
@@ -66,7 +66,7 @@ public class ParameterizedSamplerTest {
       .isEqualTo(SamplingFlags.NOT_SAMPLED);
   }
 
-  @Test public void putAllRules() {
+  @Test void putAllRules() {
     Matcher<Void> one = v -> false;
     Matcher<Void> two = v -> true;
     Matcher<Void> three = v -> Boolean.FALSE;
@@ -94,7 +94,7 @@ public class ParameterizedSamplerTest {
   }
 
   // empty may sound unintuitive, but it allows use of the same type when always deferring
-  @Test public void noRulesOk() {
+  @Test void noRulesOk() {
     ParameterizedSampler.<Boolean>newBuilder().build();
   }
 }

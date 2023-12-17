@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -30,8 +30,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import org.assertj.core.api.InstanceOfAssertFactories;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static brave.baggage.BaggagePropagation.newFactoryBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -53,7 +53,7 @@ public class BaggagePropagationTest {
   Extractor<Map<String, String>> extractor;
   TraceContext context;
 
-  @Before public void initialize() {
+  @BeforeEach void initialize() {
     injector = factory.get().injector(Map::put);
     extractor = factory.get().extractor(Map::get);
     context = factory.decorate(TraceContext.newBuilder()
@@ -66,17 +66,17 @@ public class BaggagePropagationTest {
   /**
    * Ensure baggage isn't leaked. This prevents tools from deleting entries when clearing a trace.
    */
-  @Test public void keysDontIncludeBaggage() {
+  @Test void keysDontIncludeBaggage() {
     assertThat(factory.get().keys())
       .isEqualTo(B3Propagation.B3_STRING.keys());
   }
 
-  @Test public void newFactory_noFields() {
+  @Test void newFactory_noFields() {
     assertThat(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY).build())
       .isSameAs(B3Propagation.FACTORY);
   }
 
-  @Test public void newFactory_sharingRemoteName() {
+  @Test void newFactory_sharingRemoteName() {
     BaggagePropagation.FactoryBuilder builder = newFactoryBuilder(B3Propagation.FACTORY);
     SingleBaggageField userName =
       SingleBaggageField.newBuilder(BaggageField.create("userName")).addKeyName("baggage").build();
@@ -88,7 +88,7 @@ public class BaggagePropagationTest {
       .hasMessage("Propagation key already in use: baggage");
   }
 
-  @Test public void clear_and_add() {
+  @Test void clear_and_add() {
     SingleBaggageField requestIdConfig = SingleBaggageField.newBuilder(vcapRequestId)
       .addKeyName("request-id")
       .addKeyName("request_id")
@@ -112,7 +112,7 @@ public class BaggagePropagationTest {
         .add(traceIdConfig));
   }
 
-  @Test public void inject_baggage() {
+  @Test void inject_baggage() {
     BaggageFields baggage = context.findExtra(BaggageFields.class);
     baggage.updateValue(vcapRequestId, uuid);
 
@@ -121,7 +121,7 @@ public class BaggagePropagationTest {
     assertThat(request).containsEntry(vcapRequestId.name(), uuid);
   }
 
-  @Test public void inject_two() {
+  @Test void inject_two() {
     BaggageFields baggage = context.findExtra(BaggageFields.class);
     baggage.updateValue(vcapRequestId, uuid);
     baggage.updateValue(amznTraceId, awsTraceId);
@@ -134,7 +134,7 @@ public class BaggagePropagationTest {
   }
 
   /** Less overhead and distraction for the edge case of correlation-only. */
-  @Test public void extract_baggage_onlyOneExtraWhenNothingRemote() {
+  @Test void extract_baggage_onlyOneExtraWhenNothingRemote() {
     Propagation.Factory factory = newFactoryBuilder(B3Propagation.FACTORY)
         .add(SingleBaggageField.local(vcapRequestId))
         .add(SingleBaggageField.local(amznTraceId)).build();
@@ -146,7 +146,7 @@ public class BaggagePropagationTest {
         .noneMatch(Extra.class::isInstance);
   }
 
-  @Test public void extract_baggage_addsAllKeyNames_evenWhenEmpty() {
+  @Test void extract_baggage_addsAllKeyNames_evenWhenEmpty() {
     TraceContextOrSamplingFlags extracted = extractor.extract(request);
     assertThat(extracted.extra()).hasSize(2);
     assertThat(extracted.extra().get(1))
@@ -156,7 +156,7 @@ public class BaggagePropagationTest {
         .containsExactly("x-vcap-request-id", "x-amzn-trace-id");
   }
 
-  @Test public void extract_baggage() {
+  @Test void extract_baggage() {
     injector.inject(context, request);
     request.put(amznTraceId.name(), awsTraceId);
 
@@ -168,7 +168,7 @@ public class BaggagePropagationTest {
       .isEqualTo(awsTraceId);
   }
 
-  @Test public void extract_two() {
+  @Test void extract_two() {
     injector.inject(context, request);
     request.put(amznTraceId.name(), awsTraceId);
     request.put(vcapRequestId.name(), uuid);
@@ -183,7 +183,7 @@ public class BaggagePropagationTest {
       .isEqualTo(uuid);
   }
 
-  @Test public void extract_field_multiple_key_names() {
+  @Test void extract_field_multiple_key_names() {
     // switch to case insensitive as this example is about http :P
     request = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
@@ -216,7 +216,7 @@ public class BaggagePropagationTest {
     assertThat(sessionId.getValue(context)).isEqualTo("12345");
   }
 
-  @Test public void extract_no_overridden_key_names() {
+  @Test void extract_no_overridden_key_names() {
     BaggageField userId = BaggageField.create("userId");
     BaggageField sessionId = BaggageField.create("sessionId");
 
@@ -237,7 +237,7 @@ public class BaggagePropagationTest {
   }
 
   /** Redaction prevents named fields from being written downstream. */
-  @Test public void inject_no_key_names() {
+  @Test void inject_no_key_names() {
     BaggageField userId = BaggageField.create("userId");
     BaggageField sessionId = BaggageField.create("sessionId");
 
@@ -257,7 +257,7 @@ public class BaggagePropagationTest {
       .containsEntry("sessionid", "12345");
   }
 
-  @Test public void inject_field_multiple_key_names() {
+  @Test void inject_field_multiple_key_names() {
     BaggageField userId = BaggageField.create("userId");
     BaggageField sessionId = BaggageField.create("sessionId");
 
@@ -296,7 +296,7 @@ public class BaggagePropagationTest {
     );
   }
 
-  @Test public void dupesNotOk() {
+  @Test void dupesNotOk() {
     SingleBaggageField userIdConfig = SingleBaggageField.local(BaggageField.create("userId"));
     BaggagePropagation.FactoryBuilder builder = newFactoryBuilder(B3Propagation.FACTORY)
       .add(userIdConfig);
@@ -304,7 +304,7 @@ public class BaggagePropagationTest {
       .isInstanceOf(IllegalArgumentException.class);
   }
 
-  @Test public void allKeyNames_baggagePropagation() {
+  @Test void allKeyNames_baggagePropagation() {
     Propagation.Factory factory = BaggagePropagation.newFactoryBuilder(B3SinglePropagation.FACTORY)
       .add(SingleBaggageField.local(BaggageField.create("redacted"))) // local shouldn't return
       .add(SingleBaggageField.remote(BaggageField.create("user-id")))
@@ -314,7 +314,7 @@ public class BaggagePropagationTest {
       .containsExactly("b3", "user-id", "session-id");
   }
 
-  @Test public void allKeyNames_baggagePropagation_noRemote() {
+  @Test void allKeyNames_baggagePropagation_noRemote() {
     Propagation.Factory factory = BaggagePropagation.newFactoryBuilder(B3SinglePropagation.FACTORY)
         .add(SingleBaggageField.local(BaggageField.create("redacted"))) // local shouldn't return
         .add(SingleBaggageField.local(BaggageField.create("user-id")))
@@ -324,7 +324,7 @@ public class BaggagePropagationTest {
         .containsExactly("b3");
   }
 
-  @Test public void allKeyNames_extraFieldPropagation() {
+  @Test void allKeyNames_extraFieldPropagation() {
     ExtraFieldPropagation.Factory factory =
       ExtraFieldPropagation.newFactory(B3SinglePropagation.FACTORY, "user-id", "session-id");
 

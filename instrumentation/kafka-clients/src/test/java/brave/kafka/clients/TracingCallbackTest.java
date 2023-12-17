@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,14 +17,14 @@ import brave.Span;
 import brave.propagation.TraceContextOrSamplingFlags;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.RecordMetadata;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 public class TracingCallbackTest extends KafkaTest {
-  @Test public void onCompletion_shouldKeepContext_whenNotSampled() {
+  @Test void onCompletion_shouldKeepContext_whenNotSampled() {
     Span span = tracing.tracer().nextSpan(TraceContextOrSamplingFlags.NOT_SAMPLED);
 
     Callback delegate =
@@ -34,7 +34,7 @@ public class TracingCallbackTest extends KafkaTest {
     tracingCallback.onCompletion(null, null);
   }
 
-  @Test public void on_completion_should_finish_span() {
+  @Test void on_completion_should_finish_span() {
     Span span = tracing.tracer().nextSpan().start();
 
     Callback tracingCallback = TracingCallback.create(null, span, currentTraceContext);
@@ -43,7 +43,7 @@ public class TracingCallbackTest extends KafkaTest {
     assertThat(spans.get(0).finishTimestamp()).isNotZero();
   }
 
-  @Test public void on_completion_should_tag_if_exception() {
+  @Test void on_completion_should_tag_if_exception() {
     Span span = tracing.tracer().nextSpan().start();
 
     Callback tracingCallback = TracingCallback.create(null, span, currentTraceContext);
@@ -53,7 +53,7 @@ public class TracingCallbackTest extends KafkaTest {
     assertThat(spans.get(0).error()).isEqualTo(error);
   }
 
-  @Test public void on_completion_should_forward_then_finish_span() {
+  @Test void on_completion_should_forward_then_finish_span() {
     Span span = tracing.tracer().nextSpan().start();
 
     Callback delegate = mock(Callback.class);
@@ -66,7 +66,7 @@ public class TracingCallbackTest extends KafkaTest {
     assertThat(spans.get(0).finishTimestamp()).isNotZero();
   }
 
-  @Test public void on_completion_should_have_span_in_scope() {
+  @Test void on_completion_should_have_span_in_scope() {
     Span span = tracing.tracer().nextSpan().start();
 
     Callback delegate =
@@ -78,7 +78,7 @@ public class TracingCallbackTest extends KafkaTest {
     assertThat(spans.get(0).finishTimestamp()).isNotZero();
   }
 
-  @Test public void on_completion_should_forward_then_tag_if_exception() {
+  @Test void on_completion_should_forward_then_tag_if_exception() {
     Span span = tracing.tracer().nextSpan().start();
 
     Callback delegate = mock(Callback.class);

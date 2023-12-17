@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -22,11 +22,11 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 import org.junit.AssumptionViolatedException;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ITTracingApplicationEventListener extends ITServletContainer {
+class ITTracingApplicationEventListener extends ITServletContainer {
   public ITTracingApplicationEventListener() {
     super(new Jetty9ServerController());
   }
@@ -35,7 +35,7 @@ public class ITTracingApplicationEventListener extends ITServletContainer {
     throw new AssumptionViolatedException("TODO!");
   }
 
-  @Test public void tagsResource() throws Exception {
+  @Test void tagsResource() throws Exception {
     get("/foo");
 
     assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER).tags())
@@ -44,7 +44,7 @@ public class ITTracingApplicationEventListener extends ITServletContainer {
   }
 
   /** Tests that the span propagates between under asynchronous callbacks managed by jersey. */
-  @Test public void managedAsync() throws Exception {
+  @Test void managedAsync() throws Exception {
     Response response = get("/managedAsync");
     assertThat(response.isSuccessful()).withFailMessage("not successful: " + response).isTrue();
 

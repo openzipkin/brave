@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -24,8 +24,9 @@ import brave.propagation.B3SinglePropagation;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
 import org.assertj.core.api.InstanceOfAssertFactories;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+
 import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,13 +40,13 @@ public class TracingFactoryBeanTest {
 
   XmlBeans context;
 
-  @After public void close() {
+  @AfterEach void close() {
     if (context != null) context.close();
     Tracing current = Tracing.current();
     if (current != null) current.close();
   }
 
-  @Test public void autoCloses() {
+  @Test void autoCloses() {
     context = new XmlBeans(""
       + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\"/>\n"
     );
@@ -60,7 +61,7 @@ public class TracingFactoryBeanTest {
     context = null;
   }
 
-  @Test public void localServiceName() {
+  @Test void localServiceName() {
     context = new XmlBeans(""
       + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
       + "  <property name=\"localServiceName\" value=\"brave-webmvc-example\"/>\n"
@@ -72,7 +73,7 @@ public class TracingFactoryBeanTest {
       .isEqualTo("brave-webmvc-example");
   }
 
-  @Test public void localEndpoint() {
+  @Test void localEndpoint() {
     context = new XmlBeans(""
       + "<bean id=\"localEndpoint\" class=\"brave.spring.beans.EndpointFactoryBean\">\n"
       + "  <property name=\"serviceName\" value=\"brave-webmvc-example\"/>\n"
@@ -95,7 +96,7 @@ public class TracingFactoryBeanTest {
       .isEqualTo(defaultSpan);
   }
 
-  @Test public void endpoint() {
+  @Test void endpoint() {
     context = new XmlBeans(""
       + "<bean id=\"endpoint\" class=\"brave.spring.beans.EndpointFactoryBean\">\n"
       + "  <property name=\"serviceName\" value=\"brave-webmvc-example\"/>\n"
@@ -118,7 +119,7 @@ public class TracingFactoryBeanTest {
       .isEqualTo(defaultSpan);
   }
 
-  @Test public void spanReporter() {
+  @Test void spanReporter() {
     context = new XmlBeans(""
       + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
       + "  <property name=\"spanReporter\">\n"
@@ -134,7 +135,7 @@ public class TracingFactoryBeanTest {
 
   public static final FinishedSpanHandler FINISHED_SPAN_HANDLER = mock(FinishedSpanHandler.class);
 
-  @Test public void finishedSpanHandlers() {
+  @Test void finishedSpanHandlers() {
     context = new XmlBeans(""
         + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
         + "  <property name=\"finishedSpanHandlers\">\n"
@@ -150,7 +151,7 @@ public class TracingFactoryBeanTest {
 
   public static final SpanHandler SPAN_HANDLER = mock(SpanHandler.class);
 
-  @Test public void spanHandlers() {
+  @Test void spanHandlers() {
     context = new XmlBeans(""
       + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
       + "  <property name=\"spanHandlers\">\n"
@@ -164,7 +165,7 @@ public class TracingFactoryBeanTest {
       .isEqualTo(SPAN_HANDLER);
   }
 
-  @Test public void bothSpanHandlers() {
+  @Test void bothSpanHandlers() {
     context = new XmlBeans(""
         + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
         + "  <property name=\"finishedSpanHandlers\">\n"
@@ -182,7 +183,7 @@ public class TracingFactoryBeanTest {
         .containsExactly(FINISHED_SPAN_HANDLER, SPAN_HANDLER);
   }
 
-  @Test public void clock() {
+  @Test void clock() {
     context = new XmlBeans(""
       + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
       + "  <property name=\"clock\">\n"
@@ -196,7 +197,7 @@ public class TracingFactoryBeanTest {
       .isEqualTo(CLOCK);
   }
 
-  @Test public void errorParser() {
+  @Test void errorParser() {
     context = new XmlBeans(""
       + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
       + "  <property name=\"errorParser\">\n"
@@ -210,7 +211,7 @@ public class TracingFactoryBeanTest {
       .isEqualTo(ERROR_PARSER);
   }
 
-  @Test public void sampler() {
+  @Test void sampler() {
     context = new XmlBeans(""
       + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
       + "  <property name=\"sampler\">\n"
@@ -224,7 +225,7 @@ public class TracingFactoryBeanTest {
       .isEqualTo(Sampler.NEVER_SAMPLE);
   }
 
-  @Test public void currentTraceContext() {
+  @Test void currentTraceContext() {
     context = new XmlBeans(""
       + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
       + "  <property name=\"currentTraceContext\">\n"
@@ -238,7 +239,7 @@ public class TracingFactoryBeanTest {
       .isInstanceOf(ThreadLocalCurrentTraceContext.class);
   }
 
-  @Test public void propagationFactory() {
+  @Test void propagationFactory() {
     context = new XmlBeans(""
       + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
       + "  <property name=\"propagationFactory\">\n"
@@ -251,7 +252,7 @@ public class TracingFactoryBeanTest {
       .isSameAs(B3SinglePropagation.FACTORY);
   }
 
-  @Test public void traceId128Bit() {
+  @Test void traceId128Bit() {
     context = new XmlBeans(""
       + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
       + "  <property name=\"traceId128Bit\" value=\"true\"/>\n"
@@ -263,7 +264,7 @@ public class TracingFactoryBeanTest {
       .isEqualTo(true);
   }
 
-  @Test public void supportsJoin() {
+  @Test void supportsJoin() {
     context = new XmlBeans(""
       + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
       + "  <property name=\"supportsJoin\" value=\"true\"/>\n"
@@ -278,7 +279,7 @@ public class TracingFactoryBeanTest {
   public static final TracingCustomizer CUSTOMIZER_ONE = mock(TracingCustomizer.class);
   public static final TracingCustomizer CUSTOMIZER_TWO = mock(TracingCustomizer.class);
 
-  @Test public void customizers() {
+  @Test void customizers() {
     context = new XmlBeans(""
       + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
       + "  <property name=\"customizers\">\n"

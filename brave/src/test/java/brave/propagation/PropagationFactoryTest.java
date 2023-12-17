@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,11 +13,11 @@
  */
 package brave.propagation;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class PropagationFactoryTest {
+class PropagationFactoryTest {
   Propagation.Factory factory = new Propagation.Factory() {
     @Deprecated @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
       return null;
@@ -25,20 +25,20 @@ public class PropagationFactoryTest {
   };
 
   /** 64 bit trace IDs are not consistently mandatory across propagation, yet. */
-  @Test public void requires128BitTraceId_defaultsToFalse() {
+  @Test void requires128BitTraceId_defaultsToFalse() {
     assertThat(factory.requires128BitTraceId())
       .isFalse();
   }
 
   /** join (reusing span ID on client and server side) is rarely supported outside B3. */
-  @Test public void supportsJoin_defaultsToFalse() {
+  @Test void supportsJoin_defaultsToFalse() {
     assertThat(B3Propagation.FACTORY.supportsJoin())
       .isTrue();
     assertThat(factory.supportsJoin())
       .isFalse();
   }
 
-  @Test public void decorate_defaultsToReturnSameInstance() {
+  @Test void decorate_defaultsToReturnSameInstance() {
     TraceContext context = TraceContext.newBuilder().traceId(1).spanId(1).build();
     assertThat(factory.decorate(context))
       .isSameAs(context);

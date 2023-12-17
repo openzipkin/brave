@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,52 +19,52 @@ import java.util.Collections;
 import javax.ws.rs.client.ClientRequestContext;
 import javax.ws.rs.core.MultivaluedMap;
 import org.jboss.resteasy.core.Headers;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class ClientRequestContextWrapperTest {
   @Mock ClientRequestContext request;
 
-  @Test public void method() {
+  @Test void method() {
     when(request.getMethod()).thenReturn("GET");
 
     assertThat(new ClientRequestContextWrapper(request).method()).isEqualTo("GET");
   }
 
-  @Test public void path() {
+  @Test void path() {
     when(request.getUri()).thenReturn(URI.create("http://localhost/api"));
 
     assertThat(new ClientRequestContextWrapper(request).path()).isEqualTo("/api");
   }
 
   // NOTE: While technically possible, it is not easy to make URI.getPath() return null!
-  @Test public void path_emptyToSlash() {
+  @Test void path_emptyToSlash() {
     when(request.getUri()).thenReturn(URI.create("http://localhost"));
 
     assertThat(new ClientRequestContextWrapper(request).path())
       .isEqualTo("/");
   }
 
-  @Test public void url() {
+  @Test void url() {
     when(request.getUri()).thenReturn(URI.create("http://localhost/api"));
 
     assertThat(new ClientRequestContextWrapper(request).url()).isEqualTo("http://localhost/api");
   }
 
-  @Test public void header() {
+  @Test void header() {
     when(request.getHeaderString("name")).thenReturn("value");
 
     assertThat(new ClientRequestContextWrapper(request).header("name")).isEqualTo("value");
   }
 
-  @Test public void putHeader() {
+  @Test void putHeader() {
     MultivaluedMap<String, Object> headers = new Headers<>();
     when(request.getHeaders()).thenReturn(headers);
 

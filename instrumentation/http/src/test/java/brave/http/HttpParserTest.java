@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,10 +14,10 @@
 package brave.http;
 
 import brave.SpanCustomizer;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -25,7 +25,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 @Deprecated public class HttpParserTest {
   @Mock HttpClientAdapter<Object, Object> adapter;
   @Mock SpanCustomizer customizer;
@@ -33,14 +33,14 @@ import static org.mockito.Mockito.when;
   Object response = new Object();
   HttpParser parser = new HttpParser();
 
-  @Test public void spanName_isMethod() {
+  @Test void spanName_isMethod() {
     when(adapter.method(request)).thenReturn("GET");
 
     assertThat(parser.spanName(adapter, request))
       .isEqualTo("GET"); // note: in practice this will become lowercase
   }
 
-  @Test public void request_addsMethodAndPath() {
+  @Test void request_addsMethodAndPath() {
     when(adapter.method(request)).thenReturn("GET");
     when(adapter.path(request)).thenReturn("/foo");
 
@@ -50,13 +50,13 @@ import static org.mockito.Mockito.when;
     verify(customizer).tag("http.path", "/foo");
   }
 
-  @Test public void request_doesntCrashOnNullPath() {
+  @Test void request_doesntCrashOnNullPath() {
     parser.request(adapter, request, customizer);
 
     verify(customizer, never()).tag("http.path", null);
   }
 
-  @Test public void response_tagsStatusAndErrorOnResponseCode() {
+  @Test void response_tagsStatusAndErrorOnResponseCode() {
     when(adapter.statusCodeAsInt(response)).thenReturn(400);
 
     parser.response(adapter, response, null, customizer);
@@ -65,7 +65,7 @@ import static org.mockito.Mockito.when;
     verify(customizer).tag("error", "400");
   }
 
-  @Test public void response_statusZeroIsNotAnError() {
+  @Test void response_statusZeroIsNotAnError() {
     when(adapter.statusCodeAsInt(response)).thenReturn(0);
 
     parser.response(adapter, response, null, customizer);
@@ -75,7 +75,7 @@ import static org.mockito.Mockito.when;
   }
 
   // Ensures "HTTP/1.1 101 Switching Protocols" aren't classified as error spans
-  @Test public void response_status101IsNotAnError() {
+  @Test void response_status101IsNotAnError() {
     when(adapter.statusCodeAsInt(response)).thenReturn(101);
 
     parser.response(adapter, response, null, customizer);
@@ -84,13 +84,13 @@ import static org.mockito.Mockito.when;
     verify(customizer, never()).tag("error", "101");
   }
 
-  @Test public void response_tagsErrorFromException() {
+  @Test void response_tagsErrorFromException() {
     parser.response(adapter, response, new RuntimeException("drat"), customizer);
 
     verify(customizer).tag("error", "drat");
   }
 
-  @Test public void response_tagsErrorPrefersExceptionVsResponseCode() {
+  @Test void response_tagsErrorPrefersExceptionVsResponseCode() {
     when(adapter.statusCodeAsInt(response)).thenReturn(400);
 
     parser.response(adapter, response, new RuntimeException("drat"), customizer);
@@ -98,7 +98,7 @@ import static org.mockito.Mockito.when;
     verify(customizer).tag("error", "drat");
   }
 
-  @Test public void response_tagsErrorOnExceptionEvenIfStatusOk() {
+  @Test void response_tagsErrorOnExceptionEvenIfStatusOk() {
     when(adapter.statusCodeAsInt(response)).thenReturn(200);
 
     parser.response(adapter, response, new RuntimeException("drat"), customizer);
@@ -106,7 +106,7 @@ import static org.mockito.Mockito.when;
     verify(customizer).tag("error", "drat");
   }
 
-  @Test public void routeBasedName() {
+  @Test void routeBasedName() {
     when(adapter.methodFromResponse(response)).thenReturn("GET");
     when(adapter.route(response)).thenReturn("/users/:userId");
     when(adapter.statusCodeAsInt(response)).thenReturn(200);
@@ -116,7 +116,7 @@ import static org.mockito.Mockito.when;
     verify(customizer).name("GET /users/:userId"); // zipkin will implicitly lowercase this
   }
 
-  @Test public void routeBasedName_redirect() {
+  @Test void routeBasedName_redirect() {
     when(adapter.methodFromResponse(response)).thenReturn("GET");
     when(adapter.route(response)).thenReturn("");
     when(adapter.statusCodeAsInt(response)).thenReturn(307);
@@ -126,7 +126,7 @@ import static org.mockito.Mockito.when;
     verify(customizer).name("GET redirected"); // zipkin will implicitly lowercase this
   }
 
-  @Test public void routeBasedName_notFound() {
+  @Test void routeBasedName_notFound() {
     when(adapter.methodFromResponse(response)).thenReturn("DELETE");
     when(adapter.route(response)).thenReturn("");
     when(adapter.statusCodeAsInt(response)).thenReturn(404);
@@ -136,7 +136,7 @@ import static org.mockito.Mockito.when;
     verify(customizer).name("DELETE not_found"); // zipkin will implicitly lowercase this
   }
 
-  @Test public void routeBasedName_skipsOnMissingData() {
+  @Test void routeBasedName_skipsOnMissingData() {
     when(adapter.methodFromResponse(response)).thenReturn("DELETE");
     when(adapter.route(response)).thenReturn(null); // missing!
     when(adapter.statusCodeAsInt(response)).thenReturn(404);

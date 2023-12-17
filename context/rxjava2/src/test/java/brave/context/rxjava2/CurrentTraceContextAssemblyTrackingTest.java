@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -24,28 +24,28 @@ import io.reactivex.Observable;
 import io.reactivex.observers.TestObserver;
 import io.reactivex.plugins.RxJavaPlugins;
 import java.io.IOException;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class CurrentTraceContextAssemblyTrackingTest {
+class CurrentTraceContextAssemblyTrackingTest {
   CurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   TraceContext assemblyContext = TraceContext.newBuilder().traceId(1L).spanId(1L).build();
 
-  @Before public void setup() {
+  @BeforeEach void setup() {
     RxJavaPlugins.reset();
     CurrentTraceContextAssemblyTracking.create(currentTraceContext).enable();
   }
 
-  @After public void tearDown() {
+  @AfterEach void tearDown() {
     CurrentTraceContextAssemblyTracking.disable();
   }
 
   /** This spot-checks Observable to ensure that our chaining works properly. */
-  @Test public void enableAndChain_runsOldHooks() {
+  @Test void enableAndChain_runsOldHooks() {
     RxJavaPlugins.reset();
 
     // Sanity check that RxJavaAssemblyTracking is not already enabled
@@ -91,7 +91,7 @@ public class CurrentTraceContextAssemblyTrackingTest {
     }));
   }
 
-  @Test public void enableAndChain_restoresSavedHooks() {
+  @Test void enableAndChain_restoresSavedHooks() {
     RxJavaPlugins.reset();
 
     RxJavaAssemblyTracking.enable();
@@ -110,20 +110,20 @@ public class CurrentTraceContextAssemblyTrackingTest {
 
       h.restore();
 
-      Assert.assertSame(o1, RxJavaPlugins.getOnCompletableAssembly());
-      Assert.assertSame(o2, RxJavaPlugins.getOnSingleAssembly());
-      Assert.assertSame(o3, RxJavaPlugins.getOnMaybeAssembly());
-      Assert.assertSame(o4, RxJavaPlugins.getOnObservableAssembly());
-      Assert.assertSame(o5, RxJavaPlugins.getOnFlowableAssembly());
-      Assert.assertSame(o6, RxJavaPlugins.getOnConnectableFlowableAssembly());
-      Assert.assertSame(o7, RxJavaPlugins.getOnConnectableObservableAssembly());
-      Assert.assertSame(o8, RxJavaPlugins.getOnParallelAssembly());
+      Assertions.assertSame(o1, RxJavaPlugins.getOnCompletableAssembly());
+      Assertions.assertSame(o2, RxJavaPlugins.getOnSingleAssembly());
+      Assertions.assertSame(o3, RxJavaPlugins.getOnMaybeAssembly());
+      Assertions.assertSame(o4, RxJavaPlugins.getOnObservableAssembly());
+      Assertions.assertSame(o5, RxJavaPlugins.getOnFlowableAssembly());
+      Assertions.assertSame(o6, RxJavaPlugins.getOnConnectableFlowableAssembly());
+      Assertions.assertSame(o7, RxJavaPlugins.getOnConnectableObservableAssembly());
+      Assertions.assertSame(o8, RxJavaPlugins.getOnParallelAssembly());
     } finally {
       RxJavaAssemblyTracking.disable();
     }
   }
 
-  @Test public void enable_restoresSavedHooks() {
+  @Test void enable_restoresSavedHooks() {
     RxJavaPlugins.reset();
 
     RxJavaAssemblyTracking.enable();
@@ -132,14 +132,14 @@ public class CurrentTraceContextAssemblyTrackingTest {
 
       CurrentTraceContextAssemblyTracking.disable();
 
-      Assert.assertNull(RxJavaPlugins.getOnCompletableAssembly());
-      Assert.assertNull(RxJavaPlugins.getOnSingleAssembly());
-      Assert.assertNull(RxJavaPlugins.getOnMaybeAssembly());
-      Assert.assertNull(RxJavaPlugins.getOnObservableAssembly());
-      Assert.assertNull(RxJavaPlugins.getOnFlowableAssembly());
-      Assert.assertNull(RxJavaPlugins.getOnConnectableFlowableAssembly());
-      Assert.assertNull(RxJavaPlugins.getOnConnectableObservableAssembly());
-      Assert.assertNull(RxJavaPlugins.getOnParallelAssembly());
+      Assertions.assertNull(RxJavaPlugins.getOnCompletableAssembly());
+      Assertions.assertNull(RxJavaPlugins.getOnSingleAssembly());
+      Assertions.assertNull(RxJavaPlugins.getOnMaybeAssembly());
+      Assertions.assertNull(RxJavaPlugins.getOnObservableAssembly());
+      Assertions.assertNull(RxJavaPlugins.getOnFlowableAssembly());
+      Assertions.assertNull(RxJavaPlugins.getOnConnectableFlowableAssembly());
+      Assertions.assertNull(RxJavaPlugins.getOnConnectableObservableAssembly());
+      Assertions.assertNull(RxJavaPlugins.getOnParallelAssembly());
     } finally {
       RxJavaAssemblyTracking.disable();
     }

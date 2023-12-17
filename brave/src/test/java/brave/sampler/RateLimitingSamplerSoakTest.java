@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -21,23 +21,20 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import org.junit.experimental.theories.DataPoints;
-import org.junit.experimental.theories.Theories;
-import org.junit.experimental.theories.Theory;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static com.google.common.util.concurrent.Uninterruptibles.sleepUninterruptibly;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assumptions.assumeThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
-@RunWith(Theories.class)
-public class RateLimitingSamplerSoakTest {
-
-  @DataPoints public static final int[] SAMPLE_RATE = {1, 11, 101, 1001, 1_000_001};
+class RateLimitingSamplerSoakTest {
 
   /** This test will take a little over a second */
-  @Theory public void retainsPerSampleRate(int rate) throws Exception {
+  @ParameterizedTest
+  @ValueSource(ints = {1, 11, 101, 1001, 1_000_001})
+  void retainsPerSampleRate(int rate) throws Exception {
     Sampler sampler = RateLimitingSampler.create(rate);
 
     // We want to make sure we fill up the entire second, so

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -25,8 +25,8 @@ import io.opentracing.propagation.TextMapAdapter;
 import io.opentracing.tag.Tags;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.MapEntry.entry;
@@ -35,7 +35,7 @@ import static org.assertj.core.data.MapEntry.entry;
  * This shows how one might make an OpenTracing adapter for Brave, and how to navigate in and out of
  * the core concepts.
  */
-public class OpenTracingAdapterTest {
+class OpenTracingAdapterTest {
   static final BaggageField BAGGAGE_FIELD = BaggageField.create("userId");
 
   TestSpanHandler spans = new TestSpanHandler();
@@ -47,11 +47,11 @@ public class OpenTracingAdapterTest {
 
   BraveTracer opentracing = BraveTracer.wrap(brave);
 
-  @After public void close() {
+  @AfterEach void close() {
     brave.close();
   }
 
-  @Test public void startWithOpenTracingAndFinishWithBrave() {
+  @Test void startWithOpenTracingAndFinishWithBrave() {
     BraveSpan openTracingSpan = opentracing.buildSpan("encode")
       .withTag("lc", "codec")
       .withStartTimestamp(1L).start();
@@ -64,7 +64,7 @@ public class OpenTracingAdapterTest {
     checkSpanReportedToZipkin();
   }
 
-  @Test public void startWithBraveAndFinishWithOpenTracing() {
+  @Test void startWithBraveAndFinishWithOpenTracing() {
     brave.Span braveSpan = brave.tracer().newTrace().name("encode")
       .tag("lc", "codec")
       .start(1L);
@@ -77,8 +77,7 @@ public class OpenTracingAdapterTest {
     checkSpanReportedToZipkin();
   }
 
-  @Test
-  public void extractTraceContext() {
+  @Test void extractTraceContext() {
     Map<String, String> map = new LinkedHashMap<>();
     map.put("X-B3-TraceId", "0000000000000001");
     map.put("X-B3-SpanId", "0000000000000002");
@@ -98,8 +97,7 @@ public class OpenTracingAdapterTest {
       .containsExactly(entry(BAGGAGE_FIELD.name(), "sammy"));
   }
 
-  @Test
-  public void injectTraceContext() {
+  @Test void injectTraceContext() {
     TraceContext context = TraceContext.newBuilder()
       .traceId(1L)
       .spanId(2L)
@@ -116,8 +114,7 @@ public class OpenTracingAdapterTest {
     );
   }
 
-  @Test
-  public void injectRemoteSpanTraceContext() {
+  @Test void injectRemoteSpanTraceContext() {
     BraveSpan openTracingSpan = opentracing.buildSpan("encode")
         .withTag("lc", "codec")
         .withTag(Tags.SPAN_KIND, Tags.SPAN_KIND_PRODUCER)

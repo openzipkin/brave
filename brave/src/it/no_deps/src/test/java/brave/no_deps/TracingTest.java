@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,10 +16,11 @@ package brave.no_deps;
 import brave.ScopedSpan;
 import brave.Tracing;
 import brave.handler.SpanHandler;
-import org.junit.Test;
 
-public class TracingTest {
-  @Test public void basicUsage() {
+import org.junit.jupiter.api.Test;
+
+class TracingTest {
+  @Test void basicUsage() {
     try (Tracing tracing = Tracing.newBuilder().addSpanHandler(new SpanHandler() {
       // avoid NOOP short-circuiting tracing
     }).build()) {

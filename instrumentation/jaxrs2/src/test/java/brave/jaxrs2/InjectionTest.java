@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,8 +18,8 @@ import brave.http.HttpTracing;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,16 +33,16 @@ public class InjectionTest {
     }
   });
 
-  @After public void close() {
+  @AfterEach void close() {
     tracing.close();
   }
 
-  @Test public void tracingClientFilter() {
+  @Test void tracingClientFilter() {
     assertThat(injector.getInstance(TracingClientFilter.class))
       .isNotNull();
   }
 
-  @Test public void spanCustomizingContainerFilter() {
+  @Test void spanCustomizingContainerFilter() {
     SpanCustomizingContainerFilter filter =
       injector.getInstance(SpanCustomizingContainerFilter.class);
 
@@ -50,7 +50,7 @@ public class InjectionTest {
       .isSameAs(ContainerParser.class);
   }
 
-  @Test public void spanCustomizingContainerFilter_resource() {
+  @Test void spanCustomizingContainerFilter_resource() {
     SpanCustomizingContainerFilter filter = injector.createChildInjector(new AbstractModule() {
       @Override protected void configure() {
         bind(ContainerParser.class).toInstance(ContainerParser.NOOP);

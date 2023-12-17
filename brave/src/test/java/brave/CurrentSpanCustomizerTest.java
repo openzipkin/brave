@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,23 +17,23 @@ import brave.Tracer.SpanInScope;
 import brave.handler.MutableSpan;
 import brave.test.TestSpanHandler;
 import java.util.Map;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public class CurrentSpanCustomizerTest {
+class CurrentSpanCustomizerTest {
   TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing = Tracing.newBuilder().addSpanHandler(spans).build();
   CurrentSpanCustomizer spanCustomizer = CurrentSpanCustomizer.create(tracing);
   Span span = tracing.tracer().newTrace();
 
-  @After public void close() {
+  @AfterEach void close() {
     tracing.close();
   }
 
-  @Test public void name() {
+  @Test void name() {
     span.start();
     try (SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
       spanCustomizer.name("newname");
@@ -44,11 +44,11 @@ public class CurrentSpanCustomizerTest {
       .containsExactly("newname");
   }
 
-  @Test public void name_when_no_current_span() {
+  @Test void name_when_no_current_span() {
     spanCustomizer.name("newname");
   }
 
-  @Test public void tag() {
+  @Test void tag() {
     span.start();
     try (SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
       spanCustomizer.tag("foo", "bar");
@@ -59,11 +59,11 @@ public class CurrentSpanCustomizerTest {
       .containsExactly(entry("foo", "bar"));
   }
 
-  @Test public void tag_when_no_current_span() {
+  @Test void tag_when_no_current_span() {
     spanCustomizer.tag("foo", "bar");
   }
 
-  @Test public void annotate() {
+  @Test void annotate() {
     span.start();
     try (SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
       spanCustomizer.annotate("foo");
@@ -75,7 +75,7 @@ public class CurrentSpanCustomizerTest {
       .containsExactly("foo");
   }
 
-  @Test public void annotate_when_no_current_span() {
+  @Test void annotate_when_no_current_span() {
     spanCustomizer.annotate("foo");
   }
 }

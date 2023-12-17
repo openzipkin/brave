@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,7 +15,7 @@ package brave.spring.web;
 
 import brave.spring.web.TracingClientHttpRequestInterceptor.HttpRequestWrapper;
 import java.net.URI;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,7 +25,7 @@ import static org.mockito.Mockito.when;
 public class HttpRequestWrapperTest {
   HttpRequest request = mock(HttpRequest.class);
 
-  @Test public void path() {
+  @Test void path() {
     when(request.getURI()).thenReturn(URI.create("http://localhost/api"));
 
     assertThat(new HttpRequestWrapper(request).path())
@@ -33,7 +33,7 @@ public class HttpRequestWrapperTest {
   }
 
   // NOTE: While technically possible, it is not easy to make URI.getPath() return null!
-  @Test public void path_emptyToSlash() {
+  @Test void path_emptyToSlash() {
     when(request.getURI()).thenReturn(URI.create("http://localhost"));
 
     assertThat(new HttpRequestWrapper(request).path())

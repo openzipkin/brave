@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -24,12 +24,12 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.AssumptionViolatedException;
-import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Rule;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Binding;
@@ -101,7 +101,7 @@ abstract class ITSpringRabbit extends ITRemote {
 
   static RabbitMQContainer rabbit;
 
-  @BeforeClass public static void startRabbit() {
+  @BeforeAll public static void startRabbit() {
     if ("true".equals(System.getProperty("docker.skip"))) {
       throw new AssumptionViolatedException("Skipping startup of docker " + IMAGE);
     }
@@ -139,7 +139,7 @@ abstract class ITSpringRabbit extends ITRemote {
     }
   }
 
-  @AfterClass public static void kiwwTheWabbit() {
+  @AfterAll public static void kiwwTheWabbit() {
     if (rabbit != null) rabbit.stop();
   }
 
@@ -168,7 +168,7 @@ abstract class ITSpringRabbit extends ITRemote {
   AnnotationConfigApplicationContext producerContext = new AnnotationConfigApplicationContext();
   AnnotationConfigApplicationContext consumerContext = new AnnotationConfigApplicationContext();
 
-  @Before public void refresh() {
+  @BeforeEach void refresh() {
     producerContext.registerBean(SpringRabbitTracing.class, () -> producerTracing);
     producerContext.registerBean(CachingConnectionFactory.class, () -> connectionFactory);
     producerContext.registerBean(Binding.class, () -> binding);
@@ -188,7 +188,7 @@ abstract class ITSpringRabbit extends ITRemote {
     consumerContext.refresh();
   }
 
-  @After public void closeContext() {
+  @AfterEach void closeContext() {
     producerContext.close();
     consumerContext.close();
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -25,12 +25,12 @@ import org.apache.http.client.methods.HttpOptions;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.apache.http.util.EntityUtils.consume;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient> {
+public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient> { // public for src/it
   @Override protected CloseableHttpClient newClient(int port) {
     return TracingHttpClientBuilder.create(httpTracing).disableAutomaticRetries().build();
   }
@@ -56,7 +56,7 @@ public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient
     consume(client.execute(post).getEntity());
   }
 
-  @Test public void currentSpanVisibleToUserFilters() throws IOException {
+  @Test void currentSpanVisibleToUserFilters() throws IOException {
     server.enqueue(new MockResponse());
     closeClient(client);
 

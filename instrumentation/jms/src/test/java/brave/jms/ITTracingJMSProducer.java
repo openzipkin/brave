@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,8 +20,10 @@ import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import javax.jms.CompletionListener;
 import javax.jms.JMSConsumer;
 import javax.jms.JMSContext;
@@ -29,11 +31,11 @@ import javax.jms.JMSException;
 import javax.jms.JMSProducer;
 import javax.jms.JMSRuntimeException;
 import javax.jms.Message;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestName;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import static brave.Span.Kind.PRODUCER;
 import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
@@ -41,9 +43,12 @@ import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** When adding tests here, also add to {@link brave.jms.ITJms_2_0_TracingMessageProducer} */
-public class ITTracingJMSProducer extends ITJms {
-  @Rule public TestName testName = new TestName();
-  @Rule public ArtemisJmsTestRule jms = new ArtemisJmsTestRule(testName);
+class ITTracingJMSProducer extends ITJms {
+  @RegisterExtension ArtemisJmsExtension jms = newJmsExtension();
+
+  ArtemisJmsExtension newJmsExtension() {
+    return new ArtemisJmsExtension();
+  }
 
   JMSContext tracedContext;
   JMSProducer producer;
@@ -51,7 +56,7 @@ public class ITTracingJMSProducer extends ITJms {
   JMSContext context;
   Map<String, String> existingProperties = Collections.singletonMap("tx", "1");
 
-  @Before public void setup() {
+  @BeforeEach void setup() {
     context = jms.newContext();
     consumer = context.createConsumer(jms.queue);
 
@@ -66,11 +71,11 @@ public class ITTracingJMSProducer extends ITJms {
     existingProperties.forEach(producer::setProperty);
   }
 
-  @After public void tearDownTraced() {
+  @AfterEach void tearDownTraced() {
     tracedContext.close();
   }
 
-  @Test public void should_add_b3_single_property() {
+  @Test void should_add_b3_single_property() {
     producer.send(jms.queue, "foo");
 
     Message received = consumer.receive();
@@ -81,7 +86,7 @@ public class ITTracingJMSProducer extends ITJms {
       .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
-  @Test public void should_not_serialize_parent_span_id() {
+  @Test void should_not_serialize_parent_span_id() {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       producer.send(jms.queue, "foo");
@@ -97,7 +102,7 @@ public class ITTracingJMSProducer extends ITJms {
       .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
-  @Test public void should_prefer_current_to_stale_b3_header() {
+  @Test void should_prefer_current_to_stale_b3_header() {
     producer.setProperty("b3", writeB3SingleFormat(newTraceContext(SamplingFlags.NOT_SAMPLED)));
 
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
@@ -115,7 +120,7 @@ public class ITTracingJMSProducer extends ITJms {
       .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
-  @Test public void should_record_properties() {
+  @Test void should_record_properties() {
     producer.send(jms.queue, "foo");
 
     consumer.receive();
@@ -125,8 +130,8 @@ public class ITTracingJMSProducer extends ITJms {
     assertThat(producerSpan.tags()).containsEntry("jms.queue", jms.queueName);
   }
 
-  @Test public void should_set_error() {
-    jms.after();
+  @Test void should_set_error() throws Exception {
+    jms.afterEach(null);
 
     String message;
     try {
@@ -139,7 +144,7 @@ public class ITTracingJMSProducer extends ITJms {
     testSpanHandler.takeRemoteSpanWithErrorMessage(PRODUCER, message);
   }
 
-  @Test public void should_complete_on_callback() {
+  @Test void should_complete_on_callback() {
     producer.setAsync(new CompletionListener() {
       @Override public void onCompletion(Message message) {
         tracing.tracer().currentSpanCustomizer().tag("onCompletion", "");
@@ -155,7 +160,7 @@ public class ITTracingJMSProducer extends ITJms {
       .containsKeys("onCompletion");
   }
 
-  @Test public void customSampler() throws JMSException {
+  @Test void customSampler() throws JMSException {
     setupTracedProducer(JmsTracing.create(MessagingTracing.newBuilder(tracing)
       .producerSampler(MessagingRuleSampler.newBuilder()
         .putRule(channelNameEquals(jms.queue.getQueueName()), Sampler.NEVER_SAMPLE)

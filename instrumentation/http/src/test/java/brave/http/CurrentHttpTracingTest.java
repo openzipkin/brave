@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,9 +20,9 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -31,27 +31,27 @@ import static org.mockito.Mockito.mock;
 public class CurrentHttpTracingTest {
   Tracing tracing = mock(Tracing.class);
 
-  @Before public void reset() {
+  @BeforeEach void reset() {
     HttpTracing.CURRENT.set(null);
   }
 
-  @After public void close() {
+  @AfterEach void close() {
     HttpTracing current = HttpTracing.current();
     if (current != null) current.close();
   }
 
-  @Test public void defaultsToNull() {
+  @Test void defaultsToNull() {
     assertThat(HttpTracing.current()).isNull();
   }
 
-  @Test public void autoRegisters() {
+  @Test void autoRegisters() {
     HttpTracing current = HttpTracing.create(tracing);
 
     assertThat(HttpTracing.current())
       .isSameAs(current);
   }
 
-  @Test public void setsNotCurrentOnClose() {
+  @Test void setsNotCurrentOnClose() {
     autoRegisters();
 
     HttpTracing.current().close();
@@ -59,13 +59,13 @@ public class CurrentHttpTracingTest {
     assertThat(HttpTracing.current()).isNull();
   }
 
-  @Test public void canSetCurrentAgain() {
+  @Test void canSetCurrentAgain() {
     setsNotCurrentOnClose();
 
     autoRegisters();
   }
 
-  @Test public void onlyRegistersOnce() throws InterruptedException {
+  @Test void onlyRegistersOnce() throws InterruptedException {
     final HttpTracing[] threadValues = new HttpTracing[10]; // array ref for thread-safe setting
 
     List<Thread> getOrSet = new ArrayList<>(20);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -27,9 +27,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * This shows how you can skip local spans to reduce the cost of storage. In this example we are
  * cherry-picking data used by the dependency linker, mostly to make it simpler.
  */
-public class SkeletalSpansTest {
+class SkeletalSpansTest {
   static class RetainSkeletalSpans extends SpanHandler {
     @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
       if (span.kind() == null) return false; // skip local spans
@@ -83,16 +83,16 @@ public class SkeletalSpansTest {
     .addSpanHandler(toSpanHandler(skeletalSpans))
     .build().tracer();
 
-  @Before public void acceptTwoServerRequests() {
+  @BeforeEach void acceptTwoServerRequests() {
     acceptTwoServerRequests(server1Tracer, server2Tracer);
     acceptTwoServerRequests(server1SkeletalTracer, server2SkeletalTracer);
   }
 
-  @After public void close() {
+  @AfterEach void close() {
     Tracing.current().close();
   }
 
-  @Test public void skeletalSpans_skipLocalSpans() {
+  @Test void skeletalSpans_skipLocalSpans() {
     assertThat(spans.values())
       .extracting(s -> s.stream().map(MutableSpan::name).collect(Collectors.toList()))
       .containsExactly(

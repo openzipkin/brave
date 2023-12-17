@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,21 +17,21 @@ import brave.TracerTest;
 import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
 import brave.propagation.TraceContext;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestName;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class OrphanTrackerTest {
-  @Rule public TestName testName = new TestName();
-
+class OrphanTrackerTest {
+  String testName;
   List<String> messages = new ArrayList<>();
   List<Throwable> throwables = new ArrayList<>();
   AtomicInteger clock = new AtomicInteger(1);
@@ -39,7 +39,11 @@ public class OrphanTrackerTest {
   MutableSpan defaultSpan, span;
   OrphanTracker tracker;
 
-  @Before public void setup() {
+  @BeforeEach void setup(TestInfo testInfo) {
+    Optional<Method> testMethod = testInfo.getTestMethod();
+    if (testMethod.isPresent()) {
+      this.testName = testMethod.get().getName();
+    }
     defaultSpan = new MutableSpan();
     defaultSpan.localServiceName(TracerTest.class.getSimpleName());
     defaultSpan.localIp("127.0.0.1");
@@ -48,7 +52,7 @@ public class OrphanTrackerTest {
     tracker = orphanTrackerWithFakeLogger();
   }
 
-  @Test public void allocatedAndUsed_logsAndAddsFlushAnnotation() {
+  @Test void allocatedAndUsed_logsAndAddsFlushAnnotation() {
     span.startTimestamp(1L);
     assertThat(tracker.begin(context, span, null)).isTrue();
     assertThat(tracker.end(context, span, SpanHandler.Cause.ORPHANED)).isTrue();
@@ -57,13 +61,13 @@ public class OrphanTrackerTest {
     assertThat(span.annotationValueAt(0)).isEqualTo("brave.flush");
 
     assertThat(messages).containsExactly(
-        "Span 0000000000000001/0000000000000002 neither finished nor flushed before GC"
+      "Span 0000000000000001/0000000000000002 neither finished nor flushed before GC"
     );
     assertThrowableIdentifiesCaller();
   }
 
   /** This prevents overhead on dropped spans */
-  @Test public void allocatedButNotUsed_logsButDoesntAddFlushAnnotation() {
+  @Test void allocatedButNotUsed_logsButDoesntAddFlushAnnotation() {
     assertThat(tracker.begin(context, span, null)).isTrue();
     // We return true to let metrics handlers work
     assertThat(tracker.end(context, span, SpanHandler.Cause.ORPHANED)).isTrue();
@@ -71,7 +75,7 @@ public class OrphanTrackerTest {
     assertThat(span.annotationCount()).isZero();
 
     assertThat(messages).containsExactly(
-        "Span 0000000000000001/0000000000000002 was allocated but never used"
+      "Span 0000000000000001/0000000000000002 was allocated but never used"
     );
     assertThrowableIdentifiesCaller();
   }
@@ -79,9 +83,9 @@ public class OrphanTrackerTest {
   void assertThrowableIdentifiesCaller() {
     assertThat(throwables).hasSize(1);
     assertThat(throwables.get(0))
-        .hasNoCause()
-        .hasMessage("Thread main allocated span here")
-        .hasStackTraceContaining(testName.getMethodName());
+      .hasNoCause()
+      .hasMessage("Thread main allocated span here")
+      .hasStackTraceContaining(testName);
   }
 
   OrphanTracker orphanTrackerWithFakeLogger() {
@@ -98,7 +102,7 @@ public class OrphanTrackerTest {
     };
 
     return new OrphanTracker(OrphanTracker.newBuilder()
-        .clock(clock::getAndIncrement).defaultSpan(defaultSpan)) {
+      .clock(clock::getAndIncrement).defaultSpan(defaultSpan)) {
       @Override Logger logger() {
         return logger;
       }
