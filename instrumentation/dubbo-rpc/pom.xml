@@ -30,7 +30,7 @@
 
     <main.basedir>${project.basedir}/../..</main.basedir>
     <!-- Use brave-instrumentation-dubbo for Apache Dubbo 2.7+, not this module. -->
-    <dubbo.version>2.6.9</dubbo.version>
+    <dubbo.version>2.6.12</dubbo.version>
   </properties>
 
   <dependencies>
