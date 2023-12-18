@@ -16,33 +16,33 @@ package brave.httpclient5;
 
 import org.apache.hc.core5.http.HttpRequest;
 import org.apache.hc.core5.http.HttpResponse;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class HttpResponseWrapperTest {
   @Mock HttpRequest request;
   @Mock HttpResponse response;
 
-  @Test public void request() {
+  @Test void request() {
     assertThat(
       new HttpResponseWrapper(response, new HttpRequestWrapper(request, null), null).request()
         .unwrap())
       .isSameAs(request);
   }
 
-  @Test public void statusCode() {
+  @Test void statusCode() {
     when(response.getCode()).thenReturn(200);
     assertThat(new HttpResponseWrapper(response, new HttpRequestWrapper(request, null),
       null).statusCode()).isEqualTo(200);
   }
 
-  @Test public void statusCode_zeroWhenNoResponse() {
+  @Test void statusCode_zeroWhenNoResponse() {
     assertThat(new HttpResponseWrapper(null, new HttpRequestWrapper(request, null),
       null).statusCode()).isZero();
   }

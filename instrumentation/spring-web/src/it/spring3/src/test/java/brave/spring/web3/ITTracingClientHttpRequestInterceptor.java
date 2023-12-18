@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,8 +20,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
@@ -29,7 +29,7 @@ import org.springframework.web.client.RestTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHttpRequestFactory> {
+class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHttpRequestFactory> {
   ClientHttpRequestInterceptor interceptor;
 
   ClientHttpRequestFactory configureClient(ClientHttpRequestInterceptor interceptor) {
@@ -84,11 +84,11 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     testSpanHandler.takeRemoteSpan(Span.Kind.CLIENT);
   }
 
-  @Override @Ignore("blind to the implementation of redirects")
+  @Override @Disabled("blind to the implementation of redirects")
   public void redirect() {
   }
 
-  @Override @Ignore("doesn't know the remote address")
+  @Override @Disabled("doesn't know the remote address")
   public void reportsServerAddress() {
   }
 }

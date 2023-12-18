@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -25,15 +25,15 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static java.util.Map.Entry;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 /** One reason {@link brave.handler.MutableSpan} is mutable is to support redaction */
-public class RedactingSpanHandlerTest {
+class RedactingSpanHandlerTest {
   /**
    * This is just a dummy pattern. See <a href="https://github.com/ExpediaDotCom/haystack-secrets-commons/blob/master/src/main/java/com/expedia/www/haystack/commons/secretDetector/HaystackCompositeCreditCardFinder.java">HaystackCompositeCreditCardFinder</a>
    * for a realistic one.
@@ -82,11 +82,11 @@ public class RedactingSpanHandlerTest {
     })
     .build();
 
-  @After public void close() {
+  @AfterEach void close() {
     tracing.close();
   }
 
-  @Test public void showRedaction() throws Exception {
+  @Test void showRedaction() throws Exception {
     ScopedSpan span = tracing.tracer().startScopedSpan("auditor");
     try {
       span.tag("a", "1");

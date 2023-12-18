@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,7 +14,7 @@
 package brave.propagation;
 
 import java.util.function.Supplier;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.propagation.SamplingFlags.EMPTY;
 import static brave.propagation.SamplingFlags.NOT_SAMPLED;
@@ -23,55 +23,55 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class TraceContextOrSamplingFlagsTest {
+class TraceContextOrSamplingFlagsTest {
   TraceContext context = TraceContext.newBuilder().traceId(333L).spanId(1L).sampled(true).build();
   TraceIdContext idContext = TraceIdContext.newBuilder().traceId(333L).sampled(true).build();
 
   TraceContextOrSamplingFlags extracted;
 
-  @Test public void create_context() {
+  @Test void create_context() {
     extracted = TraceContextOrSamplingFlags.create(context);
     assertThat(extracted.context()).isSameAs(context);
     assertThat(extracted.traceIdContext()).isNull();
     assertThat(extracted.samplingFlags()).isNull();
   }
 
-  @Test public void create_samplingFlags() {
+  @Test void create_samplingFlags() {
     extracted = TraceContextOrSamplingFlags.create(SAMPLED);
     assertThat(extracted.context()).isNull();
     assertThat(extracted.traceIdContext()).isNull();
     assertThat(extracted.samplingFlags()).isSameAs(SAMPLED);
   }
 
-  @Test public void create_traceIdContext() {
+  @Test void create_traceIdContext() {
     extracted = TraceContextOrSamplingFlags.create(idContext);
     assertThat(extracted.context()).isNull();
     assertThat(extracted.traceIdContext()).isSameAs(idContext);
     assertThat(extracted.samplingFlags()).isNull();
   }
 
-  @Test public void sampled_get_context() {
+  @Test void sampled_get_context() {
     assertThat(TraceContextOrSamplingFlags.create(context).sampled()).isTrue();
 
     extracted = TraceContextOrSamplingFlags.create(context.toBuilder().sampled(null).build());
     assertThat(extracted.sampled()).isNull();
   }
 
-  @Test public void sampled_get_samplingFlags() {
+  @Test void sampled_get_samplingFlags() {
     assertThat(TraceContextOrSamplingFlags.create(SAMPLED).sampled()).isTrue();
 
     extracted = TraceContextOrSamplingFlags.create(EMPTY);
     assertThat(extracted.sampled()).isNull();
   }
 
-  @Test public void sampled_get_traceIdContext() {
+  @Test void sampled_get_traceIdContext() {
     assertThat(TraceContextOrSamplingFlags.create(idContext).sampled()).isTrue();
 
     extracted = TraceContextOrSamplingFlags.create(idContext.toBuilder().sampled(null).build());
     assertThat(extracted.sampled()).isNull();
   }
 
-  @Test public void sampled_set_context() {
+  @Test void sampled_set_context() {
     extracted = TraceContextOrSamplingFlags.create(context);
     assertThat(extracted.sampled(true)).isSameAs(extracted);
     assertThat(extracted.sampled(false).sampled()).isFalse();
@@ -84,7 +84,7 @@ public class TraceContextOrSamplingFlagsTest {
     assertThat(extracted.sampled(false).context().sampled()).isFalse();
   }
 
-  @Test public void sampled_set_samplingFlags() {
+  @Test void sampled_set_samplingFlags() {
     extracted = TraceContextOrSamplingFlags.create(SAMPLED);
     assertThat(extracted.sampled(true)).isSameAs(extracted);
     assertThat(extracted.sampled(false).sampled()).isFalse();
@@ -94,7 +94,7 @@ public class TraceContextOrSamplingFlagsTest {
     assertThat(extracted.sampled(false).sampled()).isFalse();
   }
 
-  @Test public void sampled_set_traceIdContext() {
+  @Test void sampled_set_traceIdContext() {
     extracted = TraceContextOrSamplingFlags.create(idContext);
     assertThat(extracted.sampled(true)).isSameAs(extracted);
     assertThat(extracted.sampled(false).sampled()).isFalse();
@@ -107,22 +107,22 @@ public class TraceContextOrSamplingFlagsTest {
     assertThat(extracted.sampled(false).traceIdContext().sampled()).isFalse();
   }
 
-  @Test public void sampled_set_keepsExtra_context() {
+  @Test void sampled_set_keepsExtra_context() {
     extracted = TraceContextOrSamplingFlags.newBuilder(context).addExtra(1L).build();
     assertThat(extracted.sampled(false).context().extra()).contains(1L);
   }
 
-  @Test public void sampled_set_keepsExtra_samplingFlags() {
+  @Test void sampled_set_keepsExtra_samplingFlags() {
     extracted = TraceContextOrSamplingFlags.newBuilder(SAMPLED).addExtra(1L).build();
     assertThat(extracted.sampled(false).extra()).contains(1L);
   }
 
-  @Test public void sampled_set_keepsExtra_traceIdContext() {
+  @Test void sampled_set_keepsExtra_traceIdContext() {
     extracted = TraceContextOrSamplingFlags.newBuilder(idContext).addExtra(1L).build();
     assertThat(extracted.sampled(false).extra()).contains(1L);
   }
 
-  @Test public void sampled_set_keepsSampledLocal_context() {
+  @Test void sampled_set_keepsSampledLocal_context() {
     extracted = TraceContextOrSamplingFlags.newBuilder(context).sampledLocal().build();
 
     extracted = extracted.sampled(false);
@@ -130,7 +130,7 @@ public class TraceContextOrSamplingFlagsTest {
     assertThat(extracted.sampledLocal()).isTrue();
   }
 
-  @Test public void sampled_set_keepsSampledLocal_samplingFlags() {
+  @Test void sampled_set_keepsSampledLocal_samplingFlags() {
     extracted = TraceContextOrSamplingFlags.newBuilder(SAMPLED).sampledLocal().build();
 
     extracted = extracted.sampled(false);
@@ -138,7 +138,7 @@ public class TraceContextOrSamplingFlagsTest {
     assertThat(extracted.sampledLocal()).isTrue();
   }
 
-  @Test public void sampled_set_keepsSampledLocal_traceIdContext() {
+  @Test void sampled_set_keepsSampledLocal_traceIdContext() {
     extracted = TraceContextOrSamplingFlags.newBuilder(idContext).sampledLocal().build();
 
     extracted = extracted.sampled(false);
@@ -146,44 +146,44 @@ public class TraceContextOrSamplingFlagsTest {
     assertThat(extracted.sampledLocal()).isTrue();
   }
 
-  @Test public void newBuilder_context() {
+  @Test void newBuilder_context() {
     extracted = TraceContextOrSamplingFlags.newBuilder(context).build();
     assertThat(extracted.context()).isSameAs(context);
     assertThat(extracted.traceIdContext()).isNull();
     assertThat(extracted.samplingFlags()).isNull();
   }
 
-  @Test public void newBuilder_samplingFlags() {
+  @Test void newBuilder_samplingFlags() {
     extracted = TraceContextOrSamplingFlags.newBuilder(SAMPLED).build();
     assertThat(extracted.context()).isNull();
     assertThat(extracted.traceIdContext()).isNull();
     assertThat(extracted.samplingFlags()).isSameAs(SAMPLED);
   }
 
-  @Test public void newBuilder_traceIdContext() {
+  @Test void newBuilder_traceIdContext() {
     extracted = TraceContextOrSamplingFlags.newBuilder(idContext).build();
     assertThat(extracted.context()).isNull();
     assertThat(extracted.traceIdContext()).isSameAs(idContext);
     assertThat(extracted.samplingFlags()).isNull();
   }
 
-  @Test public void builder_addExtra_context() {
+  @Test void builder_addExtra_context() {
     extracted = TraceContextOrSamplingFlags.newBuilder(context).addExtra(1L).build();
     assertThat(extracted.context().extra()).containsExactly(1L);
     assertThat(extracted.extra()).isEmpty();
   }
 
-  @Test public void builder_addExtra_samplingFlags() {
+  @Test void builder_addExtra_samplingFlags() {
     extracted = TraceContextOrSamplingFlags.newBuilder(SAMPLED).addExtra(1L).build();
     assertThat(extracted.extra()).containsExactly(1L);
   }
 
-  @Test public void builder_addExtra_traceIdContext() {
+  @Test void builder_addExtra_traceIdContext() {
     extracted = TraceContextOrSamplingFlags.newBuilder(idContext).addExtra(1L).build();
     assertThat(extracted.extra()).containsExactly(1L);
   }
 
-  @Test public void builder_addExtra_toExisting_context() {
+  @Test void builder_addExtra_toExisting_context() {
     extracted = TraceContextOrSamplingFlags.newBuilder(context).addExtra(1L).build();
 
     extracted = extracted.toBuilder().addExtra(2L).build();
@@ -197,7 +197,7 @@ public class TraceContextOrSamplingFlagsTest {
         .isInstanceOf(UnsupportedOperationException.class);
   }
 
-  @Test public void builder_addExtra_toExisting_samplingFlags() {
+  @Test void builder_addExtra_toExisting_samplingFlags() {
     extracted = TraceContextOrSamplingFlags.newBuilder(SAMPLED).addExtra(1L).build();
 
     extracted = extracted.toBuilder().addExtra(2L).build();
@@ -207,7 +207,7 @@ public class TraceContextOrSamplingFlagsTest {
         .isInstanceOf(UnsupportedOperationException.class);
   }
 
-  @Test public void builder_addExtra_toExisting_traceIdContext() {
+  @Test void builder_addExtra_toExisting_traceIdContext() {
     extracted = TraceContextOrSamplingFlags.newBuilder(idContext).addExtra(1L).build();
 
     extracted = extracted.toBuilder().addExtra(2L).build();
@@ -217,7 +217,7 @@ public class TraceContextOrSamplingFlagsTest {
         .isInstanceOf(UnsupportedOperationException.class);
   }
 
-  @Test public void builder_addExtra_redundantIgnored_context() {
+  @Test void builder_addExtra_redundantIgnored_context() {
     extracted = TraceContextOrSamplingFlags.newBuilder(context).addExtra(1L).build();
 
     extracted = extracted.toBuilder().addExtra(1L).build();
@@ -225,21 +225,21 @@ public class TraceContextOrSamplingFlagsTest {
     assertThat(extracted.extra()).isEmpty();
   }
 
-  @Test public void builder_addExtra_redundantIgnored_samplingFlags() {
+  @Test void builder_addExtra_redundantIgnored_samplingFlags() {
     extracted = TraceContextOrSamplingFlags.newBuilder(SAMPLED).addExtra(1L).build();
 
     extracted = extracted.toBuilder().addExtra(1L).build();
     assertThat(extracted.extra()).containsExactly(1L);
   }
 
-  @Test public void builder_addExtra_redundantIgnored_traceIdContext() {
+  @Test void builder_addExtra_redundantIgnored_traceIdContext() {
     extracted = TraceContextOrSamplingFlags.newBuilder(idContext).addExtra(1L).build();
     extracted = extracted.toBuilder().addExtra(1L).build();
 
     assertThat(extracted.extra()).containsExactly(1L);
   }
 
-  @Test public void builder_sampledLocal_context() {
+  @Test void builder_sampledLocal_context() {
     assertThat(TraceContextOrSamplingFlags.create(context).sampledLocal())
         .isFalse();
     assertThat(TraceContextOrSamplingFlags.newBuilder(context)
@@ -247,7 +247,7 @@ public class TraceContextOrSamplingFlagsTest {
         .isTrue();
   }
 
-  @Test public void builder_sampledLocal_samplingFlags() {
+  @Test void builder_sampledLocal_samplingFlags() {
     assertThat(TraceContextOrSamplingFlags.newBuilder(SAMPLED)
         .sampledLocal().build().sampledLocal())
         .isTrue();
@@ -262,7 +262,7 @@ public class TraceContextOrSamplingFlagsTest {
         .isFalse();
   }
 
-  @Test public void builder_sampledLocal_traceIdContext() {
+  @Test void builder_sampledLocal_traceIdContext() {
     assertThat(TraceContextOrSamplingFlags.create(idContext).sampledLocal())
         .isFalse();
     assertThat(TraceContextOrSamplingFlags.newBuilder(idContext)
@@ -270,7 +270,7 @@ public class TraceContextOrSamplingFlagsTest {
         .isTrue();
   }
 
-  @Test public void equalsAndHashCode_context() {
+  @Test void equalsAndHashCode_context() {
     equalsAndHashCode(
         () -> TraceContextOrSamplingFlags.create(context),
         () -> TraceContextOrSamplingFlags.create(context.toBuilder().traceId(111L).build()),
@@ -278,7 +278,7 @@ public class TraceContextOrSamplingFlagsTest {
     );
   }
 
-  @Test public void equalsAndHashCode_samplingFlags() {
+  @Test void equalsAndHashCode_samplingFlags() {
     equalsAndHashCode(
         () -> TraceContextOrSamplingFlags.create(SAMPLED),
         () -> TraceContextOrSamplingFlags.create(NOT_SAMPLED),
@@ -286,7 +286,7 @@ public class TraceContextOrSamplingFlagsTest {
     );
   }
 
-  @Test public void equalsAndHashCode_traceIdContext() {
+  @Test void equalsAndHashCode_traceIdContext() {
     equalsAndHashCode(
         () -> TraceContextOrSamplingFlags.create(idContext),
         () -> TraceContextOrSamplingFlags.create(idContext.toBuilder().traceId(111L).build()),
@@ -328,7 +328,7 @@ public class TraceContextOrSamplingFlagsTest {
     assertThat(extracted.hashCode()).isNotEqualTo(differentType);
   }
 
-  @Test public void toString_context() {
+  @Test void toString_context() {
     toString(
         () -> TraceContextOrSamplingFlags.create(context),
         "Extracted{traceContext=000000000000014d/0000000000000001, samplingFlags=SAMPLED_REMOTE}",
@@ -336,7 +336,7 @@ public class TraceContextOrSamplingFlagsTest {
     );
   }
 
-  @Test public void toString_samplingFlags() {
+  @Test void toString_samplingFlags() {
     toString(
         () -> TraceContextOrSamplingFlags.create(SAMPLED),
         "Extracted{samplingFlags=SAMPLED_REMOTE}",
@@ -344,7 +344,7 @@ public class TraceContextOrSamplingFlagsTest {
     );
   }
 
-  @Test public void toString_traceIdContext() {
+  @Test void toString_traceIdContext() {
     toString(
         () -> TraceContextOrSamplingFlags.create(idContext),
         "Extracted{traceIdContext=000000000000014d, samplingFlags=SAMPLED_REMOTE}",
@@ -361,35 +361,40 @@ public class TraceContextOrSamplingFlagsTest {
     assertThat(extracted).hasToString(toStringWithExtra);
   }
 
-  @Deprecated @Test public void deprecated_create_sampledNullDebugFalse() {
+  @Deprecated
+  @Test void deprecated_create_sampledNullDebugFalse() {
     extracted = TraceContextOrSamplingFlags.create(null, false);
     assertThat(extracted).isSameAs(TraceContextOrSamplingFlags.EMPTY);
     assertThat(extracted.sampled()).isNull();
     assertThat(extracted.samplingFlags()).isSameAs(SamplingFlags.EMPTY);
   }
 
-  @Deprecated @Test public void deprecated_create_sampledNullDebugTrue() {
+  @Deprecated
+  @Test void deprecated_create_sampledNullDebugTrue() {
     extracted = TraceContextOrSamplingFlags.create(null, true);
     assertThat(extracted).isSameAs(TraceContextOrSamplingFlags.DEBUG);
     assertThat(extracted.sampled()).isTrue();
     assertThat(extracted.samplingFlags()).isSameAs(SamplingFlags.DEBUG);
   }
 
-  @Deprecated @Test public void deprecated_create_sampledTrueDebugFalse() {
+  @Deprecated
+  @Test void deprecated_create_sampledTrueDebugFalse() {
     extracted = TraceContextOrSamplingFlags.create(true, false);
     assertThat(extracted).isSameAs(TraceContextOrSamplingFlags.SAMPLED);
     assertThat(extracted.sampled()).isTrue();
     assertThat(extracted.samplingFlags()).isSameAs(SAMPLED);
   }
 
-  @Deprecated @Test public void deprecated_create_sampledFalseDebugFalse() {
+  @Deprecated
+  @Test void deprecated_create_sampledFalseDebugFalse() {
     extracted = TraceContextOrSamplingFlags.create(false, false);
     assertThat(extracted).isSameAs(TraceContextOrSamplingFlags.NOT_SAMPLED);
     assertThat(extracted.sampled()).isFalse();
     assertThat(extracted.samplingFlags()).isSameAs(SamplingFlags.NOT_SAMPLED);
   }
 
-  @Deprecated @Test public void deprecated_sampled_set_null_context() {
+  @Deprecated
+  @Test void deprecated_sampled_set_null_context() {
     extracted = TraceContextOrSamplingFlags.create(context.toBuilder().sampled(null).build());
     assertThat(extracted.sampled(null)).isSameAs(extracted);
 
@@ -398,7 +403,8 @@ public class TraceContextOrSamplingFlagsTest {
     assertThat(extracted.sampled(null).context().sampled()).isNull();
   }
 
-  @Deprecated @Test public void deprecated_sampled_set_null_samplingFlags() {
+  @Deprecated
+  @Test void deprecated_sampled_set_null_samplingFlags() {
     extracted = TraceContextOrSamplingFlags.create(EMPTY);
     assertThat(extracted.sampled(null)).isSameAs(extracted);
 
@@ -406,7 +412,8 @@ public class TraceContextOrSamplingFlagsTest {
     assertThat(extracted.sampled(null).sampled()).isNull();
   }
 
-  @Deprecated @Test public void deprecated_sampled_set_null_traceIdContext() {
+  @Deprecated
+  @Test void deprecated_sampled_set_null_traceIdContext() {
     extracted = TraceContextOrSamplingFlags.create(idContext.toBuilder().sampled(null).build());
     assertThat(extracted.sampled(null)).isSameAs(extracted);
 
@@ -415,22 +422,26 @@ public class TraceContextOrSamplingFlagsTest {
     assertThat(extracted.sampled(null).traceIdContext().sampled()).isNull();
   }
 
-  @Deprecated @Test public void deprecated_sampled_set_null_keepsExtra_context() {
+  @Deprecated
+  @Test void deprecated_sampled_set_null_keepsExtra_context() {
     extracted = TraceContextOrSamplingFlags.newBuilder(context).addExtra(1L).build();
     assertThat(extracted.sampled(null).context().extra()).contains(1L);
   }
 
-  @Deprecated @Test public void deprecated_sampled_set_null_keepsExtra_samplingFlags() {
+  @Deprecated
+  @Test void deprecated_sampled_set_null_keepsExtra_samplingFlags() {
     extracted = TraceContextOrSamplingFlags.newBuilder(SAMPLED).addExtra(1L).build();
     assertThat(extracted.sampled(null).extra()).contains(1L);
   }
 
-  @Deprecated @Test public void deprecated_sampled_set_null_keepsExtra_traceIdContext() {
+  @Deprecated
+  @Test void deprecated_sampled_set_null_keepsExtra_traceIdContext() {
     extracted = TraceContextOrSamplingFlags.newBuilder(idContext).addExtra(1L).build();
     assertThat(extracted.sampled(null).extra()).contains(1L);
   }
 
-  @Deprecated @Test public void deprecated_sampled_set_null_keepsSampledLocal_context() {
+  @Deprecated
+  @Test void deprecated_sampled_set_null_keepsSampledLocal_context() {
     extracted = TraceContextOrSamplingFlags.newBuilder(context).sampledLocal().build();
 
     extracted = extracted.sampled(null);
@@ -438,7 +449,8 @@ public class TraceContextOrSamplingFlagsTest {
     assertThat(extracted.sampledLocal()).isTrue();
   }
 
-  @Deprecated @Test public void deprecated_sampled_set_null_keepsSampledLocal_samplingFlags() {
+  @Deprecated
+  @Test void deprecated_sampled_set_null_keepsSampledLocal_samplingFlags() {
     extracted = TraceContextOrSamplingFlags.newBuilder(SAMPLED).sampledLocal().build();
 
     extracted = extracted.sampled(null);
@@ -446,7 +458,8 @@ public class TraceContextOrSamplingFlagsTest {
     assertThat(extracted.sampledLocal()).isTrue();
   }
 
-  @Deprecated @Test public void deprecated_sampled_set_null_keepsSampledLocal_traceIdContext() {
+  @Deprecated
+  @Test void deprecated_sampled_set_null_keepsSampledLocal_traceIdContext() {
     extracted = TraceContextOrSamplingFlags.newBuilder(idContext).sampledLocal().build();
 
     extracted = extracted.sampled(null);
@@ -454,14 +467,16 @@ public class TraceContextOrSamplingFlagsTest {
     assertThat(extracted.sampledLocal()).isTrue();
   }
 
-  @Deprecated @Test public void deprecated_builder_invalid() {
+  @Deprecated
+  @Test void deprecated_builder_invalid() {
     TraceContextOrSamplingFlags.Builder builder = TraceContextOrSamplingFlags.newBuilder();
     assertThatThrownBy(builder::build)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Value unset. Use a non-deprecated newBuilder method instead.");
   }
 
-  @Deprecated @Test public void deprecated_builder_extraList_context() {
+  @Deprecated
+  @Test void deprecated_builder_extraList_context() {
     extracted = TraceContextOrSamplingFlags.newBuilder(context).addExtra(3L).build();
 
     extracted = extracted.toBuilder().extra(asList(1L, 2L)).build();
@@ -474,7 +489,8 @@ public class TraceContextOrSamplingFlagsTest {
         .isInstanceOf(UnsupportedOperationException.class);
   }
 
-  @Deprecated @Test public void deprecated_builder_extraList_samplingFlags() {
+  @Deprecated
+  @Test void deprecated_builder_extraList_samplingFlags() {
     extracted = TraceContextOrSamplingFlags.newBuilder(SAMPLED).addExtra(3L).build();
 
     extracted = extracted.toBuilder().extra(asList(1L, 2L)).build();
@@ -484,7 +500,8 @@ public class TraceContextOrSamplingFlagsTest {
         .isInstanceOf(UnsupportedOperationException.class);
   }
 
-  @Deprecated @Test public void deprecated_builder_extraList_traceIdContext() {
+  @Deprecated
+  @Test void deprecated_builder_extraList_traceIdContext() {
     extracted = TraceContextOrSamplingFlags.newBuilder(idContext).addExtra(3L).build();
 
     extracted = extracted.toBuilder().extra(asList(1L, 2L)).build();
@@ -494,28 +511,32 @@ public class TraceContextOrSamplingFlagsTest {
         .isInstanceOf(UnsupportedOperationException.class);
   }
 
-  @Deprecated @Test public void deprecated_builder_context() {
+  @Deprecated
+  @Test void deprecated_builder_context() {
     extracted = TraceContextOrSamplingFlags.newBuilder().context(context).build();
     assertThat(extracted.context()).isSameAs(context);
     assertThat(extracted.traceIdContext()).isNull();
     assertThat(extracted.samplingFlags()).isNull();
   }
 
-  @Deprecated @Test public void deprecated_builder_samplingFlags() {
+  @Deprecated
+  @Test void deprecated_builder_samplingFlags() {
     extracted = TraceContextOrSamplingFlags.newBuilder().samplingFlags(SAMPLED).build();
     assertThat(extracted.context()).isNull();
     assertThat(extracted.traceIdContext()).isNull();
     assertThat(extracted.samplingFlags()).isSameAs(SAMPLED);
   }
 
-  @Deprecated @Test public void deprecated_builder_traceIdContext() {
+  @Deprecated
+  @Test void deprecated_builder_traceIdContext() {
     extracted = TraceContextOrSamplingFlags.newBuilder().traceIdContext(idContext).build();
     assertThat(extracted.context()).isNull();
     assertThat(extracted.traceIdContext()).isSameAs(idContext);
     assertThat(extracted.samplingFlags()).isNull();
   }
 
-  @Deprecated @Test public void deprecated_builder_late_context() {
+  @Deprecated
+  @Test void deprecated_builder_late_context() {
     extracted = TraceContextOrSamplingFlags.newBuilder()
         .sampledLocal()
         .addExtra(1L)
@@ -526,7 +547,8 @@ public class TraceContextOrSamplingFlagsTest {
     assertThat(extracted.extra()).isEmpty();
   }
 
-  @Deprecated @Test public void deprecated_builder_late_samplingFlags() {
+  @Deprecated
+  @Test void deprecated_builder_late_samplingFlags() {
     extracted = TraceContextOrSamplingFlags.newBuilder()
         .sampledLocal()
         .addExtra(1L)
@@ -536,7 +558,8 @@ public class TraceContextOrSamplingFlagsTest {
     assertThat(extracted.extra()).containsExactly(1L);
   }
 
-  @Deprecated @Test public void deprecated_builder_late_traceIdContext() {
+  @Deprecated
+  @Test void deprecated_builder_late_traceIdContext() {
     extracted = TraceContextOrSamplingFlags.newBuilder()
         .sampledLocal()
         .addExtra(1L)

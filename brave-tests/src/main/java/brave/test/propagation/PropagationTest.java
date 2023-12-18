@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -25,7 +25,7 @@ import brave.test.util.ClassLoaders;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadableWithSupplier;
 import static brave.test.util.ClassLoaders.newInstance;
@@ -62,13 +62,13 @@ public abstract class PropagationTest {
     propagation = newInstance(propagationSupplier(), getClass().getClassLoader()).get();
   }
 
-  @Test public void verifyRoundTrip_rootSpan() throws Exception {
+  @Test void verifyRoundTrip_rootSpan() throws Exception {
     inject(map, "0000000000000001", null, "0000000000000001", true, null);
 
     verifyRoundTrip(TraceContextOrSamplingFlags.create(rootSpan));
   }
 
-  @Test public void verifyRoundTrip_128BitTrace() throws Exception {
+  @Test void verifyRoundTrip_128BitTrace() throws Exception {
     String high64Bits = "463ac35c9f6413ad";
     String low64Bits = "48485a3953bb6124";
     inject(map, high64Bits + low64Bits, null, low64Bits, true, null);
@@ -79,13 +79,13 @@ public abstract class PropagationTest {
       .spanId(HexCodec.lowerHexToUnsignedLong(low64Bits)).build()));
   }
 
-  @Test public void verifyRoundTrip_childSpan() throws Exception {
+  @Test void verifyRoundTrip_childSpan() throws Exception {
     inject(map, "0000000000000001", "0000000000000001", "0000000000000002", true, null);
 
     verifyRoundTrip(TraceContextOrSamplingFlags.create(childSpan));
   }
 
-  @Test public void verifyRoundTrip_notSampled() throws Exception {
+  @Test void verifyRoundTrip_notSampled() throws Exception {
     inject(map, "0000000000000001", "0000000000000001", "0000000000000002", false, null);
 
     verifyRoundTrip(TraceContextOrSamplingFlags.create(
@@ -93,25 +93,25 @@ public abstract class PropagationTest {
     ));
   }
 
-  @Test public void verifyRoundTrip_notSampled_noIds() throws Exception {
+  @Test void verifyRoundTrip_notSampled_noIds() throws Exception {
     inject(map, null, null, null, false, null);
 
     verifyRoundTrip(TraceContextOrSamplingFlags.create(SamplingFlags.NOT_SAMPLED));
   }
 
-  @Test public void verifyRoundTrip_sampledTrueNoOtherTraceHeaders() {
+  @Test void verifyRoundTrip_sampledTrueNoOtherTraceHeaders() {
     inject(map, null, null, null, true, null);
 
     verifyRoundTrip(TraceContextOrSamplingFlags.create(SamplingFlags.SAMPLED));
   }
 
-  @Test public void verifyRoundTrip_debug() {
+  @Test void verifyRoundTrip_debug() {
     inject(map, null, null, null, null, true);
 
     verifyRoundTrip(TraceContextOrSamplingFlags.create(SamplingFlags.DEBUG));
   }
 
-  @Test public void verifyRoundTrip_empty() throws Exception {
+  @Test void verifyRoundTrip_empty() throws Exception {
     inject(map, null, null, null, null, null);
 
     verifyRoundTrip(TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY));
@@ -121,7 +121,7 @@ public abstract class PropagationTest {
    * When the caller propagates IDs, but not a sampling decision, the current process should
    * decide.
    */
-  @Test public void verifyRoundTrip_externallyProvidedIds() {
+  @Test void verifyRoundTrip_externallyProvidedIds() {
     inject(map, "0000000000000001", null, "0000000000000001", null, null);
 
     verifyRoundTrip(TraceContextOrSamplingFlags.create(rootSpan.toBuilder().sampled(null).build()));
@@ -158,7 +158,7 @@ public abstract class PropagationTest {
     }
   }
 
-  @Test public void unloadable_unused() {
+  @Test void unloadable_unused() {
     assertRunIsUnloadableWithSupplier(Unused.class, propagationSupplier());
   }
 
@@ -167,7 +167,7 @@ public abstract class PropagationTest {
     }
   }
 
-  @Test public void unloadable_afterBasicUsage() {
+  @Test void unloadable_afterBasicUsage() {
     assertRunIsUnloadableWithSupplier(BasicUsage.class, propagationSupplier());
   }
 

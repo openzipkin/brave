@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,24 +14,10 @@
 package brave.kafka.clients;
 
 import brave.messaging.MessagingTracing;
-import brave.propagation.Propagation;
-import brave.propagation.SamplingFlags;
-import brave.propagation.TraceContext;
 import brave.test.ITRemote;
 import brave.test.util.AssertableCallback;
-import com.google.common.base.Charsets;
-import java.nio.charset.StandardCharsets;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.clients.producer.MockProducer;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
-import org.apache.kafka.common.header.Header;
-import org.apache.kafka.common.header.Headers;
 
 abstract class ITKafka extends ITRemote {
   MessagingTracing messagingTracing = MessagingTracing.create(tracing);

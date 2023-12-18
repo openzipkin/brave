@@ -26,7 +26,7 @@ import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.ProcessorSupplier;
 import org.apache.kafka.streams.processor.api.Record;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import java.util.Date;
 
 import static brave.test.ITRemote.BAGGAGE_FIELD;
@@ -35,8 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 public class KafkaStreamsTracingTest extends KafkaStreamsTest {
-  @Test
-  public void nextSpan_uses_current_context() {
+  @Test void nextSpan_uses_current_context() {
     ProcessorContext fakeProcessorContext = processorContextSupplier.apply(new RecordHeaders());
     Span child;
     try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
@@ -48,8 +47,7 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
         .isEqualTo(parent.spanIdString());
   }
 
-  @Test
-  public void nextSpanWithHeaders_uses_current_context() {
+  @Test void nextSpanWithHeaders_uses_current_context() {
     org.apache.kafka.streams.processor.api.ProcessorContext<String, String> fakeProcessorContext = processorV2ContextSupplier.get();
     Span child;
     try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
@@ -61,20 +59,17 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
         .isEqualTo(parent.spanIdString());
   }
 
-  @Test
-  public void nextSpan_should_create_span_if_no_headers() {
+  @Test void nextSpan_should_create_span_if_no_headers() {
     ProcessorContext fakeProcessorContext = processorContextSupplier.apply(new RecordHeaders());
     assertThat(kafkaStreamsTracing.nextSpan(fakeProcessorContext)).isNotNull();
   }
 
-  @Test
-  public void nextSpanWithHeaders_should_create_span_if_no_headers() {
+  @Test void nextSpanWithHeaders_should_create_span_if_no_headers() {
     org.apache.kafka.streams.processor.api.ProcessorContext<String, String> fakeProcessorContext = processorV2ContextSupplier.get();
     assertThat(kafkaStreamsTracing.nextSpan(fakeProcessorContext, new RecordHeaders())).isNotNull();
   }
 
-  @Test
-  public void nextSpan_should_tag_app_id_and_task_id() {
+  @Test void nextSpan_should_tag_app_id_and_task_id() {
     ProcessorContext fakeProcessorContext = processorContextSupplier.apply(new RecordHeaders());
     kafkaStreamsTracing.nextSpan(fakeProcessorContext).start().finish();
 
@@ -84,8 +79,7 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
         entry("kafka.streams.task.id", TEST_TASK_ID));
   }
 
-  @Test
-  public void nextSpanWithHeaders_should_tag_app_id_and_task_id() {
+  @Test void nextSpanWithHeaders_should_tag_app_id_and_task_id() {
     org.apache.kafka.streams.processor.api.ProcessorContext<String, String> fakeProcessorContext = processorV2ContextSupplier.get();
     kafkaStreamsTracing.nextSpan(fakeProcessorContext, new RecordHeaders()).start().finish();
 
@@ -95,8 +89,7 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
         entry("kafka.streams.task.id", TEST_TASK_ID));
   }
 
-  @Test
-  public void processorSupplier_should_tag_app_id_and_task_id() {
+  @Test void processorSupplier_should_tag_app_id_and_task_id() {
     Processor<String, String> processor = fakeProcessorSupplier.get();
     processor.init(processorContextSupplier.apply(new RecordHeaders()));
     processor.process(TEST_KEY, TEST_VALUE);
@@ -107,8 +100,7 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
         entry("kafka.streams.task.id", TEST_TASK_ID));
   }
 
-  @Test
-  public void newProcessorSupplier_should_tag_app_id_and_task_id() {
+  @Test void newProcessorSupplier_should_tag_app_id_and_task_id() {
     org.apache.kafka.streams.processor.api.Processor<String, String, String, String> processor = fakeV2ProcessorSupplier.get();
     processor.init(processorV2ContextSupplier.get());
     processor.process(new Record<>(TEST_KEY, TEST_VALUE, new Date().getTime()));
@@ -119,8 +111,7 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
         entry("kafka.streams.task.id", TEST_TASK_ID));
   }
 
-  @Test
-  public void processorSupplier_should_add_baggage_field() {
+  @Test void processorSupplier_should_add_baggage_field() {
     ProcessorSupplier<String, String> processorSupplier =
       kafkaStreamsTracing.processor(
         "forward-1", () ->
@@ -136,8 +127,7 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
     processor.process(TEST_KEY, TEST_VALUE);
   }
 
-  @Test
-  public void newProcessorSupplier_should_add_baggage_field() {
+  @Test void newProcessorSupplier_should_add_baggage_field() {
     org.apache.kafka.streams.processor.api.ProcessorSupplier<String, String, String, String> processorSupplier =
       kafkaStreamsTracing.process(
         "forward-1", () ->
@@ -149,8 +139,7 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
     processor.process(new Record<>(TEST_KEY, TEST_VALUE, new Date().getTime(), headers));
   }
 
-  @Test
-  public void transformSupplier_should_tag_app_id_and_task_id() {
+  @Test void transformSupplier_should_tag_app_id_and_task_id() {
     Transformer<String, String, KeyValue<String, String>> processor = fakeTransformerSupplier.get();
     processor.init(processorContextSupplier.apply(new RecordHeaders()));
     processor.transform(TEST_KEY, TEST_VALUE);
@@ -161,8 +150,7 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
         entry("kafka.streams.task.id", TEST_TASK_ID));
   }
 
-  @Test
-  public void valueTransformSupplier_should_tag_app_id_and_task_id() {
+  @Test void valueTransformSupplier_should_tag_app_id_and_task_id() {
     ValueTransformer<String, String> processor = fakeValueTransformerSupplier.get();
     processor.init(processorContextSupplier.apply(new RecordHeaders()));
     processor.transform(TEST_VALUE);
@@ -173,8 +161,7 @@ public class KafkaStreamsTracingTest extends KafkaStreamsTest {
         entry("kafka.streams.task.id", TEST_TASK_ID));
   }
 
-  @Test
-  public void valueTransformWithKeySupplier_should_tag_app_id_and_task_id() {
+  @Test void valueTransformWithKeySupplier_should_tag_app_id_and_task_id() {
     ValueTransformerWithKey<String, String, String> processor =
       fakeValueTransformerWithKeySupplier.get();
     processor.init(processorContextSupplier.apply(new RecordHeaders()));

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2022 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,24 +19,24 @@ import brave.Tracing;
 import brave.handler.MutableSpan;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.test.TestSpanHandler;
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.Statement;
 import java.sql.SQLException;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestName;
+import java.sql.Statement;
+import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public class ITTracingP6Factory {
-  @Rule
-  public TestName testName = new TestName();
+class ITTracingP6Factory {
+  String testName;
 
   static final String QUERY = "SELECT 1 FROM SYSIBM.SYSDUMMY1";
 
@@ -52,9 +52,12 @@ public class ITTracingP6Factory {
     .currentTraceContext(currentTraceContext).addSpanHandler(spans).build();
   Connection connection;
 
-  @Before
-  public void setup() throws Exception {
-    String url = String.format("jdbc:p6spy:derby:memory:%s;create=true", testName.getMethodName());
+  @BeforeEach void setup(TestInfo testInfo) throws Exception {
+    Optional<Method> testMethod = testInfo.getTestMethod();
+    if (testMethod.isPresent()) {
+      this.testName = testMethod.get().getName();
+    }
+    String url = String.format("jdbc:p6spy:derby:memory:%s;create=true", testName);
     connection = DriverManager.getConnection(url, "foo", "bar");
     Statement statement = connection.createStatement();
     statement.executeUpdate("create table t (i integer, c char )");
@@ -65,15 +68,13 @@ public class ITTracingP6Factory {
     spans.clear();
   }
 
-  @After
-  public void close() throws Exception {
+  @AfterEach void close() throws Exception {
     if (connection != null) connection.close();
     tracing.close();
     currentTraceContext.close();
   }
 
-  @Test
-  public void makesChildOfCurrentSpan() throws Exception {
+  @Test void makesChildOfCurrentSpan() throws Exception {
     ScopedSpan parent = tracing.tracer().startScopedSpan("test");
     try {
       prepareExecuteSelect(QUERY);
@@ -85,8 +86,7 @@ public class ITTracingP6Factory {
       .hasSize(2);
   }
 
-  @Test
-  public void reportsClientKindToZipkin() throws Exception {
+  @Test void reportsClientKindToZipkin() throws Exception {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
@@ -94,8 +94,7 @@ public class ITTracingP6Factory {
       .containsExactly(Kind.CLIENT);
   }
 
-  @Test
-  public void defaultSpanNameIsOperationName() throws Exception {
+  @Test void defaultSpanNameIsOperationName() throws Exception {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
@@ -103,8 +102,7 @@ public class ITTracingP6Factory {
       .containsExactly("SELECT");
   }
 
-  @Test
-  public void addsQueryTag() throws Exception {
+  @Test void addsQueryTag() throws Exception {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
@@ -112,8 +110,7 @@ public class ITTracingP6Factory {
       .containsExactly(entry("sql.query", QUERY));
   }
 
-  @Test
-  public void addsAffectedRowsTagToPreparedUpdateStatements() throws Exception {
+  @Test void addsAffectedRowsTagToPreparedUpdateStatements() throws Exception {
     prepareExecuteUpdate("update t set c='x' where i=2");
 
     assertThat(spans)
@@ -121,8 +118,7 @@ public class ITTracingP6Factory {
       .contains(entry("sql.affected_rows", "2"));
   }
 
-  @Test
-  public void addsAffectedRowsTagToPlainUpdateStatements() throws Exception {
+  @Test void addsAffectedRowsTagToPlainUpdateStatements() throws Exception {
     executeUpdate("update t set c='x' where i=2");
 
     assertThat(spans)
@@ -130,8 +126,7 @@ public class ITTracingP6Factory {
       .contains(entry("sql.affected_rows", "2"));
   }
 
-  @Test
-  public void addsAffectedRowsTagToPlainBatchUpdateStatements() throws Exception {
+  @Test void addsAffectedRowsTagToPlainBatchUpdateStatements() throws Exception {
     executeBatch("update t set c='x' where i=2", "update t set c='y' where i=1");
 
     assertThat(spans)
@@ -139,8 +134,7 @@ public class ITTracingP6Factory {
       .contains(entry("sql.affected_rows", "2,1"));
   }
 
-  @Test
-  public void doesNotProduceAnySpansForEmptyPlainBatchUpdates() throws Exception {
+  @Test void doesNotProduceAnySpansForEmptyPlainBatchUpdates() throws Exception {
     // No SQL at all means no span is started in onBeforeAnyExecute due to there not being any loggable SQL
     // (see isLoggable)
     executeBatch();
@@ -148,8 +142,7 @@ public class ITTracingP6Factory {
     assertThat(spans).isEmpty();
   }
 
-  @Test
-  public void addsAffectedRowsTagToPreparedBatchUpdateStatementsWithOneBatch() throws Exception {
+  @Test void addsAffectedRowsTagToPreparedBatchUpdateStatementsWithOneBatch() throws Exception {
     prepareExecuteBatchWithInts("update t set c='x' where i=?", 2);
 
     assertThat(spans)
@@ -157,8 +150,8 @@ public class ITTracingP6Factory {
       .contains(entry("sql.affected_rows", "2"));
   }
 
-  @Test
-  public void addsAffectedRowsTagToPreparedBatchUpdateStatementsWithOneBatchWithZeroUpdates() throws Exception {
+  @Test void addsAffectedRowsTagToPreparedBatchUpdateStatementsWithOneBatchWithZeroUpdates()
+    throws Exception {
     prepareExecuteBatchWithInts("update t set c='x' where i=?", 0);
 
     assertThat(spans)
@@ -166,8 +159,8 @@ public class ITTracingP6Factory {
       .contains(entry("sql.affected_rows", "0"));
   }
 
-  @Test
-  public void addsAffectedRowsTagToPreparedBatchUpdateStatementsWithMoreThanOneBatch() throws Exception {
+  @Test void addsAffectedRowsTagToPreparedBatchUpdateStatementsWithMoreThanOneBatch()
+    throws Exception {
     prepareExecuteBatchWithInts("update t set c='x' where i=?", 2, 1);
 
     assertThat(spans)
@@ -175,8 +168,8 @@ public class ITTracingP6Factory {
       .contains(entry("sql.affected_rows", "2,1"));
   }
 
-  @Test
-  public void addsAffectedRowsTagToPreparedBatchUpdateStatementsWithMoreThanOneBatchWhereOneBatcheHasZeroUpdates() throws Exception {
+  @Test void addsAffectedRowsTagToPreparedBatchUpdateStatementsWithMoreThanOneBatchWhereOneBatcheHasZeroUpdates()
+    throws Exception {
     prepareExecuteBatchWithInts("update t set c='x' where i=?", 2, 0, 1);
 
     assertThat(spans)
@@ -184,8 +177,8 @@ public class ITTracingP6Factory {
       .contains(entry("sql.affected_rows", "2,0,1"));
   }
 
-  @Test
-  public void addsAffectedRowsTagToPreparedBatchUpdateStatementsWithMoreThanOneBatchWhereBatchesHaveZeroUpdates() throws Exception {
+  @Test void addsAffectedRowsTagToPreparedBatchUpdateStatementsWithMoreThanOneBatchWhereBatchesHaveZeroUpdates()
+    throws Exception {
     prepareExecuteBatchWithInts("update t set c='x' where i=?", 2, 0, 3);
 
     assertThat(spans)
@@ -193,8 +186,7 @@ public class ITTracingP6Factory {
       .contains(entry("sql.affected_rows", "2,0,0"));
   }
 
-  @Test
-  public void addsEmptyAffectedRowsTagToEmptyPreparedBatchUpdates() throws Exception {
+  @Test void addsEmptyAffectedRowsTagToEmptyPreparedBatchUpdates() throws Exception {
     // In contrast to the plain statement case, this does produce loggable SQL, so a span is started. Since there are
     // no entries in the batch, no updates are made, so there are no update counts. Therefore, the span does not have
     // any sql.affected_rows tag.
@@ -207,8 +199,7 @@ public class ITTracingP6Factory {
     });
   }
 
-  @Test
-  public void reportsServerAddress() throws Exception {
+  @Test void reportsServerAddress() throws Exception {
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,11 +17,11 @@ import brave.internal.Nullable;
 import brave.test.propagation.PropagationTest;
 import java.util.Map;
 import java.util.function.Supplier;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class B3SinglePropagationTest extends PropagationTest {
+class B3SinglePropagationTest extends PropagationTest {
   @Override protected Class<? extends Supplier<Propagation<String>>> propagationSupplier() {
     return PropagationSupplier.class;
   }
@@ -59,7 +59,7 @@ public class B3SinglePropagationTest extends PropagationTest {
     if (sampledChar != 0) request.put("b3", String.valueOf(sampledChar));
   }
 
-  @Test public void extractTraceContext_sampledFalse() {
+  @Test void extractTraceContext_sampledFalse() {
     MapEntry mapEntry = new MapEntry();
     map.put("b3", "0");
 
@@ -69,7 +69,7 @@ public class B3SinglePropagationTest extends PropagationTest {
       .isEqualTo(SamplingFlags.NOT_SAMPLED);
   }
 
-  @Test public void extractTraceContext_malformed() {
+  @Test void extractTraceContext_malformed() {
     MapEntry mapEntry = new MapEntry();
     map.put("b3", "not-a-tumor");
 
@@ -79,7 +79,7 @@ public class B3SinglePropagationTest extends PropagationTest {
       .isEqualTo(SamplingFlags.EMPTY);
   }
 
-  @Test public void extractTraceContext_malformed_uuid() {
+  @Test void extractTraceContext_malformed_uuid() {
     MapEntry mapEntry = new MapEntry();
     map.put("b3", "b970dafd-0d95-40aa-95d8-1d8725aebe40");
 
@@ -89,7 +89,7 @@ public class B3SinglePropagationTest extends PropagationTest {
       .isEqualTo(SamplingFlags.EMPTY);
   }
 
-  @Test public void extractTraceContext_debug_with_ids() {
+  @Test void extractTraceContext_debug_with_ids() {
     MapEntry mapEntry = new MapEntry();
 
     map.put("b3", "4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-d");

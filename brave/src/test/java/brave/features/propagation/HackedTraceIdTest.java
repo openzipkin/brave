@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,7 +19,7 @@ import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import java.util.Map;
 import java.util.TreeMap;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>See https://github.com/spring-cloud/spring-cloud-sleuth/issues/1106
  */
-public class HackedTraceIdTest {
+class HackedTraceIdTest {
   String customTraceIdName = "trace_id";
   // CustomTraceIdPropagation.Factory substitutes for B3Propagation.FACTORY in real config.
   Propagation.Factory propagationFactory =
@@ -44,7 +44,7 @@ public class HackedTraceIdTest {
 
   // Let's say environment number zero is invalid, and its desired value is 3
   // There are at least 3 ways to embed this!
-  @Test public void testFormatThatEmbedsEnvironmentNumber() {
+  @Test void testFormatThatEmbedsEnvironmentNumber() {
     // Lead with single-digit, then pad-right zeros until the real trace ID.
     //
     // This is not great because it limits to 9 environment numbers. However, parsing is easy
@@ -83,7 +83,7 @@ public class HackedTraceIdTest {
       .satisfies(c -> assertThat((c.traceId() >>> 64 - 4L) & 0xf).isEqualTo(3));
   }
 
-  @Test public void testB3SingleWins() {
+  @Test void testB3SingleWins() {
     headers.put("b3", "1111111111111111-2222222222222222");
     headers.put(customTraceIdName, "1000000000000000e457b5a2e4d86bd1");
     assertThat(extractor.extract(headers).context())
@@ -91,7 +91,7 @@ public class HackedTraceIdTest {
       .satisfies(c -> assertThat(c.spanIdString()).isEqualTo("2222222222222222"));
   }
 
-  @Test public void testB3MultiWins() {
+  @Test void testB3MultiWins() {
     headers.put("X-B3-TraceId", "1111111111111111");
     headers.put("X-B3-SpanId", "2222222222222222");
     headers.put(customTraceIdName, "1000000000000000e457b5a2e4d86bd1");

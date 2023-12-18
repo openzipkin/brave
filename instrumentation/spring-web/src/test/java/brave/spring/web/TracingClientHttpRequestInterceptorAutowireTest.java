@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,8 +15,8 @@ package brave.spring.web;
 
 import brave.Tracing;
 import brave.http.HttpTracing;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,11 +30,11 @@ public class TracingClientHttpRequestInterceptorAutowireTest {
     }
   }
 
-  @After public void close() {
+  @AfterEach void close() {
     Tracing.current().close();
   }
 
-  @Test public void autowiredWithBeanConfig() {
+  @Test void autowiredWithBeanConfig() {
     AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
     ctx.register(HttpTracingConfiguration.class);
     ctx.register(TracingClientHttpRequestInterceptor.class);

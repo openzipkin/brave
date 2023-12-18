@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,18 +17,21 @@ import brave.Span;
 import brave.SpanCustomizer;
 import brave.handler.SpanHandler;
 import brave.propagation.TraceContext;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT) // TODO: hunt down these
 public class RpcHandlerTest {
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).build();
   @Mock Span span;
@@ -39,14 +42,14 @@ public class RpcHandlerTest {
   @Mock RpcResponseParser responseParser;
   RpcHandler handler;
 
-  @Before public void init() {
+  @BeforeEach void init() {
     handler = new RpcHandler(requestParser, responseParser) {
     };
     when(span.context()).thenReturn(context);
     when(span.customizer()).thenReturn(spanCustomizer);
   }
 
-  @Test public void handleStart_nothingOnNoop_success() {
+  @Test void handleStart_nothingOnNoop_success() {
     when(span.isNoop()).thenReturn(true);
 
     handler.handleStart(request, span);
@@ -54,7 +57,7 @@ public class RpcHandlerTest {
     verify(span, never()).start();
   }
 
-  @Test public void handleStart_parsesTagsWithCustomizer() {
+  @Test void handleStart_parsesTagsWithCustomizer() {
     when(span.isNoop()).thenReturn(false);
     when(request.spanKind()).thenReturn(Span.Kind.SERVER);
 
@@ -63,7 +66,7 @@ public class RpcHandlerTest {
     verify(requestParser).parse(request, context, spanCustomizer);
   }
 
-  @Test public void handleStart_addsRemoteEndpointWhenParsed() {
+  @Test void handleStart_addsRemoteEndpointWhenParsed() {
     handler = new RpcHandler(RpcRequestParser.DEFAULT, RpcResponseParser.DEFAULT) {
       @Override void parseRequest(RpcRequest request, Span span) {
         span.remoteIpAndPort("1.2.3.4", 0);
@@ -75,7 +78,7 @@ public class RpcHandlerTest {
     verify(span).remoteIpAndPort("1.2.3.4", 0);
   }
 
-  @Test public void handleStart_startedEvenIfParsingThrows() {
+  @Test void handleStart_startedEvenIfParsingThrows() {
     when(span.isNoop()).thenReturn(false);
     doThrow(new RuntimeException()).when(requestParser).parse(request, context, spanCustomizer);
 
@@ -84,7 +87,7 @@ public class RpcHandlerTest {
     verify(span).start();
   }
 
-  @Test public void handleFinish_nothingOnNoop() {
+  @Test void handleFinish_nothingOnNoop() {
     when(span.isNoop()).thenReturn(true);
 
     handler.handleFinish(response, span);
@@ -92,7 +95,7 @@ public class RpcHandlerTest {
     verify(span, never()).finish();
   }
 
-  @Test public void handleFinish_parsesTagsWithCustomizer() {
+  @Test void handleFinish_parsesTagsWithCustomizer() {
     when(span.customizer()).thenReturn(spanCustomizer);
 
     handler.handleFinish(response, span);
@@ -101,7 +104,7 @@ public class RpcHandlerTest {
   }
 
   /** Allows {@link SpanHandler} to see the error regardless of parsing. */
-  @Test public void handleFinish_errorRecordedInSpan() {
+  @Test void handleFinish_errorRecordedInSpan() {
     RuntimeException error = new RuntimeException("foo");
     when(response.error()).thenReturn(error);
 
@@ -110,7 +113,7 @@ public class RpcHandlerTest {
     verify(span).error(error);
   }
 
-  @Test public void handleFinish_finishedEvenIfParsingThrows() {
+  @Test void handleFinish_finishedEvenIfParsingThrows() {
     when(span.isNoop()).thenReturn(false);
     doThrow(new RuntimeException()).when(responseParser).parse(response, context, spanCustomizer);
 

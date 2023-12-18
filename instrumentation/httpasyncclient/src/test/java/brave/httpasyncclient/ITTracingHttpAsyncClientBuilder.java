@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -34,14 +34,14 @@ import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.nio.entity.NStringEntity;
 import org.apache.http.util.EntityUtils;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.Span.Kind.CLIENT;
 import static org.apache.commons.codec.Charsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<CloseableHttpAsyncClient> {
+class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<CloseableHttpAsyncClient> {
   @Override protected CloseableHttpAsyncClient newClient(int port) {
     CloseableHttpAsyncClient result = TracingHttpAsyncClientBuilder.create(httpTracing).build();
     result.start();
@@ -76,7 +76,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     EntityUtils.consume(response.getEntity());
   }
 
-  @Test public void currentSpanVisibleToUserFilters() throws IOException {
+  @Test void currentSpanVisibleToUserFilters() throws IOException {
     server.enqueue(new MockResponse());
     closeClient(client);
 
@@ -95,7 +95,7 @@ public class ITTracingHttpAsyncClientBuilder extends ITHttpAsyncClient<Closeable
     testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
-  @Test public void failedInterceptorRemovesScope() {
+  @Test void failedInterceptorRemovesScope() {
     assertThat(currentTraceContext.get()).isNull();
     RuntimeException error = new RuntimeException("Test");
     client = TracingHttpAsyncClientBuilder.create(httpTracing)

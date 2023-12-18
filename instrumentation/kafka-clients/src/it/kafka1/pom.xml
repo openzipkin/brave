@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright 2013-2020 The OpenZipkin Authors
+    Copyright 2013-2023 The OpenZipkin Authors
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
     in compliance with the License. You may obtain a copy of the License at
@@ -57,55 +57,37 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.github.charithe</groupId>
-      <artifactId>kafka-junit</artifactId>
-      <version>@old-kafka-junit.version@</version>
-      <exclusions>
-        <exclusion>
-          <groupId>junit</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.junit.jupiter</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>log4j</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-      </exclusions>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <version>@junit-jupiter.version@</version>
     </dependency>
-
     <!-- route log4j over log4j2 during tests -->
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-1.2-api</artifactId>
       <version>@log4j.version@</version>
-      <scope>test</scope>
     </dependency>
     <!-- route slf4j over log4j2 during tests -->
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-slf4j-impl</artifactId>
       <version>@log4j.version@</version>
-      <scope>test</scope>
     </dependency>
     <!-- Route jul over log4j2 during integration tests -->
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-jul</artifactId>
       <version>@log4j.version@</version>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-core</artifactId>
       <version>@log4j.version@</version>
-      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <version>@testcontainers.version@</version>
     </dependency>
   </dependencies>
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,23 +14,23 @@
 package brave;
 
 import brave.test.TestSpanHandler;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-public class RealSpanCustomizerTest {
+class RealSpanCustomizerTest {
   TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing = Tracing.newBuilder().addSpanHandler(spans).build();
   Span span = tracing.tracer().newTrace();
   SpanCustomizer spanCustomizer = span.customizer();
 
-  @After public void close() {
+  @AfterEach void close() {
     tracing.close();
   }
 
-  @Test public void name() {
+  @Test void name() {
     spanCustomizer.name("foo");
     span.flush();
 
@@ -38,7 +38,7 @@ public class RealSpanCustomizerTest {
       .isEqualTo("foo");
   }
 
-  @Test public void annotate() {
+  @Test void annotate() {
     spanCustomizer.annotate("foo");
     span.flush();
 
@@ -46,7 +46,7 @@ public class RealSpanCustomizerTest {
       .isTrue();
   }
 
-  @Test public void tag() {
+  @Test void tag() {
     spanCustomizer.tag("foo", "bar");
     span.flush();
 

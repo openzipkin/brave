@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,7 +18,7 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import javax.jms.CompletionListener;
 import javax.jms.Destination;
 import javax.jms.Message;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -28,7 +28,7 @@ public class TracingCompletionListenerTest extends ITJms {
   Message message = mock(Message.class);
   Destination destination = mock(Destination.class);
 
-  @Test public void onCompletion_shouldKeepContext_whenNotSampled() {
+  @Test void onCompletion_shouldKeepContext_whenNotSampled() {
     Span span = tracing.tracer().nextSpan(TraceContextOrSamplingFlags.NOT_SAMPLED);
 
     CompletionListener delegate = new CompletionListener() {
@@ -47,7 +47,7 @@ public class TracingCompletionListenerTest extends ITJms {
     // post-conditions validate no span was reported
   }
 
-  @Test public void on_completion_should_finish_span() {
+  @Test void on_completion_should_finish_span() {
     Span span = tracing.tracer().nextSpan().start();
 
     CompletionListener tracingCompletionListener =
@@ -57,7 +57,7 @@ public class TracingCompletionListenerTest extends ITJms {
     testSpanHandler.takeLocalSpan();
   }
 
-  @Test public void on_exception_should_set_error_if_exception() {
+  @Test void on_exception_should_set_error_if_exception() {
     Message message = mock(Message.class);
     Span span = tracing.tracer().nextSpan().start();
 
@@ -69,7 +69,7 @@ public class TracingCompletionListenerTest extends ITJms {
     assertThat(testSpanHandler.takeLocalSpan().error()).isEqualTo(error);
   }
 
-  @Test public void on_completion_should_forward_then_finish_span() {
+  @Test void on_completion_should_forward_then_finish_span() {
     Span span = tracing.tracer().nextSpan().start();
 
     CompletionListener delegate = mock(CompletionListener.class);
@@ -82,7 +82,7 @@ public class TracingCompletionListenerTest extends ITJms {
     testSpanHandler.takeLocalSpan();
   }
 
-  @Test public void on_completion_should_have_span_in_scope() {
+  @Test void on_completion_should_have_span_in_scope() {
     Span span = tracing.tracer().nextSpan().start();
 
     CompletionListener delegate = new CompletionListener() {
@@ -100,7 +100,7 @@ public class TracingCompletionListenerTest extends ITJms {
     testSpanHandler.takeLocalSpan();
   }
 
-  @Test public void on_exception_should_forward_then_set_error() {
+  @Test void on_exception_should_forward_then_set_error() {
     Span span = tracing.tracer().nextSpan().start();
 
     CompletionListener delegate = mock(CompletionListener.class);

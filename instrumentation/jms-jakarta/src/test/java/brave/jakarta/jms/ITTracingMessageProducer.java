@@ -17,17 +17,17 @@ import brave.Span;
 import brave.handler.MutableSpan;
 import brave.messaging.MessagingRuleSampler;
 import brave.messaging.MessagingTracing;
+import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
-import brave.propagation.CurrentTraceContext.Scope;
 import brave.sampler.Sampler;
-
-import java.util.Collections;
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-
 import jakarta.jms.BytesMessage;
+import jakarta.jms.CompletionListener;
+import jakarta.jms.JMSContext;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
 import jakarta.jms.MessageConsumer;
+import jakarta.jms.MessageProducer;
 import jakarta.jms.QueueReceiver;
 import jakarta.jms.QueueSender;
 import jakarta.jms.QueueSession;
@@ -36,18 +36,14 @@ import jakarta.jms.TextMessage;
 import jakarta.jms.TopicPublisher;
 import jakarta.jms.TopicSession;
 import jakarta.jms.TopicSubscriber;
-import jakarta.jms.CompletionListener;
-import jakarta.jms.JMSContext;
-import jakarta.jms.JMSException;
-import jakarta.jms.Message;
-import jakarta.jms.MessageProducer;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestName;
+import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import static brave.Span.Kind.PRODUCER;
 import static brave.jakarta.jms.MessageProperties.setStringProperty;
@@ -55,10 +51,9 @@ import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static brave.propagation.B3SingleFormat.writeB3SingleFormat;
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** When adding tests here, also add to {@link brave.jms.ITTracingJMSProducer} */
-public class ITTracingMessageProducer extends ITJms {
-  @Rule public TestName testName = new TestName();
-  @Rule public JmsTestRule jms = newJmsTestRule(testName);
+/** When adding tests here, also add to {@link brave.jakarta.jms.ITTracingJMSProducer} */
+public class ITTracingMessageProducer extends ITJms { // public for src/it
+  @RegisterExtension JmsExtension jms = new ArtemisJmsExtension();
 
   Session tracedSession;
   MessageProducer messageProducer;
@@ -77,7 +72,7 @@ public class ITTracingMessageProducer extends ITJms {
 
   Map<String, String> existingProperties = Collections.singletonMap("tx", "1");
 
-  @Before public void setup() throws JMSException {
+  @BeforeEach public void setup() throws JMSException {
     tracedSession = jmsTracing.connection(jms.connection)
       .createSession(false, Session.AUTO_ACKNOWLEDGE);
     tracedQueueSession = jmsTracing.queueConnection(jms.queueConnection)
@@ -104,32 +99,28 @@ public class ITTracingMessageProducer extends ITJms {
     }
   }
 
-  @After public void tearDownTraced() throws JMSException {
+  @AfterEach void tearDownTraced() throws JMSException {
     tracedSession.close();
     tracedQueueSession.close();
     tracedTopicSession.close();
   }
 
-  JmsTestRule newJmsTestRule(TestName testName) {
-    return new ArtemisJmsTestRule(testName);
-  }
-
-  @Test public void should_add_b3_single_property() throws JMSException {
+  @Test void should_add_b3_single_property() throws JMSException {
     messageProducer.send(jms.destination, message);
     assertHasB3SingleProperty(messageConsumer.receive());
   }
 
-  @Test public void should_add_b3_single_property_bytes() throws JMSException {
+  @Test void should_add_b3_single_property_bytes() throws JMSException {
     messageProducer.send(jms.destination, bytesMessage);
     assertHasB3SingleProperty(messageConsumer.receive());
   }
 
-  @Test public void should_add_b3_single_property_queue() throws JMSException {
+  @Test void should_add_b3_single_property_queue() throws JMSException {
     queueSender.send(jms.queue, message);
     assertHasB3SingleProperty(queueReceiver.receive());
   }
 
-  @Test public void should_add_b3_single_property_topic() throws JMSException {
+  @Test void should_add_b3_single_property_topic() throws JMSException {
     topicPublisher.publish(jms.topic, message);
     assertHasB3SingleProperty(topicSubscriber.receive());
   }
@@ -142,7 +133,7 @@ public class ITTracingMessageProducer extends ITJms {
       .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
-  @Test public void should_not_serialize_parent_span_id() throws JMSException {
+  @Test void should_not_serialize_parent_span_id() throws JMSException {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
       messageProducer.send(jms.destination, message);
@@ -158,9 +149,10 @@ public class ITTracingMessageProducer extends ITJms {
       .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
-  @Test public void should_prefer_current_to_stale_b3_header() throws JMSException {
+  @Test void should_prefer_current_to_stale_b3_header() throws JMSException {
     jms.setReadOnlyProperties(message, false);
-    setStringProperty(message, "b3", writeB3SingleFormat(newTraceContext(SamplingFlags.NOT_SAMPLED)));
+    setStringProperty(message, "b3",
+      writeB3SingleFormat(newTraceContext(SamplingFlags.NOT_SAMPLED)));
 
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
     try (Scope scope = currentTraceContext.newScope(parent)) {
@@ -177,17 +169,17 @@ public class ITTracingMessageProducer extends ITJms {
       .containsEntry("b3", producerSpan.traceId() + "-" + producerSpan.id() + "-1");
   }
 
-  @Test public void should_record_properties() throws JMSException {
+  @Test void should_record_properties() throws JMSException {
     messageProducer.send(jms.destination, message);
     should_record_properties(Collections.singletonMap("jms.queue", jms.destinationName));
   }
 
-  @Test public void should_record_properties_queue() throws JMSException {
+  @Test void should_record_properties_queue() throws JMSException {
     queueSender.send(jms.queue, message);
     should_record_properties(Collections.singletonMap("jms.queue", jms.queueName));
   }
 
-  @Test public void should_record_properties_topic() throws JMSException {
+  @Test void should_record_properties_topic() throws JMSException {
     topicPublisher.send(jms.topic, message);
     should_record_properties(Collections.singletonMap("jms.topic", jms.topicName));
   }
@@ -198,17 +190,17 @@ public class ITTracingMessageProducer extends ITJms {
     assertThat(producerSpan.tags()).containsAllEntriesOf(producerTags);
   }
 
-  @Test public void should_set_error() throws JMSException {
+  @Test void should_set_error() throws JMSException {
     tracedSession.close();
     should_set_error(() -> messageProducer.send(jms.destination, message));
   }
 
-  @Test public void should_set_error_queue() throws JMSException {
+  @Test void should_set_error_queue() throws JMSException {
     tracedQueueSession.close();
     should_set_error(() -> queueSender.send(jms.queue, message));
   }
 
-  @Test public void should_set_error_topic() throws JMSException {
+  @Test void should_set_error_topic() throws JMSException {
     tracedTopicSession.close();
     should_set_error(() -> topicPublisher.send(jms.topic, message));
   }
@@ -225,17 +217,17 @@ public class ITTracingMessageProducer extends ITJms {
     testSpanHandler.takeRemoteSpanWithErrorMessage(PRODUCER, message);
   }
 
-  @Test public void should_complete_on_callback() throws JMSException {
+  @Test void should_complete_on_callback() throws JMSException {
     should_complete_on_callback(
       listener -> messageProducer.send(jms.destination, message, listener));
   }
 
-  @Test public void should_complete_on_callback_queue() throws JMSException {
+  @Test void should_complete_on_callback_queue() throws JMSException {
     should_complete_on_callback(
       listener -> queueSender.send(jms.queue, message, listener));
   }
 
-  @Test public void should_complete_on_callback_topic() throws JMSException {
+  @Test void should_complete_on_callback_topic() throws JMSException {
     should_complete_on_callback(
       listener -> topicPublisher.send(jms.topic, message, listener));
   }
@@ -256,8 +248,8 @@ public class ITTracingMessageProducer extends ITJms {
   }
 
   @Test
-  @Ignore("https://issues.apache.org/jira/browse/ARTEMIS-2054")
-  public void should_complete_on_error_callback() throws JMSException {
+  @Disabled("https://issues.apache.org/jira/browse/ARTEMIS-2054")
+  void should_complete_on_error_callback() throws Exception {
     CountDownLatch latch = new CountDownLatch(1);
 
     // To force error to be on callback thread, we need to wait until message is
@@ -289,13 +281,13 @@ public class ITTracingMessageProducer extends ITJms {
       }
     });
 
-    jms.after();
+    jms.afterEach(null);
     latch.countDown();
 
     testSpanHandler.takeRemoteSpanWithErrorTag(Span.Kind.PRODUCER, "onException");
   }
 
-  @Test public void customSampler() throws JMSException {
+  @Test void customSampler() throws JMSException {
     MessagingRuleSampler producerSampler = MessagingRuleSampler.newBuilder()
       .putRule(channelNameEquals(jms.queue.getQueueName()), Sampler.NEVER_SAMPLE)
       .build();
@@ -304,7 +296,7 @@ public class ITTracingMessageProducer extends ITJms {
       .producerSampler(producerSampler)
       .build();
          JMSContext context = JmsTracing.create(messagingTracing)
-           .connectionFactory(((ArtemisJmsTestRule) jms).factory)
+           .connectionFactory(((ArtemisJmsExtension) jms).factory)
            .createContext(JMSContext.AUTO_ACKNOWLEDGE)
     ) {
       context.createProducer().send(jms.queue, "foo");

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,21 +19,21 @@ import org.glassfish.jersey.server.ContainerRequest;
 import org.glassfish.jersey.server.ContainerResponse;
 import org.glassfish.jersey.server.internal.process.MappableException;
 import org.glassfish.jersey.server.monitoring.RequestEvent;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class RequestEventWrapperTest {
   @Mock ContainerRequest request;
   @Mock RequestEvent event;
   @Mock ContainerResponse response;
 
-  @Test public void method() {
+  @Test void method() {
     when(event.getContainerRequest()).thenReturn(request);
     when(request.getMethod()).thenReturn("GET");
 
@@ -41,33 +41,33 @@ public class RequestEventWrapperTest {
       .isEqualTo("GET");
   }
 
-  @Test public void request() {
+  @Test void request() {
     when(event.getContainerRequest()).thenReturn(request);
 
     assertThat(new RequestEventWrapper(event).request().unwrap())
       .isSameAs(request);
   }
 
-  @Test public void statusCode() {
+  @Test void statusCode() {
     when(event.getContainerResponse()).thenReturn(response);
     when(response.getStatus()).thenReturn(200);
 
     assertThat(new RequestEventWrapper(event).statusCode()).isEqualTo(200);
   }
 
-  @Test public void statusCode_exception() {
+  @Test void statusCode_exception() {
     when(event.getException()).thenReturn(new ClientErrorException(400));
 
     assertThat(new RequestEventWrapper(event).statusCode()).isEqualTo(400);
   }
 
-  @Test public void statusCode_mappableException() {
+  @Test void statusCode_mappableException() {
     when(event.getException()).thenReturn(new MappableException(new ClientErrorException(400)));
 
     assertThat(new RequestEventWrapper(event).statusCode()).isEqualTo(400);
   }
 
-  @Test public void statusCode_zeroNoResponse() {
+  @Test void statusCode_zeroNoResponse() {
     assertThat(new RequestEventWrapper(event).statusCode()).isZero();
   }
 }

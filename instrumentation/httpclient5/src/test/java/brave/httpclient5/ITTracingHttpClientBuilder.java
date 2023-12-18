@@ -26,12 +26,12 @@ import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.core5.http.io.entity.StringEntity;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.apache.hc.core5.http.io.entity.EntityUtils.consume;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient> {
+class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient> {
   @Override
   protected CloseableHttpClient newClient(int port) {
     return HttpClient5Tracing.newBuilder(httpTracing)
@@ -61,8 +61,7 @@ public class ITTracingHttpClientBuilder extends ITHttpClient<CloseableHttpClient
     consume(client.execute(post).getEntity());
   }
 
-  @Test
-  public void currentSpanVisibleToUserFilters() throws IOException {
+  @Test void currentSpanVisibleToUserFilters() throws IOException {
     server.enqueue(new MockResponse());
     closeClient(client);
 

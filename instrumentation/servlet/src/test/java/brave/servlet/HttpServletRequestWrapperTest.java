@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,7 +16,7 @@ package brave.servlet;
 import brave.Span;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.http.HttpServletRequest;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -30,31 +30,31 @@ public class HttpServletRequestWrapperTest {
     (HttpServletRequestWrapper) HttpServletRequestWrapper.create(request);
   Span span = mock(Span.class);
 
-  @Test public void unwrap() {
+  @Test void unwrap() {
     assertThat(wrapper.unwrap())
       .isEqualTo(request);
   }
 
-  @Test public void method() {
+  @Test void method() {
     when(request.getMethod()).thenReturn("POST");
 
     assertThat(wrapper.method())
       .isEqualTo("POST");
   }
 
-  @Test public void path_doesntCrashOnNullUrl() {
+  @Test void path_doesntCrashOnNullUrl() {
     assertThat(wrapper.path())
       .isNull();
   }
 
-  @Test public void path_getRequestURI() {
+  @Test void path_getRequestURI() {
     when(request.getRequestURI()).thenReturn("/bar");
 
     assertThat(wrapper.path())
       .isEqualTo("/bar");
   }
 
-  @Test public void url_derivedFromUrlAndQueryString() {
+  @Test void url_derivedFromUrlAndQueryString() {
     when(request.getRequestURL()).thenReturn(new StringBuffer("http://foo:8080/bar"));
     when(request.getQueryString()).thenReturn("hello=world");
 
@@ -62,7 +62,7 @@ public class HttpServletRequestWrapperTest {
       .isEqualTo("http://foo:8080/bar?hello=world");
   }
 
-  @Test public void parseClientIpAndPort_prefersXForwardedFor() {
+  @Test void parseClientIpAndPort_prefersXForwardedFor() {
     when(span.remoteIpAndPort("1.2.3.4", 0)).thenReturn(true);
     when(request.getHeader("X-Forwarded-For")).thenReturn("1.2.3.4");
 
@@ -72,7 +72,7 @@ public class HttpServletRequestWrapperTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void parseClientIpAndPort_skipsRemotePortOnXForwardedFor() {
+  @Test void parseClientIpAndPort_skipsRemotePortOnXForwardedFor() {
     when(request.getHeader("X-Forwarded-For")).thenReturn("1.2.3.4");
     when(span.remoteIpAndPort("1.2.3.4", 0)).thenReturn(true);
 
@@ -82,7 +82,7 @@ public class HttpServletRequestWrapperTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void parseClientIpAndPort_acceptsRemoteAddr() {
+  @Test void parseClientIpAndPort_acceptsRemoteAddr() {
     when(request.getRemoteAddr()).thenReturn("1.2.3.4");
     when(request.getRemotePort()).thenReturn(61687);
 
@@ -92,27 +92,27 @@ public class HttpServletRequestWrapperTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void maybeError_fromRequestAttribute() {
+  @Test void maybeError_fromRequestAttribute() {
     Exception requestError = new Exception();
     when(request.getAttribute("error")).thenReturn(requestError);
 
     assertThat(wrapper.maybeError()).isSameAs(requestError);
   }
 
-  @Test public void maybeError_badRequestAttribute() {
+  @Test void maybeError_badRequestAttribute() {
     when(request.getAttribute("error")).thenReturn(new Object());
 
     assertThat(wrapper.maybeError()).isNull();
   }
 
-  @Test public void maybeError_dispatcher() {
+  @Test void maybeError_dispatcher() {
     Exception error = new Exception();
     when(request.getAttribute(RequestDispatcher.ERROR_EXCEPTION)).thenReturn(error);
 
     assertThat(wrapper.maybeError()).isSameAs(error);
   }
 
-  @Test public void maybeError_dispatcher_badAttribute() {
+  @Test void maybeError_dispatcher_badAttribute() {
     when(request.getAttribute(RequestDispatcher.ERROR_EXCEPTION)).thenReturn(new Object());
 
     assertThat(wrapper.maybeError()).isNull();

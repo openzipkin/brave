@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,7 +16,7 @@ package brave.grpc;
 import brave.grpc.GrpcPropagation.TagsBin;
 import brave.propagation.TraceContext;
 import java.util.Collections;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -46,7 +46,7 @@ public class TraceContextBinaryFormatTest {
     5, 'r', 'o', 'm', 'e', 'o' //
   };
 
-  @Test public void roundtrip() {
+  @Test void roundtrip() {
     byte[] serialized = TraceContextBinaryFormat.toBytes(context);
     assertThat(serialized)
       .containsExactly(contextBytes);
@@ -55,7 +55,7 @@ public class TraceContextBinaryFormatTest {
       .isEqualTo(context);
   }
 
-  @Test public void roundtrip_unsampled() {
+  @Test void roundtrip_unsampled() {
     context = context.toBuilder().sampled(false).build();
 
     byte[] serialized = TraceContextBinaryFormat.toBytes(context);
@@ -67,7 +67,7 @@ public class TraceContextBinaryFormatTest {
       .isEqualTo(context);
   }
 
-  @Test public void roundtrip_tags() {
+  @Test void roundtrip_tags() {
     TagsBin tags = new TagsBin(tagsBytes);
     context = context.toBuilder().extra(Collections.singletonList(tags)).build();
 
@@ -79,12 +79,12 @@ public class TraceContextBinaryFormatTest {
       .isEqualTo(context);
   }
 
-  @Test public void parseBytes_empty_toNull() {
+  @Test void parseBytes_empty_toNull() {
     assertThat(TraceContextBinaryFormat.parseBytes(new byte[0], null))
       .isNull();
   }
 
-  @Test public void parseBytes_unsupportedVersionId_toNull() {
+  @Test void parseBytes_unsupportedVersionId_toNull() {
     assertThat(TraceContextBinaryFormat.parseBytes(new byte[] {
       1, // bad version
       0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
@@ -93,7 +93,7 @@ public class TraceContextBinaryFormatTest {
     }, null)).isNull();
   }
 
-  @Test public void parseBytes_unsupportedFieldIdFirst_toNull() {
+  @Test void parseBytes_unsupportedFieldIdFirst_toNull() {
     assertThat(TraceContextBinaryFormat.parseBytes(new byte[] {
       0,
       4, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0, // bad field number
@@ -102,7 +102,7 @@ public class TraceContextBinaryFormatTest {
     }, null)).isNull();
   }
 
-  @Test public void parseBytes_unsupportedFieldIdSecond_toNull() {
+  @Test void parseBytes_unsupportedFieldIdSecond_toNull() {
     assertThat(TraceContextBinaryFormat.parseBytes(new byte[] {
       0,
       0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
@@ -111,7 +111,7 @@ public class TraceContextBinaryFormatTest {
     }, null)).isNull();
   }
 
-  @Test public void parseBytes_unsupportedFieldIdThird_toSampledNull() {
+  @Test void parseBytes_unsupportedFieldIdThird_toSampledNull() {
     assertThat(TraceContextBinaryFormat.parseBytes(new byte[] {
       0,
       0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
@@ -120,7 +120,7 @@ public class TraceContextBinaryFormatTest {
     }, null).sampled()).isNull();
   }
 
-  @Test public void parseBytes_64BitTraceId_toNull() {
+  @Test void parseBytes_64BitTraceId_toNull() {
     assertThat(TraceContextBinaryFormat.parseBytes(new byte[] {
       0,
       0, 127, -1, -1, -1, -1, -1, -1, -1, // half a trace ID
@@ -129,7 +129,7 @@ public class TraceContextBinaryFormatTest {
     }, null)).isNull();
   }
 
-  @Test public void parseBytes_32BitSpanId_toNull() {
+  @Test void parseBytes_32BitSpanId_toNull() {
     assertThat(TraceContextBinaryFormat.parseBytes(new byte[] {
       0,
       0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
@@ -138,7 +138,7 @@ public class TraceContextBinaryFormatTest {
     }, null)).isNull();
   }
 
-  @Test public void parseBytes_truncatedTraceOptions_toNull() {
+  @Test void parseBytes_truncatedTraceOptions_toNull() {
     assertThat(TraceContextBinaryFormat.parseBytes(new byte[] {
       0,
       0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,
@@ -147,7 +147,7 @@ public class TraceContextBinaryFormatTest {
     }, null)).isNull();
   }
 
-  @Test public void parseBytes_missingTraceOptions() {
+  @Test void parseBytes_missingTraceOptions() {
     assertThat(TraceContextBinaryFormat.parseBytes(new byte[] {
       0,
       0, 127, -1, -1, -1, -1, -1, -1, -1, -128, 0, 0, 0, 0, 0, 0, 0,

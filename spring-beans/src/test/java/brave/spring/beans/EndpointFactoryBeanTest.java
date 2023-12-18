@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,8 +13,8 @@
  */
 package brave.spring.beans;
 
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.BeanCreationException;
 import zipkin2.Endpoint;
 
@@ -24,11 +24,11 @@ import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 public class EndpointFactoryBeanTest {
   XmlBeans context;
 
-  @After public void close() {
+  @AfterEach void close() {
     if (context != null) context.close();
   }
 
-  @Test public void serviceName() {
+  @Test void serviceName() {
     context = new XmlBeans(""
       + "<bean id=\"endpoint\" class=\"brave.spring.beans.EndpointFactoryBean\">\n"
       + "  <property name=\"serviceName\" value=\"brave-webmvc-example\"/>\n"
@@ -39,7 +39,7 @@ public class EndpointFactoryBeanTest {
       .isEqualTo(Endpoint.newBuilder().serviceName("brave-webmvc-example").build());
   }
 
-  @Test public void ip() {
+  @Test void ip() {
     context = new XmlBeans(""
       + "<bean id=\"endpoint\" class=\"brave.spring.beans.EndpointFactoryBean\">\n"
       + "  <property name=\"serviceName\" value=\"brave-webmvc-example\"/>\n"
@@ -54,7 +54,7 @@ public class EndpointFactoryBeanTest {
         .build());
   }
 
-  @Test public void ip_malformed() {
+  @Test void ip_malformed() {
     context = new XmlBeans(""
       + "<bean id=\"endpoint\" class=\"brave.spring.beans.EndpointFactoryBean\">\n"
       + "  <property name=\"serviceName\" value=\"brave-webmvc-example\"/>\n"
@@ -71,7 +71,7 @@ public class EndpointFactoryBeanTest {
     }
   }
 
-  @Test public void port() {
+  @Test void port() {
     context = new XmlBeans(""
       + "<bean id=\"endpoint\" class=\"brave.spring.beans.EndpointFactoryBean\">\n"
       + "  <property name=\"serviceName\" value=\"brave-webmvc-example\"/>\n"

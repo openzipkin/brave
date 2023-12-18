@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,31 +19,31 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class CurrentTracingTest {
-  @Before public void reset() {
+class CurrentTracingTest {
+  @BeforeEach void reset() {
     Tracing.CURRENT.set(null);
   }
 
-  @After public void close() {
+  @AfterEach void close() {
     Tracing current = Tracing.current();
     if (current != null) current.close();
   }
 
-  @Test public void defaultsToNull() {
+  @Test void defaultsToNull() {
     assertThat(Tracing.current()).isNull();
   }
 
-  @Test public void defaultsToNull_currentTracer() {
+  @Test void defaultsToNull_currentTracer() {
     assertThat(Tracing.currentTracer()).isNull();
   }
 
-  @Test public void autoRegisters() {
+  @Test void autoRegisters() {
     Tracing tracing = Tracing.newBuilder().build();
 
     assertThat(Tracing.current())
@@ -53,7 +53,7 @@ public class CurrentTracingTest {
       .isSameAs(tracing.tracer());
   }
 
-  @Test public void setsNotCurrentOnClose() {
+  @Test void setsNotCurrentOnClose() {
     autoRegisters();
 
     Tracing.current().close();
@@ -62,13 +62,13 @@ public class CurrentTracingTest {
     assertThat(Tracing.currentTracer()).isNull();
   }
 
-  @Test public void canSetCurrentAgain() {
+  @Test void canSetCurrentAgain() {
     setsNotCurrentOnClose();
 
     autoRegisters();
   }
 
-  @Test public void onlyRegistersOnce() throws InterruptedException {
+  @Test void onlyRegistersOnce() throws InterruptedException {
     final Tracing[] threadValues = new Tracing[10]; // array ref for thread-safe setting
 
     List<Thread> getOrSet = new ArrayList<>(20);

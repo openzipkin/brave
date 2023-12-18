@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -26,13 +26,13 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Collections;
 import java.util.Map;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
-public class BaggageFieldTest {
+class BaggageFieldTest {
   static final BaggageField REQUEST_ID = BaggageField.create("requestId");
   static final BaggageField AMZN_TRACE_ID = BaggageField.create("x-amzn-trace-id");
 
@@ -53,7 +53,7 @@ public class BaggageFieldTest {
   TraceContext requestIdContext =
     context.toBuilder().addExtra(requestIdExtraction.extra().get(0)).build();
 
-  @Test public void internalStorage() {
+  @Test void internalStorage() {
     assertThat(BaggageField.create("foo").context)
       .isSameAs(ExtraBaggageContext.get());
 
@@ -62,13 +62,13 @@ public class BaggageFieldTest {
       .isSameAs(context);
   }
 
-  @Test public void getAll_extracted() {
+  @Test void getAll_extracted() {
     assertThat(BaggageField.getAll(emptyExtraction))
       .containsExactly(REQUEST_ID, AMZN_TRACE_ID)
       .containsExactlyElementsOf(BaggageField.getAll(extraction));
   }
 
-  @Test public void getAll() {
+  @Test void getAll() {
     assertThat(BaggageField.getAll(emptyContext))
       .containsExactly(REQUEST_ID, AMZN_TRACE_ID);
 
@@ -79,7 +79,7 @@ public class BaggageFieldTest {
     }
   }
 
-  @Test public void getAll_doesntExist() {
+  @Test void getAll_doesntExist() {
     assertThat(BaggageField.getAll(TraceContextOrSamplingFlags.EMPTY)).isEmpty();
     assertThat(BaggageField.getAll(context)).isEmpty();
     assertThat(BaggageField.getAll()).isEmpty();
@@ -90,7 +90,7 @@ public class BaggageFieldTest {
     }
   }
 
-  @Test public void getByName_doesntExist() {
+  @Test void getByName_doesntExist() {
     assertThat(BaggageField.getByName(emptyContext, "robots")).isNull();
     assertThat(BaggageField.getByName("robots")).isNull();
 
@@ -100,7 +100,7 @@ public class BaggageFieldTest {
     }
   }
 
-  @Test public void getByName() {
+  @Test void getByName() {
     assertThat(BaggageField.getByName(emptyContext, REQUEST_ID.name()))
       .isSameAs(REQUEST_ID);
 
@@ -111,31 +111,31 @@ public class BaggageFieldTest {
     }
   }
 
-  @Test public void getByName_extracted() {
+  @Test void getByName_extracted() {
     assertThat(BaggageField.getByName(emptyExtraction, REQUEST_ID.name()))
       .isSameAs(REQUEST_ID)
       .isSameAs(BaggageField.getByName(extraction, REQUEST_ID.name()));
   }
 
-  @Test public void getByName_context_null() {
+  @Test void getByName_context_null() {
     // permits unguarded use of CurrentTraceContext.get()
     assertThat(BaggageField.getByName((TraceContext) null, "foo"))
       .isNull();
   }
 
-  @Test public void getByName_invalid() {
+  @Test void getByName_invalid() {
     assertThatThrownBy(() -> BaggageField.getByName(context, ""))
       .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(() -> BaggageField.getByName(context, "    "))
       .isInstanceOf(IllegalArgumentException.class);
   }
 
-  @Test public void trimsName() {
+  @Test void trimsName() {
     assertThat(BaggageField.create(" x-foo  ").name())
       .isEqualTo("x-foo");
   }
 
-  @Test public void create_invalid() {
+  @Test void create_invalid() {
     assertThatThrownBy(() -> BaggageField.create(null))
       .isInstanceOf(NullPointerException.class);
     assertThatThrownBy(() -> BaggageField.create(""))
@@ -144,7 +144,7 @@ public class BaggageFieldTest {
       .isInstanceOf(IllegalArgumentException.class);
   }
 
-  @Test public void getValue_current_exists() {
+  @Test void getValue_current_exists() {
     try (Tracing t = Tracing.newBuilder().propagationFactory(factory).build();
          Scope scope = t.currentTraceContext().newScope(requestIdContext)) {
       assertThat(REQUEST_ID.getValue())
@@ -152,7 +152,7 @@ public class BaggageFieldTest {
     }
   }
 
-  @Test public void getValue_current_doesntExist() {
+  @Test void getValue_current_doesntExist() {
     try (Tracing t = Tracing.newBuilder().propagationFactory(factory).build();
          Scope scope = t.currentTraceContext().newScope(requestIdContext)) {
       assertThat(AMZN_TRACE_ID.getValue())
@@ -160,17 +160,17 @@ public class BaggageFieldTest {
     }
   }
 
-  @Test public void getValue_current_nothingCurrent() {
+  @Test void getValue_current_nothingCurrent() {
     assertThat(AMZN_TRACE_ID.getValue())
       .isNull();
   }
 
-  @Test public void getValue_context_exists() {
+  @Test void getValue_context_exists() {
     assertThat(REQUEST_ID.getValue(requestIdContext))
       .isEqualTo(requestId);
   }
 
-  @Test public void getValue_context_doesntExist() {
+  @Test void getValue_context_doesntExist() {
     assertThat(AMZN_TRACE_ID.getValue(requestIdContext))
       .isNull();
     assertThat(AMZN_TRACE_ID.getValue(emptyContext))
@@ -179,18 +179,18 @@ public class BaggageFieldTest {
       .isNull();
   }
 
-  @Test public void getValue_context_null() {
+  @Test void getValue_context_null() {
     // permits unguarded use of CurrentTraceContext.get()
     assertThat(REQUEST_ID.getValue((TraceContext) null))
       .isNull();
   }
 
-  @Test public void getValue_extracted_exists() {
+  @Test void getValue_extracted_exists() {
     assertThat(REQUEST_ID.getValue(requestIdExtraction))
       .isEqualTo(requestId);
   }
 
-  @Test public void getValue_extracted_doesntExist() {
+  @Test void getValue_extracted_doesntExist() {
     assertThat(AMZN_TRACE_ID.getValue(requestIdExtraction))
       .isNull();
     assertThat(AMZN_TRACE_ID.getValue(emptyExtraction))
@@ -199,12 +199,12 @@ public class BaggageFieldTest {
       .isNull();
   }
 
-  @Test public void getValue_extracted_invalid() {
+  @Test void getValue_extracted_invalid() {
     assertThatThrownBy(() -> REQUEST_ID.getValue((TraceContextOrSamplingFlags) null))
       .isInstanceOf(NullPointerException.class);
   }
 
-  @Test public void updateValue_current_exists() {
+  @Test void updateValue_current_exists() {
     try (Tracing t = Tracing.newBuilder().propagationFactory(factory).build();
          Scope scope = t.currentTraceContext().newScope(requestIdContext)) {
       REQUEST_ID.updateValue("12345");
@@ -213,7 +213,7 @@ public class BaggageFieldTest {
     }
   }
 
-  @Test public void updateValue_current_doesntExist() {
+  @Test void updateValue_current_doesntExist() {
     try (Tracing t = Tracing.newBuilder().propagationFactory(factory).build();
          Scope scope = t.currentTraceContext().newScope(requestIdContext)) {
       AMZN_TRACE_ID.updateValue("12345");
@@ -222,19 +222,19 @@ public class BaggageFieldTest {
     }
   }
 
-  @Test public void updateValue_current_nothingCurrent() {
+  @Test void updateValue_current_nothingCurrent() {
     AMZN_TRACE_ID.updateValue("12345");
     assertThat(AMZN_TRACE_ID.getValue())
       .isNull();
   }
 
-  @Test public void updateValue_context_exists() {
+  @Test void updateValue_context_exists() {
     REQUEST_ID.updateValue(requestIdContext, "12345");
     assertThat(REQUEST_ID.getValue(requestIdContext))
       .isEqualTo("12345");
   }
 
-  @Test public void updateValue_context_doesntExist() {
+  @Test void updateValue_context_doesntExist() {
     AMZN_TRACE_ID.updateValue(requestIdContext, "12345");
     assertThat(AMZN_TRACE_ID.getValue(requestIdContext))
       .isEqualTo("12345");
@@ -248,18 +248,18 @@ public class BaggageFieldTest {
       .isNull();
   }
 
-  @Test public void updateValue_context_null() {
+  @Test void updateValue_context_null() {
     // permits unguarded use of CurrentTraceContext.get()
     REQUEST_ID.updateValue((TraceContext) null, null);
   }
 
-  @Test public void updateValue_extracted_exists() {
+  @Test void updateValue_extracted_exists() {
     REQUEST_ID.updateValue(requestIdExtraction, "12345");
     assertThat(REQUEST_ID.getValue(requestIdExtraction))
       .isEqualTo("12345");
   }
 
-  @Test public void updateValue_extracted_doesntExist() {
+  @Test void updateValue_extracted_doesntExist() {
     AMZN_TRACE_ID.updateValue(requestIdExtraction, "12345");
     assertThat(AMZN_TRACE_ID.getValue(requestIdExtraction))
       .isEqualTo("12345");
@@ -271,12 +271,12 @@ public class BaggageFieldTest {
     AMZN_TRACE_ID.updateValue(TraceContextOrSamplingFlags.EMPTY, "12345");
   }
 
-  @Test public void updateValue_extracted_invalid() {
+  @Test void updateValue_extracted_invalid() {
     assertThatThrownBy(() -> REQUEST_ID.updateValue((TraceContextOrSamplingFlags) null, null))
       .isInstanceOf(NullPointerException.class);
   }
 
-  @Test public void toString_onlyHasName() {
+  @Test void toString_onlyHasName() {
     assertThat(BaggageField.create("Foo"))
       .hasToString("BaggageField{Foo}"); // case preserved as that's the field name
   }
@@ -285,7 +285,7 @@ public class BaggageFieldTest {
    * Ensures only lower-case name comparison is used in equals and hashCode. This allows {@link
    * BaggagePropagation} to deduplicate and {@link BaggageFields} to use these as keys.
    */
-  @Test public void equalsAndHashCode() {
+  @Test void equalsAndHashCode() {
     // same field are equivalent
     BaggageField field = BaggageField.create("foo");
     assertThat(field).isEqualTo(field);

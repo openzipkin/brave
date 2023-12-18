@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,60 +18,63 @@ import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.ext.web.Route;
 import io.vertx.ext.web.RoutingContext;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT) // TODO: hunt down these
 public class HttpServerResponseWrapperTest {
   @Mock RoutingContext context;
   @Mock HttpServerRequest request;
   @Mock HttpServerResponse response;
   @Mock Route currentRoute;
 
-  @Before public void setup() {
+  @BeforeEach void setup() {
     when(context.request()).thenReturn(request);
     when(context.response()).thenReturn(response);
     when(context.currentRoute()).thenReturn(currentRoute);
   }
 
-  @Test public void request() {
+  @Test void request() {
     assertThat(new HttpServerResponseWrapper(context).request().unwrap())
       .isSameAs(request);
   }
 
-  @Test public void method() {
+  @Test void method() {
     when(request.rawMethod()).thenReturn("GET");
 
     assertThat(new HttpServerResponseWrapper(context).method())
       .isEqualTo("GET");
   }
 
-  @Test public void route_emptyByDefault() {
+  @Test void route_emptyByDefault() {
     assertThat(new HttpServerResponseWrapper(context).route())
       .isEmpty();
   }
 
-  @Test public void route() {
+  @Test void route() {
     when(currentRoute.getPath()).thenReturn("/users/:userID");
 
     assertThat(new HttpServerResponseWrapper(context).route())
       .isEqualTo("/users/:userID");
   }
 
-  @Test public void statusCode() {
+  @Test void statusCode() {
     when(response.getStatusCode()).thenReturn(200);
 
     assertThat(new HttpServerResponseWrapper(context).statusCode())
       .isEqualTo(200);
   }
 
-  @Test public void statusCode_zero() {
+  @Test void statusCode_zero() {
     assertThat(new HttpServerResponseWrapper(context).statusCode())
       .isZero();
   }

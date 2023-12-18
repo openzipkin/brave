@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,7 +19,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.internal.codec.CharSequences.regionMatches;
 import static brave.internal.codec.HexCodec.lenientLowerHexToUnsignedLong;
@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 
-public class EntrySplitterTest {
+class EntrySplitterTest {
   EntrySplitter entrySplitter = EntrySplitter.newBuilder().shouldThrow(true).build();
   Map<String, String> map = new LinkedHashMap<>();
   Handler<Map<String, String>> parseIntoMap =
@@ -38,7 +38,7 @@ public class EntrySplitterTest {
       return true;
     };
 
-  @Test public void parse() {
+  @Test void parse() {
     entrySplitter.parse(parseIntoMap, map, "k1=v1,k2=v2");
 
     assertThat(map).containsExactly(
@@ -47,7 +47,7 @@ public class EntrySplitterTest {
     );
   }
 
-  @Test public void parse_singleChars() {
+  @Test void parse_singleChars() {
     entrySplitter.parse(parseIntoMap, map, "k=v,a=b");
 
     assertThat(map).containsExactly(
@@ -56,7 +56,7 @@ public class EntrySplitterTest {
     );
   }
 
-  @Test public void parse_valuesAreRequired() {
+  @Test void parse_valuesAreRequired() {
     for (String missingValue : Arrays.asList("k1", "k1  ", "k1=v1,k2", "k1   ,k2=v1")) {
       assertThatThrownBy(() -> entrySplitter.parse(parseIntoMap, map, missingValue))
         .isInstanceOf(IllegalArgumentException.class)
@@ -65,7 +65,7 @@ public class EntrySplitterTest {
     assertThat(map.isEmpty());
   }
 
-  @Test public void parse_emptyValuesOk() {
+  @Test void parse_emptyValuesOk() {
     for (String emptyValue : Arrays.asList("k1=", "k1 =", ",k1=", ",k1 =", "k1 =,")) {
       entrySplitter.parse(parseIntoMap, map, emptyValue);
 
@@ -81,7 +81,7 @@ public class EntrySplitterTest {
     );
   }
 
-  @Test public void keyValueSeparatorRequired_false() {
+  @Test void keyValueSeparatorRequired_false() {
     entrySplitter = EntrySplitter.newBuilder()
       .keyValueSeparatorRequired(false)
       .shouldThrow(true)
@@ -96,7 +96,7 @@ public class EntrySplitterTest {
   }
 
   /** Parse Accept header style encoding as used in secondary sampling */
-  @Test public void parse_onlyFirstKeyValueSeparator() {
+  @Test void parse_onlyFirstKeyValueSeparator() {
     entrySplitter = EntrySplitter.newBuilder()
       .keyValueSeparator(';')
       .keyValueSeparatorRequired(false)
@@ -112,7 +112,7 @@ public class EntrySplitterTest {
   }
 
   /** This shows you can nest parsers without unnecessary string allocation between stages. */
-  @Test public void parse_nested() {
+  @Test void parse_nested() {
     EntrySplitter outerSplitter = EntrySplitter.newBuilder()
       .keyValueSeparator(';')
       .keyValueSeparatorRequired(false)
@@ -149,7 +149,7 @@ public class EntrySplitterTest {
     );
   }
 
-  @Test public void parse_emptyKeysNotOk() {
+  @Test void parse_emptyKeysNotOk() {
     for (String missingKey : Arrays.asList("=", "=v1", ",=", ",=v2")) {
       assertThatThrownBy(() -> entrySplitter.parse(parseIntoMap, map, missingKey))
         .isInstanceOf(IllegalArgumentException.class)
@@ -161,7 +161,7 @@ public class EntrySplitterTest {
    * This is an example of how to parse without allocating strings. This is based on
    * https://github.com/openzipkin/zipkin-aws/blob/master/brave-propagation-aws/src/main/java/brave/propagation/aws/AWSPropagation.java
    */
-  @Test public void example_parseAWSTraceId() {
+  @Test void example_parseAWSTraceId() {
     entrySplitter = EntrySplitter.newBuilder().entrySeparator(';').build();
 
     String awsTraceId =
@@ -220,7 +220,7 @@ public class EntrySplitterTest {
     );
   }
 
-  @Test public void parse_breaksWhenHandlerDoes() {
+  @Test void parse_breaksWhenHandlerDoes() {
     entrySplitter = EntrySplitter.newBuilder().maxEntries(2).shouldThrow(true).build();
 
     entrySplitter.parse((target, input, beginKey, endKey, beginValue, endValue) -> {
@@ -234,7 +234,7 @@ public class EntrySplitterTest {
     assertThat(map).containsExactly(entry("k1", "v1"));
   }
 
-  @Test public void parse_maxEntries() {
+  @Test void parse_maxEntries() {
     entrySplitter = EntrySplitter.newBuilder().maxEntries(2).shouldThrow(true).build();
 
     entrySplitter.parse(parseIntoMap, map, "k1=v1,k2=v2");
@@ -249,7 +249,7 @@ public class EntrySplitterTest {
       .hasMessage("Invalid input: over 2 entries");
   }
 
-  @Test public void parse_whitespaceInKeyValue() {
+  @Test void parse_whitespaceInKeyValue() {
     entrySplitter.parse(parseIntoMap, map, "k 1=v 1,k 2=v 2");
 
     assertThat(map).containsExactly(
@@ -258,7 +258,7 @@ public class EntrySplitterTest {
     );
   }
 
-  @Test public void trimOWSAroundEntrySeparator() {
+  @Test void trimOWSAroundEntrySeparator() {
     entrySplitter = EntrySplitter.newBuilder()
       .trimOWSAroundEntrySeparator(true)
       .trimOWSAroundKeyValueSeparator(false)
@@ -272,7 +272,7 @@ public class EntrySplitterTest {
     );
   }
 
-  @Test public void trimOWSAroundKeyValueSeparator() {
+  @Test void trimOWSAroundKeyValueSeparator() {
     entrySplitter = EntrySplitter.newBuilder()
       .trimOWSAroundEntrySeparator(false)
       .trimOWSAroundKeyValueSeparator(true)
@@ -286,7 +286,7 @@ public class EntrySplitterTest {
     );
   }
 
-  @Test public void trimOWSAroundSeparators() {
+  @Test void trimOWSAroundSeparators() {
     entrySplitter = EntrySplitter.newBuilder()
       .trimOWSAroundEntrySeparator(true)
       .trimOWSAroundKeyValueSeparator(true)
@@ -300,7 +300,7 @@ public class EntrySplitterTest {
     );
   }
 
-  @Test public void trimOWSAroundNothing() {
+  @Test void trimOWSAroundNothing() {
     entrySplitter = EntrySplitter.newBuilder()
       .trimOWSAroundEntrySeparator(false)
       .trimOWSAroundKeyValueSeparator(false)
@@ -314,13 +314,13 @@ public class EntrySplitterTest {
     );
   }
 
-  @Test public void toleratesButIgnores_empty() {
+  @Test void toleratesButIgnores_empty() {
     entrySplitter.parse(parseIntoMap, map, "");
 
     assertThat(map.isEmpty());
   }
 
-  @Test public void toleratesButIgnores_onlyWhitespace() {
+  @Test void toleratesButIgnores_onlyWhitespace() {
     for (String w : Arrays.asList(" ", "\t")) {
       entrySplitter.parse(parseIntoMap, map, w);
       entrySplitter.parse(parseIntoMap, map, w + w);
@@ -329,7 +329,7 @@ public class EntrySplitterTest {
     assertThat(map.isEmpty());
   }
 
-  @Test public void toleratesButIgnores_emptyMembers() {
+  @Test void toleratesButIgnores_emptyMembers() {
     for (String w : Arrays.asList(" ", "\t")) {
       entrySplitter.parse(parseIntoMap, map, ",");
       entrySplitter.parse(parseIntoMap, map, w + ",");
@@ -342,7 +342,7 @@ public class EntrySplitterTest {
     assertThat(map.isEmpty());
   }
 
-  @Test public void builder_illegal() {
+  @Test void builder_illegal() {
     EntrySplitter.Builder builder = EntrySplitter.newBuilder();
 
     assertThatThrownBy(() -> builder.maxEntries(-1))
@@ -366,7 +366,7 @@ public class EntrySplitterTest {
       .hasMessage("entrySeparator == keyValueSeparator");
   }
 
-  @Test public void parse_badParameters() {
+  @Test void parse_badParameters() {
     assertThatThrownBy(() -> entrySplitter.parse(null, map, ""))
       .isInstanceOf(NullPointerException.class)
       .hasMessage("handler == null");

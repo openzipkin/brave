@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,26 +15,26 @@ package brave;
 
 import brave.baggage.BaggageFields;
 import brave.propagation.TraceContext;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /** This only tests things not already covered in {@link TagTest} */
-@RunWith(MockitoJUnitRunner.class)
-public class TagsTest {
+@ExtendWith(MockitoExtension.class)
+class TagsTest {
   @Mock SpanCustomizer span;
 
-  @Test public void error() {
+  @Test void error() {
     Tags.ERROR.tag(new RuntimeException("this cake is a lie"), span);
 
     verify(span).tag("error", "this cake is a lie");
   }
 
-  @Test public void error_noMessage() {
+  @Test void error_noMessage() {
     Tags.ERROR.tag(new RuntimeException(), span);
 
     verify(span).tag("error", "RuntimeException");
@@ -43,13 +43,13 @@ public class TagsTest {
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
 
   /** These are not good examples of actual baggage.. just to test the types. */
-  @Test public void baggageField() {
+  @Test void baggageField() {
     Tags.BAGGAGE_FIELD.tag(BaggageFields.TRACE_ID, context, span);
 
     verify(span).tag("traceId", "0000000000000001");
   }
 
-  @Test public void baggageField_nullValue() {
+  @Test void baggageField_nullValue() {
     Tags.BAGGAGE_FIELD.tag(BaggageFields.SAMPLED, context, span);
 
     verifyNoMoreInteractions(span);

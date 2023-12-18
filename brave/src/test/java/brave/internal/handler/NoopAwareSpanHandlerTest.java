@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,10 +19,10 @@ import brave.handler.SpanHandler.Cause;
 import brave.propagation.TraceContext;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.assertj.core.api.InstanceOfAssertFactories;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
@@ -32,8 +32,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
-public class NoopAwareSpanHandlerTest {
+@ExtendWith(MockitoExtension.class)
+class NoopAwareSpanHandlerTest {
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
   MutableSpan span = new MutableSpan();
   AtomicBoolean noop = new AtomicBoolean(false);
@@ -42,12 +42,12 @@ public class NoopAwareSpanHandlerTest {
   @Mock SpanHandler two;
   @Mock SpanHandler three;
 
-  @Test public void create_emptyIsNoop() {
+  @Test void create_emptyIsNoop() {
     assertThat(NoopAwareSpanHandler.create(new SpanHandler[0], noop))
         .isEqualTo(SpanHandler.NOOP);
   }
 
-  @Test public void create_single() {
+  @Test void create_single() {
     NoopAwareSpanHandler handler =
         (NoopAwareSpanHandler) NoopAwareSpanHandler.create(new SpanHandler[] {one}, noop);
 
@@ -57,7 +57,7 @@ public class NoopAwareSpanHandlerTest {
     verify(one).end(context, span, Cause.FINISHED);
   }
 
-  @Test public void honorsNoop() {
+  @Test void honorsNoop() {
     SpanHandler handler = NoopAwareSpanHandler.create(new SpanHandler[] {one}, noop);
 
     noop.set(true);
@@ -66,7 +66,7 @@ public class NoopAwareSpanHandlerTest {
     verify(one, never()).end(context, span, Cause.FINISHED);
   }
 
-  @Test public void create_multiple() {
+  @Test void create_multiple() {
     SpanHandler[] handlers = new SpanHandler[2];
     handlers[0] = one;
     handlers[1] = two;
@@ -77,7 +77,7 @@ public class NoopAwareSpanHandlerTest {
         .containsExactly(one, two);
   }
 
-  @Test public void multiple_callInSequence() {
+  @Test void multiple_callInSequence() {
     SpanHandler[] handlers = new SpanHandler[2];
     handlers[0] = one;
     handlers[1] = two;
@@ -94,7 +94,7 @@ public class NoopAwareSpanHandlerTest {
     verify(one).end(context, span, Cause.FINISHED);
   }
 
-  @Test public void multiple_shortCircuitWhenFirstReturnsFalse() {
+  @Test void multiple_shortCircuitWhenFirstReturnsFalse() {
     SpanHandler[] handlers = new SpanHandler[2];
     handlers[0] = one;
     handlers[1] = two;
@@ -105,7 +105,7 @@ public class NoopAwareSpanHandlerTest {
     verify(two, never()).end(context, span, Cause.FINISHED);
   }
 
-  @Test public void multiple_abandoned() {
+  @Test void multiple_abandoned() {
     SpanHandler[] handlers = new SpanHandler[3];
     handlers[0] = one;
     handlers[1] = two;
@@ -122,7 +122,7 @@ public class NoopAwareSpanHandlerTest {
     verify(three, never()).end(context, span, Cause.FINISHED);
   }
 
-  @Test public void doesntCrashOnNonFatalThrowable() {
+  @Test void doesntCrashOnNonFatalThrowable() {
     Throwable[] toThrow = new Throwable[1];
     SpanHandler handler =
         NoopAwareSpanHandler.create(new SpanHandler[] {new SpanHandler() {

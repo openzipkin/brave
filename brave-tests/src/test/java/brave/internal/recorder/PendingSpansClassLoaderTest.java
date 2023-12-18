@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -24,14 +24,14 @@ import brave.propagation.TraceContext;
 import brave.test.util.GarbageCollectors;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.internal.InternalPropagation.FLAG_LOCAL_ROOT;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 
-public class PendingSpansClassLoaderTest {
+class PendingSpansClassLoaderTest {
   static {
     SamplingFlags.NOT_SAMPLED.toString(); // ensure InternalPropagation is wired for tests
   }
@@ -48,7 +48,7 @@ public class PendingSpansClassLoaderTest {
     Collections.emptyList()
   );
 
-  @Test public void unloadable_afterCreateAndRemove() {
+  @Test void unloadable_afterCreateAndRemove() {
     assertRunIsUnloadable(CreateAndRemove.class, getClass().getClassLoader());
   }
 
@@ -63,7 +63,7 @@ public class PendingSpansClassLoaderTest {
     }
   }
 
-  @Test public void unloadable_afterOrphan() {
+  @Test void unloadable_afterOrphan() {
     assertRunIsUnloadable(OrphanedContext.class, getClass().getClassLoader());
   }
 

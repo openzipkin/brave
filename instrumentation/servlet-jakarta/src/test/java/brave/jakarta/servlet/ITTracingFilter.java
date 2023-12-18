@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2022 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -22,11 +22,10 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.UnavailableException;
 import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.junit.Ignore;
-
+import org.junit.jupiter.api.Disabled;
 import brave.test.jakarta.http.ITServlet5Container;
 
-public class ITTracingFilter extends ITServlet5Container {
+class ITTracingFilter extends ITServlet5Container {
 
   @Override protected Filter newTracingFilter() {
     return TracingFilter.create(httpTracing);
@@ -49,11 +48,11 @@ public class ITTracingFilter extends ITServlet5Container {
    * UnavailableException} and swaps internally to a servlet instance that doesn't set the exception
    * cause.
    */
-  @Ignore("We can't set the error code for an uncaught exception with jetty-servlet")
+  @Disabled("We can't set the error code for an uncaught exception with jetty-servlet")
   @Override public void httpStatusCodeSettable_onUncaughtException() {
   }
 
-  @Ignore("We can't set the error code for an uncaught exception with jetty-servlet")
+  @Disabled("We can't set the error code for an uncaught exception with jetty-servlet")
   @Override public void httpStatusCodeSettable_onUncaughtException_async() {
   }
 }

@@ -18,7 +18,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
-    <version>5.16.1-SNAPSHOT</version>
+    <version>5.17.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>brave-instrumentation-benchmarks</artifactId>
@@ -245,6 +245,12 @@
       <groupId>io.grpc</groupId>
       <artifactId>grpc-testing</artifactId>
       <version>${grpc.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>junit</groupId>
+          <artifactId>junit</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
   </dependencies>
 

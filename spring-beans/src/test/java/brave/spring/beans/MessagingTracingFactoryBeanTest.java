@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,26 +18,26 @@ import brave.messaging.MessagingTracing;
 import brave.messaging.MessagingTracingCustomizer;
 import brave.propagation.Propagation;
 import brave.sampler.SamplerFunctions;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-public class MessagingTracingFactoryBeanTest {
+class MessagingTracingFactoryBeanTest {
 
   public static Tracing TRACING = mock(Tracing.class);
   public static Propagation<String> PROPAGATION = mock(Propagation.class);
 
   XmlBeans context;
 
-  @After public void close() {
+  @AfterEach void close() {
     if (context != null) context.close();
   }
 
-  @Test public void tracing() {
+  @Test void tracing() {
     context = new XmlBeans(""
       + "<bean id=\"messagingTracing\" class=\"brave.spring.beans.MessagingTracingFactoryBean\">\n"
       + "  <property name=\"tracing\">\n"
@@ -51,7 +51,7 @@ public class MessagingTracingFactoryBeanTest {
       .isEqualTo(TRACING);
   }
 
-  @Test public void producerSampler() {
+  @Test void producerSampler() {
     context = new XmlBeans(""
       + "<bean id=\"messagingTracing\" class=\"brave.spring.beans.MessagingTracingFactoryBean\">\n"
       + "  <property name=\"tracing\">\n"
@@ -67,7 +67,7 @@ public class MessagingTracingFactoryBeanTest {
       .isEqualTo(SamplerFunctions.neverSample());
   }
 
-  @Test public void consumerSampler() {
+  @Test void consumerSampler() {
     context = new XmlBeans(""
       + "<bean id=\"messagingTracing\" class=\"brave.spring.beans.MessagingTracingFactoryBean\">\n"
       + "  <property name=\"tracing\">\n"
@@ -83,7 +83,7 @@ public class MessagingTracingFactoryBeanTest {
       .isEqualTo(SamplerFunctions.neverSample());
   }
 
-  @Test public void propagation() {
+  @Test void propagation() {
     context = new XmlBeans(""
       + "<bean id=\"messagingTracing\" class=\"brave.spring.beans.MessagingTracingFactoryBean\">\n"
       + "  <property name=\"tracing\">\n"
@@ -104,7 +104,7 @@ public class MessagingTracingFactoryBeanTest {
   public static final MessagingTracingCustomizer CUSTOMIZER_TWO =
     mock(MessagingTracingCustomizer.class);
 
-  @Test public void customizers() {
+  @Test void customizers() {
     context = new XmlBeans(""
       + "<bean id=\"messagingTracing\" class=\"brave.spring.beans.MessagingTracingFactoryBean\">\n"
       + "  <property name=\"tracing\">\n"

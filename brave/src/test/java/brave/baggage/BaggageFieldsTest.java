@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,15 +16,15 @@ package brave.baggage;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** This only tests things not already covered in {@link BaggageFieldTest} */
-@RunWith(MockitoJUnitRunner.class)
-public class BaggageFieldsTest {
+@ExtendWith(MockitoExtension.class)
+class BaggageFieldsTest {
   TraceContext onlyMandatoryFields = TraceContext.newBuilder().traceId(1).spanId(2).build();
   TraceContext context = TraceContext.newBuilder()
     .traceIdHigh(1L)
@@ -37,7 +37,7 @@ public class BaggageFieldsTest {
   TraceContextOrSamplingFlags extractedTraceId = TraceContextOrSamplingFlags.create(
     TraceIdContext.newBuilder().traceIdHigh(1L).traceId(2L).sampled(true).build());
 
-  @Test public void traceId() {
+  @Test void traceId() {
     assertThat(BaggageFields.TRACE_ID.getValue(context))
       .isEqualTo(context.traceIdString());
     assertThat(BaggageFields.TRACE_ID.getValue(extracted))
@@ -51,7 +51,7 @@ public class BaggageFieldsTest {
       .isNull();
   }
 
-  @Test public void parentId() {
+  @Test void parentId() {
     assertThat(BaggageFields.PARENT_ID.getValue(context))
       .isEqualTo(context.parentIdString());
     assertThat(BaggageFields.PARENT_ID.getValue(extracted))
@@ -67,7 +67,7 @@ public class BaggageFieldsTest {
       .isNull();
   }
 
-  @Test public void spanId() {
+  @Test void spanId() {
     assertThat(BaggageFields.SPAN_ID.getValue(context))
       .isEqualTo(context.spanIdString());
     assertThat(BaggageFields.SPAN_ID.getValue(extracted))
@@ -81,7 +81,7 @@ public class BaggageFieldsTest {
       .isNull();
   }
 
-  @Test public void sampled() {
+  @Test void sampled() {
     assertThat(BaggageFields.SAMPLED.getValue(context))
       .isEqualTo("true");
     assertThat(BaggageFields.SAMPLED.getValue(extracted))
@@ -101,7 +101,7 @@ public class BaggageFieldsTest {
       .isNull();
   }
 
-  @Test public void constant() {
+  @Test void constant() {
     BaggageField constant = BaggageFields.constant("foo", "bar");
     assertThat(constant.getValue(context)).isEqualTo("bar");
     assertThat(constant.getValue(extracted)).isEqualTo("bar");

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,15 +20,14 @@ import java.util.Locale;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
+import org.junit.jupiter.api.Test;
 import org.eclipse.jetty.server.Response;
-import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** These tests must to be run in a classpath without servlet 3.x types */
-public class ServletRuntime25Test {
-
-  @Test public void status_fromJetty() throws Exception {
+class ServletRuntime25Test {
+  @Test void status_fromJetty() throws Exception {
     Response jettyResponse = new Response(null);
     Field field = Response.class.getDeclaredField("_status");
     field.setAccessible(true);
@@ -37,12 +36,12 @@ public class ServletRuntime25Test {
       .isEqualTo(400);
   }
 
-  @Test public void httpServletResponse_wrapsHttpServletResponse() throws Exception {
+  @Test void httpServletResponse_wrapsHttpServletResponse() throws Exception {
     assertThat(ServletRuntime.get().httpServletResponse(new WithoutGetStatus()))
       .isInstanceOf(ServletRuntime.Servlet25ServerResponseAdapter.class);
   }
 
-  @Test public void status_fromInvalidMethod() throws Exception {
+  @Test void status_fromInvalidMethod() throws Exception {
     assertThat(ServletRuntime.get().status(new WithInvalidGetStatus()))
       .isZero();
   }

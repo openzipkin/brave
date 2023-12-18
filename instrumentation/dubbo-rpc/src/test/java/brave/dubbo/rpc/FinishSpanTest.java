@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,8 +19,8 @@ import com.alibaba.dubbo.rpc.Invocation;
 import com.alibaba.dubbo.rpc.Invoker;
 import com.alibaba.dubbo.rpc.Result;
 import java.util.Collections;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static org.mockito.Mockito.mock;
 
@@ -31,11 +31,11 @@ public class FinishSpanTest extends ITTracingFilter {
       new DubboServerRequest(mock(Invoker.class), mock(Invocation.class));
   TracingFilter filter;
 
-  @Before public void setup() {
+  @BeforeEach void setup() {
     filter = init();
   }
 
-  @Test public void finish_null_result_and_error_DubboClientRequest() {
+  @Test void finish_null_result_and_error_DubboClientRequest() {
     Span span = tracing.tracer().nextSpan().kind(Span.Kind.CLIENT).start();
 
     FinishSpan.finish(filter, clientRequest, null, null, span);
@@ -43,7 +43,7 @@ public class FinishSpanTest extends ITTracingFilter {
     testSpanHandler.takeRemoteSpan(Kind.CLIENT);
   }
 
-  @Test public void finish_null_result_and_error_DubboServerRequest() {
+  @Test void finish_null_result_and_error_DubboServerRequest() {
     Span span = tracing.tracer().nextSpan().kind(Span.Kind.SERVER).start();
 
     FinishSpan.finish(filter, serverRequest, null, null, span);
@@ -51,7 +51,7 @@ public class FinishSpanTest extends ITTracingFilter {
     testSpanHandler.takeRemoteSpan(Kind.SERVER);
   }
 
-  @Test public void finish_result_but_null_error_DubboClientRequest() {
+  @Test void finish_result_but_null_error_DubboClientRequest() {
     Span span = tracing.tracer().nextSpan().kind(Span.Kind.CLIENT).start();
 
     FinishSpan.finish(filter, clientRequest, mock(Result.class), null, span);
@@ -59,7 +59,7 @@ public class FinishSpanTest extends ITTracingFilter {
     testSpanHandler.takeRemoteSpan(Kind.CLIENT);
   }
 
-  @Test public void finish_result_but_null_error_DubboServerRequest() {
+  @Test void finish_result_but_null_error_DubboServerRequest() {
     Span span = tracing.tracer().nextSpan().kind(Span.Kind.SERVER).start();
 
     FinishSpan.finish(filter, serverRequest, mock(Result.class), null, span);
@@ -67,7 +67,7 @@ public class FinishSpanTest extends ITTracingFilter {
     testSpanHandler.takeRemoteSpan(Kind.SERVER);
   }
 
-  @Test public void finish_error_but_null_result_DubboClientRequest() {
+  @Test void finish_error_but_null_result_DubboClientRequest() {
     Span span = tracing.tracer().nextSpan().kind(Span.Kind.CLIENT).start();
 
     Throwable error = new RuntimeException("melted");
@@ -76,7 +76,7 @@ public class FinishSpanTest extends ITTracingFilter {
     testSpanHandler.takeRemoteSpanWithError(Kind.CLIENT, error);
   }
 
-  @Test public void finish_error_but_null_result_DubboServerRequest() {
+  @Test void finish_error_but_null_result_DubboServerRequest() {
     Span span = tracing.tracer().nextSpan().kind(Span.Kind.SERVER).start();
 
     Throwable error = new RuntimeException("melted");
@@ -85,7 +85,7 @@ public class FinishSpanTest extends ITTracingFilter {
     testSpanHandler.takeRemoteSpanWithError(Kind.SERVER, error);
   }
 
-  @Test public void create_null_result_value_and_error_DubboClientRequest() {
+  @Test void create_null_result_value_and_error_DubboClientRequest() {
     Span span = tracing.tracer().nextSpan().kind(Span.Kind.CLIENT).start();
 
     FinishSpan.create(filter, clientRequest, mock(Result.class), span)
@@ -94,7 +94,7 @@ public class FinishSpanTest extends ITTracingFilter {
     testSpanHandler.takeRemoteSpan(Kind.CLIENT);
   }
 
-  @Test public void create_null_result_value_and_error_DubboServerRequest() {
+  @Test void create_null_result_value_and_error_DubboServerRequest() {
     Span span = tracing.tracer().nextSpan().kind(Span.Kind.SERVER).start();
 
     FinishSpan.create(filter, serverRequest, mock(Result.class), span)
@@ -103,7 +103,7 @@ public class FinishSpanTest extends ITTracingFilter {
     testSpanHandler.takeRemoteSpan(Kind.SERVER);
   }
 
-  @Test public void create_result_value_but_null_error_DubboClientRequest() {
+  @Test void create_result_value_but_null_error_DubboClientRequest() {
     Span span = tracing.tracer().nextSpan().kind(Span.Kind.CLIENT).start();
 
     FinishSpan.create(filter, clientRequest, mock(Result.class), span)
@@ -112,7 +112,7 @@ public class FinishSpanTest extends ITTracingFilter {
     testSpanHandler.takeRemoteSpan(Kind.CLIENT);
   }
 
-  @Test public void create_result_value_but_null_error_DubboServerRequest() {
+  @Test void create_result_value_but_null_error_DubboServerRequest() {
     Span span = tracing.tracer().nextSpan().kind(Span.Kind.SERVER).start();
 
     FinishSpan.create(filter, serverRequest, mock(Result.class), span)
@@ -121,7 +121,7 @@ public class FinishSpanTest extends ITTracingFilter {
     testSpanHandler.takeRemoteSpan(Kind.SERVER);
   }
 
-  @Test public void create_error_but_null_result_value_DubboClientRequest() {
+  @Test void create_error_but_null_result_value_DubboClientRequest() {
     Span span = tracing.tracer().nextSpan().kind(Span.Kind.CLIENT).start();
 
     Throwable error = new RuntimeException("melted");
@@ -131,7 +131,7 @@ public class FinishSpanTest extends ITTracingFilter {
     testSpanHandler.takeRemoteSpanWithError(Kind.CLIENT, error);
   }
 
-  @Test public void create_error_but_null_result_value_DubboServerRequest() {
+  @Test void create_error_but_null_result_value_DubboServerRequest() {
     Span span = tracing.tracer().nextSpan().kind(Span.Kind.SERVER).start();
 
     Throwable error = new RuntimeException("melted");

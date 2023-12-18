@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,12 +17,12 @@ import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import io.grpc.Metadata;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** This shows propagation keys don't need to be Strings. For example, we can propagate over gRPC */
-public class NonStringPropagationKeysTest {
+class NonStringPropagationKeysTest {
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).sampled(true).build();
   Propagation<Metadata.Key<String>> grpcPropagation = B3Propagation.FACTORY.create(
     name -> Metadata.Key.of(name, Metadata.ASCII_STRING_MARSHALLER)
@@ -30,8 +30,7 @@ public class NonStringPropagationKeysTest {
   TraceContext.Extractor<Metadata> extractor = grpcPropagation.extractor(Metadata::get);
   TraceContext.Injector<Metadata> injector = grpcPropagation.injector(Metadata::put);
 
-  @Test
-  public void injectExtractTraceContext() {
+  @Test void injectExtractTraceContext() {
 
     Metadata metadata = new Metadata();
     injector.inject(context, metadata);

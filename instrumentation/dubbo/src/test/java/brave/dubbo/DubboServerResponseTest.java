@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,7 +17,7 @@ import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
 import org.apache.dubbo.rpc.Result;
 import org.apache.dubbo.rpc.RpcException;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.apache.dubbo.rpc.RpcException.TIMEOUT_EXCEPTION;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,23 +31,23 @@ public class DubboServerResponseTest {
   DubboServerRequest request = new DubboServerRequest(invoker, invocation);
   DubboServerResponse response = new DubboServerResponse(request, result, error);
 
-  @Test public void request() {
+  @Test void request() {
     assertThat(response.request()).isSameAs(request);
   }
 
-  @Test public void result() {
+  @Test void result() {
     assertThat(response.result()).isSameAs(result);
   }
 
-  @Test public void unwrap() {
+  @Test void unwrap() {
     assertThat(response.unwrap()).isSameAs(result);
   }
 
-  @Test public void error() {
+  @Test void error() {
     assertThat(response.error()).isSameAs(error);
   }
 
-  @Test public void errorCode() {
+  @Test void errorCode() {
     assertThat(response.errorCode()).isEqualTo("TIMEOUT_EXCEPTION");
   }
 }

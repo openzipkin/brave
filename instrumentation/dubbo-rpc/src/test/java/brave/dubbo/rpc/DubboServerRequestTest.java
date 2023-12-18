@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,7 +16,7 @@ package brave.dubbo.rpc;
 import com.alibaba.dubbo.common.URL;
 import com.alibaba.dubbo.rpc.Invocation;
 import com.alibaba.dubbo.rpc.Invoker;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -28,7 +28,7 @@ public class DubboServerRequestTest {
   URL url = URL.valueOf("dubbo://localhost:6666?scope=remote&interface=brave.dubbo.GreeterService");
   DubboServerRequest request = new DubboServerRequest(invoker, invocation);
 
-  @Test public void service() {
+  @Test void service() {
     when(invocation.getInvoker()).thenReturn(invoker);
     when(invoker.getUrl()).thenReturn(url);
 
@@ -36,25 +36,25 @@ public class DubboServerRequestTest {
       .isEqualTo("brave.dubbo.GreeterService");
   }
 
-  @Test public void method() {
+  @Test void method() {
     when(invocation.getMethodName()).thenReturn("sayHello");
 
     assertThat(request.method()).isEqualTo("sayHello");
   }
 
-  @Test public void unwrap() {
+  @Test void unwrap() {
     assertThat(request.unwrap()).isSameAs(invocation);
   }
 
-  @Test public void invoker() {
+  @Test void invoker() {
     assertThat(request.invoker()).isSameAs(invoker);
   }
 
-  @Test public void invocation() {
+  @Test void invocation() {
     assertThat(request.invocation()).isSameAs(invocation);
   }
 
-  @Test public void propagationField() {
+  @Test void propagationField() {
     when(invocation.getAttachment("b3")).thenReturn("d");
 
     assertThat(request.propagationField("b3")).isEqualTo("d");

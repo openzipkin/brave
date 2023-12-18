@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,12 +17,12 @@ import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.test.TestSpanHandler;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class LazySpanTest {
+class LazySpanTest {
   TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing = Tracing.newBuilder().addSpanHandler(spans).build();
 
@@ -33,11 +33,11 @@ public class LazySpanTest {
   TraceContext unsampledContext2 =
     tracing.tracer().nextSpan(TraceContextOrSamplingFlags.NOT_SAMPLED).context();
 
-  @After public void close() {
+  @AfterEach void close() {
     tracing.close();
   }
 
-  @Test public void equals_sameContext() {
+  @Test void equals_sameContext() {
     Span current1, current2;
     try (Scope ws = tracing.currentTraceContext().newScope(context)) {
       current1 = tracing.tracer().currentSpan();
@@ -50,7 +50,7 @@ public class LazySpanTest {
       .isEqualTo(current2);
   }
 
-  @Test public void equals_notSameContext() {
+  @Test void equals_notSameContext() {
     Span current1, current2;
     try (Scope ws = tracing.currentTraceContext().newScope(context)) {
       current1 = tracing.tracer().currentSpan();
@@ -62,7 +62,7 @@ public class LazySpanTest {
     assertThat(current1).isNotEqualTo(current2);
   }
 
-  @Test public void equals_realSpan_sameContext() {
+  @Test void equals_realSpan_sameContext() {
     Span current;
     try (Scope ws = tracing.currentTraceContext().newScope(context)) {
       current = tracing.tracer().currentSpan();
@@ -71,7 +71,7 @@ public class LazySpanTest {
     assertThat(current).isEqualTo(tracing.tracer().toSpan(context));
   }
 
-  @Test public void equals_realSpan_notSameContext() {
+  @Test void equals_realSpan_notSameContext() {
     Span current;
     try (Scope ws = tracing.currentTraceContext().newScope(context)) {
       current = tracing.tracer().currentSpan();
@@ -80,7 +80,7 @@ public class LazySpanTest {
     assertThat(current).isNotEqualTo(tracing.tracer().toSpan(context2));
   }
 
-  @Test public void equals_noopSpan_sameContext() {
+  @Test void equals_noopSpan_sameContext() {
     Span current;
     try (Scope ws = tracing.currentTraceContext().newScope(unsampledContext)) {
       current = tracing.tracer().currentSpan();
@@ -89,7 +89,7 @@ public class LazySpanTest {
     assertThat(current).isEqualTo(tracing.tracer().toSpan(unsampledContext));
   }
 
-  @Test public void equals_noopSpan_notSameContext() {
+  @Test void equals_noopSpan_notSameContext() {
     Span current;
     try (Scope ws = tracing.currentTraceContext().newScope(unsampledContext)) {
       current = tracing.tracer().currentSpan();

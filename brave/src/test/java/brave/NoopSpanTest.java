@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,12 +18,12 @@ import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class NoopSpanTest {
+class NoopSpanTest {
   Tracer tracer = Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE)
     .clock(() -> {
       throw new AssertionError();
@@ -36,23 +36,23 @@ public class NoopSpanTest {
     .build().tracer();
   Span span = tracer.newTrace();
 
-  @After public void close() {
+  @AfterEach void close() {
     Tracing.current().close();
   }
 
-  @Test public void isNoop() {
+  @Test void isNoop() {
     assertThat(span.isNoop()).isTrue();
   }
 
-  @Test public void hasRealContext() {
+  @Test void hasRealContext() {
     assertThat(span.context().spanId()).isNotZero();
   }
 
-  @Test public void hasNoopCustomizer() {
+  @Test void hasNoopCustomizer() {
     assertThat(span.customizer()).isSameAs(NoopSpanCustomizer.INSTANCE);
   }
 
-  @Test public void doesNothing() {
+  @Test void doesNothing() {
     // Since our clock and spanReporter throw, we know this is doing nothing
     span.start();
     span.start(1L);
@@ -67,7 +67,7 @@ public class NoopSpanTest {
     span.flush();
   }
 
-  @Test public void equals_lazySpan_sameContext() {
+  @Test void equals_lazySpan_sameContext() {
     Span current;
     try (SpanInScope ws = tracer.withSpanInScope(span)) {
       current = tracer.currentSpan();
@@ -76,7 +76,7 @@ public class NoopSpanTest {
     assertThat(span).isEqualTo(current);
   }
 
-  @Test public void equals_lazySpan_notSameContext() {
+  @Test void equals_lazySpan_notSameContext() {
     Span current;
     try (SpanInScope ws = tracer.withSpanInScope(tracer.newTrace())) {
       current = tracer.currentSpan();

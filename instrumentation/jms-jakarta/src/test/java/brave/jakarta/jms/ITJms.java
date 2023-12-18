@@ -16,11 +16,11 @@ package brave.jakarta.jms;
 import brave.messaging.MessagingTracing;
 import brave.propagation.Propagation.Setter;
 import brave.test.ITRemote;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
 import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import jakarta.jms.JMSException;
-import jakarta.jms.Message;
 
 import static brave.jakarta.jms.MessageProperties.setStringProperty;
 

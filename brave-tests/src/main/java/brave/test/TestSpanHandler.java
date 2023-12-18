@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,7 +20,7 @@ import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.extension.Extension;
 
 /**
  * Simpler variant of {@link IntegrationTestSpanHandler} appropriate for single-threaded
@@ -31,11 +31,11 @@ import org.junit.rules.TestRule;
  * TestSpanHandler spans = new TestSpanHandler();
  * Tracing tracing = Tracing.newBuilder().addSpanHandler(spans).build();
  *
- * @After public void close() {
+ * @AfterEach void close() {
  *   tracing.close();
  * }
  *
- * @Test public void test() {
+ * @Test void test() {
  *   tracing.tracer().startScopedSpan("foo").finish();
  *
  *   assertThat(spans.get(0).name())
@@ -44,7 +44,7 @@ import org.junit.rules.TestRule;
  * }</pre>
  *
  * <h3>Comparison with {@link IntegrationTestSpanHandler}</h3>
- * It is possible to use this type in multi-threaded tests, but there are usually problems that
+ * It is possible to use this type in multithreaded tests, but there are usually problems that
  * arise better solved by {@link IntegrationTestSpanHandler}. Here are a few examples.
  *
  * <p>Multi-threaded tests typically end up with timing issues which can lead to broken builds (aka
@@ -59,7 +59,7 @@ import org.junit.rules.TestRule;
  * utilities made for remote spans, such as {@link IntegrationTestSpanHandler#takeRemoteSpan(Span.Kind)}.
  *
  * <p>It is a common instrumentation bug to accidentally create redundant spans. {@link
- * IntegrationTestSpanHandler} is a {@link TestRule}, which verifies all spans are accounted for.
+ * IntegrationTestSpanHandler} is an {@link Extension}, which verifies all spans are accounted for.
  *
  * @see IntegrationTestSpanHandler
  * @since 5.12

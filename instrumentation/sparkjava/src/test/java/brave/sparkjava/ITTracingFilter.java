@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,10 +20,10 @@ import java.util.EnumSet;
 import javax.servlet.DispatcherType;
 import javax.servlet.FilterRegistration.Dynamic;
 import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.junit.Ignore;
+import org.junit.jupiter.api.Disabled;
 import spark.servlet.SparkFilter;
 
-public class ITTracingFilter extends ITServletContainer {
+class ITTracingFilter extends ITServletContainer {
   public ITTracingFilter() {
     super(new Jetty9ServerController());
   }
@@ -38,15 +38,15 @@ public class ITTracingFilter extends ITServletContainer {
     sparkFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
   }
 
-  @Override @Ignore("TODO: make a spark.ExceptionMapper that adds the \"error\" request property")
+  @Override @Disabled("TODO: make a spark.ExceptionMapper that adds the \"error\" request property")
   public void setsErrorAndHttpStatusOnUncaughtException() {
   }
 
-  @Override @Ignore("TODO: make a spark.ExceptionMapper that adds the \"error\" request property")
+  @Override @Disabled("TODO: make a spark.ExceptionMapper that adds the \"error\" request property")
   public void spanHandlerSeesError() {
   }
 
-  @Ignore("We can't set the error code for an uncaught exception with jetty-servlet")
+  @Disabled("We can't set the error code for an uncaught exception with jetty-servlet")
   @Override public void httpStatusCodeSettable_onUncaughtException() {
   }
 }

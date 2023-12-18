@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -21,9 +21,9 @@ import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.junit.After;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
@@ -31,11 +31,11 @@ import org.springframework.web.client.RestTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHttpRequestFactory> {
+class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHttpRequestFactory> {
   ClientHttpRequestInterceptor interceptor;
   CloseableHttpClient httpClient = HttpClients.createSystem();
 
-  @After @Override public void close() throws Exception {
+  @AfterEach @Override public void close() throws Exception {
     httpClient.close();
     super.close();
   }
@@ -75,7 +75,7 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     restTemplate.postForObject(url(uri), content, String.class);
   }
 
-  @Test public void currentSpanVisibleToUserInterceptors() {
+  @Test void currentSpanVisibleToUserInterceptors() {
     server.enqueue(new MockResponse());
 
     RestTemplate restTemplate = new RestTemplate(client);
@@ -93,11 +93,11 @@ public class ITTracingClientHttpRequestInterceptor extends ITHttpClient<ClientHt
     testSpanHandler.takeRemoteSpan(Span.Kind.CLIENT);
   }
 
-  @Override @Ignore("blind to the implementation of redirects")
+  @Override @Disabled("blind to the implementation of redirects")
   public void redirect() {
   }
 
-  @Override @Ignore("doesn't know the remote address")
+  @Override @Disabled("doesn't know the remote address")
   public void reportsServerAddress() {
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,7 +14,7 @@
 package brave.test.propagation;
 
 import brave.propagation.Propagation;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,21 +27,21 @@ public abstract class PropagationSetterTest<R> {
 
   protected abstract Iterable<String> read(R request, String key);
 
-  @Test public void set() {
+  @Test void set() {
     setter().put(request(), "X-B3-TraceId", "48485a3953bb6124");
 
     assertThat(read(request(), "X-B3-TraceId"))
       .containsExactly("48485a3953bb6124");
   }
 
-  @Test public void set128() {
+  @Test void set128() {
     setter().put(request(), "X-B3-TraceId", "463ac35c9f6413ad48485a3953bb6124");
 
     assertThat(read(request(), "X-B3-TraceId"))
       .containsExactly("463ac35c9f6413ad48485a3953bb6124");
   }
 
-  @Test public void setTwoKeys() {
+  @Test void setTwoKeys() {
     setter().put(request(), "X-B3-TraceId", "463ac35c9f6413ad48485a3953bb6124");
     setter().put(request(), "X-B3-SpanId", "48485a3953bb6124");
 
@@ -51,7 +51,7 @@ public abstract class PropagationSetterTest<R> {
       .containsExactly("48485a3953bb6124");
   }
 
-  @Test public void reset() {
+  @Test void reset() {
     setter().put(request(), "X-B3-TraceId", "48485a3953bb6124");
     setter().put(request(), "X-B3-TraceId", "463ac35c9f6413ad");
 

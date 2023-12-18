@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,19 +16,22 @@ package brave.jms;
 import brave.messaging.MessagingRuleSampler;
 import brave.messaging.MessagingTracing;
 import brave.sampler.Sampler;
+import java.lang.reflect.Method;
+import java.util.Optional;
 import javax.jms.JMSConsumer;
 import javax.jms.JMSContext;
 import javax.jms.JMSException;
-import org.junit.Test;
-import org.junit.rules.TestName;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** When adding tests here, also add to {@linkplain brave.jms.ITTracingJMSConsumer} */
-public class ITJms_2_0_TracingMessageConsumer extends ITJms_1_1_TracingMessageConsumer {
-  @Override JmsTestRule newJmsTestRule(TestName testName) {
-    return new ArtemisJmsTestRule(testName);
+class ITJms_2_0_TracingMessageConsumer extends ITJms_1_1_TracingMessageConsumer {
+  @Override JmsExtension newJmsExtension() {
+    return new ArtemisJmsExtension();
   }
 
   // Inability to encode "b3" on a received BytesMessage only applies to ActiveMQ 5.x
@@ -47,7 +50,7 @@ public class ITJms_2_0_TracingMessageConsumer extends ITJms_1_1_TracingMessageCo
       .consumerSampler(consumerSampler)
       .build();
          JMSContext context = JmsTracing.create(messagingTracing)
-           .connectionFactory(((ArtemisJmsTestRule) jms).factory)
+           .connectionFactory(((ArtemisJmsExtension) jms).factory)
            .createContext(JMSContext.AUTO_ACKNOWLEDGE);
          JMSConsumer consumer = context.createConsumer(jms.queue)
     ) {

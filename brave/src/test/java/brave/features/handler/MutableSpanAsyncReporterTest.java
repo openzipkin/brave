@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -22,8 +22,9 @@ import brave.propagation.B3SingleFormat;
 import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.List;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+
 import zipkin2.codec.SpanBytesDecoder;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * This is an example of why {@link MutableSpanBytesEncoder} was written. Particularly, it allows
  * direct encoding from {@link MutableSpan} into JSON without converting to Zipkin model first.
  */
-public class MutableSpanAsyncReporterTest {
+class MutableSpanAsyncReporterTest {
   MutableSpanBytesEncoder mutableSpanBytesEncoder =
     MutableSpanBytesEncoder.zipkinJsonV2(Tags.ERROR);
 
@@ -53,12 +54,12 @@ public class MutableSpanAsyncReporterTest {
     .addSpanHandler(spanHandlerAdapter)
     .build();
 
-  @After public void close() {
+  @AfterEach void close() {
     tracing.close();
   }
 
   /** This mainly shows endpoints are taken from Brave, and error is back-filled. */
-  @Test public void basicSpan() {
+  @Test void basicSpan() {
     TraceContext context = B3SingleFormat.parseB3SingleFormat(
       "50d980fffa300f29-86154a4ba6e91385-1"
     ).context();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,14 +18,24 @@ import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.config.ApplicationConfig;
 import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.rpc.Filter;
-import org.junit.After;
+import org.junit.jupiter.api.AfterEach;
+
+import static org.apache.dubbo.common.utils.SerializeCheckStatus.DISABLE;
 
 public abstract class ITTracingFilter extends ITRemote {
-  ApplicationConfig application = new ApplicationConfig("brave");
+  ApplicationConfig application = getApplicationConfig();
+
+  static ApplicationConfig getApplicationConfig() {
+    ApplicationConfig application = new ApplicationConfig("brave");
+    // Allow in tests serializers like org.apache.dubbo.common.beanutil.JavaBeanDescriptor
+    application.setSerializeCheckStatus(DISABLE.name());
+    return application;
+  }
+
   TestServer server = new TestServer(propagationFactory, application);
   ReferenceConfig<GreeterService> client;
 
-  @After public void stop() {
+  @AfterEach void stop() {
     if (client != null) client.destroy();
     server.stop();
   }

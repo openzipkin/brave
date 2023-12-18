@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,19 +17,19 @@ import brave.Span;
 import brave.Tags;
 import brave.handler.MutableSpan;
 import brave.handler.MutableSpanTest;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ZipkinJsonV2JsonWriterTest {
+class ZipkinJsonV2JsonWriterTest {
   ZipkinV2JsonWriter jsonWriter = new ZipkinV2JsonWriter(Tags.ERROR);
   WriteBuffer buffer = new WriteBuffer(new byte[512], 0);
 
   MutableSpan clientSpan = new MutableSpan();
 
-  @Before public void createClientSpan() {
+  @BeforeEach void createClientSpan() {
     clientSpan.traceId("1"); // note: we didn't pad here.. it is done implicitly
     clientSpan.localRootId("2"); // not a zipkin v2 field
     clientSpan.parentId("2");
@@ -47,7 +47,7 @@ public class ZipkinJsonV2JsonWriterTest {
     clientSpan.tag("clnt/finagle.version", "6.45.0");
   }
 
-  @Test public void sizeInBytes_matchesWhatsWritten() {
+  @Test void sizeInBytes_matchesWhatsWritten() {
     assertThat(jsonWriter.sizeInBytes(MutableSpanTest.PERMUTATIONS.get(0).get()))
       .isEqualTo(2); // {}
 
@@ -64,7 +64,7 @@ public class ZipkinJsonV2JsonWriterTest {
     }
   }
 
-  @Test public void specialCharacters() {
+  @Test void specialCharacters() {
     MutableSpan span = new MutableSpan();
     span.name("\u2028 and \u2029");
     span.localServiceName("\"foo");
@@ -81,7 +81,7 @@ public class ZipkinJsonV2JsonWriterTest {
       .isEqualTo(string.getBytes(UTF_8).length);
   }
 
-  @Test public void missingFields_testCases() {
+  @Test void missingFields_testCases() {
     jsonWriter.write(MutableSpanTest.PERMUTATIONS.get(0).get(), buffer);
     assertThat(buffer.toString()).isEqualTo("{}");
 
@@ -98,7 +98,7 @@ public class ZipkinJsonV2JsonWriterTest {
     }
   }
 
-  @Test public void writeClientSpan() {
+  @Test void writeClientSpan() {
     jsonWriter.write(clientSpan, buffer);
 
     assertThat(buffer.toString()).isEqualTo("{"

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -28,8 +28,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static brave.internal.InternalPropagation.FLAG_LOCAL_ROOT;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
@@ -37,7 +37,7 @@ import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class PendingSpansTest {
+class PendingSpansTest {
   static {
     SamplingFlags.NOT_SAMPLED.toString(); // ensure InternalPropagation is wired for tests
   }
@@ -58,7 +58,7 @@ public class PendingSpansTest {
   AtomicInteger clock = new AtomicInteger();
   PendingSpans pendingSpans;
 
-  @Before public void init() {
+  @BeforeEach void init() {
     MutableSpan defaultSpan = new MutableSpan();
     defaultSpan.localServiceName("favistar");
     defaultSpan.localIp("1.2.3.4");
@@ -80,16 +80,14 @@ public class PendingSpansTest {
     }, new AtomicBoolean());
   }
 
-  @Test
-  public void getOrCreate_lazyCreatesASpan() {
+  @Test void getOrCreate_lazyCreatesASpan() {
     PendingSpan span = pendingSpans.getOrCreate(null, context, false);
 
     assertThat(span).isNotNull();
   }
 
   /** Ensure we use the same clock for traces that started in-process */
-  @Test
-  public void getOrCreate_reusesClockFromParent() {
+  @Test void getOrCreate_reusesClockFromParent() {
     TraceContext trace = context;
     TraceContext traceJoin = trace.toBuilder().shared(true).build();
     TraceContext trace2 = context.toBuilder().traceId(2L).build();
@@ -106,22 +104,19 @@ public class PendingSpansTest {
     assertThat(traceSpan.clock).isNotSameAs(trace2Span.clock);
   }
 
-  @Test
-  public void getOrCreate_cachesReference() {
+  @Test void getOrCreate_cachesReference() {
     PendingSpan span = pendingSpans.getOrCreate(null, context, false);
     assertThat(pendingSpans.getOrCreate(null, context, false)).isSameAs(span);
   }
 
-  @Test
-  public void getOrCreate_splitsSharedServerDataFromClient() {
+  @Test void getOrCreate_splitsSharedServerDataFromClient() {
     TraceContext context2 = context.toBuilder().shared(true).build();
 
     assertThat(pendingSpans.getOrCreate(null, context, false)).isNotEqualTo(
       pendingSpans.getOrCreate(null, context2, false));
   }
 
-  @Test
-  public void remove_doesntReport() {
+  @Test void remove_doesntReport() {
     pendingSpans.getOrCreate(null, context, false);
     pendingSpans.remove(context);
 
@@ -133,8 +128,7 @@ public class PendingSpansTest {
    *
    * <p>This is a customized version of https://github.com/raphw/weak-lock-free/blob/master/src/test/java/com/blogspot/mydailyjava/weaklockfree/WeakConcurrentMapTest.java
    */
-  @Test
-  public void reportOrphanedSpans_afterGC() {
+  @Test void reportOrphanedSpans_afterGC() {
     TraceContext context1 = context.toBuilder().traceId(1).spanId(1).build();
     PendingSpan span = pendingSpans.getOrCreate(null, context1, false);
     span.span.tag("foo", "bar");
@@ -174,8 +168,7 @@ public class PendingSpansTest {
     assertThat(spans.get(1).containsAnnotation("brave.flush")).isTrue();
   }
 
-  @Test
-  public void noop_afterGC() {
+  @Test void noop_afterGC() {
     TraceContext context1 = context.toBuilder().spanId(1).build();
     pendingSpans.getOrCreate(null, context1, false);
     TraceContext context2 = context.toBuilder().spanId(2).build();
@@ -201,8 +194,7 @@ public class PendingSpansTest {
     assertThat(clock.get()).isEqualTo(initialClockVal);
   }
 
-  @Test
-  public void orphanContext_dropsExtra() {
+  @Test void orphanContext_dropsExtra() {
     TraceContext context1 = context.toBuilder().extra(asList(1, true)).build();
     TraceContext context = this.context.toBuilder().build();
     pendingSpans.getOrCreate(null, context, false).state().tag("foo", "bar");
@@ -217,8 +209,7 @@ public class PendingSpansTest {
     assertThat(contexts.get(0).extra()).isEmpty(); // No context decorations are retained
   }
 
-  @Test
-  public void orphanContext_includesAllFlags() {
+  @Test void orphanContext_includesAllFlags() {
     TraceContext context1 =
       context.toBuilder().sampled(null).sampledLocal(true).shared(true).build();
     TraceContext context = context1.toBuilder().build();

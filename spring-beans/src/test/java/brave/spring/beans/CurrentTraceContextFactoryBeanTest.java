@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,22 +16,22 @@ package brave.spring.beans;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContextCustomizer;
 import org.assertj.core.api.InstanceOfAssertFactories;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-public class CurrentTraceContextFactoryBeanTest {
+class CurrentTraceContextFactoryBeanTest {
   XmlBeans context;
 
-  @After public void close() {
+  @AfterEach void close() {
     if (context != null) context.close();
   }
 
-  @Test public void scopeDecorators() {
+  @Test void scopeDecorators() {
     context = new XmlBeans(""
       + "<bean id=\"currentTraceContext\" class=\"brave.spring.beans.CurrentTraceContextFactoryBean\">\n"
       + "  <property name=\"scopeDecorators\">\n"
@@ -52,7 +52,7 @@ public class CurrentTraceContextFactoryBeanTest {
     CUSTOMIZER_ONE = mock(CurrentTraceContextCustomizer.class),
     CUSTOMIZER_TWO = mock(CurrentTraceContextCustomizer.class);
 
-  @Test public void customizers() {
+  @Test void customizers() {
     context = new XmlBeans(""
       + "<bean id=\"currentTraceContext\" class=\"brave.spring.beans.CurrentTraceContextFactoryBean\">\n"
       + "  <property name=\"customizers\">\n"

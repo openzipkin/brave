@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,16 +15,17 @@ package brave.test.util;
 
 import java.lang.ref.WeakReference;
 import java.util.logging.Logger;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class ClassLoadersTest {
+class ClassLoadersTest {
   static class Foo {
   }
 
-  @Test public void createdNonDelegating_cantSeeCurrentClasspath() throws Exception {
+  @Test void createdNonDelegating_cantSeeCurrentClasspath() throws Exception {
     Foo foo = new Foo(); // load the class
 
     ClassLoader loader =
@@ -41,7 +42,7 @@ public class ClassLoadersTest {
     }
   }
 
-  @Test public void assertRunIsUnloadable_threadLocalWithSystemClassIsUnloadable() {
+  @Test void assertRunIsUnloadable_threadLocalWithSystemClassIsUnloadable() {
     assertRunIsUnloadable(PresentThreadLocalWithSystemType.class, getClass().getClassLoader());
   }
 
@@ -52,7 +53,7 @@ public class ClassLoadersTest {
     }
   }
 
-  @Test public void assertRunIsUnloadable_absentThreadLocalWithOurClassIsUnloadable() {
+  @Test void assertRunIsUnloadable_absentThreadLocalWithOurClassIsUnloadable() {
     assertRunIsUnloadable(AbsentThreadLocalWithApplicationType.class, getClass().getClassLoader());
   }
 
@@ -64,9 +65,10 @@ public class ClassLoadersTest {
     }
   }
 
-  @Test(expected = AssertionError.class)
-  public void assertRunIsUnloadable_threadLocalWithOurClassIsntUnloadable() {
-    assertRunIsUnloadable(PresentThreadLocalWithApplicationType.class, getClass().getClassLoader());
+  @Test void assertRunIsUnloadable_threadLocalWithOurClassIsntUnloadable() {
+    assertThrows(AssertionError.class, () -> {
+      assertRunIsUnloadable(PresentThreadLocalWithApplicationType.class, getClass().getClassLoader());
+    });
   }
 
   static class PresentThreadLocalWithWeakRefToApplicationType implements Runnable {
@@ -77,7 +79,7 @@ public class ClassLoadersTest {
     }
   }
 
-  @Test public void assertRunIsUnloadable_threadLocalWithWeakRefToOurClassIsUnloadable() {
+  @Test void assertRunIsUnloadable_threadLocalWithWeakRefToOurClassIsUnloadable() {
     assertRunIsUnloadable(PresentThreadLocalWithWeakRefToApplicationType.class,
       getClass().getClassLoader());
   }
@@ -87,7 +89,7 @@ public class ClassLoadersTest {
    * class that looked up a logger. Ensuring log manager implementation is out-of-scope. This
    * assertion is only here to avoid distraction of java logging interfering with class unloading.
    */
-  @Test public void assertRunIsUnloadable_javaLoggerUnloadable() {
+  @Test void assertRunIsUnloadable_javaLoggerUnloadable() {
     assertRunIsUnloadable(JavaLogger.class, getClass().getClassLoader());
   }
 

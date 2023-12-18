@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,23 +15,23 @@ package brave.rpc;
 
 import brave.SpanCustomizer;
 import brave.propagation.TraceContext;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class RpcParserTest {
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).build();
   @Mock SpanCustomizer spanCustomizer;
   @Mock RpcRequest request;
   @Mock RpcResponse response;
 
-  @Test public void request_addsNameServiceAndMethod() {
+  @Test void request_addsNameServiceAndMethod() {
     when(request.service()).thenReturn("zipkin.proto3.SpanService");
     when(request.method()).thenReturn("Report");
 
@@ -43,7 +43,7 @@ public class RpcParserTest {
     verifyNoMoreInteractions(spanCustomizer);
   }
 
-  @Test public void response_setsErrorTagToErrorCode() {
+  @Test void response_setsErrorTagToErrorCode() {
     when(response.errorCode()).thenReturn("CANCELLED");
 
     RpcResponseParser.DEFAULT.parse(response, context, spanCustomizer);

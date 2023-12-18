@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -43,24 +43,23 @@ import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
 import okhttp3.mockwebserver.SocketPolicy;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static brave.Span.Kind.CLIENT;
 import static brave.http.HttpRequestMatchers.pathStartsWith;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class ITHttpClient<C> extends ITRemote {
-  @Rule public MockWebServer server = new MockWebServer();
+  public MockWebServer server = new MockWebServer();
 
   protected C client;
   protected HttpTracing httpTracing = HttpTracing.create(tracing);
   protected Extractor<RecordedRequest> extractor =
     propagationFactory.get().extractor(RecordedRequest::getHeader);
 
-  @Before public void setup() throws IOException {
+  @BeforeEach public void setup() throws IOException {
     client = newClient(server.getPort());
   }
 
@@ -76,12 +75,13 @@ public abstract class ITHttpClient<C> extends ITRemote {
   protected abstract void post(C client, String pathIncludingQuery, String body) throws IOException;
 
   /** Closes the client prior to calling {@link ITRemote#close()} */
-  @Override @After public void close() throws Exception {
+  @Override @AfterEach public void close() throws Exception {
     closeClient(client);
     super.close();
+    server.close();
   }
 
-  @Test public void propagatesNewTrace() throws Exception {
+  @Test protected void propagatesNewTrace() throws Exception {
     server.enqueue(new MockResponse());
     get(client, "/foo");
 
@@ -91,7 +91,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     assertSameIds(testSpanHandler.takeRemoteSpan(CLIENT), extracted);
   }
 
-  @Test public void propagatesChildOfCurrentSpan() throws IOException {
+  @Test protected void propagatesChildOfCurrentSpan() throws IOException {
     server.enqueue(new MockResponse());
 
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
@@ -106,7 +106,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
   }
 
   /** Unlike Brave 3, Brave 4 propagates trace ids even when unsampled */
-  @Test public void propagatesUnsampledContext() throws IOException {
+  @Test protected void propagatesUnsampledContext() throws IOException {
     server.enqueue(new MockResponse());
 
     TraceContext parent = newTraceContext(SamplingFlags.NOT_SAMPLED);
@@ -119,7 +119,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     assertChildOf(extracted, parent);
   }
 
-  @Test public void propagatesBaggage() throws IOException {
+  @Test protected void propagatesBaggage() throws IOException {
     server.enqueue(new MockResponse());
 
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
@@ -134,7 +134,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
-  @Test public void propagatesBaggage_unsampled() throws IOException {
+  @Test protected void propagatesBaggage_unsampled() throws IOException {
     server.enqueue(new MockResponse());
 
     TraceContext parent = newTraceContext(SamplingFlags.NOT_SAMPLED);
@@ -147,7 +147,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
     assertThat(BAGGAGE_FIELD.getValue(extracted)).isEqualTo("joey");
   }
 
-  @Test public void customSampler() throws IOException {
+  @Test protected void customSampler() throws IOException {
     String path = "/foo";
 
     closeClient(client);
@@ -166,7 +166,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
   }
 
   /** This prevents confusion as a blocking client should end before, the start of the next span. */
-  @Test public void clientTimestampAndDurationEnclosedByParent() throws IOException {
+  @Test protected void clientTimestampAndDurationEnclosedByParent() throws IOException {
     server.enqueue(new MockResponse());
 
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
@@ -183,24 +183,23 @@ public abstract class ITHttpClient<C> extends ITRemote {
     assertSpanInInterval(clientSpan, start, finish);
   }
 
-  @Test public void reportsClientKindToZipkin() throws IOException {
+  @Test protected void reportsClientKindToZipkin() throws IOException {
     server.enqueue(new MockResponse());
     get(client, "/foo");
 
     testSpanHandler.takeRemoteSpan(CLIENT);
   }
 
-  @Test
-  public void reportsServerAddress() throws IOException {
+  @Test protected void reportsServerAddress() throws IOException {
     server.enqueue(new MockResponse());
     get(client, "/foo");
 
     assertThat(testSpanHandler.takeRemoteSpan(CLIENT))
-        .extracting(MutableSpan::remoteIp, MutableSpan::remotePort)
-        .containsExactly("127.0.0.1", server.getPort());
+      .extracting(MutableSpan::remoteIp, MutableSpan::remotePort)
+      .containsExactly("127.0.0.1", server.getPort());
   }
 
-  @Test public void defaultSpanNameIsMethodName() throws IOException {
+  @Test protected void defaultSpanNameIsMethodName() throws IOException {
     server.enqueue(new MockResponse());
     get(client, "/foo");
 
@@ -208,7 +207,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
       .isEqualTo("GET");
   }
 
-  @Test public void readsRequestAtResponseTime() throws IOException {
+  @Test protected void readsRequestAtResponseTime() throws IOException {
     String uri = "/foo/bar?z=2&yAA=1";
 
     closeClient(client);
@@ -226,7 +225,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
       .containsEntry("http.url", url(uri));
   }
 
-  @Test public void supportsPortableCustomization() throws IOException {
+  @Test protected void supportsPortableCustomization() throws IOException {
     String uri = "/foo/bar?z=2&yAA=1";
 
     closeClient(client);
@@ -259,7 +258,8 @@ public abstract class ITHttpClient<C> extends ITRemote {
       .containsEntry("response_customizer.is_span", "false");
   }
 
-  @Deprecated @Test public void supportsDeprecatedPortableCustomization() throws IOException {
+  @Deprecated
+  @Test protected void supportsDeprecatedPortableCustomization() throws IOException {
     String uri = "/foo/bar?z=2&yAA=1";
 
     closeClient(client);
@@ -301,7 +301,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
       .containsEntry("response_customizer.is_span", "false");
   }
 
-  @Test public void addsStatusCodeWhenNotOk() throws IOException {
+  @Test protected void addsStatusCodeWhenNotOk() throws IOException {
     server.enqueue(new MockResponse().setResponseCode(400));
 
     try {
@@ -314,7 +314,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
       .containsEntry("http.status_code", "400");
   }
 
-  @Test public void redirect() throws IOException {
+  @Test protected void redirect() throws IOException {
     server.enqueue(new MockResponse().setResponseCode(302)
       .addHeader("Location: " + url("/bar")));
     server.enqueue(new MockResponse().setResponseCode(404)); // hehe to a bad location!
@@ -340,7 +340,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
   }
 
   /** This tests empty path "" coerces to "/" per RFC 7230 Section 2.7.3 */
-  @Test public void emptyPath() throws IOException {
+  @Test protected void emptyPath() throws IOException {
     server.enqueue(new MockResponse());
 
     get(client, "");
@@ -352,7 +352,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
       .containsEntry("http.path", "/");
   }
 
-  @Test public void options() throws IOException {
+  @Test protected void options() throws IOException {
     server.enqueue(new MockResponse().setResponseCode(204));
 
     // Not using asterisk-form (RFC 7230 Section 5.3.4) as many clients don't support it
@@ -366,7 +366,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
       .containsEntry("http.path", "/");
   }
 
-  @Test public void post() throws IOException {
+  @Test protected void post() throws IOException {
     String path = "/post";
     String body = "body";
     server.enqueue(new MockResponse());
@@ -380,7 +380,7 @@ public abstract class ITHttpClient<C> extends ITRemote {
       .isEqualTo("POST");
   }
 
-  @Test public void httpPathTagExcludesQueryParams() throws IOException {
+  @Test protected void httpPathTagExcludesQueryParams() throws IOException {
     String path = "/foo?z=2&yAA=1";
 
     server.enqueue(new MockResponse());
@@ -390,11 +390,11 @@ public abstract class ITHttpClient<C> extends ITRemote {
       .containsEntry("http.path", "/foo");
   }
 
-  @Test public void spanHandlerSeesError() throws IOException {
+  @Test protected void spanHandlerSeesError() throws IOException {
     spanHandlerSeesError(get());
   }
 
-  @Test public void setsError_onTransportException() {
+  @Test protected void setsError_onTransportException() {
     checkReportsSpanOnTransportException(get());
   }
 
@@ -415,7 +415,8 @@ public abstract class ITHttpClient<C> extends ITRemote {
     httpTracing = HttpTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE)
       .clearSpanHandlers()
       .addSpanHandler(new SpanHandler() {
-        @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
+        @Override
+        public boolean end(TraceContext context, MutableSpan span, Cause cause) {
           Throwable error = span.error();
           if (error != null) {
             caughtThrowables.add(error);
@@ -434,8 +435,8 @@ public abstract class ITHttpClient<C> extends ITRemote {
     checkReportsSpanOnTransportException(get);
 
     assertThat(caughtThrowables)
-        .withFailMessage("Span finished with error, but caughtThrowables empty")
-        .isNotEmpty();
+      .withFailMessage("Span finished with error, but caughtThrowables empty")
+      .isNotEmpty();
     if (caughtThrowables.size() > 1) {
       for (Throwable throwable : caughtThrowables) {
         Logger.getAnonymousLogger().log(Level.SEVERE, "multiple calls to finish", throwable);

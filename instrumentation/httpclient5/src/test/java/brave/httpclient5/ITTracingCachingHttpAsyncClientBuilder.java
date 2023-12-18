@@ -23,13 +23,13 @@ import java.util.Arrays;
 import okhttp3.mockwebserver.MockResponse;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder;
 import org.apache.hc.client5.http.impl.cache.CachingHttpAsyncClientBuilder;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.Span.Kind.CLIENT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class ITTracingCachingHttpAsyncClientBuilder extends ITTracingHttpAsyncClientBuilder {
+class ITTracingCachingHttpAsyncClientBuilder extends ITTracingHttpAsyncClientBuilder {
   @Override
   protected HttpAsyncClientBuilder newClientBuilder() {
     return CachingHttpAsyncClientBuilder.create().disableAutomaticRetries();
@@ -38,8 +38,7 @@ public class ITTracingCachingHttpAsyncClientBuilder extends ITTracingHttpAsyncCl
   /**
    * Handle when the client doesn't actually make a client span
    */
-  @Test
-  public void cacheControl() throws IOException {
+  @Test void cacheControl() throws IOException {
     server.enqueue(new MockResponse()
       .addHeader("Content-Type", "text/plain")
       .addHeader("Cache-Control", "max-age=600, stale-while-revalidate=1200")

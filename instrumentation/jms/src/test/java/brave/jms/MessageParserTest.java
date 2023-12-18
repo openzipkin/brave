@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,7 +16,7 @@ package brave.jms;
 import javax.jms.JMSException;
 import javax.jms.Queue;
 import javax.jms.Topic;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -28,11 +28,11 @@ public class MessageParserTest {
   interface QueueAndTopic extends Queue, Topic {
   }
 
-  @Test public void channelKind_queueAndTopic_null() {
+  @Test void channelKind_queueAndTopic_null() {
     assertThat(MessageParser.channelKind(null)).isNull();
   }
 
-  @Test public void channelKind_queueAndTopic_queueOnQueueName() throws JMSException {
+  @Test void channelKind_queueAndTopic_queueOnQueueName() throws JMSException {
     QueueAndTopic destination = mock(QueueAndTopic.class);
     when(destination.getQueueName()).thenReturn("queue-foo");
 
@@ -40,7 +40,7 @@ public class MessageParserTest {
       .isEqualTo("queue");
   }
 
-  @Test public void channelKind_queueAndTopic_topicOnNoQueueName() throws JMSException {
+  @Test void channelKind_queueAndTopic_topicOnNoQueueName() throws JMSException {
     QueueAndTopic destination = mock(QueueAndTopic.class);
     when(destination.getTopicName()).thenReturn("topic-foo");
 
@@ -48,11 +48,11 @@ public class MessageParserTest {
       .isEqualTo("topic");
   }
 
-  @Test public void channelName_queueAndTopic_null() {
+  @Test void channelName_queueAndTopic_null() {
     assertThat(MessageParser.channelName(null)).isNull();
   }
 
-  @Test public void channelName_queueAndTopic_queueOnQueueName() throws JMSException {
+  @Test void channelName_queueAndTopic_queueOnQueueName() throws JMSException {
     QueueAndTopic destination = mock(QueueAndTopic.class);
     when(destination.getQueueName()).thenReturn("queue-foo");
 
@@ -60,7 +60,7 @@ public class MessageParserTest {
       .isEqualTo("queue-foo");
   }
 
-  @Test public void channelName_queueAndTopic_topicOnNoQueueName() throws JMSException {
+  @Test void channelName_queueAndTopic_topicOnNoQueueName() throws JMSException {
     QueueAndTopic destination = mock(QueueAndTopic.class);
     when(destination.getTopicName()).thenReturn("topic-foo");
 

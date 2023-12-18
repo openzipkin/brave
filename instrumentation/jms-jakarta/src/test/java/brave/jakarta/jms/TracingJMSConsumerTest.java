@@ -18,18 +18,16 @@ import brave.propagation.B3Propagation;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
-import java.util.Collections;
-
 import jakarta.jms.JMSConsumer;
 import jakarta.jms.JMSException;
 import jakarta.jms.Message;
-
+import java.util.Collections;
 import org.apache.activemq.artemis.api.core.client.ClientSession;
 import org.apache.activemq.artemis.core.client.impl.ClientMessageImpl;
 import org.apache.activemq.artemis.jms.client.ActiveMQTextMessage;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static brave.Span.Kind.CONSUMER;
 import static brave.propagation.B3SingleFormat.parseB3SingleFormat;
@@ -46,16 +44,17 @@ public class TracingJMSConsumerTest extends ITJms {
   JMSConsumer tracingJMSConsumer = new TracingJMSConsumer(delegate, null, jmsTracing);
   ClientSession clientSession = mock(ClientSession.class);
 
-  @Before public void setup() throws JMSException {
-    when(clientSession.createMessage(anyByte(), eq(true), eq(0L), anyLong(), eq((byte)4)))
+  @BeforeEach void setup() {
+    when(clientSession.createMessage(anyByte(), eq(true), eq(0L), anyLong(), eq((byte) 4)))
       .thenReturn(new ClientMessageImpl());
   }
 
-  @After public void close() {
+  @Override @AfterEach protected void close() throws Exception {
     tracing.close();
+    super.close();
   }
 
-  @Test public void receive_creates_consumer_span() throws Exception {
+  @Test void receive_creates_consumer_span() throws Exception {
     ActiveMQTextMessage message = new ActiveMQTextMessage(clientSession);
     receive(message);
 
@@ -64,7 +63,7 @@ public class TracingJMSConsumerTest extends ITJms {
     assertThat(consumer.name()).isEqualTo("receive");
   }
 
-  @Test public void receive_continues_parent_trace_single_header() throws Exception {
+  @Test void receive_continues_parent_trace_single_header() throws Exception {
     ActiveMQTextMessage message = new ActiveMQTextMessage(clientSession);
     message.setStringProperty("b3", B3SingleFormat.writeB3SingleFormatWithoutParentId(parent));
 
@@ -79,7 +78,7 @@ public class TracingJMSConsumerTest extends ITJms {
     assertThat(messageContext.spanIdString()).isEqualTo(consumer.id());
   }
 
-  @Test public void receive_retains_baggage_properties() throws Exception {
+  @Test void receive_retains_baggage_properties() throws Exception {
     ActiveMQTextMessage message = new ActiveMQTextMessage(clientSession);
     B3Propagation.B3_STRING.injector(SETTER).inject(parent, message);
     message.setStringProperty(BAGGAGE_FIELD_KEY, "");

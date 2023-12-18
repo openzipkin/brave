@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -28,14 +28,14 @@ import io.reactivex.disposables.Disposable;
 import io.reactivex.observers.TestObserver;
 import io.reactivex.plugins.RxJavaPlugins;
 import io.reactivex.subscribers.TestSubscriber;
+import java.io.IOException;
 import java.util.function.BiConsumer;
 import okhttp3.ResponseBody;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import retrofit2.CallAdapter;
@@ -47,24 +47,25 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** This tests that propagation isn't lost when passing through an untraced system. */
-public class ITRetrofitRxJava2 {
+class ITRetrofitRxJava2 {
   TraceContext context1 = TraceContext.newBuilder().traceId(1L).spanId(1L).build();
   CurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   CurrentTraceContextAssemblyTracking contextTracking;
 
-  @Rule public MockWebServer server = new MockWebServer();
+  public MockWebServer server = new MockWebServer();
   CurrentTraceContextObserver currentTraceContextObserver = new CurrentTraceContextObserver();
 
-  @Before
+  @BeforeEach
   public void setup() {
     RxJavaPlugins.reset();
     contextTracking = CurrentTraceContextAssemblyTracking.create(currentTraceContext);
     contextTracking.enable();
   }
 
-  @After
-  public void tearDown() {
+  @AfterEach
+  public void tearDown() throws IOException {
     CurrentTraceContextAssemblyTracking.disable();
+    server.close();
   }
 
   interface Service {
@@ -84,8 +85,7 @@ public class ITRetrofitRxJava2 {
     Flowable<ResponseBody> flowable();
   }
 
-  @Test
-  public void createAsync_completable_success() {
+  @Test void createAsync_completable_success() {
     rxjava_createAsync_success(
       (service, observer) -> {
         try (Scope scope = currentTraceContext.newScope(context1)) {
@@ -94,8 +94,7 @@ public class ITRetrofitRxJava2 {
       });
   }
 
-  @Test
-  public void createAsync_maybe_success() {
+  @Test void createAsync_maybe_success() {
     rxjava_createAsync_success(
       (service, observer) -> {
         try (Scope scope = currentTraceContext.newScope(context1)) {
@@ -104,8 +103,7 @@ public class ITRetrofitRxJava2 {
       });
   }
 
-  @Test
-  public void createAsync_observable_success() {
+  @Test void createAsync_observable_success() {
     rxjava_createAsync_success(
       (service, observer) -> {
         try (Scope scope = currentTraceContext.newScope(context1)) {
@@ -114,8 +112,7 @@ public class ITRetrofitRxJava2 {
       });
   }
 
-  @Test
-  public void createAsync_single_success() {
+  @Test void createAsync_single_success() {
     rxjava_createAsync_success(
       (service, observer) -> {
         try (Scope scope = currentTraceContext.newScope(context1)) {
@@ -138,8 +135,7 @@ public class ITRetrofitRxJava2 {
     assertThat(currentTraceContextObserver.onComplete).isEqualTo(context1);
   }
 
-  @Test
-  public void createAsync_flowable_success() {
+  @Test void createAsync_flowable_success() {
     rx_createAsync_success(
       (service, subscriber) -> {
         try (Scope scope = currentTraceContext.newScope(context1)) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,21 +14,21 @@
 package brave.http;
 
 import brave.Span;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class HttpServerRequestTest {
   @Mock HttpServerRequest serverRequest;
   @Mock Span span;
 
-  @Test public void parseClientIpAndPort_prefersXForwardedFor() {
+  @Test void parseClientIpAndPort_prefersXForwardedFor() {
     when(serverRequest.header("X-Forwarded-For")).thenReturn("1.2.3.4");
 
     when(serverRequest.parseClientIpAndPort(span)).thenCallRealMethod();
@@ -40,7 +40,7 @@ public class HttpServerRequestTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void parseClientIpAndPort_picksFirstXForwardedFor() {
+  @Test void parseClientIpAndPort_picksFirstXForwardedFor() {
     when(serverRequest.header("X-Forwarded-For")).thenReturn("1.2.3.4,3.4.5.6");
 
     when(serverRequest.parseClientIpAndPort(span)).thenCallRealMethod();
@@ -52,7 +52,7 @@ public class HttpServerRequestTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void parseClientIpAndPort_skipsOnNoIp() {
+  @Test void parseClientIpAndPort_skipsOnNoIp() {
     when(serverRequest.parseClientIpAndPort(span)).thenCallRealMethod();
     when(serverRequest.parseClientIpFromXForwardedFor(span)).thenCallRealMethod();
 

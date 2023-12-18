@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,16 +15,14 @@ package brave.sampler;
 
 import java.util.Random;
 import org.assertj.core.data.Percentage;
-import org.junit.Test;
-import org.junit.experimental.theories.DataPoints;
-import org.junit.experimental.theories.Theories;
-import org.junit.experimental.theories.Theory;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@RunWith(Theories.class)
-public abstract class SamplerTest {
+abstract class SamplerTest {
   /**
    * Zipkin trace ids are random 64bit numbers. This creates a relatively large input to avoid
    * flaking out due to PRNG nuance.
@@ -35,11 +33,9 @@ public abstract class SamplerTest {
 
   abstract Percentage expectedErrorProbability();
 
-  @DataPoints
-  public static final float[] SAMPLE_PROBABILITIES = {0.01f, 0.5f, 0.9f};
-
-  @Theory
-  public void retainsPerSampleProbability(float sampleProbability) {
+  @ParameterizedTest
+  @ValueSource(floats = {0.01f, 0.5f, 0.9f})
+  void retainsPerSampleProbability(float sampleProbability) {
     final Sampler sampler = newSampler(sampleProbability);
 
     // parallel to ensure there aren't any unsynchronized race conditions
@@ -49,28 +45,28 @@ public abstract class SamplerTest {
       .isCloseTo((long) (INPUT_SIZE * sampleProbability), expectedErrorProbability());
   }
 
-  @Test
-  public void zeroMeansDropAllTraces() {
+  @Test void zeroMeansDropAllTraces() {
     final Sampler sampler = newSampler(0.0f);
 
     assertThat(new Random().longs(INPUT_SIZE).filter(sampler::isSampled).findAny()).isEmpty();
   }
 
-  @Test
-  public void oneMeansKeepAllTraces() {
+  @Test void oneMeansKeepAllTraces() {
     final Sampler sampler = newSampler(1.0f);
 
     assertThat(new Random().longs(INPUT_SIZE).filter(sampler::isSampled).count()).isEqualTo(
       INPUT_SIZE);
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void probabilityCantBeNegative() {
-    newSampler(-1.0f);
+  @Test void probabilityCantBeNegative() {
+    assertThrows(IllegalArgumentException.class, () -> {
+      newSampler(-1.0f);
+    });
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void probabilityCantBeOverOne() {
-    newSampler(1.1f);
+  @Test void probabilityCantBeOverOne() {
+    assertThrows(IllegalArgumentException.class, () -> {
+      newSampler(1.1f);
+    });
   }
 }

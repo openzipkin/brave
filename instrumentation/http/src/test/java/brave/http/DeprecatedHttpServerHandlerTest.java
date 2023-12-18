@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -22,13 +22,15 @@ import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.ArrayList;
 import java.util.List;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Spy;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,7 +42,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT) // TODO: hunt down these
 @Deprecated public class DeprecatedHttpServerHandlerTest {
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(1L).sampled(true).build();
   List<zipkin2.Span> spans = new ArrayList<>();
@@ -54,7 +57,7 @@ import static org.mockito.Mockito.when;
   @Mock Object request;
   @Mock Object response;
 
-  @Before public void init() {
+  @BeforeEach void init() {
     httpTracing = HttpTracing.newBuilder(Tracing.newBuilder().spanReporter(spans::add).build())
       .serverSampler(sampler).serverParser(parser).build();
     handler = HttpServerHandler.create(httpTracing, adapter);
@@ -63,11 +66,11 @@ import static org.mockito.Mockito.when;
     doCallRealMethod().when(adapter).parseClientIpAndPort(eq(request), isA(Span.class));
   }
 
-  @After public void close() {
+  @AfterEach void close() {
     Tracing.current().close();
   }
 
-  @Test public void handleReceive_defaultsToMakeNewTrace() {
+  @Test void handleReceive_defaultsToMakeNewTrace() {
     when(extractor.extract(request))
       .thenReturn(TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY));
 
@@ -79,7 +82,7 @@ import static org.mockito.Mockito.when;
     assertThat(newSpan.context().shared()).isFalse();
   }
 
-  @Test public void handleReceive_reusesTraceId() {
+  @Test void handleReceive_reusesTraceId() {
     httpTracing = HttpTracing.newBuilder(
       Tracing.newBuilder().supportsJoin(false).spanReporter(spans::add).build())
       .serverSampler(sampler).serverParser(parser).build();
@@ -96,7 +99,7 @@ import static org.mockito.Mockito.when;
       .containsOnly(incomingContext.traceId(), incomingContext.spanId(), false);
   }
 
-  @Test public void handleReceive_reusesSpanIds() {
+  @Test void handleReceive_reusesSpanIds() {
     TraceContext incomingContext = httpTracing.tracing().tracer().nextSpan().context();
     when(extractor.extract(request))
       .thenReturn(TraceContextOrSamplingFlags.create(incomingContext));
@@ -105,7 +108,7 @@ import static org.mockito.Mockito.when;
       .isEqualTo(incomingContext.toBuilder().shared(true).build());
   }
 
-  @Test public void handleReceive_honorsSamplingFlags() {
+  @Test void handleReceive_honorsSamplingFlags() {
     when(extractor.extract(request))
       .thenReturn(TraceContextOrSamplingFlags.create(SamplingFlags.NOT_SAMPLED));
 
@@ -113,7 +116,7 @@ import static org.mockito.Mockito.when;
       .isTrue();
   }
 
-  @Test public void handleReceive_makesRequestBasedSamplingDecision_flags() {
+  @Test void handleReceive_makesRequestBasedSamplingDecision_flags() {
     when(extractor.extract(request))
       .thenReturn(TraceContextOrSamplingFlags.create(SamplingFlags.EMPTY));
 
@@ -124,7 +127,7 @@ import static org.mockito.Mockito.when;
       .isTrue();
   }
 
-  @Test public void handleReceive_makesRequestBasedSamplingDecision_context() {
+  @Test void handleReceive_makesRequestBasedSamplingDecision_context() {
     Tracer tracer = httpTracing.tracing().tracer();
     TraceContext incomingContext = tracer.nextSpan().context().toBuilder().sampled(null).build();
     when(extractor.extract(request))
@@ -137,7 +140,7 @@ import static org.mockito.Mockito.when;
       .isTrue();
   }
 
-  @Test public void handleSend() {
+  @Test void handleSend() {
     Span span = mock(Span.class);
     when(span.context()).thenReturn(context);
     when(span.customizer()).thenReturn(span);

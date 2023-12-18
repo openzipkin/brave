@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,7 +15,7 @@ package brave.propagation;
 
 import brave.internal.codec.HexCodec;
 import java.util.Arrays;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 import static brave.internal.InternalPropagation.FLAG_SHARED;
@@ -23,16 +23,16 @@ import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class TraceContextTest {
+class TraceContextTest {
   TraceContext base = TraceContext.newBuilder().traceId(1L).spanId(1L).build();
 
-  @Test public void traceIdRequiredAndNonZero() {
+  @Test void traceIdRequiredAndNonZero() {
     assertThatThrownBy(() -> TraceContext.newBuilder().spanId(2L).build())
       .isInstanceOf(IllegalArgumentException.class)
       .hasMessage("Missing: traceId");
   }
 
-  @Test public void spanIdRequiredAndNonZero() {
+  @Test void spanIdRequiredAndNonZero() {
     assertThatThrownBy(() -> TraceContext.newBuilder().build())
       .isInstanceOf(IllegalArgumentException.class)
       .hasMessage("Missing: traceId spanId");
@@ -42,7 +42,7 @@ public class TraceContextTest {
       .hasMessage("Missing: spanId");
   }
 
-  @Test public void compareUnequalIds() {
+  @Test void compareUnequalIds() {
     TraceContext context = TraceContext.newBuilder().traceId(333L).spanId(3L).build();
 
     assertThat(context)
@@ -51,12 +51,12 @@ public class TraceContextTest {
       .isNotEqualTo(TraceContext.newBuilder().traceId(333L).spanId(1L).build().hashCode());
   }
 
-  @Test public void contextWithShared_true() {
+  @Test void contextWithShared_true() {
     assertThat(base.toBuilder().sampled(false).shared(true).build().flags)
       .isEqualTo(FLAG_SAMPLED_SET | FLAG_SHARED);
   }
 
-  @Test public void contextWithShared_false() {
+  @Test void contextWithShared_false() {
     assertThat(base.toBuilder().sampled(false).shared(false).build().flags)
       .isEqualTo(FLAG_SAMPLED_SET);
   }
@@ -65,7 +65,7 @@ public class TraceContextTest {
    * Shared context is different than an unshared one, notably this keeps client/server loopback
    * separate.
    */
-  @Test public void compareUnequalIds_onShared() {
+  @Test void compareUnequalIds_onShared() {
     TraceContext context = TraceContext.newBuilder().traceId(333L).spanId(3L).build();
 
     assertThat(context)
@@ -74,7 +74,7 @@ public class TraceContextTest {
       .isNotEqualTo(context.toBuilder().shared(true).build().hashCode());
   }
 
-  @Test public void compareEqualIds() {
+  @Test void compareEqualIds() {
     TraceContext context = TraceContext.newBuilder().traceId(333L).spanId(444L).build();
 
     assertThat(context)
@@ -83,7 +83,7 @@ public class TraceContextTest {
       .isEqualTo(TraceContext.newBuilder().traceId(333L).spanId(444L).build().hashCode());
   }
 
-  @Test public void equalOnSameTraceIdSpanId() {
+  @Test void equalOnSameTraceIdSpanId() {
     TraceContext context = TraceContext.newBuilder().traceId(333L).spanId(444L).build();
 
     assertThat(context)
@@ -92,16 +92,14 @@ public class TraceContextTest {
       .isEqualTo(context.toBuilder().parentId(1L).build().hashCode());
   }
 
-  @Test
-  public void testToString_lo() {
+  @Test void testToString_lo() {
     TraceContext context = TraceContext.newBuilder().traceId(333L).spanId(3).parentId(2L).build();
 
     assertThat(context.toString())
       .isEqualTo("000000000000014d/0000000000000003");
   }
 
-  @Test
-  public void testToString() {
+  @Test void testToString() {
     TraceContext context =
       TraceContext.newBuilder().traceIdHigh(333L).traceId(444L).spanId(3).parentId(2L).build();
 
@@ -109,7 +107,7 @@ public class TraceContextTest {
       .isEqualTo("000000000000014d00000000000001bc/0000000000000003");
   }
 
-  @Test public void canUsePrimitiveOverloads_true() {
+  @Test void canUsePrimitiveOverloads_true() {
     TraceContext primitives = base.toBuilder()
       .parentId(1L)
       .sampled(true)
@@ -130,7 +128,7 @@ public class TraceContextTest {
       .isTrue();
   }
 
-  @Test public void canUsePrimitiveOverloads_false() {
+  @Test void canUsePrimitiveOverloads_false() {
     base = base.toBuilder().debug(true).build();
 
     TraceContext primitives = base.toBuilder()
@@ -153,7 +151,7 @@ public class TraceContextTest {
       .isFalse();
   }
 
-  @Test public void canSetSampledNull() {
+  @Test void canSetSampledNull() {
     base = base.toBuilder().sampled(true).build();
 
     TraceContext objects = base.toBuilder().sampled(null).build();
@@ -164,7 +162,7 @@ public class TraceContextTest {
       .isNull();
   }
 
-  @Test public void nullToZero() {
+  @Test void nullToZero() {
     TraceContext nulls = base.toBuilder()
       .parentId(null)
       .build();
@@ -177,7 +175,7 @@ public class TraceContextTest {
       .isEqualToComparingFieldByField(zeros);
   }
 
-  @Test public void parseTraceId_128bit() {
+  @Test void parseTraceId_128bit() {
     String traceIdString = "463ac35c9f6413ad48485a3953bb6124";
 
     TraceContext.Builder builder = parseGoodTraceID(traceIdString);
@@ -188,7 +186,7 @@ public class TraceContextTest {
       .isEqualTo("48485a3953bb6124");
   }
 
-  @Test public void parseTraceId_64bit() {
+  @Test void parseTraceId_64bit() {
     String traceIdString = "48485a3953bb6124";
 
     TraceContext.Builder builder = parseGoodTraceID(traceIdString);
@@ -198,7 +196,7 @@ public class TraceContextTest {
       .isEqualTo(traceIdString);
   }
 
-  @Test public void parseTraceId_short128bit() {
+  @Test void parseTraceId_short128bit() {
     String traceIdString = "3ac35c9f6413ad48485a3953bb6124";
 
     TraceContext.Builder builder = parseGoodTraceID(traceIdString);
@@ -209,7 +207,7 @@ public class TraceContextTest {
       .isEqualTo("48485a3953bb6124");
   }
 
-  @Test public void parseTraceId_short64bit() {
+  @Test void parseTraceId_short64bit() {
     String traceIdString = "6124";
 
     TraceContext.Builder builder = parseGoodTraceID(traceIdString);
@@ -219,7 +217,7 @@ public class TraceContextTest {
       .isEqualTo("000000000000" + traceIdString);
   }
 
-  @Test public void parseTraceId_padded() {
+  @Test void parseTraceId_padded() {
     TraceContext context = parseGoodTraceID("00000000000000000000000000000001")
       .spanId(2L).build();
 
@@ -228,7 +226,7 @@ public class TraceContextTest {
   }
 
   /** Not a good idea to pad backwards, but it is a valid value */
-  @Test public void parseTraceId_paddedRight() {
+  @Test void parseTraceId_paddedRight() {
     TraceContext context = parseGoodTraceID("10000000000000000000000000000000")
       .spanId(2L).build();
 
@@ -242,7 +240,7 @@ public class TraceContextTest {
    *
    * <p>Notably, this shouldn't throw exception or allocate anything
    */
-  @Test public void parseTraceId_malformedReturnsFalse() {
+  @Test void parseTraceId_malformedReturnsFalse() {
     parseBadTraceId("00000000000000000000000000000000");
     parseBadTraceId("463acL$c9f6413ad48485a3953bb6124");
     parseBadTraceId("holy 💩");
@@ -251,7 +249,7 @@ public class TraceContextTest {
     parseBadTraceId(null);
   }
 
-  @Test public void parseSpanId() {
+  @Test void parseSpanId() {
     String spanIdString = "48485a3953bb6124";
 
     TraceContext.Builder builder = parseGoodSpanId(spanIdString);
@@ -260,7 +258,7 @@ public class TraceContextTest {
       .isEqualTo(spanIdString);
   }
 
-  @Test public void parseSpanId_short64bit() {
+  @Test void parseSpanId_short64bit() {
     String spanIdString = "6124";
 
     TraceContext.Builder builder = parseGoodSpanId(spanIdString);
@@ -274,7 +272,7 @@ public class TraceContextTest {
    *
    * <p>Notably, this shouldn't throw exception or allocate anything
    */
-  @Test public void parseSpanId_malformedReturnsFalse() {
+  @Test void parseSpanId_malformedReturnsFalse() {
     parseBadSpanId("463acL$c9f6413ad");
     parseBadSpanId("holy 💩");
     parseBadSpanId("-");
@@ -298,7 +296,7 @@ public class TraceContextTest {
     assertThat(builder.spanId).isZero();
   }
 
-  @Test public void parseParentId() {
+  @Test void parseParentId() {
     String parentIdString = "48485a3953bb6124";
 
     TraceContext.Builder builder = parseGoodParentId(parentIdString);
@@ -307,13 +305,13 @@ public class TraceContextTest {
       .isEqualTo(parentIdString);
   }
 
-  @Test public void parseParentId_null_is_ok() {
+  @Test void parseParentId_null_is_ok() {
     TraceContext.Builder builder = parseGoodParentId(null);
 
     assertThat(builder.parentId).isZero();
   }
 
-  @Test public void parseParentId_short64bit() {
+  @Test void parseParentId_short64bit() {
     String parentIdString = "6124";
 
     TraceContext.Builder builder = parseGoodParentId(parentIdString);
@@ -327,7 +325,7 @@ public class TraceContextTest {
    *
    * <p>Notably, this shouldn't throw exception or allocate anything
    */
-  @Test public void parseParentId_malformedReturnsFalse() {
+  @Test void parseParentId_malformedReturnsFalse() {
     parseBadParentId("463acL$c9f6413ad");
     parseBadParentId("holy 💩");
     parseBadParentId("-");
@@ -367,19 +365,19 @@ public class TraceContextTest {
 
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
 
-  @Test public void withExtra_notEmpty() {
+  @Test void withExtra_notEmpty() {
     assertThat(context.withExtra(Arrays.asList(1L)))
       .extracting("extraList")
       .isEqualTo(Arrays.asList(1L));
   }
 
-  @Test public void withExtra_empty() {
+  @Test void withExtra_empty() {
     assertThat(context.toBuilder().extra(Arrays.asList(1L)).build().withExtra(emptyList()))
       .extracting("extraList")
       .isEqualTo(emptyList());
   }
 
-  @Test public void caches_hashCode() {
+  @Test void caches_hashCode() {
     TraceContext context = TraceContext.newBuilder().traceId(333L).spanId(3L).build();
 
     assertThat(context.hashCode).isZero();
@@ -388,7 +386,7 @@ public class TraceContextTest {
       .isEqualTo(TraceContext.newBuilder().traceId(333L).spanId(3L).build().hashCode());
   }
 
-  @Test public void traceIdString_caches() {
+  @Test void traceIdString_caches() {
     TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
 
     assertThat(context.traceIdString).isNull();
@@ -399,7 +397,7 @@ public class TraceContextTest {
       .isEqualTo("0000000000000001");
   }
 
-  @Test public void parentIdString_caches() {
+  @Test void parentIdString_caches() {
     TraceContext context = TraceContext.newBuilder().traceId(1L).parentId(2L).spanId(3L).build();
 
     assertThat(context.parentIdString).isNull();
@@ -410,7 +408,7 @@ public class TraceContextTest {
       .isEqualTo("0000000000000002");
   }
 
-  @Test public void parentIdString_doesNotCacheNull() {
+  @Test void parentIdString_doesNotCacheNull() {
     TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(3L).build();
 
     assertThat(context.parentIdString).isNull();
@@ -418,7 +416,7 @@ public class TraceContextTest {
     assertThat(context.parentIdString).isNull();
   }
 
-  @Test public void localRootIdString_caches() {
+  @Test void localRootIdString_caches() {
     TraceContext.Builder builder = TraceContext.newBuilder().traceId(1L);
     builder.localRootId = 2L;
     TraceContext context = builder.spanId(3L).build();
@@ -431,7 +429,7 @@ public class TraceContextTest {
       .isEqualTo("0000000000000002");
   }
 
-  @Test public void localRootIdString_doesNotCacheNull() {
+  @Test void localRootIdString_doesNotCacheNull() {
     TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(3L).build();
 
     assertThat(context.localRootIdString).isNull();
@@ -439,7 +437,7 @@ public class TraceContextTest {
     assertThat(context.localRootIdString).isNull();
   }
 
-  @Test public void spanIdString_caches() {
+  @Test void spanIdString_caches() {
     TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
 
     assertThat(context.spanIdString).isNull();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -23,10 +23,9 @@ import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import retrofit2.Call;
 import retrofit2.Retrofit;
 import retrofit2.http.GET;
@@ -35,8 +34,8 @@ import static brave.Span.Kind.CLIENT;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** This tests integration with Retrofit */
-public class ITRetrofit extends ITRemote {
-  @Rule public MockWebServer server = new MockWebServer();
+class ITRetrofit extends ITRemote {
+  MockWebServer server = new MockWebServer();
   HttpTracing httpTracing = HttpTracing.create(tracing);
 
   // Dispatcher/ExecutorService managed externally only to reduce chance of flakey tests
@@ -45,7 +44,7 @@ public class ITRetrofit extends ITRemote {
 
   Service service;
 
-  @Before public void setup()  {
+  @BeforeEach void setup() {
     service = new Retrofit.Builder()
       .baseUrl(server.url("/"))
       .callFactory(TracingCallFactory.create(httpTracing, new OkHttpClient.Builder()
@@ -56,10 +55,13 @@ public class ITRetrofit extends ITRemote {
       .create(Service.class);
   }
 
-  @After @Override public void close() throws Exception {
+  @AfterEach
+  @Override
+  public void close() throws Exception {
     executorService.shutdown();
     executorService.awaitTermination(1, TimeUnit.SECONDS);
     super.close();
+    server.close();
   }
 
   interface Service {
@@ -67,7 +69,7 @@ public class ITRetrofit extends ITRemote {
     Call<ResponseBody> call();
   }
 
-  @Test public void basicSynchronousCall() throws Exception {
+  @Test void basicSynchronousCall() throws Exception {
     server.enqueue(new MockResponse());
 
     service.call().execute();

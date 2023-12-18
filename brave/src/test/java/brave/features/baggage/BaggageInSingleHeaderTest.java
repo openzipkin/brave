@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -22,14 +22,14 @@ import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Injector;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.baggage.BaggagePropagation.newFactoryBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 /** This is an internal feature until we settle on an encoding format. */
-public class BaggageInSingleHeaderTest {
+class BaggageInSingleHeaderTest {
   BaggageField field1 = BaggageField.create("one");
   BaggageField field2 = BaggageField.create("two");
   BaggageField field3 = BaggageField.create("three");
@@ -42,7 +42,7 @@ public class BaggageInSingleHeaderTest {
       .build();
 
   /** This shows that we can encode arbitrary fields into a single header. */
-  @Test public void encodes_arbitrary_fields() {
+  @Test void encodes_arbitrary_fields() {
     TraceContext context = factory.decorate(TraceContext.newBuilder().traceId(1).spanId(2).build());
     field1.updateValue(context, "1");
     field2.updateValue(context, "2");

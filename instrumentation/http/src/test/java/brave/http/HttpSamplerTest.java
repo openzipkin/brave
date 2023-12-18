@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,23 +14,23 @@
 package brave.http;
 
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static brave.http.HttpHandler.NULL_SENTINEL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 @Deprecated public class HttpSamplerTest {
   @Mock HttpClientRequest httpClientRequest;
   @Mock HttpServerRequest httpServerRequest;
   Object request = new Object();
 
-  @Test public void trySample_dispatches() {
+  @Test void trySample_dispatches() {
     HttpSampler sampler = new HttpSampler() {
       @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req req) {
         return adapter.method(req).equals("POST");
@@ -46,7 +46,7 @@ import static org.mockito.Mockito.when;
     verify(httpServerRequest).method();
   }
 
-  @Test public void trySample_seesUnwrappedValue() {
+  @Test void trySample_seesUnwrappedValue() {
     AtomicBoolean reachedAssertion = new AtomicBoolean();
     HttpSampler sampler = new HttpSampler() {
       @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req req) {
@@ -65,7 +65,7 @@ import static org.mockito.Mockito.when;
     assertThat(reachedAssertion.getAndSet(false)).isTrue();
   }
 
-  @Test public void trySample_doesntSeeNullWhenUnwrappedNull() {
+  @Test void trySample_doesntSeeNullWhenUnwrappedNull() {
     AtomicBoolean reachedAssertion = new AtomicBoolean();
     HttpSampler sampler = new HttpSampler() {
       @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req req) {

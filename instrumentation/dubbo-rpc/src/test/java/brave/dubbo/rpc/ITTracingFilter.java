@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,13 +17,13 @@ import brave.test.ITRemote;
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
 import com.alibaba.dubbo.config.ReferenceConfig;
 import com.alibaba.dubbo.rpc.Filter;
-import org.junit.After;
+import org.junit.jupiter.api.AfterEach;
 
 public abstract class ITTracingFilter extends ITRemote {
   TestServer server = new TestServer(propagationFactory);
   ReferenceConfig<GreeterService> client;
 
-  @After public void stop() {
+  @AfterEach void stop() {
     if (client != null) client.destroy();
     server.stop();
   }

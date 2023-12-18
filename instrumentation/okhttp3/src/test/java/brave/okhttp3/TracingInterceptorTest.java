@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,23 +16,23 @@ package brave.okhttp3;
 import brave.Span;
 import brave.Tracing;
 import okhttp3.Interceptor;
-import org.junit.After;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class TracingInterceptorTest {
   Tracing tracing = Tracing.newBuilder().build();
   @Mock Interceptor.Chain chain;
   @Mock Span span;
 
-  @Test public void parseRouteAddress_skipsOnNoop() {
+  @Test void parseRouteAddress_skipsOnNoop() {
     when(span.isNoop()).thenReturn(true);
     TracingInterceptor.parseRouteAddress(chain, span);
 
@@ -40,7 +40,7 @@ public class TracingInterceptorTest {
     verifyNoMoreInteractions(span);
   }
 
-  @After public void close() {
+  @AfterEach void close() {
     tracing.close();
   }
 }

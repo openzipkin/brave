@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,21 +17,21 @@ import brave.Tracing;
 import brave.test.TestSpanHandler;
 import io.micrometer.core.instrument.search.MeterNotFoundException;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
-public class SpanMetricsCustomizerTest {
+class SpanMetricsCustomizerTest {
   SimpleMeterRegistry registry = new SimpleMeterRegistry();
   SpanMetricsCustomizer spanMetricsCustomizer = new SpanMetricsCustomizer(registry, "span", "foo");
 
   TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing;
 
-  @Before public void setup() {
+  @BeforeEach void setup() {
     Tracing.Builder builder = Tracing.newBuilder().addSpanHandler(spans);
 
     // It is typical for multiple customizers to collaborate on a builder.
@@ -40,12 +40,12 @@ public class SpanMetricsCustomizerTest {
     tracing = builder.build();
   }
 
-  @After public void after() {
+  @AfterEach void after() {
     tracing.close();
     registry.close();
   }
 
-  @Test public void onlyRecordsSpansMatchingSpanName() {
+  @Test void onlyRecordsSpansMatchingSpanName() {
     tracing.tracer().nextSpan().name("foo").start().finish();
     tracing.tracer().nextSpan().name("bar").start().finish();
     tracing.tracer().nextSpan().name("foo").start().finish();
@@ -62,7 +62,7 @@ public class SpanMetricsCustomizerTest {
     }
   }
 
-  @Test public void addsExceptionTagToSpan() {
+  @Test void addsExceptionTagToSpan() {
     tracing.tracer().nextSpan().name("foo").start()
       .tag("error", "wow")
       .error(new IllegalStateException())

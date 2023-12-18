@@ -26,9 +26,8 @@ import org.apache.dubbo.common.beanutil.JavaBeanSerializeUtil;
 import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.rpc.Result;
 import org.apache.dubbo.rpc.RpcContext;
-import org.junit.Before;
-import org.junit.Test;
-
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import java.util.Map;
 
 import static brave.Span.Kind.SERVER;
@@ -39,9 +38,9 @@ import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class ITTracingFilter_Provider extends ITTracingFilter {
+class ITTracingFilter_Provider extends ITTracingFilter {
 
-  @Before public void setup() {
+  @BeforeEach void setup() {
     server.service.setFilter("tracing");
     server.service.setGeneric("true");
     server.service.setInterface(GreeterService.class);
@@ -70,7 +69,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     testSpanHandler.takeRemoteSpan(SERVER);
   }
 
-  @Test public void reusesPropagatedSpanId() {
+  @Test void reusesPropagatedSpanId() {
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);
 
     RpcContext.getClientAttachment().setAttachment("b3", B3SingleFormat.writeB3SingleFormat(parent));
@@ -79,7 +78,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     assertSameIds(testSpanHandler.takeRemoteSpan(SERVER), parent);
   }
 
-  @Test public void createsChildWhenJoinDisabled() {
+  @Test void createsChildWhenJoinDisabled() {
     tracing = tracingBuilder(NEVER_SAMPLE).supportsJoin(false).build();
     init();
 
@@ -93,7 +92,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     assertThat(span.id()).isNotEqualTo(parent.spanIdString());
   }
 
-  @Test public void samplingDisabled() {
+  @Test void samplingDisabled() {
     tracing = tracingBuilder(NEVER_SAMPLE).build();
     init();
 
@@ -102,27 +101,27 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     // @After will check that nothing is reported
   }
 
-  @Test public void currentSpanVisibleToImpl() {
+  @Test void currentSpanVisibleToImpl() {
     assertThat(client.get().sayHello("jorge"))
         .isNotEmpty();
 
     testSpanHandler.takeRemoteSpan(SERVER);
   }
 
-  @Test public void reportsServerKindToZipkin() {
+  @Test void reportsServerKindToZipkin() {
     client.get().sayHello("jorge");
 
     testSpanHandler.takeRemoteSpan(SERVER);
   }
 
-  @Test public void defaultSpanNameIsMethodName() {
+  @Test void defaultSpanNameIsMethodName() {
     client.get().sayHello("jorge");
 
     assertThat(testSpanHandler.takeRemoteSpan(SERVER).name())
         .isEqualTo("brave.dubbo.GreeterService/sayHello");
   }
 
-  @Test public void setsErrorOnException() {
+  @Test void setsErrorOnException() {
     assertThatThrownBy(() -> client.get().sayHello("bad"))
         .isInstanceOf(IllegalArgumentException.class);
 
@@ -131,7 +130,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
 
   /* RpcTracing-specific feature tests */
 
-  @Test public void customSampler() {
+  @Test void customSampler() {
     RpcTracing rpcTracing = RpcTracing.newBuilder(tracing).serverSampler(RpcRuleSampler.newBuilder()
         .putRule(methodEquals("sayGoodbye"), NEVER_SAMPLE)
         .putRule(serviceEquals("brave.dubbo"), ALWAYS_SAMPLE)
@@ -148,7 +147,7 @@ public class ITTracingFilter_Provider extends ITTracingFilter {
     // @After will also check that sayGoodbye was not sampled
   }
 
-  @Test public void customParser() {
+  @Test void customParser() {
     Tag<DubboResponse> javaValue = new Tag<DubboResponse>("dubbo.result_value") {
       @Override protected String parseValue(DubboResponse input, TraceContext context) {
         Result result = input.result();

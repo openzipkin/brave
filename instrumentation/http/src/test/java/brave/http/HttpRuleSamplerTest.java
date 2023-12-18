@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,10 +19,10 @@ import brave.sampler.Sampler;
 import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static brave.http.HttpRequestMatchers.methodEquals;
 import static brave.http.HttpRequestMatchers.pathStartsWith;
@@ -30,7 +30,7 @@ import static brave.sampler.Matchers.and;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class HttpRuleSamplerTest {
   @Deprecated @Mock HttpClientAdapter<Object, Object> adapter;
   Object request = new Object();
@@ -38,7 +38,7 @@ public class HttpRuleSamplerTest {
   @Mock HttpClientRequest httpClientRequest;
   @Mock HttpServerRequest httpServerRequest;
 
-  @Test public void matches() {
+  @Test void matches() {
     Map<Sampler, Boolean> samplerToAnswer = new LinkedHashMap<>();
     samplerToAnswer.put(Sampler.ALWAYS_SAMPLE, true);
     samplerToAnswer.put(Sampler.NEVER_SAMPLE, false);
@@ -66,7 +66,7 @@ public class HttpRuleSamplerTest {
     });
   }
 
-  @Test public void nullOnNull() {
+  @Test void nullOnNull() {
     HttpRuleSampler ruleSampler = HttpRuleSampler.newBuilder()
       .putRule(pathStartsWith("/bar"), Sampler.ALWAYS_SAMPLE)
       .build();
@@ -77,7 +77,7 @@ public class HttpRuleSamplerTest {
       .isNull();
   }
 
-  @Test public void unmatched() {
+  @Test void unmatched() {
     HttpRuleSampler ruleSampler = HttpRuleSampler.newBuilder()
       .putRule(pathStartsWith("/bar"), Sampler.ALWAYS_SAMPLE)
       .build();
@@ -99,7 +99,7 @@ public class HttpRuleSamplerTest {
       .isNull();
   }
 
-  @Test public void exampleCustomMatcher() {
+  @Test void exampleCustomMatcher() {
     Matcher<HttpRequest> playInTheUSA = request -> {
       if (!"/play".equals(request.path())) return false;
       String url = request.url();
@@ -128,7 +128,7 @@ public class HttpRuleSamplerTest {
   }
 
   /** Tests deprecated method */
-  @Test public void addRule() {
+  @Test void addRule() {
     HttpRuleSampler sampler = HttpRuleSampler.newBuilder()
       .addRule("GET", "/foo", 0.0f)
       .build();
@@ -145,7 +145,7 @@ public class HttpRuleSamplerTest {
       .isFalse();
   }
 
-  @Test public void putAllRules() {
+  @Test void putAllRules() {
     HttpRuleSampler base = HttpRuleSampler.newBuilder()
       .putRule(and(methodEquals("GET"), pathStartsWith("/foo")), Sampler.NEVER_SAMPLE)
       .build();
@@ -167,7 +167,7 @@ public class HttpRuleSamplerTest {
   }
 
   // empty may sound unintuitive, but it allows use of the same type when always deferring
-  @Test public void noRulesOk() {
+  @Test void noRulesOk() {
     HttpRuleSampler.newBuilder().build();
   }
 }

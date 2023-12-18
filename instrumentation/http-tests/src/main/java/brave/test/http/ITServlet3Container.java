@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -29,8 +29,8 @@ import javax.servlet.http.HttpServletResponse;
 import okhttp3.Response;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.junit.AfterClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Test;
 
 import static brave.Span.Kind.SERVER;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,17 +42,17 @@ public abstract class ITServlet3Container extends ITServlet25Container {
     super(new Jetty9ServerController());
   }
 
-  @AfterClass public static void shutdownExecutor() {
+  @AfterAll public static void shutdownExecutor() {
     executor.shutdownNow();
   }
 
-  @Test public void forward() throws Exception {
+  @Test protected void forward() throws Exception {
     get("/forward");
 
     testSpanHandler.takeRemoteSpan(SERVER);
   }
 
-  @Test public void forwardAsync() throws Exception {
+  @Test protected void forwardAsync() throws Exception {
     get("/forwardAsync");
 
     testSpanHandler.takeRemoteSpan(SERVER);
@@ -107,7 +107,7 @@ public abstract class ITServlet3Container extends ITServlet25Container {
     }
   }
 
-  @Test public void errorTag_onException_asyncTimeout() throws Exception {
+  @Test protected void errorTag_onException_asyncTimeout() throws Exception {
     Response response =
         httpStatusCodeTagMatchesResponse_onUncaughtException("/exceptionAsyncTimeout", "Timed out after 1ms");
 
@@ -134,7 +134,7 @@ public abstract class ITServlet3Container extends ITServlet25Container {
     }
   }
 
-  @Test public void errorTag_onException_asyncDispatch() throws Exception {
+  @Test protected void errorTag_onException_asyncDispatch() throws Exception {
     httpStatusCodeTagMatchesResponse_onUncaughtException("/exceptionAsyncDispatch", "not ready");
   }
 

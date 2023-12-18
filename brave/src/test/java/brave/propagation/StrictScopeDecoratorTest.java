@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -22,14 +22,15 @@ import brave.sampler.SamplerFunctions;
 import java.io.Closeable;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
-public class StrictScopeDecoratorTest {
+class StrictScopeDecoratorTest {
   StrictScopeDecorator decorator = StrictScopeDecorator.create();
   CurrentTraceContext currentTraceContext = ThreadLocalCurrentTraceContext.newBuilder()
     .addScopeDecorator(decorator)
@@ -40,11 +41,11 @@ public class StrictScopeDecoratorTest {
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).build();
   BusinessClass businessClass = new BusinessClass(tracing, decorator, context);
 
-  @After public void close() {
+  @AfterEach void close() {
     tracing.close();
   }
 
-  @Test public void decorator_close_afterCorrectUsage() {
+  @Test void decorator_close_afterCorrectUsage() {
     try (Scope ws = currentTraceContext.newScope(null)) {
       try (Scope ws2 = currentTraceContext.newScope(context)) {
       }
@@ -53,7 +54,7 @@ public class StrictScopeDecoratorTest {
     decorator.close(); // doesn't error
   }
 
-  @Test public void doesntDecorateNoop() {
+  @Test void doesntDecorateNoop() {
     assertThat(decorator.decorateScope(context, Scope.NOOP)).isSameAs(Scope.NOOP);
     assertThat(decorator.decorateScope(null, Scope.NOOP)).isSameAs(Scope.NOOP);
     decorator.close(); // doesn't error
@@ -110,80 +111,81 @@ public class StrictScopeDecoratorTest {
     }
   }
 
-  @Test public void scope_close_onWrongThread_adHoc() throws Exception {
+  @Test void scope_close_onWrongThread_adHoc() throws Exception {
     scope_close_onWrongThread(businessClass::businessMethodAdHoc, "businessMethodAdHoc");
   }
 
-  @Test public void decorator_close_withLeakedScope_adHoc() throws Exception {
+  @Test void decorator_close_withLeakedScope_adHoc() throws Exception {
     decorator_close_withLeakedScope(businessClass::businessMethodAdHoc, "businessMethodAdHoc");
   }
 
-  @Test public void scope_close_onWrongThread_newScope() throws Exception {
+  @Test void scope_close_onWrongThread_newScope() throws Exception {
     scope_close_onWrongThread(businessClass::businessMethodNewScope, "businessMethodNewScope");
   }
 
-  @Test public void decorator_close_withLeakedScope_onWrongThread_newScope() throws Exception {
+  @Test void decorator_close_withLeakedScope_onWrongThread_newScope() throws Exception {
     decorator_close_withLeakedScope(businessClass::businessMethodNewScope,
       "businessMethodNewScope");
   }
 
-  @Test public void scope_close_onWrongThread_maybeScope() throws Exception {
+  @Test void scope_close_onWrongThread_maybeScope() throws Exception {
     scope_close_onWrongThread(businessClass::businessMethodMaybeScope, "businessMethodMaybeScope");
   }
 
-  @Test public void decorator_close_withLeakedScope_maybeScope() throws Exception {
+  @Test void decorator_close_withLeakedScope_maybeScope() throws Exception {
     decorator_close_withLeakedScope(businessClass::businessMethodMaybeScope,
       "businessMethodMaybeScope");
   }
 
-  @Test public void scope_close_onWrongThread_withSpanInScope() throws Exception {
+  @Test void scope_close_onWrongThread_withSpanInScope() throws Exception {
     scope_close_onWrongThread(businessClass::businessMethodWithSpanInScope,
       "businessMethodWithSpanInScope");
   }
 
-  @Test public void decorator_close_withLeakedScope_withSpanInScope() throws Exception {
+  @Test void decorator_close_withLeakedScope_withSpanInScope() throws Exception {
     decorator_close_withLeakedScope(businessClass::businessMethodWithSpanInScope,
       "businessMethodWithSpanInScope");
   }
 
-  @Test public void scope_close_onWrongThread_startScopedSpan() throws Exception {
+  @Test void scope_close_onWrongThread_startScopedSpan() throws Exception {
     scope_close_onWrongThread(businessClass::businessMethodStartScopedSpan,
       "businessMethodStartScopedSpan");
   }
 
-  @Test public void decorator_close_withLeakedScope_startScopedSpan() throws Exception {
+  @Test void decorator_close_withLeakedScope_startScopedSpan() throws Exception {
     decorator_close_withLeakedScope(businessClass::businessMethodStartScopedSpan,
       "businessMethodStartScopedSpan");
   }
 
-  @Test public void scope_close_onWrongThread_startScopedSpan_sampler() throws Exception {
+  @Test void scope_close_onWrongThread_startScopedSpan_sampler() throws Exception {
     scope_close_onWrongThread(businessClass::businessMethodStartScopedSpan_sampler,
       "businessMethodStartScopedSpan_sampler");
   }
 
-  @Test public void decorator_close_withLeakedScope_startScopedSpan_sampler() throws Exception {
+  @Test void decorator_close_withLeakedScope_startScopedSpan_sampler() throws Exception {
     decorator_close_withLeakedScope(businessClass::businessMethodStartScopedSpan_sampler,
       "businessMethodStartScopedSpan_sampler");
   }
 
-  @Test public void scope_close_onWrongThread_startScopedSpanWithParent() throws Exception {
+  @Test void scope_close_onWrongThread_startScopedSpanWithParent() throws Exception {
     scope_close_onWrongThread(businessClass::businessMethodStartScopedSpanWithParent,
       "businessMethodStartScopedSpanWithParent");
   }
 
-  @Test public void decorator_close_withLeakedScope_startScopedSpanWithParent() throws Exception {
+  @Test void decorator_close_withLeakedScope_startScopedSpanWithParent() throws Exception {
     decorator_close_withLeakedScope(businessClass::businessMethodStartScopedSpanWithParent,
       "businessMethodStartScopedSpanWithParent");
   }
 
   // ThreadLocalSpan by definition can't be closed on another thread
-  @Test(expected = AssertionError.class)
-  public void scope_close_onWrongThread_threadLocalSpan() throws Exception {
-    scope_close_onWrongThread(businessClass::businessMethodThreadLocalSpan,
-      "businessMethodThreadLocalSpan");
+  @Test void scope_close_onWrongThread_threadLocalSpan() throws Exception {
+    assertThrows(AssertionError.class, () -> {
+      scope_close_onWrongThread(businessClass::businessMethodThreadLocalSpan,
+        "businessMethodThreadLocalSpan");
+    });
   }
 
-  @Test public void decorator_close_withLeakedScope_threadLocalSpan() throws Exception {
+  @Test void decorator_close_withLeakedScope_threadLocalSpan() throws Exception {
     decorator_close_withLeakedScope(businessClass::businessMethodThreadLocalSpan,
       "businessMethodThreadLocalSpan");
   }
@@ -236,7 +238,7 @@ public class StrictScopeDecoratorTest {
       .isEqualTo(methodName);
   }
 
-  @Test public void garbageCollectedScope() throws Exception {
+  @Test void garbageCollectedScope() throws Exception {
     currentTraceContext.newScope(null);
     GarbageCollectors.blockOnGC();
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,33 +18,33 @@ import com.alibaba.dubbo.rpc.Invocation;
 import com.alibaba.dubbo.rpc.Invoker;
 import com.alibaba.dubbo.rpc.RpcException;
 import java.io.IOException;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class DubboParserTest {
   @Mock Invocation invocation;
   @Mock Invoker invoker;
 
-  @Test public void method() {
+  @Test void method() {
     when(invocation.getMethodName()).thenReturn("sayHello");
 
     assertThat(DubboParser.method(invocation))
         .isEqualTo("sayHello");
   }
 
-  @Test public void method_malformed() {
+  @Test void method_malformed() {
     when(invocation.getMethodName()).thenReturn("");
 
     assertThat(DubboParser.method(invocation)).isNull();
   }
 
-  @Test public void method_invoke() {
+  @Test void method_invoke() {
     when(invocation.getMethodName()).thenReturn("$invoke");
     when(invocation.getArguments()).thenReturn(new Object[] {"sayHello"});
 
@@ -52,27 +52,27 @@ public class DubboParserTest {
         .isEqualTo("sayHello");
   }
 
-  @Test public void method_invoke_nullArgs() {
+  @Test void method_invoke_nullArgs() {
     when(invocation.getMethodName()).thenReturn("$invoke");
 
     assertThat(DubboParser.method(invocation)).isNull();
   }
 
-  @Test public void method_invoke_emptyArgs() {
+  @Test void method_invoke_emptyArgs() {
     when(invocation.getMethodName()).thenReturn("$invoke");
     when(invocation.getArguments()).thenReturn(new Object[0]);
 
     assertThat(DubboParser.method(invocation)).isNull();
   }
 
-  @Test public void method_invoke_nonStringArg() {
+  @Test void method_invoke_nonStringArg() {
     when(invocation.getMethodName()).thenReturn("$invoke");
     when(invocation.getArguments()).thenReturn(new Object[] {new Object()});
 
     assertThat(DubboParser.method(invocation)).isNull();
   }
 
-  @Test public void service() {
+  @Test void service() {
     URL url = URL.valueOf("dubbo://localhost:9090?interface=brave.dubbo.GreeterService");
     when(invoker.getUrl()).thenReturn(url);
 
@@ -80,25 +80,25 @@ public class DubboParserTest {
         .isEqualTo("brave.dubbo.GreeterService");
   }
 
-  @Test public void service_nullUrl() {
+  @Test void service_nullUrl() {
     assertThat(DubboParser.service(invoker)).isNull();
   }
 
-  @Test public void service_nullServiceInterface() {
+  @Test void service_nullServiceInterface() {
     URL url = URL.valueOf("dubbo://localhost:9090");
     when(invoker.getUrl()).thenReturn(url);
 
     assertThat(DubboParser.service(invoker)).isNull();
   }
 
-  @Test public void service_malformed() {
+  @Test void service_malformed() {
     URL url = URL.valueOf("dubbo://localhost:9090?interface=");
     when(invoker.getUrl()).thenReturn(url);
 
     assertThat(DubboParser.service(invoker)).isNull();
   }
 
-  @Test public void errorCodes() {
+  @Test void errorCodes() {
     assertThat(DubboParser.errorCode(null))
         .isEqualTo(DubboParser.errorCode(new IOException("timeout")))
         .isNull();

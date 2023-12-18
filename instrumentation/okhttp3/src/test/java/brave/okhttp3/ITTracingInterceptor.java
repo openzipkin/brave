@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -26,13 +26,13 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-import org.junit.After;
+import org.junit.jupiter.api.AfterEach;
 
-public class ITTracingInterceptor extends ITHttpAsyncClient<Call.Factory> {
+public class ITTracingInterceptor extends ITHttpAsyncClient<Call.Factory> { // public for src/it
   ExecutorService executorService = new Dispatcher().executorService();
   Dispatcher dispatcher = new Dispatcher(currentTraceContext.executorService(executorService));
 
-  @After @Override public void close() throws Exception {
+  @AfterEach @Override public void close() throws Exception {
     executorService.shutdown();
     executorService.awaitTermination(1, TimeUnit.SECONDS);
     super.close();

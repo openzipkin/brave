@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -23,8 +23,8 @@ import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.test.TestSpanHandler;
 import java.util.Map;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 
@@ -51,12 +51,12 @@ public class TracingMessagePostProcessorTest {
     SpringRabbitTracing.newBuilder(tracing).remoteServiceName("my-exchange").build()
   );
 
-  @After public void close() {
+  @AfterEach void close() {
     tracing.close();
     currentTraceContext.close();
   }
 
-  @Test public void should_resume_headers() {
+  @Test void should_resume_headers() {
     Message message = MessageBuilder.withBody(new byte[0]).build();
     message.getMessageProperties().setHeader("b3", B3SingleFormat.writeB3SingleFormat(parent));
 
@@ -67,7 +67,7 @@ public class TracingMessagePostProcessorTest {
     assertThat(headers.get("b3").toString()).endsWith("-" + spans.get(0).id() + "-1");
   }
 
-  @Test public void should_retain_baggage() {
+  @Test void should_retain_baggage() {
     Message message = MessageBuilder.withBody(new byte[0]).build();
     message.getMessageProperties().setHeader("b3", B3SingleFormat.writeB3SingleFormat(parent));
     message.getMessageProperties().setHeader(BAGGAGE_FIELD_KEY, "");
@@ -80,7 +80,7 @@ public class TracingMessagePostProcessorTest {
     assertThat(headers.get(BAGGAGE_FIELD_KEY).toString()).isEmpty();
   }
 
-  @Test public void should_prefer_current_span() {
+  @Test void should_prefer_current_span() {
     // Will be either a bug, or a missing processor stage which can result in an old span in headers
     Message message = MessageBuilder.withBody(new byte[0]).build();
     message.getMessageProperties().setHeader("b3", B3SingleFormat.writeB3SingleFormat(grandparent));
@@ -95,7 +95,7 @@ public class TracingMessagePostProcessorTest {
     assertThat(headers.get("b3").toString()).endsWith("-" + spans.get(0).id() + "-1");
   }
 
-  @Test public void should_add_b3_single_header_to_message() {
+  @Test void should_add_b3_single_header_to_message() {
     Message message = MessageBuilder.withBody(new byte[0]).build();
     Message postProcessMessage = tracingMessagePostProcessor.postProcessMessage(message);
 
@@ -105,14 +105,14 @@ public class TracingMessagePostProcessorTest {
       .matches("^[0-9a-f]{16}-[0-9a-f]{16}-1$");
   }
 
-  @Test public void should_report_span() {
+  @Test void should_report_span() {
     Message message = MessageBuilder.withBody(new byte[0]).build();
     tracingMessagePostProcessor.postProcessMessage(message);
 
     assertThat(spans).hasSize(1);
   }
 
-  @Test public void should_set_remote_service() {
+  @Test void should_set_remote_service() {
     Message message = MessageBuilder.withBody(new byte[0]).build();
     tracingMessagePostProcessor.postProcessMessage(message);
 

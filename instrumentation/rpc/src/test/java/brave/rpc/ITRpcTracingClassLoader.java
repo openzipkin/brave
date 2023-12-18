@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,7 +14,7 @@
 package brave.rpc;
 
 import brave.Tracing;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -26,8 +26,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 // * Stop using log4j2 as we don't need it anyway
 // * Stop using the log4j2 log manager, at least in this project
 // * Do some engineering like this: https://stackoverflow.com/a/28657203/2232476
-public class ITRpcTracingClassLoader {
-  @Test public void unloadable_afterClose() {
+class ITRpcTracingClassLoader {
+  @Test void unloadable_afterClose() {
     assertRunIsUnloadable(ClosesRpcTracing.class, getClass().getClassLoader());
   }
 
@@ -39,7 +39,7 @@ public class ITRpcTracingClassLoader {
     }
   }
 
-  @Test public void unloadable_afterBasicUsage() {
+  @Test void unloadable_afterBasicUsage() {
     assertRunIsUnloadable(BasicUsage.class, getClass().getClassLoader());
   }
 
@@ -52,7 +52,7 @@ public class ITRpcTracingClassLoader {
     }
   }
 
-  @Test public void unloadable_forgetClose() {
+  @Test void unloadable_forgetClose() {
     assertRunIsUnloadable(ForgetClose.class, getClass().getClassLoader());
   }
 

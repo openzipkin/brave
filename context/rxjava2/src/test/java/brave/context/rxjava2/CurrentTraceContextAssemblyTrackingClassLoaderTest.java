@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,13 +19,13 @@ import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.propagation.TraceContext;
 import io.reactivex.Observable;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 
-public class CurrentTraceContextAssemblyTrackingClassLoaderTest {
+class CurrentTraceContextAssemblyTrackingClassLoaderTest {
 
-  @Test public void noop_unloadable() {
+  @Test void noop_unloadable() {
     assertRunIsUnloadable(Noop.class, getClass().getClassLoader());
   }
 
@@ -39,7 +39,7 @@ public class CurrentTraceContextAssemblyTrackingClassLoaderTest {
   }
 
   /** Proves when code is correct, we can unload our classes. */
-  @Test public void simpleUsage_unloadable() {
+  @Test void simpleUsage_unloadable() {
     assertRunIsUnloadable(SimpleUsable.class, getClass().getClassLoader());
   }
 

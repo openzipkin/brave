@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -34,37 +34,37 @@ import org.jboss.resteasy.plugins.server.servlet.ListenerBootstrap;
 import org.jboss.resteasy.plugins.server.servlet.ResteasyBootstrap;
 import org.jboss.resteasy.spi.ResteasyConfiguration;
 import org.jboss.resteasy.spi.ResteasyDeployment;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ITSpanCustomizingContainerFilter extends ITServletContainer {
+class ITSpanCustomizingContainerFilter extends ITServletContainer {
   public ITSpanCustomizingContainerFilter() {
     super(new Jetty9ServerController());
   }
 
-  @Override @Ignore("ContainerRequestContext doesn't include remote address")
+  @Override @Disabled("ContainerRequestContext doesn't include remote address")
   public void reportsClientAddress() {
   }
 
-  @Override @Ignore("resteasy swallows the exception")
+  @Override @Disabled("resteasy swallows the exception")
   public void setsErrorAndHttpStatusOnUncaughtException() {
   }
 
-  @Override @Ignore("resteasy swallows the exception")
+  @Override @Disabled("resteasy swallows the exception")
   public void spanHandlerSeesError() {
   }
 
-  @Override @Ignore("resteasy swallows the exception")
+  @Override @Disabled("resteasy swallows the exception")
   public void setsErrorAndHttpStatusOnUncaughtException_async() {
   }
 
-  @Override @Ignore("resteasy swallows the exception")
+  @Override @Disabled("resteasy swallows the exception")
   public void spanHandlerSeesError_async() {
   }
 
-  @Test public void tagsResource() throws Exception {
+  @Test void tagsResource() throws Exception {
     get("/foo");
 
     assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER).tags())

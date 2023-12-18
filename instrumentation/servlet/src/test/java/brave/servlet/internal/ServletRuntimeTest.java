@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -21,7 +21,7 @@ import javax.servlet.ServletOutputStream;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.server.Response;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -29,7 +29,7 @@ public class ServletRuntimeTest {
   ServletRuntime servlet25 = new ServletRuntime.Servlet25();
 
   /** getStatus doesn't exist in Servlet 2.5, so we add mechanisms to catch it. */
-  @Test public void servlet25_httpServletResponse_catchesStatus() throws IOException {
+  @Test void servlet25_httpServletResponse_catchesStatus() throws IOException {
     HttpServletResponse httpServletResponse =
       servlet25.httpServletResponse(new HttpServletResponseImpl());
 
@@ -50,12 +50,12 @@ public class ServletRuntimeTest {
       .isEqualTo(508);
   }
 
-  @Test public void servlet25_status() {
+  @Test void servlet25_status() {
     assertThat(servlet25.status(new HttpServletResponseImpl()))
       .isEqualTo(200);
   }
 
-  @Test public void servlet25_status_cached() {
+  @Test void servlet25_status_cached() {
     HttpServletResponseImpl response = new HttpServletResponseImpl();
     assertThat(servlet25.status(response))
       .isEqualTo(200);
@@ -64,7 +64,7 @@ public class ServletRuntimeTest {
       .isEqualTo(200);
   }
 
-  @Test public void servlet25_status_cached_laterThrows() {
+  @Test void servlet25_status_cached_laterThrows() {
     HttpServletResponseImpl response = new HttpServletResponseImpl();
     servlet25.status(response);
     response.shouldThrow = true;
@@ -72,7 +72,7 @@ public class ServletRuntimeTest {
       .isEqualTo(0);
   }
 
-  @Test public void servlet25_status_doesntParseAnonymousTypes() {
+  @Test void servlet25_status_doesntParseAnonymousTypes() {
     // while looks nice, this will overflow our cache
     Response jettyResponse = new Response(null, null) {
       @Override public int getStatus() {
@@ -83,7 +83,7 @@ public class ServletRuntimeTest {
       .isZero();
   }
 
-  @Test public void servlet25_status_doesntParseLocalTypes() {
+  @Test void servlet25_status_doesntParseLocalTypes() {
     // while looks nice, this will overflow our cache
     class LocalResponse extends HttpServletResponseImpl {
     }
@@ -97,12 +97,12 @@ public class ServletRuntimeTest {
     }
   }
 
-  @Test public void servlet25_status_zeroOnException() {
+  @Test void servlet25_status_zeroOnException() {
     assertThat(servlet25.status(new ExceptionResponse()))
       .isZero();
   }
 
-  @Test public void servlet25_status_zeroOnException_cached() {
+  @Test void servlet25_status_zeroOnException_cached() {
     servlet25.status(new ExceptionResponse());
     assertThat(servlet25.status(new ExceptionResponse()))
       .isZero();
@@ -141,7 +141,7 @@ public class ServletRuntimeTest {
   class Response11 extends HttpServletResponseImpl {
   }
 
-  @Test public void servlet25_status_cachesUpToTenTypes() {
+  @Test void servlet25_status_cachesUpToTenTypes() {
     assertThat(servlet25.status(new Response1()))
       .isEqualTo(200);
     assertThat(servlet25.status(new Response2()))

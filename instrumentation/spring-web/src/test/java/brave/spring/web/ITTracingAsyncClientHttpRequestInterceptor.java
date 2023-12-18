@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -23,9 +23,9 @@ import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
-import org.junit.After;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.AsyncClientHttpRequestFactory;
@@ -37,12 +37,12 @@ import org.springframework.web.client.HttpStatusCodeException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ITTracingAsyncClientHttpRequestInterceptor
+class ITTracingAsyncClientHttpRequestInterceptor
   extends ITHttpAsyncClient<AsyncClientHttpRequestFactory> {
   AsyncClientHttpRequestInterceptor interceptor;
   CloseableHttpAsyncClient asyncClient = HttpAsyncClients.createSystem();
 
-  @After @Override public void close() throws Exception {
+  @AfterEach @Override public void close() throws Exception {
     asyncClient.close();
     super.close();
   }
@@ -103,7 +103,7 @@ public class ITTracingAsyncClientHttpRequestInterceptor
       });
   }
 
-  @Test public void currentSpanVisibleToUserInterceptors() throws Exception {
+  @Test void currentSpanVisibleToUserInterceptors() throws Exception {
     server.enqueue(new MockResponse());
 
     AsyncRestTemplate restTemplate = new AsyncRestTemplate(client);
@@ -121,15 +121,15 @@ public class ITTracingAsyncClientHttpRequestInterceptor
     testSpanHandler.takeRemoteSpan(Span.Kind.CLIENT);
   }
 
-  @Override @Ignore("blind to the implementation of redirects")
+  @Override @Disabled("blind to the implementation of redirects")
   public void redirect() {
   }
 
-  @Override @Ignore("doesn't know the remote address")
+  @Override @Disabled("doesn't know the remote address")
   public void reportsServerAddress() {
   }
 
-  @Override @Ignore("sometimes the client span last longer than the future")
+  @Override @Disabled("sometimes the client span last longer than the future")
   // ignoring flakes as AsyncRestTemplate is deprecated anyway and only impact is inaccurate timing
   public void clientTimestampAndDurationEnclosedByParent() {
   }

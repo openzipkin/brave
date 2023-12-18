@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -24,29 +24,24 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import static brave.Span.Kind.CLIENT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
-import static org.junit.Assume.assumeTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-@RunWith(Parameterized.class)
-public class ITTracingQueryInterceptor {
+class ITTracingQueryInterceptor {
   static final String QUERY = "select 'hello world'";
   static final String ERROR_QUERY = "select unknown_field FROM unknown_table";
 
-  @Parameterized.Parameters(name = "exceptions traced: {0}")
   public static Iterable<Boolean> exceptionsTraced() {
     return Arrays.asList(false, true);
   }
-
-  @Parameterized.Parameter
   public boolean exceptionsTraced;
 
   StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
@@ -56,7 +51,7 @@ public class ITTracingQueryInterceptor {
 
   Connection connection;
 
-  @Before public void init() throws SQLException {
+  @BeforeEach void init() throws SQLException {
     StringBuilder url = new StringBuilder("jdbc:mysql://");
     url.append(envOr("MYSQL_HOST", "127.0.0.1"));
     url.append(":").append(envOr("MYSQL_TCP_PORT", 3306));
@@ -73,21 +68,23 @@ public class ITTracingQueryInterceptor {
     dataSource.setUrl(url.toString());
 
     dataSource.setUser(System.getenv("MYSQL_USER"));
-    assumeTrue("Minimally, the environment variable MYSQL_USER must be set",
-      dataSource.getUser() != null);
+    assumeTrue(dataSource.getUser() != null,
+      "Minimally, the environment variable MYSQL_USER must be set");
     dataSource.setPassword(envOr("MYSQL_PASS", ""));
     connection = dataSource.getConnection();
     spans.clear();
   }
 
-  @After public void close() throws SQLException {
+  @AfterEach void close() throws SQLException {
     if (connection != null) connection.close();
     tracing.close();
     currentTraceContext.close();
   }
 
-  @Test
-  public void makesChildOfCurrentSpan() throws Exception {
+  @MethodSource("exceptionsTraced")
+  @ParameterizedTest(name = "exceptions traced: {0}")
+  void makesChildOfCurrentSpan(boolean exceptionsTraced) throws Exception {
+    initITTracingQueryInterceptor(exceptionsTraced);
     ScopedSpan parent = tracing.tracer().startScopedSpan("test");
     try {
       prepareExecuteSelect(QUERY);
@@ -99,8 +96,10 @@ public class ITTracingQueryInterceptor {
       .hasSize(2);
   }
 
-  @Test
-  public void reportsClientKindToZipkin() throws Exception {
+  @MethodSource("exceptionsTraced")
+  @ParameterizedTest(name = "exceptions traced: {0}")
+  void reportsClientKindToZipkin(boolean exceptionsTraced) throws Exception {
+    initITTracingQueryInterceptor(exceptionsTraced);
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
@@ -108,8 +107,10 @@ public class ITTracingQueryInterceptor {
       .containsExactly(CLIENT);
   }
 
-  @Test
-  public void defaultSpanNameIsOperationName() throws Exception {
+  @MethodSource("exceptionsTraced")
+  @ParameterizedTest(name = "exceptions traced: {0}")
+  void defaultSpanNameIsOperationName(boolean exceptionsTraced) throws Exception {
+    initITTracingQueryInterceptor(exceptionsTraced);
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
@@ -118,8 +119,10 @@ public class ITTracingQueryInterceptor {
   }
 
   /** This intercepts all SQL, not just queries. This ensures single-word statements work */
-  @Test
-  public void defaultSpanNameIsOperationName_oneWord() throws Exception {
+  @MethodSource("exceptionsTraced")
+  @ParameterizedTest(name = "exceptions traced: {0}")
+  void defaultSpanNameIsOperationName_oneWord(boolean exceptionsTraced) throws Exception {
+    initITTracingQueryInterceptor(exceptionsTraced);
     connection.setAutoCommit(false);
     connection.commit();
 
@@ -128,8 +131,10 @@ public class ITTracingQueryInterceptor {
       .contains("commit");
   }
 
-  @Test
-  public void addsQueryTag() throws Exception {
+  @MethodSource("exceptionsTraced")
+  @ParameterizedTest(name = "exceptions traced: {0}")
+  void addsQueryTag(boolean exceptionsTraced) throws Exception {
+    initITTracingQueryInterceptor(exceptionsTraced);
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
@@ -137,8 +142,10 @@ public class ITTracingQueryInterceptor {
       .containsExactly(entry("sql.query", QUERY));
   }
 
-  @Test
-  public void reportsServerAddress() throws Exception {
+  @MethodSource("exceptionsTraced")
+  @ParameterizedTest(name = "exceptions traced: {0}")
+  void reportsServerAddress(boolean exceptionsTraced) throws Exception {
+    initITTracingQueryInterceptor(exceptionsTraced);
     prepareExecuteSelect(QUERY);
 
     assertThat(spans)
@@ -146,8 +153,10 @@ public class ITTracingQueryInterceptor {
       .contains("myservice");
   }
 
-  @Test
-  public void sqlError() throws Exception {
+  @MethodSource("exceptionsTraced")
+  @ParameterizedTest(name = "exceptions traced: {0}")
+  void sqlError(boolean exceptionsTraced) throws Exception {
+    initITTracingQueryInterceptor(exceptionsTraced);
     assertThatThrownBy(() -> prepareExecuteSelect(ERROR_QUERY)).isInstanceOf(SQLException.class);
     assertThat(spans)
       .isNotEmpty();
@@ -174,5 +183,9 @@ public class ITTracingQueryInterceptor {
 
   static String envOr(String key, String fallback) {
     return System.getenv(key) != null ? System.getenv(key) : fallback;
+  }
+
+  public void initITTracingQueryInterceptor(boolean exceptionsTraced) {
+    this.exceptionsTraced = exceptionsTraced;
   }
 }

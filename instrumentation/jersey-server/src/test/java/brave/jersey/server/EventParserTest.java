@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,15 +17,15 @@ import brave.SpanCustomizer;
 import org.glassfish.jersey.server.ContainerRequest;
 import org.glassfish.jersey.server.ExtendedUriInfo;
 import org.glassfish.jersey.server.monitoring.RequestEvent;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class EventParserTest {
   @Mock RequestEvent event;
   @Mock ContainerRequest request;
@@ -34,7 +34,7 @@ public class EventParserTest {
 
   EventParser eventParser = new EventParser();
 
-  @Test public void requestMatched_missingResourceMethodOk() {
+  @Test void requestMatched_missingResourceMethodOk() {
     when(event.getContainerRequest()).thenReturn(request);
     when(request.getUriInfo()).thenReturn(uriInfo);
 

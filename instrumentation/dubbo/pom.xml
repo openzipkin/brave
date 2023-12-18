@@ -17,7 +17,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
-    <version>5.16.1-SNAPSHOT</version>
+    <version>5.17.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -33,6 +33,13 @@
     <main.signature.artifact>java18</main.signature.artifact>
 
     <dubbo.version>3.2.9</dubbo.version>
+    <!-- add opens to avoid below in JRE 21:
+         com.alibaba.com.caucho.hessian.io.JavaSerializer -->
+    <maven-failsafe-plugin.argLine>
+      --add-opens java.base/java.lang=ALL-UNNAMED
+      --add-opens java.base/java.lang.reflect=ALL-UNNAMED
+      --add-opens java.base/java.math=ALL-UNNAMED
+    </maven-failsafe-plugin.argLine>
   </properties>
 
   <dependencies>

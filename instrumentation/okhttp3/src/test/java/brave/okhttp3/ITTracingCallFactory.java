@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -32,16 +32,16 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
+public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> { // public for src/it
   Dispatcher dispatcher = new Dispatcher();
   ExecutorService executorService = dispatcher.executorService();
 
-  @After @Override public void close() throws Exception {
+  @AfterEach @Override public void close() throws Exception {
     executorService.shutdown();
     executorService.awaitTermination(1, TimeUnit.SECONDS);
     super.close();
@@ -92,7 +92,7 @@ public class ITTracingCallFactory extends ITHttpAsyncClient<Call.Factory> {
       });
   }
 
-  @Test public void currentSpanVisibleToUserInterceptors() throws IOException {
+  @Test void currentSpanVisibleToUserInterceptors() throws IOException {
     server.enqueue(new MockResponse());
     closeClient(client);
 

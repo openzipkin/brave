@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -30,13 +30,15 @@ import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import java.io.Closeable;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.Collections;
-import org.junit.After;
-import org.junit.Rule;
-import org.junit.rules.DisableOnDebug;
-import org.junit.rules.TestName;
-import org.junit.rules.TestRule;
-import org.junit.rules.Timeout;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import static brave.internal.InternalPropagation.FLAG_LOCAL_ROOT;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,7 +52,18 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>{@link StrictCurrentTraceContext} double-checks threads don't leak contexts</li>
  *   <li>{@link IntegrationTestSpanHandler} helps avoid race conditions or accidental errors</li>
  * </ul></pre>
+ *
+ * <h2>Timeout</h2>
+ * We use a global rule instead of surefire config as this could be executed in gradle, sbt, etc.
+ * This way, there's visibility on which method hung without asking the end users to edit build
+ * config.
+ *
+ * <p>Normal tests will pass in less than 5 seconds. This timeout is set to 20 to be higher than
+ * needed even in an overloaded CI server or extreme garbage collection pause.
  */
+@Timeout(value = 20, unit = TimeUnit.MINUTES)
+// ^-- TODO: see if we can disable this on debug, though 20m debug time should be ok.
+// ^-- TODO: verify if this value is per method.
 public abstract class ITRemote {
   static {
     SamplingFlags.NOT_SAMPLED.toString(); // ensure InternalPropagation is wired for tests
@@ -72,23 +85,16 @@ public abstract class ITRemote {
    */
   public static final String BAGGAGE_FIELD_KEY = "user_id";
 
-  /**
-   * We use a global rule instead of surefire config as this could be executed in gradle, sbt, etc.
-   * This way, there's visibility on which method hung without asking the end users to edit build
-   * config.
-   *
-   * <p>Normal tests will pass in less than 5 seconds. This timeout is set to 20 to be higher than
-   * needed even in a an overloaded CI server or extreme garbage collection pause.
-   */
-  @Rule public TestRule globalTimeout = new DisableOnDebug(Timeout.seconds(20)); // max per method
-  @Rule public IntegrationTestSpanHandler testSpanHandler = new IntegrationTestSpanHandler();
-  @Rule public TestName testName = new TestName();
+  @RegisterExtension
+  protected IntegrationTestSpanHandler testSpanHandler = new IntegrationTestSpanHandler();
+
+  protected String testName;
 
   /** Returns a trace context for use in propagation tests. */
   protected TraceContext newTraceContext(SamplingFlags flags) {
     long id = System.nanoTime(); // Random enough as tests are run serially anyway
 
-    // Simulate a new local root root, but without the dependency on Tracer to create it.
+    // Simulate a new local root, but without the dependency on Tracer to create it.
     TraceContext context = InternalPropagation.instance.newTraceContext(
       InternalPropagation.instance.flags(flags) | FLAG_LOCAL_ROOT,
       0L,
@@ -158,7 +164,7 @@ public abstract class ITRemote {
    * }
    * }</pre>
    */
-  @After public void close() throws Exception {
+  @AfterEach protected void close() throws Exception {
     Tracing current = Tracing.current();
     if (current != null) current.close();
     checkForLeakedScopes();
@@ -238,5 +244,12 @@ public abstract class ITRemote {
 
   protected void assertNoErrorTag(MutableSpan result) {
     IntegrationTestSpanHandler.assertNoErrorTag(result);
+  }
+
+  @BeforeEach void setupTestName(TestInfo testInfo) {
+    Optional<Method> testMethod = testInfo.getTestMethod();
+    if (testMethod.isPresent()) {
+      this.testName = testMethod.get().getName();
+    }
   }
 }

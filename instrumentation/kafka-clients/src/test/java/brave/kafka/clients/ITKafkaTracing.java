@@ -26,8 +26,6 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import brave.propagation.TraceIdContext;
 import brave.sampler.Sampler;
 import brave.test.IntegrationTestSpanHandler;
-import com.github.charithe.kafka.EphemeralKafkaBroker;
-import com.github.charithe.kafka.KafkaJunitRule;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -39,10 +37,10 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.After;
-import org.junit.ClassRule;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import static brave.kafka.clients.KafkaTags.KAFKA_TOPIC_TAG;
 import static brave.kafka.clients.KafkaTest.TEST_KEY;
@@ -51,12 +49,13 @@ import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static brave.messaging.MessagingRequestMatchers.operationEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ITKafkaTracing extends ITKafka {
-  @ClassRule
-  public static KafkaJunitRule kafkaRule = new KafkaJunitRule(EphemeralKafkaBroker.create());
-
-  @Rule public IntegrationTestSpanHandler producerSpanHandler = new IntegrationTestSpanHandler();
-  @Rule public IntegrationTestSpanHandler consumerSpanHandler = new IntegrationTestSpanHandler();
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public class ITKafkaTracing extends ITKafka { // public for src/it
+  @RegisterExtension KafkaExtension kafka = new KafkaExtension();
+  @RegisterExtension IntegrationTestSpanHandler producerSpanHandler =
+    new IntegrationTestSpanHandler();
+  @RegisterExtension IntegrationTestSpanHandler consumerSpanHandler =
+    new IntegrationTestSpanHandler();
 
   KafkaTracing producerTracing = KafkaTracing.create(
     tracingBuilder(Sampler.ALWAYS_SAMPLE).localServiceName("producer")
@@ -71,14 +70,15 @@ public class ITKafkaTracing extends ITKafka {
   Producer<String, String> producer;
   Consumer<String, String> consumer;
 
-  @After public void close() {
+  @Override @AfterEach protected void close() throws Exception {
     if (producer != null) producer.close();
     if (consumer != null) consumer.close();
+    super.close();
   }
 
-  @Test public void poll_creates_one_consumer_span_per_extracted_context() {
-    String topic1 = testName.getMethodName() + "1";
-    String topic2 = testName.getMethodName() + "2";
+  @Test void poll_creates_one_consumer_span_per_extracted_context() {
+    String topic1 = testName + "1";
+    String topic2 = testName + "2";
 
     producer = createTracingProducer();
     consumer = createTracingConsumer(topic1, topic2);
@@ -122,12 +122,11 @@ public class ITKafkaTracing extends ITKafka {
     return consumerSpanHandler.takeRemoteSpan(Kind.CONSUMER);
   }
 
-  @Test
-  public void poll_creates_one_consumer_span_per_topic() {
-    String topic1 = testName.getMethodName() + "1";
-    String topic2 = testName.getMethodName() + "2";
+  @Test void poll_creates_one_consumer_span_per_topic() {
+    String topic1 = testName + "1";
+    String topic2 = testName + "2";
 
-    producer = kafkaRule.helper().createStringProducer(); // not traced
+    producer = kafka.createStringProducer(); // not traced
     consumer = createTracingConsumer(topic1, topic2);
 
     for (int i = 0; i < 5; i++) {
@@ -143,12 +142,11 @@ public class ITKafkaTracing extends ITKafka {
     takeConsumerSpan();
   }
 
-  @Test
-  public void creates_dependency_links() {
+  @Test void creates_dependency_links() {
     producer = createTracingProducer();
     consumer = createTracingConsumer();
 
-    send(new ProducerRecord<>(testName.getMethodName(), TEST_KEY, TEST_VALUE));
+    send(new ProducerRecord<>(testName, TEST_KEY, TEST_VALUE));
 
     consumer.poll(10000);
 
@@ -161,12 +159,11 @@ public class ITKafkaTracing extends ITKafka {
     assertThat(consumerSpan.localServiceName()).isEqualTo("consumer");
   }
 
-  @Test
-  public void nextSpan_makes_child() {
+  @Test void nextSpan_makes_child() {
     producer = createTracingProducer();
     consumer = createTracingConsumer();
 
-    send(new ProducerRecord<>(testName.getMethodName(), TEST_KEY, TEST_VALUE));
+    send(new ProducerRecord<>(testName, TEST_KEY, TEST_VALUE));
 
     ConsumerRecords<String, String> records = consumer.poll(10000);
 
@@ -222,8 +219,7 @@ public class ITKafkaTracing extends ITKafka {
     }
   }
 
-  @Test
-  public void continues_a_trace_when_only_trace_id_propagated() {
+  @Test void continues_a_trace_when_only_trace_id_propagated() {
     consumerTracing = KafkaTracing.create(tracingBuilder(Sampler.ALWAYS_SAMPLE)
       .clearSpanHandlers().addSpanHandler(consumerSpanHandler)
       .propagationFactory(new TraceIdOnlyPropagation())
@@ -236,7 +232,7 @@ public class ITKafkaTracing extends ITKafka {
     producer = createTracingProducer();
     consumer = createTracingConsumer();
 
-    send(new ProducerRecord<>(testName.getMethodName(), TEST_KEY, TEST_VALUE));
+    send(new ProducerRecord<>(testName, TEST_KEY, TEST_VALUE));
 
     // intentionally using deprecated method as we are checking the same class in an invoker test
     // under src/it. If we want to explicitly tests the Duration arg, we will have to subclass.
@@ -256,8 +252,8 @@ public class ITKafkaTracing extends ITKafka {
     }
   }
 
-  @Test public void customSampler_producer() {
-    String topic = testName.getMethodName();
+  @Test void customSampler_producer() {
+    String topic = testName;
 
     producerTracing = KafkaTracing.create(
       MessagingTracing.newBuilder(producerTracing.messagingTracing.tracing())
@@ -295,8 +291,8 @@ public class ITKafkaTracing extends ITKafka {
       });
   }
 
-  @Test public void customSampler_consumer() {
-    String topic = testName.getMethodName();
+  @Test void customSampler_consumer() {
+    String topic = testName;
 
     consumerTracing = KafkaTracing.create(
       MessagingTracing.newBuilder(consumerTracing.messagingTracing.tracing())
@@ -304,7 +300,7 @@ public class ITKafkaTracing extends ITKafka {
           .putRule(operationEquals("receive"), Sampler.NEVER_SAMPLE)
           .build()).build());
 
-    producer = kafkaRule.helper().createStringProducer(); // intentionally don't trace the producer
+    producer = kafka.createStringProducer(); // intentionally don't trace the producer
     consumer = createTracingConsumer();
 
     send(new ProducerRecord<>(topic, TEST_KEY, TEST_VALUE));
@@ -320,8 +316,8 @@ public class ITKafkaTracing extends ITKafka {
   }
 
   Consumer<String, String> createTracingConsumer(String... topics) {
-    if (topics.length == 0) topics = new String[] {testName.getMethodName()};
-    KafkaConsumer<String, String> consumer = kafkaRule.helper().createStringConsumer();
+    if (topics.length == 0) topics = new String[] {testName};
+    KafkaConsumer<String, String> consumer = kafka.createStringConsumer();
     List<TopicPartition> assignments = new ArrayList<>();
     for (String topic : topics) {
       assignments.add(new TopicPartition(topic, 0));
@@ -331,7 +327,7 @@ public class ITKafkaTracing extends ITKafka {
   }
 
   Producer<String, String> createTracingProducer() {
-    KafkaProducer<String, String> producer = kafkaRule.helper().createStringProducer();
+    KafkaProducer<String, String> producer = kafka.createStringProducer();
     return producerTracing.producer(producer);
   }
 }

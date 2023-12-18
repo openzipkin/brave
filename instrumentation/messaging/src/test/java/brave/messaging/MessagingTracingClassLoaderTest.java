@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,13 +14,13 @@
 package brave.messaging;
 
 import brave.Tracing;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class MessagingTracingClassLoaderTest {
-  @Test public void unloadable_afterClose() {
+  @Test void unloadable_afterClose() {
     assertRunIsUnloadable(ClosesMessagingTracing.class, getClass().getClassLoader());
   }
 
@@ -32,7 +32,7 @@ public class MessagingTracingClassLoaderTest {
     }
   }
 
-  @Test public void unloadable_afterBasicUsage() {
+  @Test void unloadable_afterBasicUsage() {
     assertRunIsUnloadable(BasicUsage.class, getClass().getClassLoader());
   }
 
@@ -45,7 +45,7 @@ public class MessagingTracingClassLoaderTest {
     }
   }
 
-  @Test public void unloadable_forgetClose() {
+  @Test void unloadable_forgetClose() {
     assertRunIsUnloadable(ForgetClose.class, getClass().getClassLoader());
   }
 

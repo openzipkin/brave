@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,12 +20,14 @@ import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
 import brave.test.TestSpanHandler;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -36,7 +38,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT) // TODO: hunt down these
 public class RpcClientHandlerTest {
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(1L).sampled(true).build();
   TestSpanHandler spans = new TestSpanHandler();
@@ -47,7 +50,7 @@ public class RpcClientHandlerTest {
   @Mock(answer = CALLS_REAL_METHODS) RpcClientRequest request;
   @Mock(answer = CALLS_REAL_METHODS) RpcClientResponse response;
 
-  @Before public void init() {
+  @BeforeEach void init() {
     init(httpTracingBuilder(tracingBuilder()));
     when(request.method()).thenReturn("Report");
   }
@@ -66,12 +69,12 @@ public class RpcClientHandlerTest {
     return Tracing.newBuilder().addSpanHandler(spans);
   }
 
-  @After public void close() {
+  @AfterEach void close() {
     Tracing current = Tracing.current();
     if (current != null) current.close();
   }
 
-  @Test public void externalTimestamps() {
+  @Test void externalTimestamps() {
     when(request.startTimestamp()).thenReturn(123000L);
     when(response.finishTimestamp()).thenReturn(124000L);
 
@@ -82,7 +85,7 @@ public class RpcClientHandlerTest {
     assertThat(spans.get(0).finishTimestamp()).isEqualTo(124000L);
   }
 
-  @Test public void handleSend_traceIdSamplerSpecialCased() {
+  @Test void handleSend_traceIdSamplerSpecialCased() {
     Sampler sampler = mock(Sampler.class);
 
     init(httpTracingBuilder(tracingBuilder().sampler(sampler))
@@ -93,7 +96,7 @@ public class RpcClientHandlerTest {
     verify(sampler).isSampled(anyLong());
   }
 
-  @Test public void handleSend_neverSamplerSpecialCased() {
+  @Test void handleSend_neverSamplerSpecialCased() {
     Sampler sampler = mock(Sampler.class);
 
     init(httpTracingBuilder(tracingBuilder().sampler(sampler))
@@ -104,7 +107,7 @@ public class RpcClientHandlerTest {
     verifyNoMoreInteractions(sampler);
   }
 
-  @Test public void handleSend_samplerSeesRpcClientRequest() {
+  @Test void handleSend_samplerSeesRpcClientRequest() {
     SamplerFunction<RpcRequest> clientSampler = mock(SamplerFunction.class);
     init(httpTracingBuilder(tracingBuilder()).clientSampler(clientSampler));
 
@@ -113,7 +116,7 @@ public class RpcClientHandlerTest {
     verify(clientSampler).trySample(request);
   }
 
-  @Test public void handleSendWithParent_overrideContext() {
+  @Test void handleSendWithParent_overrideContext() {
     try (Scope ws = httpTracing.tracing.currentTraceContext().newScope(context)) {
       brave.Span span = handler.handleSendWithParent(request, null);
 
@@ -122,7 +125,7 @@ public class RpcClientHandlerTest {
     }
   }
 
-  @Test public void handleSendWithParent_overrideNull() {
+  @Test void handleSendWithParent_overrideNull() {
     try (Scope ws = httpTracing.tracing.currentTraceContext().newScope(null)) {
       brave.Span span = handler.handleSendWithParent(request, context);
 
@@ -131,7 +134,7 @@ public class RpcClientHandlerTest {
     }
   }
 
-  @Test public void handleReceive_finishesSpanEvenIfUnwrappedNull() {
+  @Test void handleReceive_finishesSpanEvenIfUnwrappedNull() {
     brave.Span span = mock(brave.Span.class);
     when(span.context()).thenReturn(context);
     when(span.customizer()).thenReturn(span);
@@ -145,7 +148,7 @@ public class RpcClientHandlerTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void handleReceive_finishesSpanEvenIfUnwrappedNull_withError() {
+  @Test void handleReceive_finishesSpanEvenIfUnwrappedNull_withError() {
     brave.Span span = mock(brave.Span.class);
     when(span.context()).thenReturn(context);
     when(span.customizer()).thenReturn(span);
@@ -163,7 +166,7 @@ public class RpcClientHandlerTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void handleReceive_responseRequired() {
+  @Test void handleReceive_responseRequired() {
     brave.Span span = mock(brave.Span.class);
 
     assertThatThrownBy(() -> handler.handleReceive(null, span))

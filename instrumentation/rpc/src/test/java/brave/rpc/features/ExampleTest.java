@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,7 +19,7 @@ import brave.rpc.RpcTracing;
 import brave.sampler.RateLimitingSampler;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunctions;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.rpc.RpcRequestMatchers.methodEquals;
 import static brave.rpc.RpcRequestMatchers.serviceEquals;
@@ -30,7 +30,7 @@ public class ExampleTest {
   RpcTracing rpcTracing;
 
   // This mainly shows that we don't accidentally rely on package-private access
-  @Test public void showConstruction() {
+  @Test void showConstruction() {
     rpcTracing = RpcTracing.newBuilder(tracing)
         .serverSampler(RpcRuleSampler.newBuilder()
             .putRule(serviceEquals("scribe"), Sampler.NEVER_SAMPLE)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -25,8 +25,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import org.assertj.core.groups.Tuple;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -38,7 +38,7 @@ import static org.assertj.core.api.Assertions.tuple;
  * <p><em>Note:</em> this currently only works with children fully enclosed by their parents. If
  * you have spans that finish after their parent, you'll need a more fancy implementation.
  */
-public class CountingChildrenTest {
+class CountingChildrenTest {
   static final class TagChildCount extends SpanHandler {
     /** This holds the children of the current parent until the former is finished or abandoned. */
     final WeakConcurrentMap<TraceContext, TraceContext> childToParent =
@@ -91,11 +91,11 @@ public class CountingChildrenTest {
     .build();
   Tracer tracer = tracing.tracer();
 
-  @After public void after() {
+  @AfterEach void after() {
     tracing.close();
   }
 
-  @Test public void countChildren() {
+  @Test void countChildren() {
     brave.Span root1 = tracer.newTrace().name("root1").start();
     brave.Span root2 = tracer.newTrace().name("root2").start();
     brave.Span root1Child1 = tracer.newChild(root1.context()).name("root1Child1").start();
@@ -136,7 +136,7 @@ public class CountingChildrenTest {
    * children, the count will be higher than it should be, if it calls {@link brave.Span#abandon()}
    * after the parent finishes. This is quite an edge case.
    */
-  @Test public void countChildren_async() {
+  @Test void countChildren_async() {
     brave.Span root1 = tracer.newTrace().name("root1").start();
     brave.Span root1Child1 = tracer.newChild(root1.context()).name("root1Child1").start();
     tracer.newChild(root1.context()).name("root1ChildAbandoned").start().abandon();

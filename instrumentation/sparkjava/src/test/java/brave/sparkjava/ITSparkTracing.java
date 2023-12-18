@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,11 +18,11 @@ import brave.test.http.Log4J2Log;
 import java.io.IOException;
 import okhttp3.Response;
 import org.eclipse.jetty.util.log.Log;
-import org.junit.After;
 import org.junit.AssumptionViolatedException;
+import org.junit.jupiter.api.AfterEach;
 import spark.Spark;
 
-public class ITSparkTracing extends ITHttpServer {
+class ITSparkTracing extends ITHttpServer {
   public ITSparkTracing() {
     Log.setLog(new Log4J2Log());
   }
@@ -52,7 +52,7 @@ public class ITSparkTracing extends ITHttpServer {
     return "http://localhost:4567" + path;
   }
 
-  @After
+  @AfterEach
   public void stop() {
     Spark.stop();
     Spark.awaitStop();

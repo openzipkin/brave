@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,12 +20,14 @@ import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
 import brave.test.TestSpanHandler;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -36,7 +38,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT) // TODO: hunt down these
 public class RpcServerHandlerTest {
   TestSpanHandler spans = new TestSpanHandler();
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(1L).sampled(true).build();
@@ -47,7 +50,7 @@ public class RpcServerHandlerTest {
   @Mock(answer = CALLS_REAL_METHODS) RpcServerRequest request;
   @Mock(answer = CALLS_REAL_METHODS) RpcServerResponse response;
 
-  @Before public void init() {
+  @BeforeEach void init() {
     init(httpTracingBuilder(tracingBuilder()));
   }
 
@@ -66,12 +69,12 @@ public class RpcServerHandlerTest {
     return Tracing.newBuilder().addSpanHandler(spans);
   }
 
-  @After public void close() {
+  @AfterEach void close() {
     Tracing current = Tracing.current();
     if (current != null) current.close();
   }
 
-  @Test public void handleReceive_traceIdSamplerSpecialCased() {
+  @Test void handleReceive_traceIdSamplerSpecialCased() {
     Sampler sampler = mock(Sampler.class);
 
     init(httpTracingBuilder(tracingBuilder().sampler(sampler))
@@ -82,7 +85,7 @@ public class RpcServerHandlerTest {
     verify(sampler).isSampled(anyLong());
   }
 
-  @Test public void handleReceive_neverSamplerSpecialCased() {
+  @Test void handleReceive_neverSamplerSpecialCased() {
     Sampler sampler = mock(Sampler.class);
 
     init(httpTracingBuilder(tracingBuilder().sampler(sampler))
@@ -93,7 +96,7 @@ public class RpcServerHandlerTest {
     verifyNoMoreInteractions(sampler);
   }
 
-  @Test public void handleReceive_samplerSeesRpcServerRequest() {
+  @Test void handleReceive_samplerSeesRpcServerRequest() {
     SamplerFunction<RpcRequest> serverSampler = mock(SamplerFunction.class);
     init(httpTracingBuilder(tracingBuilder()).serverSampler(serverSampler));
 
@@ -102,7 +105,7 @@ public class RpcServerHandlerTest {
     verify(serverSampler).trySample(request);
   }
 
-  @Test public void externalTimestamps() {
+  @Test void externalTimestamps() {
     when(request.startTimestamp()).thenReturn(123000L);
     when(response.finishTimestamp()).thenReturn(124000L);
 
@@ -113,7 +116,7 @@ public class RpcServerHandlerTest {
     assertThat(spans.get(0).finishTimestamp()).isEqualTo(124000L);
   }
 
-  @Test public void handleSend_finishesSpanEvenIfUnwrappedNull() {
+  @Test void handleSend_finishesSpanEvenIfUnwrappedNull() {
     brave.Span span = mock(brave.Span.class);
     when(span.context()).thenReturn(context);
     when(span.customizer()).thenReturn(span);
@@ -127,7 +130,7 @@ public class RpcServerHandlerTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void handleSend_finishesSpanEvenIfUnwrappedNull_withError() {
+  @Test void handleSend_finishesSpanEvenIfUnwrappedNull_withError() {
     brave.Span span = mock(brave.Span.class);
     when(span.context()).thenReturn(context);
     when(span.customizer()).thenReturn(span);
@@ -145,7 +148,7 @@ public class RpcServerHandlerTest {
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void handleSend_oneOfResponseError() {
+  @Test void handleSend_oneOfResponseError() {
     brave.Span span = mock(brave.Span.class);
 
     assertThatThrownBy(() -> handler.handleSend(null, span))

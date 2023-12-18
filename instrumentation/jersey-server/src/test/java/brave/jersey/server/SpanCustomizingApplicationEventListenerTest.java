@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,18 +20,21 @@ import org.glassfish.jersey.server.ContainerRequest;
 import org.glassfish.jersey.server.ExtendedUriInfo;
 import org.glassfish.jersey.server.monitoring.RequestEvent;
 import org.glassfish.jersey.uri.PathTemplate;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT) // TODO: hunt down these
 public class SpanCustomizingApplicationEventListenerTest {
   @Mock EventParser parser;
   @Mock RequestEvent requestEvent;
@@ -40,13 +43,13 @@ public class SpanCustomizingApplicationEventListenerTest {
   @Mock SpanCustomizer span;
   SpanCustomizingApplicationEventListener listener;
 
-  @Before public void setup() {
+  @BeforeEach void setup() {
     listener = SpanCustomizingApplicationEventListener.create(parser);
     when(requestEvent.getContainerRequest()).thenReturn(request);
     when(request.getUriInfo()).thenReturn(uriInfo);
   }
 
-  @Test public void onEvent_processesFINISHED() {
+  @Test void onEvent_processesFINISHED() {
     setEventType(RequestEvent.Type.FINISHED);
     setBaseUri("/");
 
@@ -57,7 +60,7 @@ public class SpanCustomizingApplicationEventListenerTest {
     verify(parser).requestMatched(requestEvent, span);
   }
 
-  @Test public void onEvent_setsErrorWhenNotAlreadySet() {
+  @Test void onEvent_setsErrorWhenNotAlreadySet() {
     setEventType(RequestEvent.Type.FINISHED);
     setBaseUri("/");
 
@@ -73,7 +76,7 @@ public class SpanCustomizingApplicationEventListenerTest {
   }
 
   /** Don't clobber user-defined properties! */
-  @Test public void onEvent_skipsErrorWhenSet() {
+  @Test void onEvent_skipsErrorWhenSet() {
     setEventType(RequestEvent.Type.FINISHED);
     setBaseUri("/");
 
@@ -92,7 +95,7 @@ public class SpanCustomizingApplicationEventListenerTest {
     verifyNoMoreInteractions(request); // no setting of error
   }
 
-  @Test public void onEvent_toleratesMissingCustomizer() {
+  @Test void onEvent_toleratesMissingCustomizer() {
     setEventType(RequestEvent.Type.FINISHED);
     setBaseUri("/");
 
@@ -101,7 +104,7 @@ public class SpanCustomizingApplicationEventListenerTest {
     verifyNoMoreInteractions(parser);
   }
 
-  @Test public void onEvent_toleratesBadCustomizer() {
+  @Test void onEvent_toleratesBadCustomizer() {
     setEventType(RequestEvent.Type.FINISHED);
     setBaseUri("/");
 
@@ -112,7 +115,7 @@ public class SpanCustomizingApplicationEventListenerTest {
     verifyNoMoreInteractions(parser);
   }
 
-  @Test public void onEvent_ignoresNotFinished() {
+  @Test void onEvent_ignoresNotFinished() {
     for (RequestEvent.Type type : RequestEvent.Type.values()) {
       if (type == RequestEvent.Type.FINISHED) return;
 
@@ -124,7 +127,7 @@ public class SpanCustomizingApplicationEventListenerTest {
     }
   }
 
-  @Test public void ignoresEventsExceptFinish() {
+  @Test void ignoresEventsExceptFinish() {
     setBaseUri("/");
     when(uriInfo.getMatchedTemplates()).thenReturn(Arrays.asList(
       new PathTemplate("/"),
@@ -135,7 +138,7 @@ public class SpanCustomizingApplicationEventListenerTest {
       .isEqualTo("/items/{itemId}");
   }
 
-  @Test public void route() {
+  @Test void route() {
     setBaseUri("/");
     when(uriInfo.getMatchedTemplates()).thenReturn(Arrays.asList(
       new PathTemplate("/"),
@@ -146,7 +149,7 @@ public class SpanCustomizingApplicationEventListenerTest {
       .isEqualTo("/items/{itemId}");
   }
 
-  @Test public void route_noPath() {
+  @Test void route_noPath() {
     setBaseUri("/");
     when(uriInfo.getMatchedTemplates()).thenReturn(Arrays.asList(
       new PathTemplate("/eggs")
@@ -157,7 +160,7 @@ public class SpanCustomizingApplicationEventListenerTest {
   }
 
   /** not sure it is even possible for a template to match "/" "/".. */
-  @Test public void route_invalid() {
+  @Test void route_invalid() {
     setBaseUri("/");
     when(uriInfo.getMatchedTemplates()).thenReturn(Arrays.asList(
       new PathTemplate("/"),
@@ -168,7 +171,7 @@ public class SpanCustomizingApplicationEventListenerTest {
       .isEmpty();
   }
 
-  @Test public void route_basePath() {
+  @Test void route_basePath() {
     setBaseUri("/base");
     when(uriInfo.getMatchedTemplates()).thenReturn(Arrays.asList(
       new PathTemplate("/"),
@@ -179,7 +182,7 @@ public class SpanCustomizingApplicationEventListenerTest {
       .isEqualTo("/base/items/{itemId}");
   }
 
-  @Test public void route_nested() {
+  @Test void route_nested() {
     setBaseUri("/");
     when(uriInfo.getMatchedTemplates()).thenReturn(Arrays.asList(
       new PathTemplate("/"),
@@ -193,7 +196,7 @@ public class SpanCustomizingApplicationEventListenerTest {
   }
 
   /** when the path expression is on the type not on the method */
-  @Test public void route_nested_reverse() {
+  @Test void route_nested_reverse() {
     setBaseUri("/");
     when(uriInfo.getMatchedTemplates()).thenReturn(Arrays.asList(
       new PathTemplate("/items/{itemId}"),

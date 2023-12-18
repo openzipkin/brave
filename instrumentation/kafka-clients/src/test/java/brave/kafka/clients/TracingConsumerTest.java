@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -22,8 +22,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.MockConsumer;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static brave.Span.Kind.CONSUMER;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,7 +33,7 @@ public class TracingConsumerTest extends KafkaTest {
   MockConsumer<String, String> consumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
   TopicPartition topicPartition = new TopicPartition(TEST_TOPIC, 0);
 
-  @Before
+  @BeforeEach
   public void before() {
     Map<TopicPartition, Long> offsets = new HashMap<>();
     offsets.put(topicPartition, 0L);
@@ -42,8 +42,7 @@ public class TracingConsumerTest extends KafkaTest {
     consumer.assign(offsets.keySet());
   }
 
-  @Test
-  public void should_call_wrapped_poll_and_close_spans() {
+  @Test void should_call_wrapped_poll_and_close_spans() {
     consumer.addRecord(consumerRecord);
     Consumer<String, String> tracingConsumer = kafkaTracing.consumer(consumer);
     tracingConsumer.poll(10);
@@ -59,8 +58,7 @@ public class TracingConsumerTest extends KafkaTest {
       .containsOnly(entry("kafka.topic", "myTopic"));
   }
 
-  @Test
-  public void should_call_wrapped_poll_and_close_spans_with_duration() {
+  @Test void should_call_wrapped_poll_and_close_spans_with_duration() {
     consumer.addRecord(consumerRecord);
     Consumer<String, String> tracingConsumer = kafkaTracing.consumer(consumer);
     tracingConsumer.poll(10);
@@ -75,8 +73,7 @@ public class TracingConsumerTest extends KafkaTest {
       .containsOnly(entry("kafka.topic", "myTopic"));
   }
 
-  @Test
-  public void should_add_new_trace_headers_if_b3_missing() {
+  @Test void should_add_new_trace_headers_if_b3_missing() {
     consumer.addRecord(consumerRecord);
 
     Consumer<String, String> tracingConsumer = kafkaTracing.consumer(consumer);
@@ -93,8 +90,7 @@ public class TracingConsumerTest extends KafkaTest {
     assertThat(consumerSpan.parentId()).isNull();
   }
 
-  @Test
-  public void should_createChildOfTraceHeaders() {
+  @Test void should_createChildOfTraceHeaders() {
     addB3MultiHeaders(parent, consumerRecord);
     consumer.addRecord(consumerRecord);
 
@@ -113,8 +109,7 @@ public class TracingConsumerTest extends KafkaTest {
     assertChildOf(spans.get(0), parent);
   }
 
-  @Test
-  public void should_create_only_one_consumer_span_per_topic_whenSharingEnabled() {
+  @Test void should_create_only_one_consumer_span_per_topic_whenSharingEnabled() {
     Map<TopicPartition, Long> offsets = new HashMap<>();
     // 2 partitions in the same topic
     offsets.put(new TopicPartition(TEST_TOPIC, 0), 0L);
@@ -140,8 +135,7 @@ public class TracingConsumerTest extends KafkaTest {
       .containsOnly(entry("kafka.topic", "myTopic"));
   }
 
-  @Test
-  public void should_create_individual_span_per_topic_whenSharingDisabled() {
+  @Test void should_create_individual_span_per_topic_whenSharingDisabled() {
     kafkaTracing = kafkaTracing.toBuilder().singleRootSpanOnReceiveBatch(false).build();
 
     Map<TopicPartition, Long> offsets = new HashMap<>();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -27,7 +27,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.internal.propagation.InjectorFactory.injectorFunction;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class InjectorFactoryTest {
+class InjectorFactoryTest {
   TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(2L).sampled(true).build();
   EnumSet<Kind> injectableKinds = EnumSet.of(Kind.CLIENT, Kind.PRODUCER, Kind.CONSUMER);
 
@@ -70,19 +70,19 @@ public class InjectorFactoryTest {
       .consumerInjectorFunctions(four)
       .build();
 
-  @Test public void injectorFunction_emptyIgnored() {
+  @Test void injectorFunction_emptyIgnored() {
     InjectorFunction existing = mock(InjectorFunction.class);
     assertThat(injectorFunction(existing))
         .isSameAs(existing);
   }
 
-  @Test public void injectorFunction_noopIgnored() {
+  @Test void injectorFunction_noopIgnored() {
     InjectorFunction existing = mock(InjectorFunction.class);
     assertThat(injectorFunction(existing, InjectorFunction.NOOP))
         .isSameAs(existing);
   }
 
-  @Test public void injectorFunction_null() {
+  @Test void injectorFunction_null() {
     InjectorFunction existing = mock(InjectorFunction.class);
     assertThatThrownBy(() -> injectorFunction(existing, null))
         .hasMessage("injectorFunctions == null");
@@ -92,13 +92,13 @@ public class InjectorFactoryTest {
         .hasMessage("injectorFunction == null");
   }
 
-  @Test public void injectorFunction_single() {
+  @Test void injectorFunction_single() {
     InjectorFunction existing = mock(InjectorFunction.class);
     assertThat(injectorFunction(existing, two))
         .isSameAs(two);
   }
 
-  @Test public void injectorFunction_composite() {
+  @Test void injectorFunction_composite() {
     InjectorFunction existing = mock(InjectorFunction.class);
     CompositeInjectorFunction injectorFunction =
         (CompositeInjectorFunction) injectorFunction(existing, two, three);
@@ -111,11 +111,11 @@ public class InjectorFactoryTest {
     assertThat(threeCount.getAndSet(0)).isOne();
   }
 
-  @Test public void oneFunction_keyNames() {
+  @Test void oneFunction_keyNames() {
     assertThat(oneFunction.keyNames()).containsExactly("one");
   }
 
-  @Test public void oneFunction_injects_deferred() {
+  @Test void oneFunction_injects_deferred() {
     DeferredInjector<Object> deferredInjector =
         (DeferredInjector<Object>) oneFunction.newInjector(setter);
 
@@ -135,7 +135,7 @@ public class InjectorFactoryTest {
     assertThat(oneCount.getAndSet(0)).isOne();
   }
 
-  @Test public void oneFunction_injects_remote() {
+  @Test void oneFunction_injects_remote() {
     when(remoteSetter.spanKind()).thenReturn(Kind.CLIENT);
     RemoteInjector<Request> remoteInjector =
         (RemoteInjector<Request>) oneFunction.newInjector(remoteSetter);
@@ -156,11 +156,11 @@ public class InjectorFactoryTest {
     }
   }
 
-  @Test public void twoFunctions_keyNames() {
+  @Test void twoFunctions_keyNames() {
     assertThat(twoFunctions.keyNames()).containsExactly("one", "two");
   }
 
-  @Test public void twoFunctions_injects_deferred() {
+  @Test void twoFunctions_injects_deferred() {
     DeferredInjector<Object> deferredInjector =
         (DeferredInjector<Object>) twoFunctions.newInjector(setter);
 
@@ -183,7 +183,7 @@ public class InjectorFactoryTest {
     assertThat(twoCount.getAndSet(0)).isOne();
   }
 
-  @Test public void twoFunctions_injects_remote() {
+  @Test void twoFunctions_injects_remote() {
     when(remoteSetter.spanKind()).thenReturn(Kind.CLIENT);
     RemoteInjector<Request> remoteInjector =
         (RemoteInjector<Request>) twoFunctions.newInjector(remoteSetter);
@@ -205,29 +205,29 @@ public class InjectorFactoryTest {
     }
   }
 
-  @Test public void kindBasedFunctions_keyNames() {
+  @Test void kindBasedFunctions_keyNames() {
     assertThat(kindBasedFunctions.keyNames()).containsExactly("four", "three", "two", "one");
   }
 
-  @Test public void kindBasedFunctions_injects_deferred_client() {
+  @Test void kindBasedFunctions_injects_deferred_client() {
     kindBasedFunctions_injects_deferred(Kind.CLIENT, twoCount);
   }
 
-  @Test public void kindBasedFunctions_injects_deferred_producer() {
+  @Test void kindBasedFunctions_injects_deferred_producer() {
     kindBasedFunctions_injects_deferred(Kind.PRODUCER, threeCount);
   }
 
-  @Test public void kindBasedFunctions_injects_deferred_consumer() {
+  @Test void kindBasedFunctions_injects_deferred_consumer() {
     kindBasedFunctions_injects_deferred(Kind.CONSUMER, fourCount);
   }
 
-  @Test public void kindBasedFunctions_injects_deferred_server() {
+  @Test void kindBasedFunctions_injects_deferred_server() {
     // SERVER is not injectable, this is for someone with buggy understanding of injection
     // we verify the default is called.
     kindBasedFunctions_injects_deferred(Kind.SERVER, oneCount);
   }
 
-  @Test public void kindBasedFunctions_injects_deferred_notRequest() {
+  @Test void kindBasedFunctions_injects_deferred_notRequest() {
     DeferredInjector<Object> nextDeferredInjector =
         (DeferredInjector) kindBasedFunctions.newInjector(setter);
     nextDeferredInjector.inject(context, notRequest);
@@ -257,19 +257,19 @@ public class InjectorFactoryTest {
     }
   }
 
-  @Test public void kindBasedFunctions_injects_remote_client() {
+  @Test void kindBasedFunctions_injects_remote_client() {
     kindBasedFunctions_injects_remote(Kind.CLIENT, twoCount);
   }
 
-  @Test public void kindBasedFunctions_injects_remote_producer() {
+  @Test void kindBasedFunctions_injects_remote_producer() {
     kindBasedFunctions_injects_remote(Kind.PRODUCER, threeCount);
   }
 
-  @Test public void kindBasedFunctions_injects_remote_consumer() {
+  @Test void kindBasedFunctions_injects_remote_consumer() {
     kindBasedFunctions_injects_remote(Kind.CONSUMER, fourCount);
   }
 
-  @Test public void kindBasedFunctions_injects_remote_server() {
+  @Test void kindBasedFunctions_injects_remote_server() {
     // SERVER is not injectable, this is for someone with buggy understanding of injection
     // we verify the default is called.
     when(request.spanKind()).thenReturn(Kind.SERVER);

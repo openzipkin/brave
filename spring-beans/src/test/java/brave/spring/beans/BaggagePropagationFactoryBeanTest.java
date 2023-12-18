@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,22 +18,22 @@ import brave.baggage.BaggagePropagationCustomizer;
 import brave.propagation.B3Propagation;
 import brave.propagation.B3SinglePropagation;
 import brave.propagation.Propagation;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-public class BaggagePropagationFactoryBeanTest {
+class BaggagePropagationFactoryBeanTest {
   XmlBeans context;
 
-  @After public void close() {
+  @AfterEach void close() {
     if (context != null) context.close();
   }
 
-  @Test public void propagationFactory_default() {
+  @Test void propagationFactory_default() {
     context = new XmlBeans(""
       + "<bean id=\"propagationFactory\" class=\"brave.spring.beans.BaggagePropagationFactoryBean\"/>\n"
     );
@@ -42,7 +42,7 @@ public class BaggagePropagationFactoryBeanTest {
       .isEqualTo(B3Propagation.FACTORY);
   }
 
-  @Test public void propagationFactory_noFields() {
+  @Test void propagationFactory_noFields() {
     context = new XmlBeans(""
       + "<bean id=\"propagationFactory\" class=\"brave.spring.beans.BaggagePropagationFactoryBean\">\n"
       + "  <property name=\"propagationFactory\">\n"
@@ -55,7 +55,7 @@ public class BaggagePropagationFactoryBeanTest {
       .isEqualTo(B3SinglePropagation.FACTORY);
   }
 
-  @Test public void configs() {
+  @Test void configs() {
     context = new XmlBeans(""
       + "<bean id=\"userIdBaggageField\" class=\"brave.baggage.BaggageField\" factory-method=\"create\">\n"
       + "  <constructor-arg value=\"userId\" />\n"
@@ -87,7 +87,7 @@ public class BaggagePropagationFactoryBeanTest {
   }
 
   /** Spring is graceful about a single field being substitutable for a list of size one */
-  @Test public void configs_no_list() {
+  @Test void configs_no_list() {
     context = new XmlBeans(""
       + "<bean id=\"userIdBaggageField\" class=\"brave.baggage.BaggageField\" factory-method=\"create\">\n"
       + "  <constructor-arg value=\"userId\" />\n"
@@ -109,7 +109,7 @@ public class BaggagePropagationFactoryBeanTest {
       .endsWith("userid");
   }
 
-  @Test public void propagationFactory() {
+  @Test void propagationFactory() {
     context = new XmlBeans(""
       + "<bean id=\"userIdBaggageField\" class=\"brave.baggage.BaggageField\" factory-method=\"create\">\n"
       + "  <constructor-arg value=\"userId\" />\n"
@@ -138,7 +138,7 @@ public class BaggagePropagationFactoryBeanTest {
   public static final BaggagePropagationCustomizer
     CUSTOMIZER_TWO = mock(BaggagePropagationCustomizer.class);
 
-  @Test public void customizers() {
+  @Test void customizers() {
     context = new XmlBeans(""
       + "<bean id=\"propagationFactory\" class=\"brave.spring.beans.BaggagePropagationFactoryBean\">\n"
       + "  <property name=\"customizers\">\n"

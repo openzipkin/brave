@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,12 +15,12 @@ package brave.propagation;
 
 import brave.Tracing;
 import brave.test.TestSpanHandler;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ThreadLocalSpanTest {
+class ThreadLocalSpanTest {
   StrictCurrentTraceContext currentTraceContext = StrictCurrentTraceContext.create();
   TestSpanHandler spans = new TestSpanHandler();
   Tracing tracing = Tracing.newBuilder()
@@ -30,17 +30,17 @@ public class ThreadLocalSpanTest {
 
   ThreadLocalSpan threadLocalSpan = ThreadLocalSpan.create(tracing.tracer());
 
-  @After public void close() {
+  @AfterEach void close() {
     tracing.close();
     currentTraceContext.close();
   }
 
-  @Test public void next() {
+  @Test void next() {
     assertThat(threadLocalSpan.next())
       .isEqualTo(threadLocalSpan.remove());
   }
 
-  @Test public void next_extracted() {
+  @Test void next_extracted() {
     assertThat(threadLocalSpan.next(TraceContextOrSamplingFlags.DEBUG))
       .isEqualTo(threadLocalSpan.remove());
   }

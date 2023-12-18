@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,40 +18,40 @@ import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
 import org.apache.http.client.protocol.HttpClientContext;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class HttpResponseWrapperTest {
   @Mock HttpClientContext context;
   @Mock HttpRequest request;
   @Mock HttpResponse response;
   @Mock StatusLine statusLine;
 
-  @Test public void request() {
+  @Test void request() {
     when(context.getRequest()).thenReturn(request);
 
     assertThat(new HttpResponseWrapper(response, context, null).request().unwrap())
       .isSameAs(request);
   }
 
-  @Test public void statusCode() {
+  @Test void statusCode() {
     when(response.getStatusLine()).thenReturn(statusLine);
     when(statusLine.getStatusCode()).thenReturn(200);
 
     assertThat(new HttpResponseWrapper(response, context, null).statusCode()).isEqualTo(200);
   }
 
-  @Test public void statusCode_zeroWhenNoStatusLine() {
+  @Test void statusCode_zeroWhenNoStatusLine() {
     assertThat(new HttpResponseWrapper(response, context, null).statusCode()).isZero();
   }
 
-  @Test public void statusCode_zeroWhenNoResponse() {
+  @Test void statusCode_zeroWhenNoResponse() {
     assertThat(new HttpResponseWrapper(null, context, new IllegalArgumentException()).statusCode())
       .isZero();
   }

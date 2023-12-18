@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,8 +14,8 @@
 package brave.http;
 
 import brave.Span;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -37,7 +37,7 @@ import static org.mockito.Mockito.when;
 
   Span span = mock(Span.class);
 
-  @Before public void setup() {
+  @BeforeEach void setup() {
     toRequestAdapter = new HttpServerAdapters.ToRequestAdapter(request, request);
     fromRequestAdapter = new HttpServerAdapters.FromRequestAdapter<>(requestAdapter, request);
     toResponseAdapter = new HttpServerAdapters.ToResponseAdapter(response, response);
@@ -45,23 +45,23 @@ import static org.mockito.Mockito.when;
       new HttpServerAdapters.FromResponseAdapter<>(responseAdapter, response, null);
   }
 
-  @Test public void toRequestAdapter_parseClientIpAndPort_falseOnNoMatch() {
+  @Test void toRequestAdapter_parseClientIpAndPort_falseOnNoMatch() {
     assertThat(toRequestAdapter.parseClientIpAndPort(request, span)).isFalse();
   }
 
-  @Test public void toRequestAdapter_parseClientIpAndPort_falseOnWrongRequest() {
+  @Test void toRequestAdapter_parseClientIpAndPort_falseOnWrongRequest() {
     assertThat(toRequestAdapter.parseClientIpAndPort(null, span)).isFalse();
     assertThat(toRequestAdapter.parseClientIpAndPort(request, span)).isFalse();
   }
 
-  @Test public void toRequestAdapter_parseClientIpAndPort_prioritizesXForwardedFor() {
+  @Test void toRequestAdapter_parseClientIpAndPort_prioritizesXForwardedFor() {
     when(request.header("X-Forwarded-For")).thenReturn("1.2.3.4");
     when(span.remoteIpAndPort("1.2.3.4", 0)).thenReturn(true);
 
     assertThat(toRequestAdapter.parseClientIpAndPort(request, span)).isTrue();
   }
 
-  @Test public void toRequestAdapter_parseClientIpAndPort_delegatesToServerRequest() {
+  @Test void toRequestAdapter_parseClientIpAndPort_delegatesToServerRequest() {
     when(request.parseClientIpAndPort(span)).thenReturn(true);
 
     assertThat(toRequestAdapter.parseClientIpAndPort(request, span)).isTrue();
@@ -69,11 +69,11 @@ import static org.mockito.Mockito.when;
     verify(request).parseClientIpAndPort(span);
   }
 
-  @Test public void fromRequestAdapter_parseClientIpAndPort_falseOnNoMatch() {
+  @Test void fromRequestAdapter_parseClientIpAndPort_falseOnNoMatch() {
     assertThat(fromRequestAdapter.parseClientIpAndPort(span)).isFalse();
   }
 
-  @Test public void fromRequestAdapter_parseClientIpAndPort_delegatesToAdapter() {
+  @Test void fromRequestAdapter_parseClientIpAndPort_delegatesToAdapter() {
     when(requestAdapter.parseClientIpAndPort(eq(request), isA(Span.class))).thenReturn(true);
 
     assertThat(fromRequestAdapter.parseClientIpAndPort(span)).isTrue();

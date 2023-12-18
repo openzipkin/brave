@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,8 +18,8 @@ import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.TextMessage;
 import org.apache.activemq.command.ActiveMQTextMessage;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,17 +33,17 @@ import static org.mockito.Mockito.when;
 
 public class PropertyFilterTest {
 
-  @After public void clear() {
+  @AfterEach void clear() {
     PropertyFilter.MESSAGE_PROPERTIES_BUFFER.remove();
   }
 
-  @Test public void filterProperties_message_empty() {
+  @Test void filterProperties_message_empty() {
     TextMessage message = new ActiveMQTextMessage();
 
     PropertyFilter.filterProperties(message, Collections.singleton("b3"));
   }
 
-  @Test public void filterProperties_message_allTypes() throws JMSException {
+  @Test void filterProperties_message_allTypes() throws JMSException {
     TextMessage message = newMessageWithAllTypes();
     message.setStringProperty("b3", "00f067aa0ba902b7-00f067aa0ba902b7-1");
 
@@ -59,7 +59,7 @@ public class PropertyFilterTest {
   // message silently failing to process.
   //
   // https://github.com/awslabs/amazon-sqs-java-messaging-lib/blob/b462bdceac814c56e75ee0ba638b3928ce8adee1/src/main/java/com/amazon/sqs/javamessaging/message/SQSMessage.java#L904-L909
-  @Test public void filterProperties_message_handlesOnSetException() throws JMSException {
+  @Test void filterProperties_message_handlesOnSetException() throws JMSException {
     Message message = mock(Message.class);
     when(message.getPropertyNames()).thenReturn(
       Collections.enumeration(Collections.singletonList("JMS_SQS_DeduplicationId")));
@@ -70,7 +70,7 @@ public class PropertyFilterTest {
       Collections.singleton("b3"))).doesNotThrowAnyException();
   }
 
-  @Test public void filterProperties_message_passesFatalOnSetException() throws JMSException {
+  @Test void filterProperties_message_passesFatalOnSetException() throws JMSException {
     Message message = mock(Message.class);
     when(message.getPropertyNames()).thenReturn(
       Collections.enumeration(Collections.singletonList("JMS_SQS_DeduplicationId")));
@@ -100,7 +100,7 @@ public class PropertyFilterTest {
     message.setStringProperty("string", "string");
   }
 
-  @Test public void filterProperties_message_doesntPreventClassUnloading() {
+  @Test void filterProperties_message_doesntPreventClassUnloading() {
     assertRunIsUnloadable(FilterMessage.class, getClass().getClassLoader());
   }
 

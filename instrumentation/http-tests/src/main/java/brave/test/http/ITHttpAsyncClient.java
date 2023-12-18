@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import okhttp3.mockwebserver.MockResponse;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.Span.Kind.CLIENT;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,7 +47,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
    * This tests that the parent is determined at the time the request was made, not when the request
    * was executed.
    */
-  @Test public void usesParentFromInvocationTime() {
+  @Test protected void usesParentFromInvocationTime() {
     server.enqueue(new MockResponse().setBodyDelay(300, TimeUnit.MILLISECONDS));
     server.enqueue(new MockResponse());
 
@@ -83,7 +83,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
    * we would see a client span child of a client span, which could be confused with duplicate
    * instrumentation and affect dependency link counts.
    */
-  @Test public void callbackContextIsFromInvocationTime() {
+  @Test protected void callbackContextIsFromInvocationTime() {
     server.enqueue(new MockResponse());
 
     AssertableCallback<Integer> callback = new AssertableCallback<>();
@@ -103,7 +103,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
   }
 
   /** This ensures that response callbacks run when there is no invocation trace context. */
-  @Test public void callbackContextIsFromInvocationTime_root() {
+  @Test protected void callbackContextIsFromInvocationTime_root() {
     server.enqueue(new MockResponse());
 
     AssertableCallback<Integer> callback = new AssertableCallback<>();
@@ -119,7 +119,7 @@ public abstract class ITHttpAsyncClient<C> extends ITHttpClient<C> {
     assertThat(testSpanHandler.takeRemoteSpan(CLIENT).parentId()).isNull();
   }
 
-  @Test public void addsStatusCodeWhenNotOk_async() {
+  @Test protected void addsStatusCodeWhenNotOk_async() {
     AssertableCallback<Integer> callback = new AssertableCallback<>();
     int expectedStatusCode = 400;
     server.enqueue(new MockResponse().setResponseCode(expectedStatusCode));

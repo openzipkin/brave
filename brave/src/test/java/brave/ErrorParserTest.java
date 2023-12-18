@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,70 +13,70 @@
  */
 package brave;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @Deprecated
-@RunWith(MockitoJUnitRunner.class)
-public class ErrorParserTest {
+@ExtendWith(MockitoExtension.class)
+class ErrorParserTest {
   @Mock SpanCustomizer customizer;
   @Mock ScopedSpan scopedSpan;
   ErrorParser parser = new ErrorParser();
 
-  @Test public void error_customizer() {
+  @Test void error_customizer() {
     parser.error(new RuntimeException("this cake is a lie"), customizer);
 
     verify(customizer).tag("error", "this cake is a lie");
   }
 
-  @Test public void error_customizer_asTag() {
+  @Test void error_customizer_asTag() {
     parser.tag(new RuntimeException("this cake is a lie"), customizer);
 
     verify(customizer).tag("error", "this cake is a lie");
   }
 
-  @Test public void error_scopedSpan() {
+  @Test void error_scopedSpan() {
     parser.error(new RuntimeException("this cake is a lie"), scopedSpan);
 
     verify(scopedSpan).tag("error", "this cake is a lie");
   }
 
-  @Test public void error_noMessage_customizer() {
+  @Test void error_noMessage_customizer() {
     parser.error(new RuntimeException(), customizer);
 
     verify(customizer).tag("error", "RuntimeException");
   }
 
-  @Test public void error_noMessage_scopedSpan() {
+  @Test void error_noMessage_scopedSpan() {
     parser.error(new RuntimeException(), scopedSpan);
 
     verify(scopedSpan).tag("error", "RuntimeException");
   }
 
-  @Test public void error_noop_customizer() {
+  @Test void error_noop_customizer() {
     ErrorParser.NOOP.error(new RuntimeException("this cake is a lie"), customizer);
 
     verifyNoMoreInteractions(customizer);
   }
 
-  @Test public void error_noop_scopedSpan() {
+  @Test void error_noop_scopedSpan() {
     ErrorParser.NOOP.error(new RuntimeException("this cake is a lie"), scopedSpan);
 
     verifyNoMoreInteractions(scopedSpan);
   }
 
-  @Test public void parse_anonymous() {
+  @Test void parse_anonymous() {
     assertThat(ErrorParser.parse(new RuntimeException() {
     })).isEqualTo("RuntimeException");
   }
 
-  @Test public void parse_anonymous_message() {
+  @Test void parse_anonymous_message() {
     assertThat(ErrorParser.parse(new RuntimeException("this cake is a lie") {
     })).isEqualTo("this cake is a lie");
   }
@@ -87,13 +87,13 @@ public class ErrorParserTest {
     }
   };
 
-  @Test public void subclass() {
+  @Test void subclass() {
     subclassErrorParser.error(new RuntimeException("this cake is a lie"), customizer);
 
     verify(customizer).tag("noterror", "the cake is fine");
   }
 
-  @Test public void subclass_asTag() {
+  @Test void subclass_asTag() {
     subclassErrorParser.tag(new RuntimeException("this cake is a lie"), customizer);
 
     verify(customizer).tag("noterror", "the cake is fine");

@@ -18,34 +18,34 @@ import org.apache.dubbo.common.URL;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
 import org.apache.dubbo.rpc.RpcException;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class DubboParserTest {
   @Mock Invocation invocation;
   @Mock Invoker invoker;
   @Mock URL url;
 
-  @Test public void method() {
+  @Test void method() {
     when(invocation.getMethodName()).thenReturn("sayHello");
 
     assertThat(DubboParser.method(invocation))
         .isEqualTo("sayHello");
   }
 
-  @Test public void method_malformed() {
+  @Test void method_malformed() {
     when(invocation.getMethodName()).thenReturn("");
 
     assertThat(DubboParser.method(invocation)).isNull();
   }
 
-  @Test public void method_invoke() {
+  @Test void method_invoke() {
     when(invocation.getMethodName()).thenReturn("$invoke");
     when(invocation.getArguments()).thenReturn(new Object[] {"sayHello"});
 
@@ -53,27 +53,27 @@ public class DubboParserTest {
         .isEqualTo("sayHello");
   }
 
-  @Test public void method_invoke_nullArgs() {
+  @Test void method_invoke_nullArgs() {
     when(invocation.getMethodName()).thenReturn("$invoke");
 
     assertThat(DubboParser.method(invocation)).isNull();
   }
 
-  @Test public void method_invoke_emptyArgs() {
+  @Test void method_invoke_emptyArgs() {
     when(invocation.getMethodName()).thenReturn("$invoke");
     when(invocation.getArguments()).thenReturn(new Object[0]);
 
     assertThat(DubboParser.method(invocation)).isNull();
   }
 
-  @Test public void method_invoke_nonStringArg() {
+  @Test void method_invoke_nonStringArg() {
     when(invocation.getMethodName()).thenReturn("$invoke");
     when(invocation.getArguments()).thenReturn(new Object[] {new Object()});
 
     assertThat(DubboParser.method(invocation)).isNull();
   }
 
-  @Test public void service() {
+  @Test void service() {
     when(invoker.getUrl()).thenReturn(url);
     when(url.getServiceInterface()).thenReturn("brave.dubbo.GreeterService");
 
@@ -81,24 +81,24 @@ public class DubboParserTest {
         .isEqualTo("brave.dubbo.GreeterService");
   }
 
-  @Test public void service_nullUrl() {
+  @Test void service_nullUrl() {
     assertThat(DubboParser.service(invoker)).isNull();
   }
 
-  @Test public void service_nullServiceInterface() {
+  @Test void service_nullServiceInterface() {
     when(invoker.getUrl()).thenReturn(url);
 
     assertThat(DubboParser.service(invoker)).isNull();
   }
 
-  @Test public void service_malformed() {
+  @Test void service_malformed() {
     when(invoker.getUrl()).thenReturn(url);
     when(url.getServiceInterface()).thenReturn("");
 
     assertThat(DubboParser.service(invoker)).isNull();
   }
 
-  @Test public void errorCodes() {
+  @Test void errorCodes() {
     assertThat(DubboParser.errorCode(null))
         .isEqualTo(DubboParser.errorCode(new IOException("timeout")))
         .isNull();
@@ -130,6 +130,8 @@ public class DubboParserTest {
     assertThat(DubboParser.errorCode(new RpcException(12)))
       .isEqualTo("VALIDATION_EXCEPTION");
     assertThat(DubboParser.errorCode(new RpcException(13)))
+      .isEqualTo("AUTHORIZATION_EXCEPTION");
+    assertThat(DubboParser.errorCode(new RpcException(14)))
       .isNull();// This test will drift with a new error code name if Dubbo adds one
   }
 }

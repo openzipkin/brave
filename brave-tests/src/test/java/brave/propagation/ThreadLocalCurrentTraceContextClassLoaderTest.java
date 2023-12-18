@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,13 +14,14 @@
 package brave.propagation;
 
 import brave.propagation.CurrentTraceContext.Scope;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class ThreadLocalCurrentTraceContextClassLoaderTest {
+class ThreadLocalCurrentTraceContextClassLoaderTest {
 
-  @Test public void unused_unloadable() {
+  @Test void unused_unloadable() {
     assertRunIsUnloadable(Unused.class, getClass().getClassLoader());
   }
 
@@ -30,7 +31,7 @@ public class ThreadLocalCurrentTraceContextClassLoaderTest {
     }
   }
 
-  @Test public void currentTracer_basicUsage_unloadable() {
+  @Test void currentTracer_basicUsage_unloadable() {
     assertRunIsUnloadable(BasicUsage.class, getClass().getClassLoader());
   }
 
@@ -43,7 +44,7 @@ public class ThreadLocalCurrentTraceContextClassLoaderTest {
     }
   }
 
-  @Test public void leakedNullScope() {
+  @Test void leakedNullScope() {
     assertRunIsUnloadable(LeakedNullScope.class, getClass().getClassLoader());
   }
 
@@ -62,8 +63,10 @@ public class ThreadLocalCurrentTraceContextClassLoaderTest {
    * java.lang.ref.WeakReference} to hold the value to revert. This would only help if GC happened
    * prior to the classloader unload, which would be an odd thing to rely on.
    */
-  @Test(expected = AssertionError.class) public void leakedScope_preventsUnloading() {
-    assertRunIsUnloadable(LeakedScope.class, getClass().getClassLoader());
+  @Test void leakedScope_preventsUnloading() {
+    assertThrows(AssertionError.class, () -> {
+      assertRunIsUnloadable(LeakedScope.class, getClass().getClassLoader());
+    });
   }
 
   static class LeakedScope implements Runnable {

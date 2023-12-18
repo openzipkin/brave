@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,56 +14,56 @@
 package brave.rpc;
 
 import brave.SpanCustomizer;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 /** This only tests things not already covered in {@code brave.TagTest} */
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class RpcTagsTest {
   @Mock SpanCustomizer span;
   @Mock RpcRequest request;
   @Mock RpcResponse response;
 
-  @Test public void method() {
+  @Test void method() {
     when(request.method()).thenReturn("Report");
     RpcTags.METHOD.tag(request, span);
 
     verify(span).tag("rpc.method", "Report");
   }
 
-  @Test public void method_null() {
+  @Test void method_null() {
     RpcTags.METHOD.tag(request, span);
 
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void service() {
+  @Test void service() {
     when(request.service()).thenReturn("zipkin.proto3.SpanService");
     RpcTags.SERVICE.tag(request, span);
 
     verify(span).tag("rpc.service", "zipkin.proto3.SpanService");
   }
 
-  @Test public void service_null() {
+  @Test void service_null() {
     RpcTags.SERVICE.tag(request, span);
 
     verifyNoMoreInteractions(span);
   }
 
-  @Test public void error_code() {
+  @Test void error_code() {
     when(response.errorCode()).thenReturn("CANCELLED");
     RpcTags.ERROR_CODE.tag(response, span);
 
     verify(span).tag("rpc.error_code", "CANCELLED");
   }
 
-  @Test public void error_code_null() {
+  @Test void error_code_null() {
     RpcTags.ERROR_CODE.tag(response, span);
 
     verifyNoMoreInteractions(span);
