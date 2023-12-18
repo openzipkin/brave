@@ -19,7 +19,7 @@
 
   <groupId>io.zipkin.brave</groupId>
   <artifactId>brave-parent</artifactId>
-  <version>5.17.0-SNAPSHOT</version>
+  <version>5.17.0</version>
   <packaging>pom</packaging>
 
   <name>Brave (parent)</name>
@@ -46,7 +46,7 @@
     <url>https://github.com/openzipkin/brave</url>
     <connection>scm:git:https://github.com/openzipkin/brave.git</connection>
     <developerConnection>scm:git:https://github.com/openzipkin/brave.git</developerConnection>
-    <tag>HEAD</tag>
+    <tag>5.17.0</tag>
   </scm>
 
   <!-- Developer section is needed for Maven Central, but doesn't need to include each person -->
@@ -134,8 +134,8 @@
     <testcontainers.version>1.19.3</testcontainers.version>
 
     <license.skip>${skipTests}</license.skip>
-    <maven-surefire-plugin.argLine/>
-    <maven-failsafe-plugin.argLine/>
+    <maven-surefire-plugin.argLine />
+    <maven-failsafe-plugin.argLine />
 
     <animal-sniffer-maven-plugin.version>1.23</animal-sniffer-maven-plugin.version>
     <go-offline-maven-plugin.version>1.2.8</go-offline-maven-plugin.version>
