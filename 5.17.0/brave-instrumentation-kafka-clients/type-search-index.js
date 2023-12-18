@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"brave.kafka.clients","l":"KafkaTracing.Builder"},{"p":"brave.kafka.clients","l":"KafkaTracing"}]
