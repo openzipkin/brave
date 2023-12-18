@@ -70,10 +70,6 @@
     <main.java.version>1.8</main.java.version>
     <main.signature.artifact>java18</main.signature.artifact>
 
-    <!-- default bytecode version for src/test -->
-    <maven.compiler.source>1.8</maven.compiler.source>
-    <maven.compiler.target>1.8</maven.compiler.target>
-
     <!-- override to set exclusions per-project -->
     <errorprone.args />
     <errorprone.version>2.23.0</errorprone.version>
@@ -298,11 +294,10 @@
           <version>${maven-compiler-plugin.version}</version>
           <inherited>true</inherited>
           <configuration>
-            <!-- Retrolambda will rewrite lambdas as Java 6 bytecode -->
-            <source>1.8</source>
-            <target>1.8</target>
-            <!-- or die! com.sun.tools.javac.api.JavacTool -->
+            <source>${main.java.version}</source>
+            <target>${main.java.version}</target>
             <fork>true</fork>
+            <release>8</release>
             <showWarnings>true</showWarnings>
           </configuration>
         </plugin>
