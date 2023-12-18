@@ -31,7 +31,7 @@
 
     <main.basedir>${project.basedir}/../..</main.basedir>
 
-    <mongodb-driver.version>3.12.7</mongodb-driver.version>
+    <mongodb-driver.version>3.12.14</mongodb-driver.version>
   </properties>
 
   <dependencies>

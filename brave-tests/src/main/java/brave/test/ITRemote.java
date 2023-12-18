@@ -66,7 +66,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 // ^-- TODO: verify if this value is per method.
 public abstract class ITRemote {
   static {
-    SamplingFlags.NOT_SAMPLED.toString(); // ensure InternalPropagation is wired for tests
+    String unused = SamplingFlags.NOT_SAMPLED.toString(); // ensure InternalPropagation is wired for tests
   }
 
   public static final BaggageField BAGGAGE_FIELD = BaggageField.create("userId");

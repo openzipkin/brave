@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,6 +15,7 @@ package brave.jms;
 
 import brave.Tracing;
 import java.util.concurrent.TimeUnit;
+import javax.jms.CompletionListener;
 import javax.jms.Destination;
 import javax.jms.Message;
 import javax.jms.MessageNotWriteableException;
@@ -115,6 +116,13 @@ public class JmsMessageProducerBenchmarks {
       return 0;
     }
 
+    @Override public void setDeliveryDelay(long l) {
+    }
+
+    @Override public long getDeliveryDelay() {
+      return 0;
+    }
+
     @Override public Destination getDestination() {
       return null;
     }
@@ -131,9 +139,23 @@ public class JmsMessageProducerBenchmarks {
     @Override public void send(Destination destination, Message message) {
     }
 
-    @Override
-    public void send(Destination destination, Message message, int deliveryMode, int priority,
-      long timeToLive) {
+    @Override public void send(Destination destination, Message message, int deliveryMode,
+      int priority, long timeToLive) {
+    }
+
+    @Override public void send(Message message, CompletionListener completionListener) {
+    }
+
+    @Override public void send(Message message, int i, int i1, long l,
+      CompletionListener completionListener) {
+    }
+
+    @Override public void send(Destination destination, Message message,
+      CompletionListener completionListener) {
+    }
+
+    @Override public void send(Destination destination, Message message, int i, int i1, long l,
+      CompletionListener completionListener) {
     }
   }
 }

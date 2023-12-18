@@ -39,7 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class PendingSpansTest {
   static {
-    SamplingFlags.NOT_SAMPLED.toString(); // ensure InternalPropagation is wired for tests
+    String unused = SamplingFlags.DEBUG.toString(); // ensure InternalPropagation is wired for tests
   }
 
   List<TraceContext> contexts = new ArrayList<>();
