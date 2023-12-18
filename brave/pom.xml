@@ -92,7 +92,7 @@
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-core</artifactId>
-      <version>1.6.2</version>
+      <version>1.12.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -104,7 +104,7 @@
     <dependency>
       <groupId>org.aspectj</groupId>
       <artifactId>aspectjweaver</artifactId>
-      <version>1.9.6</version>
+      <version>1.9.19</version>
       <scope>test</scope>
     </dependency>
     <dependency>

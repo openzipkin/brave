@@ -37,7 +37,7 @@ import java.util.concurrent.ExecutorService;
 public abstract class CurrentTraceContext {
   static {
     // ensure a reference to InternalPropagation exists
-    SamplingFlags.DEBUG.toString();
+    String unused = SamplingFlags.DEBUG.toString();
   }
 
   /** Implementations of this allow standardized configuration, for example scope decoration. */

@@ -33,7 +33,7 @@ import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 
 class PendingSpansClassLoaderTest {
   static {
-    SamplingFlags.NOT_SAMPLED.toString(); // ensure InternalPropagation is wired for tests
+    String unused = SamplingFlags.DEBUG.toString(); // ensure InternalPropagation is wired for tests
   }
 
   // PendingSpans should always be passed a trace context instantiated by the Tracer. This fakes
