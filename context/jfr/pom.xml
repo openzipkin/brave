@@ -30,8 +30,21 @@
     <module.name>brave.context.jfr</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
+    <!-- for add-modules -->
     <main.java.version>11</main.java.version>
+    <!-- 12 not 11 as there is no java11 published -->
+    <main.signature.artifact>java12</main.signature.artifact>
   </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.jvnet</groupId>
+      <artifactId>animal-sniffer-annotation</artifactId>
+      <version>1.0</version>
+      <!-- annotations are not runtime retention, so don't need a runtime dep -->
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
 
   <build>
     <plugins>
@@ -44,15 +57,6 @@
             <arg>jdk.jfr</arg>
           </compilerArgs>
         </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>animal-sniffer-maven-plugin</artifactId>
-        <executions>
-          <execution>
-            <phase>none</phase>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
   </build>

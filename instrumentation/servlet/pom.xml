@@ -30,6 +30,9 @@
     <module.name>brave.servlet</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
+
+    <!-- servlet is Java 1.6 bytecode -->
+    <main.signature.artifact>java16</main.signature.artifact>
   </properties>
 
   <dependencies>
@@ -105,7 +108,6 @@
       <properties>
         <!-- servlet is Java 1.6 bytecode -->
         <main.java.version>1.6</main.java.version>
-        <main.signature.artifact>java16</main.signature.artifact>
       </properties>
       <build>
         <plugins>

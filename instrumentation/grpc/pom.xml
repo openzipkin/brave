@@ -39,6 +39,9 @@
     <!-- disable mutability warning as TagContextBinaryMarshaller intentionally returns mixed -->
     <errorprone.args>-Xep:MixedMutabilityReturnType:OFF</errorprone.args>
 
+    <!-- grpc-java < 1.15 supports Java 6 https://github.com/grpc/grpc-java/issues/3961 Current versions support Java 7 even though TLS typically implies Java 8+ -->
+    <main.signature.artifact>java16</main.signature.artifact>
+
     <build-helper-maven-plugin.version>3.2.0</build-helper-maven-plugin.version>
   </properties>
 
@@ -124,7 +127,6 @@
       <properties>
         <!-- grpc-java < 1.15 supports Java 6 https://github.com/grpc/grpc-java/issues/3961 Current versions support Java 7 even though TLS typically implies Java 8+ -->
         <main.java.version>1.6</main.java.version>
-        <main.signature.artifact>java16</main.signature.artifact>
       </properties>
       <build>
         <plugins>

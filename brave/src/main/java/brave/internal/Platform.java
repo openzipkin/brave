@@ -167,7 +167,7 @@ public abstract class Platform implements Clock {
   }
 
   static class Jre9 extends Jre7 {
-    @Override public long currentTimeMicroseconds() {
+    @IgnoreJRERequirement @Override public long currentTimeMicroseconds() {
       java.time.Instant instant = java.time.Clock.systemUTC().instant();
       return (instant.getEpochSecond() * 1000000) + (instant.getNano() / 1000);
     }

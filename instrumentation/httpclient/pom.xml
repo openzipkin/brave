@@ -32,6 +32,9 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
 
     <old-httpclient.version>4.3.6</old-httpclient.version>
+
+    <!-- httpclient is Java 1.6 bytecode -->
+    <main.signature.artifact>java16</main.signature.artifact>
   </properties>
 
   <dependencies>
@@ -105,7 +108,6 @@
       <properties>
         <!-- httpclient is Java 1.6 bytecode -->
         <main.java.version>1.6</main.java.version>
-        <main.signature.artifact>java16</main.signature.artifact>
       </properties>
       <build>
         <plugins>

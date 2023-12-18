@@ -30,6 +30,9 @@
     <module.name>brave.context.log4j12</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
+
+    <!-- log4j is Java 1.6 bytecode -->
+    <main.signature.artifact>java16</main.signature.artifact>
   </properties>
 
   <dependencies>
@@ -47,7 +50,6 @@
       <properties>
         <!-- log4j is Java 1.6 bytecode -->
         <main.java.version>1.6</main.java.version>
-        <main.signature.artifact>java16</main.signature.artifact>
       </properties>
       <build>
         <plugins>

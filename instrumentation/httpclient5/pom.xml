@@ -34,6 +34,9 @@
 
     <!-- To obey the integration tests, we need to use the version >= 5.2 -->
     <httpclient5.version>5.3</httpclient5.version>
+
+    <!-- HttpClient 5 is Java 1.7 bytecode -->
+    <main.signature.artifact>java17</main.signature.artifact>
   </properties>
 
   <dependencies>
@@ -68,7 +71,6 @@
       <properties>
         <!-- HttpClient 5 is Java 1.7 bytecode -->
         <main.java.version>1.7</main.java.version>
-        <main.signature.artifact>java17</main.signature.artifact>
       </properties>
       <build>
         <plugins>

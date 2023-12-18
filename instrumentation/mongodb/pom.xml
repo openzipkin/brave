@@ -32,6 +32,9 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
 
     <mongodb-driver.version>3.12.14</mongodb-driver.version>
+
+    <!-- mongodb-driver 3.x requires Java 6 -->
+    <main.signature.artifact>java16</main.signature.artifact>
   </properties>
 
   <dependencies>
@@ -61,7 +64,6 @@
       <properties>
         <!-- mongodb-driver 3.x requires Java 6 -->
         <main.java.version>1.6</main.java.version>
-        <main.signature.artifact>java16</main.signature.artifact>
       </properties>
       <build>
         <plugins>
