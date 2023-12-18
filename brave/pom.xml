@@ -34,6 +34,9 @@
 
     <!-- disable errorprone cast warning as PendingSpans internally hacks equals -->
     <errorprone.args>-Xep:EqualsUnsafeCast:OFF</errorprone.args>
+
+    <!-- The brave jar needs to be Java 1.6 bytecode -->
+    <main.signature.artifact>java16</main.signature.artifact>
   </properties>
 
   <dependencies>
@@ -134,7 +137,6 @@
       <properties>
         <!-- The brave jar needs to be Java 1.6 bytecode -->
         <main.java.version>1.6</main.java.version>
-        <main.signature.artifact>java16</main.signature.artifact>
       </properties>
       <build>
         <plugins>

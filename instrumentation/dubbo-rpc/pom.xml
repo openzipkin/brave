@@ -45,6 +45,9 @@
       --add-opens java.base/java.lang.reflect=ALL-UNNAMED
       --add-opens java.base/java.math=ALL-UNNAMED
     </maven-failsafe-plugin.argLine>
+
+    <!-- Dubbo is 1.6 bytecode -->
+    <main.signature.artifact>java16</main.signature.artifact>
   </properties>
 
   <dependencies>
@@ -81,7 +84,6 @@
       <properties>
         <!-- Dubbo is 1.6 bytecode -->
         <main.java.version>1.6</main.java.version>
-        <main.signature.artifact>java16</main.signature.artifact>
       </properties>
       <build>
         <plugins>

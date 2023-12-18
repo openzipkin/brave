@@ -27,8 +27,6 @@
 
   <properties>
     <main.basedir>${project.basedir}/../..</main.basedir>
-    <main.java.version>11</main.java.version>
-    <main.signature.artifact>java18</main.signature.artifact>
     <!-- disable errorprone warning that "return this" is not synchronized! -->
     <errorprone.args>-Xep:UnsynchronizedOverridesSynchronized:OFF</errorprone.args>
   </properties>
@@ -87,15 +85,6 @@
             </manifestEntries>
           </archive>
         </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>animal-sniffer-maven-plugin</artifactId>
-        <executions>
-          <execution>
-            <phase>none</phase>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
   </build>

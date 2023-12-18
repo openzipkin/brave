@@ -30,6 +30,9 @@
     <module.name>brave.context.rxjava2</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
+
+    <!-- RxJava 2.x continues support for Java 1.6 and Android 2.3+ -->
+    <main.signature.artifact>java16</main.signature.artifact>
   </properties>
 
   <dependencies>
@@ -66,7 +69,6 @@
       <properties>
         <!-- RxJava 2.x continues support for Java 1.6 and Android 2.3+ -->
         <main.java.version>1.6</main.java.version>
-        <main.signature.artifact>java16</main.signature.artifact>
       </properties>
       <build>
         <plugins>

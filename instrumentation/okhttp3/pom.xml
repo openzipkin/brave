@@ -33,6 +33,9 @@
     <!-- Last version before Call.timeout was added -->
     <old-okhttp.version>3.11.0</old-okhttp.version>
     <retrofit.version>2.9.0</retrofit.version>
+
+    <!-- OkHttp 3.x is Java 1.7 bytecode -->
+    <main.signature.artifact>java17</main.signature.artifact>
   </properties>
 
   <dependencies>
@@ -99,7 +102,6 @@
       <properties>
         <!-- OkHttp 3.x is Java 1.7 bytecode -->
         <main.java.version>1.7</main.java.version>
-        <main.signature.artifact>java17</main.signature.artifact>
       </properties>
       <build>
         <plugins>
