@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -100,12 +100,12 @@ public abstract class JmsExtension implements BeforeEachCallback, AfterEachCallb
 
   @Override public void afterEach(ExtensionContext context) throws Exception {
     try {
-      session.close();
-      connection.close();
-      topicSession.close();
-      topicConnection.close();
-      queueSession.close();
-      queueConnection.close();
+      if (session != null) session.close();
+      if (connection != null) connection.close();
+      if (topicSession != null) topicSession.close();
+      if (topicConnection != null) topicConnection.close();
+      if (queueSession != null) queueSession.close();
+      if (queueConnection != null) queueConnection.close();
     } catch (JMSException e) {
       throw new AssertionError(e);
     }

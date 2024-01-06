@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -53,7 +53,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /** When adding tests here, also add to {@link brave.jakarta.jms.ITTracingJMSProducer} */
 public class ITTracingMessageProducer extends ITJms { // public for src/it
-  @RegisterExtension JmsExtension jms = new ArtemisJmsExtension();
+  @RegisterExtension JmsExtension jms = new JmsExtension();
 
   Session tracedSession;
   MessageProducer messageProducer;
@@ -296,7 +296,7 @@ public class ITTracingMessageProducer extends ITJms { // public for src/it
       .producerSampler(producerSampler)
       .build();
          JMSContext context = JmsTracing.create(messagingTracing)
-           .connectionFactory(((ArtemisJmsExtension) jms).factory)
+           .connectionFactory(((JmsExtension) jms).factory)
            .createContext(JMSContext.AUTO_ACKNOWLEDGE)
     ) {
       context.createProducer().send(jms.queue, "foo");
