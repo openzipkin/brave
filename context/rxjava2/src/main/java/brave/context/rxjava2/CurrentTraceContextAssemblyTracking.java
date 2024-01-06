@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -34,7 +34,11 @@ import io.reactivex.plugins.RxJavaPlugins;
  *
  * <p>The design of this library borrows heavily from https://github.com/akaita/RxJava2Debug and
  * https://github.com/akarnokd/RxJava2Extensions
+ *
+ * @deprecated RxJava 2 hasn't been released since Feb 2021. Tracing support will be removed in
+ * Brave v6.
  */
+@Deprecated
 public final class CurrentTraceContextAssemblyTracking {
   public interface SavedHooks {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -205,7 +205,7 @@ class ITTracingFilter_Consumer extends ITTracingFilter {
     MutableSpan span =
         testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Not found exported service.*");
     assertThat(span.tags())
-        .containsEntry("dubbo.error_code", "1");
+        .containsEntry("rpc.error_code", "NETWORK_EXCEPTION");
   }
 
   /** Shows if you aren't using RpcTracing, the old "dubbo.error_code" works */

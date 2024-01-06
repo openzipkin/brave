@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2022 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,7 +18,13 @@ import com.p6spy.engine.spy.P6Factory;
 import com.p6spy.engine.spy.P6LoadableOptions;
 import com.p6spy.engine.spy.option.P6OptionsRepository;
 
-/** Add this class name to the "moduleslist" in spy.properties */
+/**
+ * Add this class name to the "moduleslist" in spy.properties
+ *
+ * @deprecated P6Spy hasn't been released since July 2020. Tracing support will be removed in Brave
+ * v6.
+ */
+@Deprecated
 public final class TracingP6Factory implements P6Factory {
 
   TracingP6SpyOptions options;

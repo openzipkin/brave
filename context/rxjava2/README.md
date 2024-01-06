@@ -1,4 +1,12 @@
 # brave-context-rxjava2
+
+## Deprecated
+
+RxJava 2 hasn't been released since Feb 2021. Tracing support will be removed
+in Brave v6.
+
+## Overview
+
 `CurrentTraceContextAssemblyTracking` prevents traces from breaking
 during RxJava operations by scoping trace context that existed
 at assembly time around callbacks or computation of new values.

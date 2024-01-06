@@ -1,5 +1,12 @@
 # brave-instrumentation-sparkjava
 
+## Deprecated
+
+sparkjava hasn't been released since July 2022. This module will be removed in
+Brave v6.
+
+## Overview
+
 This module contains tracing filters and exception handlers for [SparkJava](http://sparkjava.com/)
 The filters extract trace state from incoming requests. Then, they
 reports Zipkin how long each request takes, along with relevant tags
