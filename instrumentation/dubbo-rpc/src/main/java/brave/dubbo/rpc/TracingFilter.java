@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -43,6 +43,11 @@ import java.util.concurrent.Future;
 
 import static brave.internal.Throwables.propagateIfFatal;
 
+/**
+ * @deprecated please use io.zipkin.brave:brave-instrumentation-dubbo with Apache Dubbo, as Alibaba
+ * Dubbo is no longer maintained. Tracing support for Alibaba Dubbo will be removed in Brave v6.
+ */
+@Deprecated
 @Activate(group = {Constants.PROVIDER, Constants.CONSUMER}, value = "tracing")
 // http://dubbo.apache.org/en-us/docs/dev/impls/filter.html
 // public constructor permitted to allow dubbo to instantiate this

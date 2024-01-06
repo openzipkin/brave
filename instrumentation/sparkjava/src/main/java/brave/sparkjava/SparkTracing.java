@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -26,6 +26,11 @@ import brave.servlet.HttpServletResponseWrapper;
 import spark.ExceptionHandler;
 import spark.Filter;
 
+/**
+ * @deprecated sparkjava hasn't been released since July 2022. Tracing support will be removed in
+ * Brave v6.
+ */
+@Deprecated
 public final class SparkTracing {
   public static SparkTracing create(Tracing tracing) {
     return new SparkTracing(HttpTracing.create(tracing));

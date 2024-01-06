@@ -17,7 +17,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
-    <version>5.17.2-SNAPSHOT</version>
+    <version>5.18.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -30,7 +30,7 @@
 
     <main.basedir>${project.basedir}/../..</main.basedir>
 
-    <dubbo.version>3.2.9</dubbo.version>
+    <dubbo.version>3.3.0-beta.1</dubbo.version>
     <!-- add opens to avoid below in JRE 21:
          com.alibaba.com.caucho.hessian.io.JavaSerializer -->
     <maven-failsafe-plugin.argLine>

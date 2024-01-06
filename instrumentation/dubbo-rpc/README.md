@@ -1,4 +1,13 @@
 # brave-instrumentation-dubbo-rpc
+
+## Deprecated
+
+Please use [brave-instrumentation-dubbo](../brave-instrumentation-dubbo) with
+Apache Dubbo, as Alibaba Dubbo is no longer maintained. This module will be
+removed in Brave v6.
+
+## Overview
+
 This is a tracing filter for RPC providers and consumers in [Dubbo 2.6+](http://dubbo.apache.org/en-us/docs/dev/impls/filter.html)
 
 When used on a consumer, `TracingFilter` adds trace state as attachments

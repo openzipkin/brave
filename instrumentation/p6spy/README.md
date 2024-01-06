@@ -1,4 +1,12 @@
 # brave-instrumentation-p6spy
+
+## Deprecated
+
+P6Spy hasn't been released since July 2020. This module will be removed in
+Brave v6.
+
+## Overview
+
 This includes a tracing event listener for [P6Spy](https://github.com/p6spy/p6spy) (a proxy for calls to your JDBC driver).
 It reports to Zipkin how long each statement takes, along with relevant tags like the query.
 

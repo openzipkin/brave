@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,6 +13,7 @@
  */
 package brave.dubbo.rpc;
 
+import brave.rpc.RpcTracing;
 import brave.test.ITRemote;
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
 import com.alibaba.dubbo.config.ReferenceConfig;
@@ -32,7 +33,7 @@ public abstract class ITTracingFilter extends ITRemote {
   TracingFilter init() {
     TracingFilter filter = (TracingFilter) ExtensionLoader.getExtensionLoader(Filter.class)
       .getExtension("tracing");
-    filter.setTracing(tracing);
+    filter.setRpcTracing(RpcTracing.create(tracing));
     return filter;
   }
 }
