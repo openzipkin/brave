@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,11 +13,11 @@
  */
 package brave.jakarta.jms;
 
+import jakarta.jms.Message;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Set;
-import jakarta.jms.Message;
 
 import static brave.internal.Throwables.propagateIfFatal;
 import static brave.jakarta.jms.JmsTracing.log;
@@ -31,7 +31,7 @@ final class PropertyFilter {
    * <p> See https://docs.oracle.com/javaee/6/api/javax/jms/Message.html
    */
   static void filterProperties(Message message, Set<String> namesToClear) {
-    ArrayList<Object> retainedProperties = messagePropertiesBuffer();
+    List<Object> retainedProperties = messagePropertiesBuffer();
     try {
       filterProperties(message, namesToClear, retainedProperties);
     } finally {
@@ -86,11 +86,11 @@ final class PropertyFilter {
     }
   }
 
-  static final ThreadLocal<ArrayList<Object>> MESSAGE_PROPERTIES_BUFFER = new ThreadLocal<>();
+  static final ThreadLocal<List<Object>> MESSAGE_PROPERTIES_BUFFER = new ThreadLocal<>();
 
   /** Also use pair indexing for temporary message properties: (name, value). */
-  static ArrayList<Object> messagePropertiesBuffer() {
-    ArrayList<Object> messagePropertiesBuffer = MESSAGE_PROPERTIES_BUFFER.get();
+  static List<Object> messagePropertiesBuffer() {
+    List<Object> messagePropertiesBuffer = MESSAGE_PROPERTIES_BUFFER.get();
     if (messagePropertiesBuffer == null) {
       messagePropertiesBuffer = new ArrayList<>();
       MESSAGE_PROPERTIES_BUFFER.set(messagePropertiesBuffer);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -55,7 +55,7 @@ class TracingV2Processor<KIn, VIn, KOut, VOut> implements Processor<KIn, VIn, KO
       span.start();
     }
 
-    Tracer.SpanInScope ws = tracer.withSpanInScope(span);
+    Tracer.SpanInScope scope = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
       delegateProcessor.process(record);
@@ -68,7 +68,7 @@ class TracingV2Processor<KIn, VIn, KOut, VOut> implements Processor<KIn, VIn, KO
       kafkaStreamsTracing.injector.inject(span.context(), record.headers());
       if (error != null) span.error(error);
       span.finish();
-      ws.close();
+      scope.close();
     }
   }
 

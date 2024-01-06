@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -62,13 +62,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
-import static brave.grpc.GrpcPropagation.GRPC_TRACE_BIN;
 import static brave.rpc.RpcRequestMatchers.methodEquals;
 import static brave.rpc.RpcRequestMatchers.serviceEquals;
 import static brave.sampler.Sampler.ALWAYS_SAMPLE;
 import static brave.sampler.Sampler.NEVER_SAMPLE;
 import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
-import static io.grpc.stub.MetadataUtils.attachHeaders;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -194,7 +192,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote { // publi
         .sayHello(HelloRequest.newBuilder().setName("bad").build()));
 
     MutableSpan span = testSpanHandler.takeRemoteSpanWithErrorMessage(Span.Kind.SERVER, "bad");
-    assertThat(span.tags()).containsEntry("grpc.status_code", "UNKNOWN");
+    assertThat(span.tags()).containsEntry("rpc.error_code", "UNKNOWN");
   }
 
   @Test void setsErrorOnRuntimeException() {
@@ -203,73 +201,7 @@ public abstract class BaseITTracingServerInterceptor extends ITRemote { // publi
         .isInstanceOf(StatusRuntimeException.class);
 
     MutableSpan span = testSpanHandler.takeRemoteSpanWithErrorMessage(Span.Kind.SERVER, "testerror");
-    assertThat(span.tags().get("grpc.status_code")).isNull();
-  }
-
-  @Test void serverParserTest() throws IOException {
-    grpcTracing = grpcTracing.toBuilder().serverParser(new GrpcServerParser() {
-      @Override protected <M> void onMessageSent(M message, SpanCustomizer span) {
-        span.tag("grpc.message_sent", message.toString());
-        if (tracing.currentTraceContext().get() != null) {
-          span.tag("grpc.message_sent.visible", "true");
-        }
-      }
-
-      @Override protected <M> void onMessageReceived(M message, SpanCustomizer span) {
-        span.tag("grpc.message_received", message.toString());
-        if (tracing.currentTraceContext().get() != null) {
-          span.tag("grpc.message_received.visible", "true");
-        }
-      }
-
-      @Override
-      protected <ReqT, RespT> String spanName(MethodDescriptor<ReqT, RespT> methodDescriptor) {
-        return methodDescriptor.getType().name();
-      }
-    }).build();
-    init();
-
-    GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
-
-    MutableSpan span = testSpanHandler.takeRemoteSpan(Span.Kind.SERVER);
-    assertThat(span.name()).isEqualTo("UNARY");
-    assertThat(span.tags().keySet()).containsExactlyInAnyOrder(
-        "grpc.message_received", "grpc.message_sent",
-        "grpc.message_received.visible", "grpc.message_sent.visible"
-    );
-  }
-
-  @Test void serverParserTestWithStreamingResponse() throws IOException {
-    grpcTracing = grpcTracing.toBuilder().serverParser(new GrpcServerParser() {
-      int responsesSent = 0;
-
-      @Override protected <M> void onMessageSent(M message, SpanCustomizer span) {
-        span.tag("grpc.message_sent." + responsesSent++, message.toString());
-      }
-    }).build();
-    init();
-
-    Iterator<HelloReply> replies = GreeterGrpc.newBlockingStub(client)
-        .sayHelloWithManyReplies(HELLO_REQUEST);
-    assertThat(replies).toIterable().hasSize(10);
-    // all response messages are tagged to the same span
-    assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER).tags()).hasSize(10);
-  }
-
-  @Test void deprecated_grpcPropagationFormatEnabled() throws IOException {
-    grpcTracing = grpcTracing.toBuilder().grpcPropagationFormatEnabled(true).build();
-    init();
-
-    TraceContext context = newTraceContext(SamplingFlags.SAMPLED);
-
-    // Add gRPC-encoded headers to the request
-    Metadata headers = new Metadata();
-    headers.put(GRPC_TRACE_BIN, TraceContextBinaryFormat.toBytes(context));
-    attachHeaders(GreeterGrpc.newBlockingStub(client), headers).sayHello(HELLO_REQUEST);
-
-    // Ensure that trace was continued
-    assertThat(testSpanHandler.takeRemoteSpan(Span.Kind.SERVER).traceId())
-      .isEqualTo(context.traceIdString());
+    assertThat(span.tags().get("rpc.error_code")).isNull();
   }
 
   // Make sure we work well with bad user interceptors.

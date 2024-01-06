@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -69,7 +69,7 @@ import static brave.propagation.SamplingFlags.SAMPLED;
  * // Start a new trace or a span within an existing trace representing an operation
  * Span span = tracer.nextSpan().name("encode").start();
  * // Put the span in "scope" so that downstream code such as loggers can see trace IDs
- * try (SpanInScope ws = tracer.withSpanInScope(span)) {
+ * try (SpanInScope scope = tracer.withSpanInScope(span)) {
  *   return encoder.encode();
  * } catch (RuntimeException | Error e) {
  *   span.error(e); // Unless you handle exceptions, you might not know the operation failed!
@@ -86,7 +86,6 @@ import static brave.propagation.SamplingFlags.SAMPLED;
  * @see Propagation
  */
 public class Tracer {
-  final Clock clock;
   final Propagation.Factory propagationFactory;
   final SpanHandler spanHandler; // only for toString
   final PendingSpans pendingSpans;
@@ -96,7 +95,6 @@ public class Tracer {
   final AtomicBoolean noop;
 
   Tracer(
-    Clock clock,
     Propagation.Factory propagationFactory,
     SpanHandler spanHandler,
     PendingSpans pendingSpans,
@@ -107,7 +105,6 @@ public class Tracer {
     boolean alwaysSampleLocal,
     AtomicBoolean noop
   ) {
-    this.clock = clock;
     this.propagationFactory = propagationFactory;
     this.spanHandler = spanHandler;
     this.pendingSpans = pendingSpans;
@@ -117,27 +114,6 @@ public class Tracer {
     this.supportsJoin = supportsJoin;
     this.alwaysSampleLocal = alwaysSampleLocal;
     this.noop = noop;
-  }
-
-  /**
-   * @since 4.19
-   * @deprecated Since 5.8, use {@link #nextSpan(SamplerFunction, Object)}  or {@link
-   * #startScopedSpan(String, SamplerFunction, Object)}
-   */
-  @Deprecated public Tracer withSampler(Sampler sampler) {
-    if (sampler == null) throw new NullPointerException("sampler == null");
-    return new Tracer(
-      clock,
-      propagationFactory,
-      spanHandler,
-      pendingSpans,
-      sampler,
-      currentTraceContext,
-      traceId128Bit,
-      supportsJoin,
-      alwaysSampleLocal,
-      noop
-    );
   }
 
   /**
@@ -425,7 +401,7 @@ public class Tracer {
    * Ex.
    * <pre>{@code
    * // Assume a framework interceptor uses this method to set the inbound span as current
-   * try (SpanInScope ws = tracer.withSpanInScope(span)) {
+   * try (SpanInScope scope = tracer.withSpanInScope(span)) {
    *   return inboundRequest.invoke();
    * // note: try-with-resources closes the scope *before* the catch block
    * } catch (RuntimeException | Error e) {
@@ -438,7 +414,7 @@ public class Tracer {
    * // An unrelated framework interceptor can now lookup the correct parent for outbound requests
    * Span parent = tracer.currentSpan()
    * Span span = tracer.nextSpan().name("outbound").start(); // parent is implicitly looked up
-   * try (SpanInScope ws = tracer.withSpanInScope(span)) {
+   * try (SpanInScope scope = tracer.withSpanInScope(span)) {
    *   return outboundRequest.invoke();
    * // note: try-with-resources closes the scope *before* the catch block
    * } catch (RuntimeException | Error e) {

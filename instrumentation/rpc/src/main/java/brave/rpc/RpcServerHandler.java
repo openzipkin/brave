@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -40,7 +40,7 @@ import brave.sampler.SamplerFunction;
  * Span span = handler.handleReceive(requestWrapper); // 1.
  * ServerResponse response = null;
  * Throwable error = null;
- * try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
+ * try (Scope scope = currentTraceContext.newScope(span.context())) { // 2.
  *   return response = process(request); // 3.
  * } catch (Throwable e) {
  *   error = e; // 4.

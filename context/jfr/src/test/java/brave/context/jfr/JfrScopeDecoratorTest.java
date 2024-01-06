@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -98,7 +98,7 @@ class JfrScopeDecoratorTest {
   void makeFiveScopes() throws InterruptedException {
     CountDownLatch latch = new CountDownLatch(1);
 
-    try (Scope ws = currentTraceContext.newScope(context)) {
+    try (Scope scope = currentTraceContext.newScope(context)) {
       executor.execute(() -> {
         try (Scope clear = currentTraceContext.newScope(null)) {
         }
@@ -108,7 +108,7 @@ class JfrScopeDecoratorTest {
       });
     }
 
-    try (Scope ws = currentTraceContext.newScope(context3)) {
+    try (Scope scope = currentTraceContext.newScope(context3)) {
       latch.countDown();
       shutdownExecutor();
     }

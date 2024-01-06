@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -129,46 +129,6 @@ public class SamplingFlags {
       result.append("SAMPLED_LOCAL");
     }
     return result.toString();
-  }
-
-  /** @deprecated prefer using constants. This will be removed in Brave v6 */
-  @Deprecated
-  public static final class Builder {
-    int flags = 0; // bit field for sampled and debug
-
-    public Builder() {
-      // public constructor instead of static newBuilder which would clash with TraceContext's
-    }
-
-    /** @see SamplingFlags#sampled() */
-    public Builder sampled(@Nullable Boolean sampled) {
-      if (sampled == null) {
-        flags &= ~(FLAG_SAMPLED_SET | FLAG_SAMPLED);
-        return this;
-      }
-      flags = InternalPropagation.sampled(sampled, flags);
-      return this;
-    }
-
-    /**
-     * Setting debug to true also sets sampled to true.
-     *
-     * @see SamplingFlags#debug()
-     */
-    public Builder debug(boolean debug) {
-      flags = SamplingFlags.debug(debug, flags);
-      return this;
-    }
-
-    /** Allows you to create flags from a boolean value without allocating a builder instance */
-    public static SamplingFlags build(@Nullable Boolean sampled) {
-      if (sampled != null) return sampled ? SAMPLED : NOT_SAMPLED;
-      return EMPTY;
-    }
-
-    public SamplingFlags build() {
-      return toSamplingFlags(flags);
-    }
   }
 
   static boolean debug(int flags) {

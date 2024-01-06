@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,7 +19,6 @@ import brave.propagation.B3SingleFormat;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import jakarta.jms.JMSConsumer;
-import jakarta.jms.JMSException;
 import jakarta.jms.Message;
 import java.util.Collections;
 import org.apache.activemq.artemis.api.core.client.ClientSession;
@@ -91,16 +90,8 @@ public class TracingJMSConsumerTest extends ITJms {
     testSpanHandler.takeRemoteSpan(CONSUMER);
   }
 
-  void receive(Message message) throws Exception {
+  void receive(Message message) {
     when(delegate.receive()).thenReturn(message);
     tracingJMSConsumer.receive();
-  }
-
-  void assertNoProperties(ActiveMQTextMessage message) {
-    try {
-      assertThat(Collections.list(message.getPropertyNames())).isEmpty();
-    } catch (JMSException e) {
-      throw new AssertionError(e);
-    }
   }
 }

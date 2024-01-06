@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,7 +16,6 @@ package brave.spring.rabbit;
 import brave.Tracing;
 import java.util.Collection;
 import java.util.List;
-
 import org.aopalliance.aop.Advice;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;

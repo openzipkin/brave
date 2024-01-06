@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,12 +18,9 @@ import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext.Extractor;
 import brave.sampler.SamplerFunction;
-import java.util.ArrayList;
 import java.util.List;
 
-import static brave.internal.InternalPropagation.FLAG_SAMPLED;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_LOCAL;
-import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 import static brave.internal.collect.Lists.ensureImmutable;
 import static brave.propagation.TraceContext.ensureExtraAdded;
 import static java.util.Collections.emptyList;
@@ -147,33 +144,14 @@ public final class TraceContextOrSamplingFlags {
     return new Builder(3, flags, emptyList());
   }
 
-  /**
-   * @deprecated Since 5.12, use {@link #newBuilder(TraceContext)}, {@link
-   * #newBuilder(TraceIdContext)} or {@link #newBuilder(SamplingFlags)}.
-   */
-  @Deprecated public static Builder newBuilder() {
-    return new Builder(0, null, emptyList());
-  }
-
   /** Returns {@link SamplingFlags#sampled()}, regardless of subtype. */
   @Nullable public Boolean sampled() {
     return value.sampled();
   }
 
   /** Returns {@link SamplingFlags#sampledLocal()}, regardless of subtype. */
-  public final boolean sampledLocal() {
+  public boolean sampledLocal() {
     return (value.flags & FLAG_SAMPLED_LOCAL) == FLAG_SAMPLED_LOCAL;
-  }
-
-  /** @deprecated do not use object variant.. only set when you have a sampling decision */
-  @Deprecated
-  public TraceContextOrSamplingFlags sampled(@Nullable Boolean sampled) {
-    if (sampled != null) return sampled(sampled.booleanValue());
-    int flags = value.flags;
-    flags &= ~FLAG_SAMPLED_SET;
-    flags &= ~FLAG_SAMPLED;
-    if (flags == value.flags) return this; // save effort if no change
-    return withFlags(flags);
   }
 
   /**
@@ -300,14 +278,6 @@ public final class TraceContextOrSamplingFlags {
     return result.append('}').toString();
   }
 
-  /** @deprecated Since 5.12, use constants defined on this type as needed. */
-  @Deprecated
-  public static TraceContextOrSamplingFlags create(@Nullable Boolean sampled, boolean debug) {
-    if (debug) return DEBUG;
-    if (sampled == null) return EMPTY;
-    return sampled ? SAMPLED : NOT_SAMPLED;
-  }
-
   final int type;
   final SamplingFlags value;
   final List<Object> extraList;
@@ -332,38 +302,9 @@ public final class TraceContextOrSamplingFlags {
       this.extraList = extraList;
     }
 
-    /** @deprecated Since 5.12, use {@link #newBuilder(TraceIdContext)} */
-    @Deprecated public Builder context(TraceContext context) {
-      return copyStateTo(newBuilder(context));
-    }
-
-    /** @deprecated Since 5.12, use {@link #newBuilder(TraceIdContext)} */
-    @Deprecated public Builder traceIdContext(TraceIdContext traceIdContext) {
-      return copyStateTo(newBuilder(traceIdContext));
-    }
-
-    /** @deprecated Since 5.12, use {@link #newBuilder(SamplingFlags)} */
-    @Deprecated public Builder samplingFlags(SamplingFlags samplingFlags) {
-      return copyStateTo(newBuilder(samplingFlags));
-    }
-
-    Builder copyStateTo(Builder builder) {
-      if (sampledLocal) builder.sampledLocal();
-      for (Object extra : extraList) builder.addExtra(extra);
-      return builder;
-    }
-
     /** @see TraceContext#sampledLocal() */
     public Builder sampledLocal() {
       this.sampledLocal = true;
-      return this;
-    }
-
-    /** @deprecated Since 5.12, use {@link #addExtra(Object)} */
-    @Deprecated public Builder extra(List<Object> extraList) {
-      if (extraList == null) throw new NullPointerException("extraList == null");
-      this.extraList = new ArrayList<Object>();
-      for (Object extra : extraList) addExtra(extra);
       return this;
     }
 
@@ -377,11 +318,7 @@ public final class TraceContextOrSamplingFlags {
     }
 
     /** Returns an immutable result from the values currently in the builder */
-    public final TraceContextOrSamplingFlags build() {
-      if (value == null) {
-        throw new IllegalArgumentException(
-            "Value unset. Use a non-deprecated newBuilder method instead.");
-      }
+    public TraceContextOrSamplingFlags build() {
       final TraceContextOrSamplingFlags result;
       if (!extraList.isEmpty() && type == 1) { // move extra to the trace context
         TraceContext context = (TraceContext) value;

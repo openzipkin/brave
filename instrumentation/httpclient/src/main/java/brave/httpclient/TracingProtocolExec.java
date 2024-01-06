@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -64,7 +64,7 @@ final class TracingProtocolExec implements ClientExecChain {
 
     CloseableHttpResponse response = null;
     Throwable error = null;
-    SpanInScope ws = tracer.withSpanInScope(span);
+    SpanInScope scope = tracer.withSpanInScope(span);
     try {
       return response = protocolExec.execute(route, req, context, execAware);
     } catch (RuntimeException e) {
@@ -82,7 +82,7 @@ final class TracingProtocolExec implements ClientExecChain {
       throw e;
     } finally {
       handler.handleReceive(new HttpResponseWrapper(response, context, error), span);
-      ws.close();
+      scope.close();
     }
   }
 

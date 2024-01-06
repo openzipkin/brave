@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,8 +18,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
-import org.assertj.core.api.AbstractThrowableAssert;
-import org.assertj.core.api.ObjectAssert;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -102,31 +100,6 @@ public final class AssertableCallback<V> extends CountDownLatch implements
         (Throwable) error);
     }
     throw new AssertionError("unexpected state");
-  }
-
-  // TODO: not actually used as we don't need to verify http status code or otherwise yet
-  public ObjectAssert<V> assertThatSuccess() {
-    return assertThat(join());
-  }
-
-  // TODO: not actually used as we have no async error tests, yet
-  public AbstractThrowableAssert<?, ? extends Throwable> assertThatError() {
-    awaitUninterruptably();
-
-    if (onErrorCount.get() > 0) {
-      assertThat(onErrorCount)
-        .withFailMessage("onError signaled multiple times")
-        .hasValueLessThan(2);
-
-      assertThat(onSuccessCount)
-        .withFailMessage("Both onSuccess and onError were signaled")
-        .hasValue(0);
-
-      return assertThat(result == NULL_SENTINEL ? null : (Throwable) result);
-    } else if (onSuccessCount.get() > 0) {
-      throw new AssertionError("expected onError, but received onSuccess(" + result + ")");
-    }
-    throw new AssertionError(); // unexpected as we only have two callbacks to handle!
   }
 
   void awaitUninterruptably() {

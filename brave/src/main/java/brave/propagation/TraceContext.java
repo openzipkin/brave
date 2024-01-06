@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -21,14 +21,14 @@ import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.List;
 
-import static brave.internal.codec.HexCodec.lenientLowerHexToUnsignedLong;
-import static brave.internal.codec.HexCodec.toLowerHex;
-import static brave.internal.codec.HexCodec.writeHexLong;
 import static brave.internal.InternalPropagation.FLAG_LOCAL_ROOT;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_LOCAL;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 import static brave.internal.InternalPropagation.FLAG_SHARED;
+import static brave.internal.codec.HexCodec.lenientLowerHexToUnsignedLong;
+import static brave.internal.codec.HexCodec.toLowerHex;
+import static brave.internal.codec.HexCodec.writeHexLong;
 import static brave.internal.collect.Lists.ensureImmutable;
 import static brave.internal.collect.Lists.ensureMutable;
 import static brave.propagation.TraceIdContext.toTraceIdString;
@@ -357,18 +357,6 @@ public final class TraceContext extends SamplingFlags {
         flags |= FLAG_SHARED;
       } else {
         flags &= ~FLAG_SHARED;
-      }
-      return this;
-    }
-
-    /**
-     * @since 4.9
-     * @deprecated Since 5.12, use {@link #addExtra(Object)}
-     */
-    @Deprecated public Builder extra(List<Object> extraList) {
-      if (extraList == null) throw new NullPointerException("extraList == null");
-      for (Object extra : extraList) {
-        addExtra(extra);
       }
       return this;
     }

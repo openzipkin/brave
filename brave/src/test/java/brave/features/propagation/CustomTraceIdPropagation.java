@@ -13,7 +13,6 @@
  */
 package brave.features.propagation;
 
-import brave.internal.propagation.StringPropagationAdapter;
 import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
@@ -76,10 +75,6 @@ public final class CustomTraceIdPropagation extends Propagation.Factory
 
   @Override public Propagation<String> get() {
     return this;
-  }
-
-  @Override public <K1> Propagation<K1> create(KeyFactory<K1> keyFactory) {
-    return StringPropagationAdapter.create(this, keyFactory);
   }
 
   @Override public List<String> keys() {

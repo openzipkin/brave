@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -54,7 +54,7 @@ final class TracingCallback {
     }
 
     @Override public void onCompletion(RecordMetadata metadata, @Nullable Exception exception) {
-      try (Scope ws = current.maybeScope(span.context())) {
+      try (Scope scope = current.maybeScope(span.context())) {
         delegate.onCompletion(metadata, exception);
       } finally {
         super.onCompletion(metadata, exception);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,6 @@
  */
 package brave.sampler;
 
-import brave.propagation.SamplingFlags;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -35,21 +34,21 @@ class DeclarativeSamplerTest {
   @Test void honorsSampleRate() {
     declarativeSampler = DeclarativeSampler.createWithRate(Traced::sampleRate);
 
-    assertThat(declarativeSampler.sample(traced(0.0f, 1, true)))
-      .isEqualTo(SamplingFlags.SAMPLED);
+    assertThat(declarativeSampler.trySample(traced(0.0f, 1, true)))
+      .isTrue();
 
-    assertThat(declarativeSampler.sample(traced(0.0f, 0, true)))
-      .isEqualTo(SamplingFlags.NOT_SAMPLED);
+    assertThat(declarativeSampler.trySample(traced(0.0f, 0, true)))
+      .isFalse();
   }
 
   @Test void honorsSampleProbability() {
     declarativeSampler = DeclarativeSampler.createWithProbability(Traced::sampleProbability);
 
-    assertThat(declarativeSampler.sample(traced(1.0f, 0, true)))
-      .isEqualTo(SamplingFlags.SAMPLED);
+    assertThat(declarativeSampler.trySample(traced(1.0f, 0, true)))
+      .isTrue();
 
-    assertThat(declarativeSampler.sample(traced(0.0f, 0, true)))
-      .isEqualTo(SamplingFlags.NOT_SAMPLED);
+    assertThat(declarativeSampler.trySample(traced(0.0f, 0, true)))
+      .isFalse();
   }
 
   @Test void nullOnNull() {
@@ -60,8 +59,8 @@ class DeclarativeSamplerTest {
   @Test void unmatched() {
     DeclarativeSampler<Object> declarativeSampler = DeclarativeSampler.createWithRate(o -> null);
 
-    assertThat(declarativeSampler.sample(new Object()))
-      .isEqualTo(SamplingFlags.EMPTY);
+    assertThat(declarativeSampler.trySample(new Object()))
+      .isNull();
 
     // this decision is cached
     assertThat(declarativeSampler.methodToSamplers)
@@ -69,48 +68,20 @@ class DeclarativeSamplerTest {
   }
 
   @Test void acceptsFallback() {
-    assertThat(declarativeSampler.sample(traced(1.0f, 0, false)))
-      .isEqualTo(SamplingFlags.EMPTY);
-  }
-
-  @Test void toSampler() {
-    assertThat(declarativeSampler.toSampler(traced(1.0f, 0, true)).isSampled(0L))
-      .isTrue();
-
-    assertThat(declarativeSampler.toSampler(traced(0.0f, 0, true)).isSampled(0L))
-      .isFalse();
-
-    // check not enabled is false
-    assertThat(declarativeSampler.toSampler(traced(1.0f, 0, false)).isSampled(0L))
-      .isFalse();
-  }
-
-  @Test void toSampler_fallback() {
-    Sampler withFallback =
-      declarativeSampler.toSampler(traced(0.0f, 0, false), Sampler.ALWAYS_SAMPLE);
-
-    assertThat(withFallback.isSampled(0L))
-      .isTrue();
-  }
-
-  @Test void toSampler_fallback_notUsed() {
-    Sampler withFallback =
-      declarativeSampler.toSampler(traced(1.0f, 0, true), Sampler.NEVER_SAMPLE);
-
-    assertThat(withFallback.isSampled(0L))
-      .isTrue();
+    assertThat(declarativeSampler.trySample(traced(1.0f, 0, false)))
+      .isNull();
   }
 
   @Test void samplerLoadsLazy() {
     assertThat(declarativeSampler.methodToSamplers)
       .isEmpty();
 
-    declarativeSampler.sample(traced(1.0f, 0, true));
+    declarativeSampler.trySample(traced(1.0f, 0, true));
 
     assertThat(declarativeSampler.methodToSamplers)
       .hasSize(1);
 
-    declarativeSampler.sample(traced(0.0f, 0, true));
+    declarativeSampler.trySample(traced(0.0f, 0, true));
 
     assertThat(declarativeSampler.methodToSamplers)
       .hasSize(2);
@@ -119,9 +90,9 @@ class DeclarativeSamplerTest {
   @Test void cardinalityIsPerAnnotationNotInvocation() {
     Traced traced = traced(1.0f, 0, true);
 
-    declarativeSampler.sample(traced);
-    declarativeSampler.sample(traced);
-    declarativeSampler.sample(traced);
+    declarativeSampler.trySample(traced);
+    declarativeSampler.trySample(traced);
+    declarativeSampler.trySample(traced);
 
     assertThat(declarativeSampler.methodToSamplers)
       .hasSize(1);

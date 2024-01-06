@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,8 +15,8 @@ package brave.handler;
 
 import brave.Tag;
 import brave.internal.codec.JsonWriter;
-import brave.internal.codec.ZipkinV2JsonWriter;
 import brave.internal.codec.WriteBuffer;
+import brave.internal.codec.ZipkinV2JsonWriter;
 import java.util.List;
 
 /** Similar to {@code zipkin2.MutableSpan.SpanBytesEncoder} except no Zipkin dependency. */

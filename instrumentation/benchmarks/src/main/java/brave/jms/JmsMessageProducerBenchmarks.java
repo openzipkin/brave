@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -37,7 +37,6 @@ import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
-import zipkin2.reporter.Reporter;
 
 @Measurement(iterations = 5, time = 1)
 @Warmup(iterations = 10, time = 1)
@@ -50,7 +49,7 @@ public class JmsMessageProducerBenchmarks {
   MessageProducer producer, tracingProducer;
 
   @Setup(Level.Trial) public void init() throws MessageNotWriteableException {
-    Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build();
+    Tracing tracing = Tracing.newBuilder().build();
     producer = new FakeMessageProducer();
     message.setText("value");
     tracingProducer = TracingMessageProducer.create(producer, JmsTracing.create(tracing));
