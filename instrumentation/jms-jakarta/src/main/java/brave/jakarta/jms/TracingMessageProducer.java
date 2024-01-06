@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -132,7 +132,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
   @Override public void send(Message message, int deliveryMode, int priority, long timeToLive)
     throws JMSException {
     Span span = createAndStartProducerSpan(message, destination(message));
-    SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
+    SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
       delegate.send(message, deliveryMode, priority, timeToLive);
@@ -178,7 +178,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
   void send(SendDestination sendDestination, Destination destination, Message message)
     throws JMSException {
     Span span = createAndStartProducerSpan(message, destination);
-    SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
+    SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
       sendDestination.apply(delegate, destination, message);
@@ -216,7 +216,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
   public void send(Message message, CompletionListener completionListener) throws JMSException {
     Destination destination = destination(message);
     Span span = createAndStartProducerSpan(message, destination);
-    SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
+    SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
       delegate.send(message, TracingCompletionListener.create(completionListener, destination, span, current));
@@ -235,7 +235,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     Destination destination = destination(message);
     Span span = createAndStartProducerSpan(message, destination);
     completionListener = TracingCompletionListener.create(completionListener, destination, span, current);
-    SpanInScope ws = tracer.withSpanInScope(span); // animal-sniffer mistakes this for AutoCloseable
+    SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
       delegate.send(message, deliveryMode, priority, timeToLive, completionListener);

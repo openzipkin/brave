@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -25,7 +25,6 @@ import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-import org.jvnet.animal_sniffer.IgnoreJRERequirement;
 
 /**
  * Access to platform-specific features.
@@ -167,12 +166,12 @@ public abstract class Platform implements Clock {
   }
 
   static class Jre9 extends Jre7 {
-    @IgnoreJRERequirement @Override public long currentTimeMicroseconds() {
+    @Override public long currentTimeMicroseconds() {
       java.time.Instant instant = java.time.Clock.systemUTC().instant();
       return (instant.getEpochSecond() * 1000000) + (instant.getNano() / 1000);
     }
 
-    @IgnoreJRERequirement @Override public Clock clock() {
+    @Override public Clock clock() {
       return new Clock() {
         // we could use jdk.internal.misc.VM to do this more efficiently, but it is internal
         @Override public long currentTimeMicroseconds() {
@@ -199,19 +198,19 @@ public abstract class Platform implements Clock {
       return System.nanoTime();
     }
 
-    @IgnoreJRERequirement @Override public String getHostString(InetSocketAddress socket) {
+    @Override public String getHostString(InetSocketAddress socket) {
       return socket.getHostString();
     }
 
-    @IgnoreJRERequirement @Override public long randomLong() {
+    @Override public long randomLong() {
       return java.util.concurrent.ThreadLocalRandom.current().nextLong();
     }
 
-    @IgnoreJRERequirement @Override public long nextTraceIdHigh() {
+    @Override public long nextTraceIdHigh() {
       return nextTraceIdHigh(currentTimeMicroseconds(), java.util.concurrent.ThreadLocalRandom.current().nextInt());
     }
 
-    @IgnoreJRERequirement @Override
+    @Override
     public AssertionError assertionError(String message, Throwable cause) {
       return new AssertionError(message, cause);
     }

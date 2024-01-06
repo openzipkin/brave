@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright 2013-2023 The OpenZipkin Authors
+    Copyright 2013-2024 The OpenZipkin Authors
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
     in compliance with the License. You may obtain a copy of the License at
@@ -67,16 +67,24 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
     <!-- default bytecode version for src/main -->
-    <main.java.version>1.8</main.java.version>
-    <main.signature.artifact>java18</main.signature.artifact>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+    <!-- We don't use animal-sniffer anymore as release obviates it.
+         See https://github.com/mojohaus/animal-sniffer/issues/62 -->
+    <maven.compiler.release>8</maven.compiler.release>
+
+    <!-- Tests use the floor Java version (used in release) -->
+    <maven.compiler.testSource>11</maven.compiler.testSource>
+    <maven.compiler.testTarget>11</maven.compiler.testTarget>
+    <maven.compiler.testRelease>11</maven.compiler.testRelease>
 
     <!-- override to set exclusions per-project -->
     <errorprone.args />
-    <errorprone.version>2.23.0</errorprone.version>
+    <errorprone.version>2.24.1</errorprone.version>
 
     <!-- use the same values in bom/pom.xml -->
-    <zipkin.version>2.25.2</zipkin.version>
-    <zipkin-reporter.version>2.17.1</zipkin-reporter.version>
+    <zipkin.version>2.27.0</zipkin.version>
+    <zipkin-reporter.version>2.17.2</zipkin-reporter.version>
 
     <!-- Used for Generated annotations -->
     <javax-annotation-api.version>1.3.2</javax-annotation-api.version>
@@ -94,7 +102,7 @@
     <resteasy.version>3.15.6.Final</resteasy.version>
 
     <!-- Jakarta -->
-    <jetty11.version>11.0.18</jetty11.version>
+    <jetty11.version>11.0.19</jetty11.version>
     <jakarta.servlet>5.0.0</jakarta.servlet>
 
     <kafka.version>3.6.1</kafka.version>
@@ -105,7 +113,7 @@
 
     <!-- TODO: update and fix drift or remove the FinagleContextInteropTest -->
     <finagle.version>20.12.0</finagle.version>
-    <log4j.version>2.22.0</log4j.version>
+    <log4j.version>2.22.1</log4j.version>
     <okhttp.version>4.12.0</okhttp.version>
     <httpclient.version>4.5.14</httpclient.version>
 
@@ -122,23 +130,20 @@
 
     <!-- Test only dependencies -->
     <junit-jupiter.version>5.10.1</junit-jupiter.version>
-    <assertj.version>3.24.2</assertj.version>
+    <assertj.version>3.25.1</assertj.version>
     <mockito.version>5.8.0</mockito.version>
-    <jersey.version>2.33</jersey.version>
-    <!-- must align with kafka version https://github.com/charithe/kafka-junit -->
-    <kafka-junit.version>4.2.10</kafka-junit.version>
+    <jersey.version>2.41</jersey.version>
     <testcontainers.version>1.19.3</testcontainers.version>
 
     <license.skip>${skipTests}</license.skip>
     <maven-surefire-plugin.argLine />
     <maven-failsafe-plugin.argLine />
 
-    <animal-sniffer-maven-plugin.version>1.23</animal-sniffer-maven-plugin.version>
     <go-offline-maven-plugin.version>1.2.8</go-offline-maven-plugin.version>
     <!-- TODO: cleanup any redundant ignores now also in the 4.0 release (once final) -->
     <license-maven-plugin.version>4.3</license-maven-plugin.version>
     <maven-bundle-plugin.version>5.1.9</maven-bundle-plugin.version>
-    <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
+    <maven-compiler-plugin.version>3.12.1</maven-compiler-plugin.version>
     <!-- Use same version as https://github.com/openzipkin/docker-java -->
     <maven-dependency-plugin.version>3.6.1</maven-dependency-plugin.version>
     <maven-deploy-plugin.version>3.1.1</maven-deploy-plugin.version>
@@ -147,12 +152,12 @@
     <maven-help-plugin.version>3.4.0</maven-help-plugin.version>
     <maven-install-plugin.version>3.1.1</maven-install-plugin.version>
     <maven-invoker-plugin.version>3.6.0</maven-invoker-plugin.version>
-    <maven-javadoc-plugin.version>3.6.2</maven-javadoc-plugin.version>
+    <maven-javadoc-plugin.version>3.6.3</maven-javadoc-plugin.version>
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
     <maven-release-plugin.version>3.0.1</maven-release-plugin.version>
     <maven-shade-plugin.version>3.5.1</maven-shade-plugin.version>
     <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
-    <maven-surefire-plugin.version>3.2.2</maven-surefire-plugin.version>
+    <maven-surefire-plugin.version>3.2.3</maven-surefire-plugin.version>
     <nexus-staging-maven-plugin.version>1.6.13</nexus-staging-maven-plugin.version>
   </properties>
 
@@ -260,13 +265,6 @@
             <!-- Add dependencies indirectly referenced by build plugins -->
             <dynamicDependencies>
               <DynamicDependency>
-                <groupId>org.codehaus.mojo.signature</groupId>
-                <artifactId>${main.signature.artifact}</artifactId>
-                <version>1.0</version>
-                <type>signature</type>
-                <repositoryType>MAIN</repositoryType>
-              </DynamicDependency>
-              <DynamicDependency>
                 <groupId>com.mycila</groupId>
                 <artifactId>license-maven-plugin-git</artifactId>
                 <version>${license-maven-plugin.version}</version>
@@ -294,10 +292,7 @@
           <version>${maven-compiler-plugin.version}</version>
           <inherited>true</inherited>
           <configuration>
-            <source>${main.java.version}</source>
-            <target>${main.java.version}</target>
             <fork>true</fork>
-            <release>8</release>
             <showWarnings>true</showWarnings>
           </configuration>
         </plugin>
@@ -421,29 +416,6 @@
       <plugin>
         <artifactId>maven-help-plugin</artifactId>
         <version>${maven-help-plugin.version}</version>
-      </plugin>
-
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>animal-sniffer-maven-plugin</artifactId>
-        <version>${animal-sniffer-maven-plugin.version}</version>
-        <configuration>
-          <signature>
-            <groupId>org.codehaus.mojo.signature</groupId>
-            <artifactId>${main.signature.artifact}</artifactId>
-            <version>1.0</version>
-          </signature>
-          <checkTestClasses>false</checkTestClasses>
-        </configuration>
-        <executions>
-          <execution>
-            <id>animal-sniffer</id>
-            <phase>verify</phase>
-            <goals>
-              <goal>check</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
 
       <plugin>
@@ -651,8 +623,6 @@
             <version>${maven-compiler-plugin.version}</version>
             <inherited>true</inherited>
             <configuration>
-              <source>${main.java.version}</source>
-              <target>${main.java.version}</target>
               <fork>true</fork>
               <showWarnings>true</showWarnings>
             </configuration>

@@ -1,6 +1,6 @@
 <!--
 
-    Copyright 2013-2023 The OpenZipkin Authors
+    Copyright 2013-2024 The OpenZipkin Authors
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
     in compliance with the License. You may obtain a copy of the License at
@@ -34,9 +34,6 @@
 
     <!-- disable errorprone cast warning as PendingSpans internally hacks equals -->
     <errorprone.args>-Xep:EqualsUnsafeCast:OFF</errorprone.args>
-
-    <!-- The brave jar needs to be Java 1.6 bytecode -->
-    <main.signature.artifact>java16</main.signature.artifact>
   </properties>
 
   <dependencies>
@@ -46,13 +43,6 @@
       <groupId>io.zipkin.reporter2</groupId>
       <artifactId>zipkin-reporter-brave</artifactId>
       <version>${zipkin-reporter.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.jvnet</groupId>
-      <artifactId>animal-sniffer-annotation</artifactId>
-      <version>1.0</version>
-      <!-- annotations are not runtime retention, so don't need a runtime dep -->
-      <scope>provided</scope>
     </dependency>
 
     <!-- To show off SpanHandler -->
@@ -136,7 +126,11 @@
       <id>release</id>
       <properties>
         <!-- The brave jar needs to be Java 1.6 bytecode -->
-        <main.java.version>1.6</main.java.version>
+        <maven.compiler.source>1.6</maven.compiler.source>
+        <maven.compiler.target>1.6</maven.compiler.target>
+        <!-- Clear the release tag, so that we can compile Platform without
+             errors and without changing the end bytecode to 1.8 -->
+        <maven.compiler.release />
       </properties>
       <build>
         <plugins>
