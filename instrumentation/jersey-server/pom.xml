@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!--
 
-    Copyright 2013-2023 The OpenZipkin Authors
+    Copyright 2013-2024 The OpenZipkin Authors
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
     in compliance with the License. You may obtain a copy of the License at
@@ -30,9 +30,6 @@
     <module.name>brave.jersey.server</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
-    <!-- Jersey 2.7 -> 2.25 are Java 7. We don't currently compile against Jersey 2.26+
-         https://jersey.github.io/documentation/latest/modules-and-dependencies.html#d0e560
-         -->
   </properties>
 
   <dependencies>
@@ -103,4 +100,43 @@
       <version>1.1.1</version>
     </dependency>
   </dependencies>
+
+  <profiles>
+    <profile>
+      <id>release</id>
+      <properties>
+        <!-- Jersey 2.7 -> 2.25 are Java 7. We don't currently compile against Jersey 2.26+
+         https://jersey.github.io/documentation/latest/modules-and-dependencies.html#d0e560
+         -->
+        <maven.compiler.source>1.7</maven.compiler.source>
+        <maven.compiler.target>1.7</maven.compiler.target>
+        <maven.compiler.release>7</maven.compiler.release>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-enforcer-plugin</artifactId>
+            <version>${maven-enforcer-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>enforce-java</id>
+                <goals>
+                  <goal>enforce</goal>
+                </goals>
+                <configuration>
+                  <rules>
+                    <!-- The only LTS JDK we support that can compile 1.6 bytecode is 11.
+                         https://www.oracle.com/java/technologies/javase/12-relnote-issues.html -->
+                    <requireJavaVersion>
+                      <version>[11,12)</version>
+                    </requireJavaVersion>
+                  </rules>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

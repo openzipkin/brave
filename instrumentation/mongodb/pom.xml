@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!--
 
-    Copyright 2013-2023 The OpenZipkin Authors
+    Copyright 2013-2024 The OpenZipkin Authors
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
     in compliance with the License. You may obtain a copy of the License at
@@ -32,9 +32,6 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
 
     <mongodb-driver.version>3.12.14</mongodb-driver.version>
-
-    <!-- mongodb-driver 3.x requires Java 6 -->
-    <main.signature.artifact>java16</main.signature.artifact>
   </properties>
 
   <dependencies>
@@ -63,7 +60,9 @@
       <id>release</id>
       <properties>
         <!-- mongodb-driver 3.x requires Java 6 -->
-        <main.java.version>1.6</main.java.version>
+        <maven.compiler.source>1.6</maven.compiler.source>
+        <maven.compiler.target>1.6</maven.compiler.target>
+        <maven.compiler.release>6</maven.compiler.release>
       </properties>
       <build>
         <plugins>

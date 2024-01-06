@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -22,7 +22,6 @@ import jdk.jfr.Category;
 import jdk.jfr.Description;
 import jdk.jfr.Event;
 import jdk.jfr.Label;
-import org.jvnet.animal_sniffer.IgnoreJRERequirement;
 
 /**
  * Adds {@linkplain Event} properties "traceId", "parentId" and "spanId" when a {@link
@@ -56,7 +55,6 @@ public final class JfrScopeDecorator implements ScopeDecorator {
   @Category("Zipkin")
   @Label("Scope")
   @Description("Zipkin event representing a span being placed in scope")
-  @IgnoreJRERequirement
   static final class ScopeEvent extends Event {
     @Label("Trace Id") String traceId;
     @Label("Parent Id") String parentId;
