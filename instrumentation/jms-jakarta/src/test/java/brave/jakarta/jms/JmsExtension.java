@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,6 +16,7 @@ package brave.jakarta.jms;
 import jakarta.jms.BytesMessage;
 import jakarta.jms.Connection;
 import jakarta.jms.Destination;
+import jakarta.jms.JMSContext;
 import jakarta.jms.JMSException;
 import jakarta.jms.Message;
 import jakarta.jms.Queue;
@@ -29,16 +30,28 @@ import jakarta.jms.TopicSession;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Optional;
-import org.apache.activemq.artemis.jms.client.ActiveMQConnectionFactory;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.activemq.artemis.api.core.SimpleString;
+import org.apache.activemq.artemis.api.core.TransportConfiguration;
+import org.apache.activemq.artemis.core.config.impl.ConfigurationImpl;
+import org.apache.activemq.artemis.core.remoting.impl.invm.InVMAcceptorFactory;
+import org.apache.activemq.artemis.core.server.embedded.EmbeddedActiveMQ;
+import org.apache.activemq.artemis.core.settings.impl.AddressSettings;
+import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
 import org.apache.activemq.artemis.jms.client.ActiveMQMessage;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
-public abstract class JmsExtension implements BeforeEachCallback, AfterEachCallback {
+/**
+ * ActiveMQ 6 supports JMS 2.0, but requires JDK 17. We have to build on JDK
+ * 11, so use Artemis instead, despite it requiring Netty.
+ *
+ * <p>See https://issues.apache.org/jira/browse/AMQ-5736?focusedCommentId=16593091&page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel#comment-16593091
+ */
+public class JmsExtension implements BeforeEachCallback, AfterEachCallback {
   String testName;
   String destinationName, queueName, topicName;
-
   Connection connection;
   Session session;
   Destination destination;
@@ -51,7 +64,56 @@ public abstract class JmsExtension implements BeforeEachCallback, AfterEachCallb
   TopicSession topicSession;
   Topic topic;
 
+  EmbeddedActiveMQ server = new EmbeddedActiveMQ();
+  ActiveMQJMSConnectionFactory factory;
+  AtomicBoolean started = new AtomicBoolean();
+
   JmsExtension() {
+    factory = new ActiveMQJMSConnectionFactory("vm://0");
+    factory.setProducerMaxRate(1); // to allow tests to use production order
+  }
+
+  void maybeStartServer() throws Exception {
+    if (started.getAndSet(true)) return;
+    // Configuration values from EmbeddedActiveMQResource
+    server.setConfiguration(new ConfigurationImpl().setName(testName)
+      .setPersistenceEnabled(false)
+      .setSecurityEnabled(false)
+      .setJMXManagementEnabled(false)
+      .addAcceptorConfiguration(new TransportConfiguration(InVMAcceptorFactory.class.getName()))
+      .addAddressSetting("#",
+        new AddressSettings().setDeadLetterAddress(SimpleString.toSimpleString("dla"))
+          .setExpiryAddress(SimpleString.toSimpleString("expiry"))));
+    server.start();
+  }
+
+  JMSContext newContext() {
+    return factory.createContext(JMSContext.AUTO_ACKNOWLEDGE);
+  }
+
+  Connection newConnection() throws Exception {
+    maybeStartServer();
+    return factory.createConnection();
+  }
+
+  QueueConnection newQueueConnection() throws Exception {
+    maybeStartServer();
+    return factory.createQueueConnection();
+  }
+
+  TopicConnection newTopicConnection() throws Exception {
+    maybeStartServer();
+    return factory.createTopicConnection();
+  }
+
+  void setReadOnlyProperties(Message message, boolean readOnlyProperties) {
+    try {
+      Field propertiesReadOnly = ActiveMQMessage.class.getDeclaredField("propertiesReadOnly");
+      propertiesReadOnly.setAccessible(true);
+      propertiesReadOnly.set(message, readOnlyProperties);
+    } catch (Exception e) {
+      throw new AssertionError(e);
+    }
   }
 
   TextMessage newMessage(String text) throws JMSException {
@@ -63,15 +125,6 @@ public abstract class JmsExtension implements BeforeEachCallback, AfterEachCallb
     message.writeUTF(text);
     return message;
   }
-
-  abstract void setReadOnlyProperties(Message message, boolean readOnlyProperties)
-    throws JMSException;
-
-  abstract Connection newConnection() throws JMSException, Exception;
-
-  abstract QueueConnection newQueueConnection() throws JMSException, Exception;
-
-  abstract TopicConnection newTopicConnection() throws JMSException, Exception;
 
   @Override public void beforeEach(ExtensionContext context) throws Exception {
     Optional<Method> testMethod = context.getTestMethod();
@@ -104,41 +157,16 @@ public abstract class JmsExtension implements BeforeEachCallback, AfterEachCallb
 
   @Override public void afterEach(ExtensionContext context) throws Exception {
     try {
-      session.close();
-      connection.close();
-      topicSession.close();
-      topicConnection.close();
-      queueSession.close();
-      queueConnection.close();
+      if (session != null) session.close();
+      if (connection != null) connection.close();
+      if (topicSession != null) topicSession.close();
+      if (topicConnection != null) topicConnection.close();
+      if (queueSession != null) queueSession.close();
+      if (queueConnection != null) queueConnection.close();
     } catch (JMSException e) {
       throw new AssertionError(e);
     }
-  }
-
-  static class ActiveMQ extends JmsExtension {
-    @Override Connection newConnection() throws JMSException {
-      return new ActiveMQConnectionFactory("vm://localhost?broker.persistent=false")
-        .createConnection();
-    }
-
-    @Override QueueConnection newQueueConnection() throws JMSException {
-      return new ActiveMQConnectionFactory("vm://localhost?broker.persistent=false")
-        .createQueueConnection();
-    }
-
-    @Override TopicConnection newTopicConnection() throws JMSException {
-      return new ActiveMQConnectionFactory("vm://localhost?broker.persistent=false")
-        .createTopicConnection();
-    }
-
-    @Override void setReadOnlyProperties(Message message, boolean readOnlyProperties) {
-      try {
-        Field propertiesReadOnly = ActiveMQMessage.class.getDeclaredField("propertiesReadOnly");
-        propertiesReadOnly.setAccessible(true);
-        propertiesReadOnly.set(message, readOnlyProperties);
-      } catch (Exception e) {
-        throw new AssertionError(e);
-      }
-    }
+    factory.close();
+    server.stop();
   }
 }
