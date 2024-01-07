@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,7 +18,6 @@ import brave.internal.Nullable;
 import brave.internal.baggage.BaggageCodec;
 import brave.internal.baggage.BaggageFields;
 import brave.internal.collect.Lists;
-import brave.internal.propagation.StringPropagationAdapter;
 import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
@@ -196,10 +195,6 @@ public final class BaggagePropagation<K> implements Propagation<K> {
       }
       this.baggageFactory = BaggageFields.newFactory(fields, maxDynamicFields);
       this.localFieldNames = localFieldNames.toArray(new String[0]);
-    }
-
-    @Deprecated @Override public <K1> BaggagePropagation<K1> create(KeyFactory<K1> keyFactory) {
-      return new BaggagePropagation<K1>(StringPropagationAdapter.create(get(), keyFactory));
     }
 
     @Override public BaggagePropagation<String> get() {

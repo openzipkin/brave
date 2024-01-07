@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,8 +19,6 @@ import brave.baggage.BaggagePropagation;
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
-import brave.internal.Platform;
-import brave.internal.handler.OrphanTracker;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
@@ -42,7 +40,6 @@ import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-
 import zipkin2.Endpoint;
 import zipkin2.reporter.Reporter;
 
@@ -68,8 +65,8 @@ public class TracerTest {
     .addSpanHandler(spans)
     .trackOrphans()
     .propagationFactory(new Propagation.Factory() {
-      @Deprecated @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
-        return propagationFactory.create(keyFactory);
+      @Override public Propagation<String> get() {
+        return propagationFactory.get();
       }
 
       @Override public boolean supportsJoin() {
@@ -229,9 +226,8 @@ public class TracerTest {
   @Test void join_createsChildWhenUnsupportedByPropagation() {
     tracer = Tracing.newBuilder()
       .propagationFactory(new Propagation.Factory() {
-        @Override
-        @Deprecated public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
-          return B3Propagation.FACTORY.create(keyFactory);
+        @Override public Propagation<String> get() {
+          return B3Propagation.FACTORY.get();
         }
       })
       .addSpanHandler(spans).build().tracer();

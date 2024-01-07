@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,7 +19,6 @@ import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -190,24 +189,16 @@ import static java.util.Collections.unmodifiableList;
   /** @deprecated Since 5.11 use {@link Propagation.Factory} */
   public static class Factory extends Propagation.Factory {
     final Propagation.Factory delegate;
-    final String[] extraKeyNames;
+    final List<String> extraKeyNames;
 
     Factory(Propagation.Factory delegate, String[] extraKeyNames) {
       this.delegate = delegate;
-      this.extraKeyNames = extraKeyNames;
+      this.extraKeyNames = unmodifiableList(Arrays.asList(extraKeyNames));
     }
 
     /** {@inheritDoc} */
     @Override public ExtraFieldPropagation<String> get() {
-      return create(KeyFactory.STRING);
-    }
-
-    /** {@inheritDoc} */
-    @Deprecated @Override
-    public <K> ExtraFieldPropagation<K> create(Propagation.KeyFactory<K> keyFactory) {
-      List<K> extraKeys = new ArrayList<K>();
-      for (String extraKeyName : extraKeyNames) extraKeys.add(keyFactory.create(extraKeyName));
-      return new ExtraFieldPropagation<K>(delegate.create(keyFactory), unmodifiableList(extraKeys));
+      return new ExtraFieldPropagation<String>(delegate.get(), extraKeyNames);
     }
 
     @Override public boolean supportsJoin() {

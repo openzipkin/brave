@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,9 +18,9 @@ import brave.Span;
 /**
  * Implements the propagation format described in {@link B3SingleFormat}.
  *
- * @deprecated Since 5.9, use {@link B3Propagation#newFactoryBuilder()} to control inject formats.
+ * <p>Use {@link B3Propagation#newFactoryBuilder()} to control inject formats.
  */
-@Deprecated public final class B3SinglePropagation {
+public final class B3SinglePropagation {
   public static final Propagation.Factory FACTORY = B3Propagation.newFactoryBuilder()
     .injectFormat(B3Propagation.Format.SINGLE)
     .injectFormat(Span.Kind.CLIENT, B3Propagation.Format.SINGLE)

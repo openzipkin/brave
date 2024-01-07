@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,7 +17,6 @@ import brave.Request;
 import brave.Span.Kind;
 import brave.baggage.BaggagePropagation;
 import brave.internal.Nullable;
-import brave.internal.propagation.StringPropagationAdapter;
 import java.util.List;
 
 /**
@@ -32,9 +31,11 @@ import java.util.List;
  * request is sent to the server. The server {@linkplain TraceContext.Extractor#extract extracts} a
  * trace context from these headers before processing the request.
  *
- * @param <K> Deprecated except when a {@link String}.
+ * @param <K> Retained for compatibility with pre Brave 6.0, but always String.
  * @since 4.0
  */
+// The generic type parameter K is always <String>. Even if the deprecated methods are removed in
+// Brave 6.0. This is to avoid a compilation break and revlock.
 public interface Propagation<K> {
   /**
    * Defaults B3 formats based on {@link Request} type. When not a {@link Request} (e.g. in-process
@@ -44,9 +45,9 @@ public interface Propagation<K> {
    */
   Propagation<String> B3_STRING = B3Propagation.get();
   /**
-   * @deprecated Since 5.9, use {@link B3Propagation#newFactoryBuilder()} to control inject formats.
+   * Implements the propagation format described in {@link B3SingleFormat}.
    */
-  @Deprecated Propagation<String> B3_SINGLE_STRING = B3SinglePropagation.FACTORY.get();
+  Propagation<String> B3_SINGLE_STRING = B3SinglePropagation.FACTORY.get();
 
   /** @since 4.0 */
   abstract class Factory {
@@ -54,7 +55,7 @@ public interface Propagation<K> {
      * Does the propagation implementation support sharing client and server span IDs. For example,
      * should an RPC server span share the same identifiers extracted from an incoming request?
      *
-     * In usual <a href="https://github.com/openzipkin/b3-propagation">B3 Propagation</a>, the
+     * <p>In usual <a href="https://github.com/openzipkin/b3-propagation">B3 Propagation</a>, the
      * parent span ID is sent across the wire so that the client and server can share the same
      * identifiers. Other propagation formats, like <a href="https://github.com/w3c/trace-context">trace-context</a>
      * only propagate the calling trace and span ID, with an assumption that the receiver always
@@ -78,31 +79,28 @@ public interface Propagation<K> {
     }
 
     /**
-     * This is deprecated: end users and instrumentation should never call this, and instead use
-     * {@link #get()}.
-     *
-     * <h3>Implementation advice</h3>
-     * This is deprecated, but abstract. This means those implementing custom propagation formats
-     * will have to implement this until it is removed in Brave 6. If you are able to use a tool
-     * such as "maven-shade-plugin", consider using {@link StringPropagationAdapter}.
-     *
-     * @param <K> Deprecated except when a {@link String}.
-     * @see KeyFactory#STRING
-     * @since 4.0
-     * @deprecated Since 5.12, use {@link #get()}
+     * @deprecated end users and instrumentation should never call this, and instead use
+     * {@link #get()}. This will not be removed, to avoid rev-lock upgrading to Brave 6.
      */
-    @Deprecated
-    public abstract <K> Propagation<K> create(KeyFactory<K> keyFactory);
+    @Deprecated public <K> Propagation<K> create(KeyFactory<K> unused) {
+      // In Brave 5.12, this was abstract, but not used: `get()` dispatched
+      // to this. Brave 5.18 implemented this with the below exception to force
+      // `get()` to be overridden. Doing so allows us to make `get()` abstract
+      // in Brave 6.0, but we will have to leave this here regardless, to
+      // prevent revlock upgrading.
+      throw new UnsupportedOperationException("This was replaced with PropagationFactory.get() in Brave 5.12");
+    }
 
     /**
      * Returns a possibly cached propagation instance.
      *
-     * <p>Implementations should override and implement this method directly.
-     *
      * @since 5.12
      */
     public Propagation<String> get() {
-      return create(KeyFactory.STRING);
+      // In Brave 5.12, this dispatched to the deprecated abstract method
+      // `create()`. In Brave 5.18, we throw an exception instead to ensure it
+      // is implemented prior to Brave 6.0 making this abstract.
+      throw new UnsupportedOperationException("As of Brave 5.18, you must implement PropagationFactory.get()");
     }
 
     /**
@@ -126,7 +124,8 @@ public interface Propagation<K> {
 
   /**
    * @since 4.0
-   * @deprecated since 5.12 non-string keys are no longer supported
+   * @deprecated since 5.12 non-string keys are no longer supported. This will not be removed, to
+   * avoid rev-lock upgrading to Brave 6.
    */
   @Deprecated
   interface KeyFactory<K> {
@@ -147,7 +146,7 @@ public interface Propagation<K> {
    * Replaces a propagated key with the given value.
    *
    * @param <R> Usually, but not always, an instance of {@link Request}.
-   * @param <K> Deprecated except when a {@link String}.
+   * @param <K> Retained for compatibility with pre Brave 6.0, but always String.
    * @see RemoteSetter
    * @since 4.0
    */
@@ -212,7 +211,7 @@ public interface Propagation<K> {
    * Gets the first value of the given propagation key or returns {@code null}.
    *
    * @param <R> Usually, but not always, an instance of {@link Request}.
-   * @param <K> Deprecated except when a {@link String}.
+   * @param <K> Retained for compatibility with pre Brave 6.0, but always String.
    * @see RemoteGetter
    * @since 4.0
    */

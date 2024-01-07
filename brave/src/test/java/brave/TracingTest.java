@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -243,8 +243,8 @@ class TracingTest {
     AtomicBoolean sampledLocal = new AtomicBoolean();
     try (Tracing tracing = Tracing.newBuilder()
       .propagationFactory(new Propagation.Factory() {
-        @Deprecated public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
-          return B3SinglePropagation.FACTORY.create(keyFactory);
+        @Override public Propagation<String> get() {
+          return B3SinglePropagation.FACTORY.get();
         }
 
         @Override public TraceContext decorate(TraceContext context) {
