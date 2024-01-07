@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -70,7 +70,10 @@ import java.util.Map;
  * }</pre>
  *
  * @since 5.12
+ * @deprecated As of Brave 5.18, throw an {@link UnsupportedOperationException} in
+ * {@link #create(Propagation, KeyFactory)} instead of implementing it.
  */
+@Deprecated
 public final class StringPropagationAdapter<K> implements Propagation<K> {
   public static <K> Propagation<K> create(Propagation<String> delegate, KeyFactory<K> keyFactory) {
     if (delegate == null) throw new NullPointerException("delegate == null");

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -41,7 +41,7 @@ public final class CustomTraceIdPropagation extends Propagation.Factory
   public static Propagation.Factory create(Propagation.Factory delegate, String customTraceIdName) {
     if (delegate == null) throw new NullPointerException("delegate == null");
     if (customTraceIdName == null) throw new NullPointerException("customTraceIdName == null");
-    if (!delegate.create(KeyFactory.STRING).keys().contains("b3")) {
+    if (!delegate.get().keys().contains("b3")) {
       throw new IllegalArgumentException("delegate must implement B3 propagation");
     }
     return new CustomTraceIdPropagation(delegate, customTraceIdName);
