@@ -80,14 +80,15 @@ public interface Propagation<K> {
 
     /**
      * @deprecated end users and instrumentation should never call this, and instead use
-     * {@link #get()}. This will not be removed, to avoid rev-lock upgrading to Brave 6.
+     * {@link #get()}. This will be removed in Brave 7, to allow users to transition without revlock
+     * upgrading to Brave 6.
      */
     @Deprecated public <K> Propagation<K> create(KeyFactory<K> unused) {
       // In Brave 5.12, this was abstract, but not used: `get()` dispatched
       // to this. Brave 5.18 implemented this with the below exception to force
       // `get()` to be overridden. Doing so allows us to make `get()` abstract
-      // in Brave 6.0, but we will have to leave this here regardless, to
-      // prevent revlock upgrading.
+      // in Brave 6.0. Then, this can be safely removed in Brave 7.0 without a
+      // revlock.
       throw new UnsupportedOperationException("This was replaced with PropagationFactory.get() in Brave 5.12");
     }
 
@@ -124,8 +125,8 @@ public interface Propagation<K> {
 
   /**
    * @since 4.0
-   * @deprecated since 5.12 non-string keys are no longer supported. This will not be removed, to
-   * avoid rev-lock upgrading to Brave 6.
+   * @deprecated since 5.12 non-string keys are no longer supported. This will be removed in Brave
+   * 7, to allow users to transition without revlock upgrading to Brave 6.
    */
   @Deprecated
   interface KeyFactory<K> {
