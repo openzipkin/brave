@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -123,7 +123,7 @@ final class TracingProducer<K, V> implements Producer<K, V> {
 
     injector.inject(span.context(), request);
 
-    Tracer.SpanInScope scope = tracer.withSpanInScope(span);
+    Tracer.SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
       return delegate.send(record, TracingCallback.create(callback, span, currentTraceContext));
@@ -133,7 +133,7 @@ final class TracingProducer<K, V> implements Producer<K, V> {
     } finally {
       // finish as an exception means the callback won't finish the span
       if (error != null) span.error(error).finish();
-      scope.close();
+      ws.close();
     }
   }
 

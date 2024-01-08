@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,13 +14,20 @@
 package brave.spring.beans;
 
 import brave.Clock;
+import brave.ErrorParser;
 import brave.Tracing;
 import brave.TracingCustomizer;
+import brave.handler.FinishedSpanHandler;
 import brave.handler.SpanHandler;
+import brave.handler.MutableSpan;
+import brave.propagation.B3SinglePropagation;
 import brave.propagation.ThreadLocalCurrentTraceContext;
 import brave.sampler.Sampler;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+
+import zipkin2.reporter.Reporter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -29,6 +36,8 @@ import static org.mockito.Mockito.verify;
 
 public class TracingFactoryBeanTest {
   public static final Clock CLOCK = mock(Clock.class);
+  public static final ErrorParser ERROR_PARSER = mock(ErrorParser.class);
+
   XmlBeans context;
 
   @AfterEach void close() {
@@ -64,6 +73,82 @@ public class TracingFactoryBeanTest {
       .isEqualTo("brave-webmvc-example");
   }
 
+  @Test void localEndpoint() {
+    context = new XmlBeans(""
+      + "<bean id=\"localEndpoint\" class=\"brave.spring.beans.EndpointFactoryBean\">\n"
+      + "  <property name=\"serviceName\" value=\"brave-webmvc-example\"/>\n"
+      + "  <property name=\"ip\" value=\"1.2.3.4\"/>\n"
+      + "  <property name=\"port\" value=\"8080\"/>\n"
+      + "</bean>"
+      , ""
+      + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
+      + "  <property name=\"localEndpoint\" ref=\"localEndpoint\"/>\n"
+      + "</bean>"
+    );
+
+    MutableSpan defaultSpan = new MutableSpan();
+    defaultSpan.localServiceName("brave-webmvc-example");
+    defaultSpan.localIp("1.2.3.4");
+    defaultSpan.localPort(8080);
+
+    assertThat(context.getBean("tracing", Tracing.class))
+      .extracting("tracer.pendingSpans.defaultSpan")
+      .isEqualTo(defaultSpan);
+  }
+
+  @Test void endpoint() {
+    context = new XmlBeans(""
+      + "<bean id=\"endpoint\" class=\"brave.spring.beans.EndpointFactoryBean\">\n"
+      + "  <property name=\"serviceName\" value=\"brave-webmvc-example\"/>\n"
+      + "  <property name=\"ip\" value=\"1.2.3.4\"/>\n"
+      + "  <property name=\"port\" value=\"8080\"/>\n"
+      + "</bean>"
+      , ""
+      + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
+      + "  <property name=\"endpoint\" ref=\"endpoint\"/>\n"
+      + "</bean>"
+    );
+
+    MutableSpan defaultSpan = new MutableSpan();
+    defaultSpan.localServiceName("brave-webmvc-example");
+    defaultSpan.localIp("1.2.3.4");
+    defaultSpan.localPort(8080);
+
+    assertThat(context.getBean("tracing", Tracing.class))
+      .extracting("tracer.pendingSpans.defaultSpan")
+      .isEqualTo(defaultSpan);
+  }
+
+  @Test void spanReporter() {
+    context = new XmlBeans(""
+      + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
+      + "  <property name=\"spanReporter\">\n"
+      + "    <util:constant static-field=\"zipkin2.reporter.Reporter.CONSOLE\"/>\n"
+      + "  </property>\n"
+      + "</bean>"
+    );
+
+    assertThat(context.getBean("tracing", Tracing.class))
+      .extracting("tracer.spanHandler.delegate.spanReporter.delegate")
+      .isEqualTo(Reporter.CONSOLE);
+  }
+
+  public static final FinishedSpanHandler FINISHED_SPAN_HANDLER = mock(FinishedSpanHandler.class);
+
+  @Test void finishedSpanHandlers() {
+    context = new XmlBeans(""
+        + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
+        + "  <property name=\"finishedSpanHandlers\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".FINISHED_SPAN_HANDLER\"/>\n"
+        + "  </property>\n"
+        + "</bean>"
+    );
+
+    assertThat(context.getBean("tracing", Tracing.class))
+        .extracting("tracer.spanHandler.delegate")
+        .isEqualTo(FINISHED_SPAN_HANDLER);
+  }
+
   public static final SpanHandler SPAN_HANDLER = mock(SpanHandler.class);
 
   @Test void spanHandlers() {
@@ -80,6 +165,24 @@ public class TracingFactoryBeanTest {
       .isEqualTo(SPAN_HANDLER);
   }
 
+  @Test void bothSpanHandlers() {
+    context = new XmlBeans(""
+        + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
+        + "  <property name=\"finishedSpanHandlers\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".FINISHED_SPAN_HANDLER\"/>\n"
+        + "  </property>\n"
+        + "  <property name=\"spanHandlers\">\n"
+        + "    <util:constant static-field=\"" + getClass().getName() + ".SPAN_HANDLER\"/>\n"
+        + "  </property>\n"
+        + "</bean>"
+    );
+
+    assertThat(context.getBean("tracing", Tracing.class))
+        .extracting("tracer.spanHandler.delegate.handlers")
+        .asInstanceOf(InstanceOfAssertFactories.ARRAY)
+        .containsExactly(FINISHED_SPAN_HANDLER, SPAN_HANDLER);
+  }
+
   @Test void clock() {
     context = new XmlBeans(""
       + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
@@ -90,8 +193,22 @@ public class TracingFactoryBeanTest {
     );
 
     assertThat(context.getBean("tracing", Tracing.class))
-      .extracting("tracer.pendingSpans.clock")
+      .extracting("tracer.clock")
       .isEqualTo(CLOCK);
+  }
+
+  @Test void errorParser() {
+    context = new XmlBeans(""
+      + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
+      + "  <property name=\"errorParser\">\n"
+      + "    <util:constant static-field=\"" + getClass().getName() + ".ERROR_PARSER\"/>\n"
+      + "  </property>\n"
+      + "</bean>"
+    );
+
+    assertThat(context.getBean("tracing", Tracing.class))
+      .extracting("errorParser")
+      .isEqualTo(ERROR_PARSER);
   }
 
   @Test void sampler() {
@@ -120,6 +237,19 @@ public class TracingFactoryBeanTest {
     assertThat(context.getBean("tracing", Tracing.class))
       .extracting("tracer.currentTraceContext")
       .isInstanceOf(ThreadLocalCurrentTraceContext.class);
+  }
+
+  @Test void propagationFactory() {
+    context = new XmlBeans(""
+      + "<bean id=\"tracing\" class=\"brave.spring.beans.TracingFactoryBean\">\n"
+      + "  <property name=\"propagationFactory\">\n"
+      + "    <util:constant static-field=\"brave.propagation.B3SinglePropagation.FACTORY\"/>\n"
+      + "  </property>\n"
+      + "</bean>"
+    );
+
+    assertThat(context.getBean("tracing", Tracing.class).propagationFactory())
+      .isSameAs(B3SinglePropagation.FACTORY);
   }
 
   @Test void traceId128Bit() {

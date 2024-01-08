@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,7 +14,9 @@
 package brave.sampler;
 
 import brave.internal.Nullable;
+import brave.propagation.SamplingFlags;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -105,5 +107,38 @@ public final class ParameterizedSampler<P> implements SamplerFunction<P> {
       }
     }
     return null;
+  }
+
+  /**
+   * @since 4.4
+   * @deprecated Since 5.8, use {@link #trySample(Object)}
+   */
+  @Deprecated public SamplingFlags sample(@Nullable P parameters) {
+    return SamplingFlags.Builder.build(trySample(parameters));
+  }
+
+  /**
+   * @since 4.4
+   * @deprecated since 5.8, use {@link #newBuilder()}
+   */
+  @Deprecated public static <P> ParameterizedSampler<P> create(List<? extends Rule<P>> rules) {
+    if (rules == null) throw new NullPointerException("rules == null");
+    Builder<P> builder = newBuilder();
+    for (Rule<P> rule : rules) {
+      builder.putRule(rule.matcher, rule.sampler);
+    }
+    return builder.build();
+  }
+
+  /**
+   * @since 4.4
+   * @deprecated Since 5.8, use {@link Builder#putRule(Matcher, Sampler)}
+   */
+  @Deprecated public static abstract class Rule<P> extends R<P> implements Matcher<P> {
+    protected Rule(float probability) {
+      super(null, CountingSampler.create(probability));
+    }
+
+    @Override public abstract boolean matches(P parameters);
   }
 }

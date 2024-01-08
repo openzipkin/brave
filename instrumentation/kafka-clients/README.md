@@ -96,7 +96,7 @@ to trace manually or you can do similar via automatic instrumentation like Aspec
   Span span = kafkaTracing.nextSpan(record).name("process").start();
 
   // Below is the same setup as any synchronous tracing
-  try (Tracer.SpanInScope scope = tracer.withSpanInScope(span)) { // so logging can see trace ID
+  try (Tracer.SpanInScope ws = tracer.withSpanInScope(span)) { // so logging can see trace ID
     return doProcess(record); // do the actual work
   } catch (RuntimeException | Error e) {
     span.error(e); // make sure any error gets into the span before it is finished

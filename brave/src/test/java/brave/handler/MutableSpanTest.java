@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -311,6 +311,14 @@ public class MutableSpanTest {
     span.kind(null);
 
     assertThat(span.kind()).isNull();
+  }
+
+  @Test void isEmpty() {
+    assertThat(PERMUTATIONS.get(0).get().isEmpty()).isTrue();
+
+    for (int i = 1, length = PERMUTATIONS.size(); i < length; i++) {
+      assertThat(PERMUTATIONS.get(i).get().isEmpty()).isFalse();
+    }
   }
 
   static final Exception EX1 = new Exception(), EX2 = new Exception();

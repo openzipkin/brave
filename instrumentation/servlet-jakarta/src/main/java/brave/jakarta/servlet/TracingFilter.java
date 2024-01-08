@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -24,6 +24,9 @@ import brave.jakarta.servlet.internal.ServletRuntime;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
+
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.FilterConfig;
@@ -32,10 +35,6 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import static brave.internal.Throwables.propagateIfFatal;
 
 public final class TracingFilter implements Filter {
   public static Filter create(Tracing tracing) {
@@ -88,7 +87,6 @@ public final class TracingFilter implements Filter {
       // any downstream code can see Tracer.currentSpan() or use Tracer.currentSpanCustomizer()
       chain.doFilter(req, res);
     } catch (Throwable e) {
-      propagateIfFatal(e);
       error = e;
       throw e;
     } finally {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -36,6 +36,7 @@ import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
+import zipkin2.reporter.Reporter;
 
 import static brave.baggage.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
 import static javax.servlet.DispatcherType.REQUEST;
@@ -55,14 +56,14 @@ public class ServletBenchmarks extends HttpServerBenchmarks {
   public static class Unsampled extends ForwardingTracingFilter {
     public Unsampled() {
       super(TracingFilter.create(
-        Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).build()
+        Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).spanReporter(Reporter.NOOP).build()
       ));
     }
   }
 
   public static class Traced extends ForwardingTracingFilter {
     public Traced() {
-      super(TracingFilter.create(Tracing.newBuilder().build()));
+      super(TracingFilter.create(Tracing.newBuilder().spanReporter(Reporter.NOOP).build()));
     }
   }
 
@@ -71,6 +72,7 @@ public class ServletBenchmarks extends HttpServerBenchmarks {
       super(TracingFilter.create(Tracing.newBuilder()
         .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
           .add(SingleBaggageField.remote(BAGGAGE_FIELD)).build())
+        .spanReporter(Reporter.NOOP)
         .build()));
     }
   }
@@ -78,7 +80,7 @@ public class ServletBenchmarks extends HttpServerBenchmarks {
   public static class Traced128 extends ForwardingTracingFilter {
     public Traced128() {
       super(TracingFilter.create(
-        Tracing.newBuilder().traceId128Bit(true).build()));
+        Tracing.newBuilder().traceId128Bit(true).spanReporter(Reporter.NOOP).build()));
     }
   }
 

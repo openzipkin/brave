@@ -15,6 +15,7 @@ package brave.internal;
 
 import brave.Clock;
 import brave.Tracer;
+
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;

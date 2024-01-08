@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -34,6 +34,7 @@ import org.junit.jupiter.api.Test;
 import static brave.internal.InternalPropagation.FLAG_LOCAL_ROOT;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class PendingSpansTest {
@@ -194,7 +195,7 @@ class PendingSpansTest {
   }
 
   @Test void orphanContext_dropsExtra() {
-    TraceContext context1 = context.toBuilder().addExtra(1).addExtra(true).build();
+    TraceContext context1 = context.toBuilder().extra(asList(1, true)).build();
     TraceContext context = this.context.toBuilder().build();
     pendingSpans.getOrCreate(null, context, false).state().tag("foo", "bar");
     // We drop the reference to the context, which means the next GC should attempt to flush it

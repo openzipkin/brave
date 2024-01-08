@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -63,7 +63,6 @@ public class MapExtra<K, V, A extends MapExtra<K, V, A, F>,
   }
 
   /** Returns a possibly empty map of all key to non-{@code null} values. */
-  // Exposed for zipkin-secondary-sampling
   protected Map<K, V> asReadOnlyMap() {
     return UnsafeArrayMap.<K, V>newBuilder().build(state());
   }

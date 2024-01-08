@@ -13,22 +13,28 @@
  */
 package brave;
 
+import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
 import brave.internal.Platform;
-import brave.propagation.B3Propagation;
+import brave.propagation.B3SinglePropagation;
 import brave.propagation.Propagation;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
 import brave.test.TestSpanHandler;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 
+import zipkin2.reporter.Reporter;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class TracingTest {
   TestSpanHandler spans = new TestSpanHandler();
@@ -80,6 +86,30 @@ class TracingTest {
     Tracing.Builder builder = Tracing.newBuilder().localServiceName(expectedLocalServiceName);
     assertThat(builder).extracting("defaultSpan.localServiceName")
       .isEqualTo(expectedLocalServiceName);
+  }
+
+  @Test void spanReporter_getsLocalEndpointInfo() {
+    String expectedLocalServiceName = "favistar", expectedLocalIp = "1.2.3.4";
+    int expectedLocalPort = 80;
+
+    List<zipkin2.Span> zipkinSpans = new ArrayList<>();
+    Reporter<zipkin2.Span> spanReporter = span -> {
+      assertThat(span.localServiceName()).isEqualTo(expectedLocalServiceName);
+      assertThat(span.localEndpoint().ipv4()).isEqualTo(expectedLocalIp);
+      assertThat(span.localEndpoint().portAsInt()).isEqualTo(expectedLocalPort);
+      zipkinSpans.add(span);
+    };
+
+    try (Tracing tracing = Tracing.newBuilder()
+      .localServiceName(expectedLocalServiceName)
+      .localIp(expectedLocalIp)
+      .localPort(expectedLocalPort)
+      .spanReporter(spanReporter)
+      .build()) {
+      tracing.tracer().newTrace().start().finish();
+    }
+
+    assertThat(zipkinSpans).isNotEmpty(); // ensures the assertions passed.
   }
 
   @Test void spanHandler_loggingByDefault() {
@@ -143,11 +173,33 @@ class TracingTest {
     try (Tracing tracing = Tracing.newBuilder()
       .addSpanHandler(spans)
       .sampler(Sampler.NEVER_SAMPLE)
+      .alwaysReportSpans()
       .build()) {
       tracing.tracer().toSpan(sampledLocal).start().finish();
     }
 
     assertThat(spans).isNotEmpty();
+  }
+
+  @Test void spanHandler_dataChangesVisibleToZipkin() {
+    String serviceNameOverride = "favistar";
+
+    SpanHandler spanHandler = new SpanHandler() {
+      @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
+        span.localServiceName(serviceNameOverride);
+        return true;
+      }
+    };
+
+    List<zipkin2.Span> zipkinSpans = new ArrayList<>();
+    try (Tracing tracing = Tracing.newBuilder()
+      .spanReporter(zipkinSpans::add)
+      .addSpanHandler(spanHandler)
+      .build()) {
+      tracing.tracer().newTrace().start().finish();
+    }
+
+    assertThat(zipkinSpans.get(0).localServiceName()).isEqualTo(serviceNameOverride);
   }
 
   @Test void spanHandler_recordsWhenSampled() {
@@ -191,8 +243,8 @@ class TracingTest {
     AtomicBoolean sampledLocal = new AtomicBoolean();
     try (Tracing tracing = Tracing.newBuilder()
       .propagationFactory(new Propagation.Factory() {
-        public Propagation<String> get() {
-          return B3Propagation.FACTORY.get();
+        @Override public Propagation<String> get() {
+          return B3SinglePropagation.FACTORY.get();
         }
 
         @Override public TraceContext decorate(TraceContext context) {
@@ -209,6 +261,25 @@ class TracingTest {
 
     assertThat(spans).hasSize(1);
     assertThat(spans.get(0).name()).isEqualTo("one");
+  }
+
+  /**
+   * This ensures deprecated overloads of {@link FinishedSpanHandler#alwaysSampleLocal()} are
+   * considered.
+   */
+  @Test void finishedSpanHandler_affectsAlwaysSampleLocal() {
+    FinishedSpanHandler one = mock(FinishedSpanHandler.class);
+    when(one.alwaysSampleLocal()).thenReturn(false);
+    FinishedSpanHandler two = mock(FinishedSpanHandler.class);
+    when(two.alwaysSampleLocal()).thenReturn(true);
+
+    try (Tracing tracing = Tracing.newBuilder()
+      .addSpanHandler(one)
+      .addSpanHandler(two)
+      .build()) {
+
+      assertThat(tracing.tracer().alwaysSampleLocal).isTrue();
+    }
   }
 
   @Test void spanHandlers_clearAndAdd() {

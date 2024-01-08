@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -117,7 +117,7 @@ public class RpcClientHandlerTest {
   }
 
   @Test void handleSendWithParent_overrideContext() {
-    try (Scope scope = httpTracing.tracing.currentTraceContext().newScope(context)) {
+    try (Scope ws = httpTracing.tracing.currentTraceContext().newScope(context)) {
       brave.Span span = handler.handleSendWithParent(request, null);
 
       // If the overwrite was successful, we have a root span.
@@ -126,7 +126,7 @@ public class RpcClientHandlerTest {
   }
 
   @Test void handleSendWithParent_overrideNull() {
-    try (Scope scope = httpTracing.tracing.currentTraceContext().newScope(null)) {
+    try (Scope ws = httpTracing.tracing.currentTraceContext().newScope(null)) {
       brave.Span span = handler.handleSendWithParent(request, context);
 
       // If the overwrite was successful, we have a child span.

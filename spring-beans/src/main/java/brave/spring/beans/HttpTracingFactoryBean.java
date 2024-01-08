@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,9 +14,11 @@
 package brave.spring.beans;
 
 import brave.Tracing;
+import brave.http.HttpClientParser;
 import brave.http.HttpRequest;
 import brave.http.HttpRequestParser;
 import brave.http.HttpResponseParser;
+import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
 import brave.http.HttpTracingCustomizer;
 import brave.propagation.Propagation;
@@ -32,6 +34,8 @@ public class HttpTracingFactoryBean implements FactoryBean {
   static final Log logger = LogFactory.getLog(HttpTracingFactoryBean.class);
 
   Tracing tracing;
+  @Deprecated HttpClientParser clientParser;
+  @Deprecated HttpServerParser serverParser;
   HttpRequestParser clientRequestParser, serverRequestParser;
   HttpResponseParser clientResponseParser, serverResponseParser;
   SamplerFunction<HttpRequest> clientSampler, serverSampler;
@@ -40,10 +44,12 @@ public class HttpTracingFactoryBean implements FactoryBean {
 
   @Override public HttpTracing getObject() {
     HttpTracing.Builder builder = HttpTracing.newBuilder(tracing);
+    if (clientParser != null) builder.clientParser(clientParser);
     if (clientRequestParser != null) builder.clientRequestParser(clientRequestParser);
     if (clientResponseParser != null) builder.clientResponseParser(clientResponseParser);
     if (serverRequestParser != null) builder.serverRequestParser(serverRequestParser);
     if (serverResponseParser != null) builder.serverResponseParser(serverResponseParser);
+    if (serverParser != null) builder.serverParser(serverParser);
     if (clientSampler != null) builder.clientSampler(clientSampler);
     if (serverSampler != null) builder.serverSampler(serverSampler);
     if (propagation != null) builder.propagation(propagation);
@@ -65,6 +71,11 @@ public class HttpTracingFactoryBean implements FactoryBean {
     this.tracing = tracing;
   }
 
+  @Deprecated public void setClientParser(HttpClientParser clientParser) {
+    logger.warn("The property 'setClientParser' will be removed in a future release.\n"
+      + "Use the property 'clientRequestParser' or 'clientResponseParser' instead");
+    this.clientParser = clientParser;
+  }
 
   public void setClientRequestParser(HttpRequestParser clientRequestParser) {
     this.clientRequestParser = clientRequestParser;
@@ -80,6 +91,12 @@ public class HttpTracingFactoryBean implements FactoryBean {
 
   public void setServerResponseParser(HttpResponseParser serverResponseParser) {
     this.serverResponseParser = serverResponseParser;
+  }
+
+  @Deprecated public void setServerParser(HttpServerParser serverParser) {
+    logger.warn("The property 'setServerParser' will be removed in a future release.\n"
+      + "Use the property 'serverRequestParser' or 'serverResponseParser' instead");
+    this.serverParser = serverParser;
   }
 
   public void setClientSampler(SamplerFunction<HttpRequest> clientSampler) {

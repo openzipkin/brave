@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -69,7 +69,7 @@ class NoopSpanTest {
 
   @Test void equals_lazySpan_sameContext() {
     Span current;
-    try (SpanInScope scope = tracer.withSpanInScope(span)) {
+    try (SpanInScope ws = tracer.withSpanInScope(span)) {
       current = tracer.currentSpan();
     }
 
@@ -78,7 +78,7 @@ class NoopSpanTest {
 
   @Test void equals_lazySpan_notSameContext() {
     Span current;
-    try (SpanInScope scope = tracer.withSpanInScope(tracer.newTrace())) {
+    try (SpanInScope ws = tracer.withSpanInScope(tracer.newTrace())) {
       current = tracer.currentSpan();
     }
 

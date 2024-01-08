@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,9 @@
  */
 package brave.grpc;
 
+import brave.NoopSpanCustomizer;
 import brave.Span;
+import brave.SpanCustomizer;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
@@ -37,11 +39,15 @@ final class TracingServerInterceptor implements ServerInterceptor {
   final Map<String, Key<String>> nameToKey;
   final CurrentTraceContext currentTraceContext;
   final RpcServerHandler handler;
+  final boolean grpcPropagationFormatEnabled;
+  final MessageProcessor messageProcessor;
 
   TracingServerInterceptor(GrpcTracing grpcTracing) {
     nameToKey = grpcTracing.nameToKey;
     currentTraceContext = grpcTracing.rpcTracing.tracing().currentTraceContext();
     handler = RpcServerHandler.create(grpcTracing.rpcTracing);
+    grpcPropagationFormatEnabled = grpcTracing.grpcPropagationFormatEnabled;
+    messageProcessor = grpcTracing.serverMessageProcessor;
   }
 
   @Override
@@ -78,7 +84,7 @@ final class TracingServerInterceptor implements ServerInterceptor {
       scope.close();
     }
 
-    return new TracingServerCallListener<ReqT>(result, span, spanRef);
+    return new TracingServerCallListener<ReqT>(result, span, spanRef, request);
   }
 
   final class TracingServerCall<ReqT, RespT> extends SimpleForwardingServerCall<ReqT, RespT> {
@@ -119,6 +125,9 @@ final class TracingServerInterceptor implements ServerInterceptor {
       Scope scope = currentTraceContext.maybeScope(context);
       try {
         delegate().sendMessage(message);
+        Span span = spanRef.get(); // could be an error
+        SpanCustomizer customizer = span != null ? span.customizer() : NoopSpanCustomizer.INSTANCE;
+        messageProcessor.onMessageSent(message, customizer);
       } finally {
         scope.close();
       }
@@ -142,21 +151,27 @@ final class TracingServerInterceptor implements ServerInterceptor {
   final class TracingServerCallListener<RespT> extends SimpleForwardingServerCallListener<RespT> {
     final TraceContext context;
     final AtomicReference<Span> spanRef;
+    final GrpcServerRequest request;
 
     TracingServerCallListener(
       Listener<RespT> delegate,
       Span span,
-      AtomicReference<Span> spanRef
+      AtomicReference<Span> spanRef,
+      GrpcServerRequest request
     ) {
       super(delegate);
       this.context = span.context();
       this.spanRef = spanRef;
+      this.request = request;
     }
 
     @Override public void onMessage(RespT message) {
       Scope scope = currentTraceContext.maybeScope(context);
       try {
         delegate().onMessage(message);
+        Span span = spanRef.get(); // could be an error
+        SpanCustomizer customizer = span != null ? span.customizer() : NoopSpanCustomizer.INSTANCE;
+        messageProcessor.onMessageReceived(message, customizer);
       } finally {
         scope.close();
       }

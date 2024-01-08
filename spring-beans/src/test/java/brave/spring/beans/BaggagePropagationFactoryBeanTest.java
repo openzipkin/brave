@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,6 +16,7 @@ package brave.spring.beans;
 import brave.baggage.BaggagePropagation;
 import brave.baggage.BaggagePropagationCustomizer;
 import brave.propagation.B3Propagation;
+import brave.propagation.B3SinglePropagation;
 import brave.propagation.Propagation;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -26,8 +27,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 class BaggagePropagationFactoryBeanTest {
-  public static Propagation.Factory PROPAGATION_FACTORY = mock(Propagation.Factory.class);
-
   XmlBeans context;
 
   @AfterEach void close() {
@@ -47,13 +46,13 @@ class BaggagePropagationFactoryBeanTest {
     context = new XmlBeans(""
       + "<bean id=\"propagationFactory\" class=\"brave.spring.beans.BaggagePropagationFactoryBean\">\n"
       + "  <property name=\"propagationFactory\">\n"
-      + "    <util:constant static-field=\"" + getClass().getName() + ".PROPAGATION_FACTORY\"/>\n"
+      + "    <util:constant static-field=\"brave.propagation.B3SinglePropagation.FACTORY\"/>\n"
       + "  </property>\n"
       + "</bean>\n"
     );
 
     assertThat(context.getBean("propagationFactory", Propagation.Factory.class))
-      .isEqualTo(PROPAGATION_FACTORY);
+      .isEqualTo(B3SinglePropagation.FACTORY);
   }
 
   @Test void configs() {
@@ -117,7 +116,7 @@ class BaggagePropagationFactoryBeanTest {
       + "</bean>\n"
       + "<bean id=\"propagationFactory\" class=\"brave.spring.beans.BaggagePropagationFactoryBean\">\n"
       + "  <property name=\"propagationFactory\">\n"
-      + "    <util:constant static-field=\"brave.propagation.B3Propagation.FACTORY\"/>\n"
+      + "    <util:constant static-field=\"brave.propagation.B3SinglePropagation.FACTORY\"/>\n"
       + "  </property>\n"
       + "  <property name=\"configs\">\n"
       + "    <list>\n"
@@ -131,7 +130,7 @@ class BaggagePropagationFactoryBeanTest {
 
     assertThat(context.getBean("propagationFactory", Propagation.Factory.class))
       .extracting("delegate")
-      .isEqualTo(B3Propagation.FACTORY);
+      .isEqualTo(B3SinglePropagation.FACTORY);
   }
 
   public static final BaggagePropagationCustomizer

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -34,6 +34,7 @@ import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
+import zipkin2.reporter.Reporter;
 
 import static brave.baggage.BaggagePropagationBenchmarks.BAGGAGE_FIELD;
 import static io.undertow.servlet.Servlets.servlet;
@@ -60,7 +61,10 @@ public class JerseyServerBenchmarks extends HttpServerBenchmarks {
   public static class Unsampled extends Application {
     @Override public Set<Object> getSingletons() {
       return new LinkedHashSet<>(asList(new Resource(), TracingApplicationEventListener.create(
-        HttpTracing.create(Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).build())
+        HttpTracing.create(Tracing.newBuilder()
+          .sampler(Sampler.NEVER_SAMPLE)
+          .spanReporter(Reporter.NOOP)
+          .build())
       )));
     }
   }
@@ -69,7 +73,7 @@ public class JerseyServerBenchmarks extends HttpServerBenchmarks {
   public static class TracedApp extends Application {
     @Override public Set<Object> getSingletons() {
       return new LinkedHashSet<>(asList(new Resource(), TracingApplicationEventListener.create(
-        HttpTracing.create(Tracing.newBuilder().build())
+        HttpTracing.create(Tracing.newBuilder().spanReporter(Reporter.NOOP).build())
       )));
     }
   }
@@ -81,6 +85,7 @@ public class JerseyServerBenchmarks extends HttpServerBenchmarks {
         HttpTracing.create(Tracing.newBuilder()
           .propagationFactory(BaggagePropagation.newFactoryBuilder(B3Propagation.FACTORY)
             .add(SingleBaggageField.remote(BAGGAGE_FIELD)).build())
+          .spanReporter(Reporter.NOOP)
           .build())
       )));
     }
@@ -92,6 +97,7 @@ public class JerseyServerBenchmarks extends HttpServerBenchmarks {
       return new LinkedHashSet<>(asList(new Resource(), TracingApplicationEventListener.create(
         HttpTracing.create(Tracing.newBuilder()
           .traceId128Bit(true)
+          .spanReporter(Reporter.NOOP)
           .build())
       )));
     }

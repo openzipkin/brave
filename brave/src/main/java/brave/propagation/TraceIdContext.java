@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,10 +17,10 @@ import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.RecyclableBuffers;
 
-import static brave.internal.InternalPropagation.FLAG_SAMPLED;
-import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 import static brave.internal.codec.HexCodec.toLowerHex;
 import static brave.internal.codec.HexCodec.writeHexLong;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED;
+import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
 
 /**
  * Contains inbound trace ID and sampling flags, used when users control the root trace ID, but not

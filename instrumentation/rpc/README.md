@@ -117,7 +117,7 @@ RpcClientRequestWrapper requestWrapper = new RpcClientRequestWrapper(request);
 Span span = handler.handleSend(requestWrapper); // 1.
 ClientResponse response = null;
 Throwable error = null;
-try (Scope scope = currentTraceContext.newScope(span.context())) { // 2.
+try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
   return response = invoke(request); // 3.
 } catch (Throwable e) {
   error = e; // 4.
@@ -187,7 +187,7 @@ RpcServerRequestWrapper requestWrapper = new RpcServerRequestWrapper(request);
 Span span = handler.handleReceive(requestWrapper); // 1.
 ServerResponse response = null;
 Throwable error = null;
-try (Scope scope = currentTraceContext.newScope(span.context())) { // 2.
+try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
   return response = process(request); // 3.
 } catch (Throwable e) {
   error = e; // 4.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -33,13 +33,7 @@ public final class Tags {
    */
   public static final Tag<Throwable> ERROR = new Tag<Throwable>("error") {
     @Override protected String parseValue(Throwable input, TraceContext context) {
-      if (input == null) throw new NullPointerException("input == null");
-      String message = input.getMessage();
-      if (message != null) return message;
-      if (input.getClass().isAnonymousClass()) { // avoids ""
-        return input.getClass().getSuperclass().getSimpleName();
-      }
-      return input.getClass().getSimpleName();
+      return ErrorParser.parse(input);
     }
   };
 

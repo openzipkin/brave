@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,6 +13,9 @@
  */
 package brave.grpc;
 
+import brave.CurrentSpanCustomizer;
+import brave.NoopSpanCustomizer;
+import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
@@ -26,9 +29,12 @@ class GreeterImpl extends GreeterGrpc.GreeterImplBase {
   static final HelloRequest HELLO_REQUEST = HelloRequest.newBuilder().setName("tracer").build();
 
   @Nullable final Tracing tracing;
+  final SpanCustomizer spanCustomizer;
 
   GreeterImpl(@Nullable GrpcTracing grpcTracing) {
     tracing = grpcTracing != null ? grpcTracing.rpcTracing.tracing() : null;
+    spanCustomizer =
+      tracing != null ? CurrentSpanCustomizer.create(tracing) : NoopSpanCustomizer.INSTANCE;
   }
 
   @Override

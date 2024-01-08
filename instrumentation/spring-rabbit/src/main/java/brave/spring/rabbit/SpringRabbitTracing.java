@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2022 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,6 +19,7 @@ import brave.Tracing;
 import brave.internal.Nullable;
 import brave.messaging.MessagingRequest;
 import brave.messaging.MessagingTracing;
+import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
@@ -86,6 +87,14 @@ public final class SpringRabbitTracing {
       return this;
     }
 
+    /**
+     * @deprecated as of v5.9, this is ignored because single format is default for messaging. Use
+     * {@link B3Propagation#newFactoryBuilder()} to change the default.
+     */
+    @Deprecated public Builder writeB3SingleFormat(boolean writeB3SingleFormat) {
+      return this;
+    }
+
     public SpringRabbitTracing build() {
       return new SpringRabbitTracing(this);
     }
@@ -96,6 +105,7 @@ public final class SpringRabbitTracing {
   final Extractor<MessageProducerRequest> producerExtractor;
   final Extractor<MessageConsumerRequest> consumerExtractor;
   final Injector<MessageProducerRequest> producerInjector;
+  final Injector<MessageConsumerRequest> consumerInjector;
   final String[] traceIdHeaders;
   final SamplerFunction<MessagingRequest> producerSampler, consumerSampler;
   final String remoteServiceName;
@@ -112,6 +122,7 @@ public final class SpringRabbitTracing {
     this.producerExtractor = propagation.extractor(MessageProducerRequest.GETTER);
     this.consumerExtractor = propagation.extractor(MessageConsumerRequest.GETTER);
     this.producerInjector = propagation.injector(MessageProducerRequest.SETTER);
+    this.consumerInjector = propagation.injector(MessageConsumerRequest.SETTER);
     this.producerSampler = messagingTracing.producerSampler();
     this.consumerSampler = messagingTracing.consumerSampler();
     this.remoteServiceName = builder.remoteServiceName;
@@ -262,7 +273,7 @@ public final class SpringRabbitTracing {
   }
 
   // We can't just skip clearing headers we use because we might inject B3 single, yet have stale B3
-  // multi, or vice versa.
+  // multi, or visa versa.
   void clearTraceIdHeaders(Map<String, Object> headers) {
     for (String traceIDHeader : traceIdHeaders) headers.remove(traceIDHeader);
   }

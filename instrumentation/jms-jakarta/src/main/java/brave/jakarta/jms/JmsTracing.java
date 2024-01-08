@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -26,6 +26,11 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.SamplerFunction;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 import jakarta.jms.Connection;
 import jakarta.jms.ConnectionFactory;
 import jakarta.jms.JMSException;
@@ -38,21 +43,13 @@ import jakarta.jms.XAConnection;
 import jakarta.jms.XAConnectionFactory;
 import jakarta.jms.XAQueueConnection;
 import jakarta.jms.XATopicConnection;
-import java.util.LinkedHashSet;
-import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 
 import static brave.internal.Throwables.propagateIfFatal;
 import static brave.jakarta.jms.MessageParser.destination;
 import static brave.jakarta.jms.MessageProperties.getPropertyIfString;
 
-/**
- * Use this class to decorate your JMS consumer / producer and enable Tracing.
- *
- * @since 5.12
- */
+/** Use this class to decorate your JMS consumer / producer and enable Tracing. */
+/** @since 5.12 */
 public final class JmsTracing {
   static final String JMS_QUEUE = "jms.queue";
   static final String JMS_TOPIC = "jms.topic";
@@ -296,16 +293,16 @@ public final class JmsTracing {
    * try {
    *    return message.getStringProperty(name);
    *  } catch (Throwable t) {
-   *    Throwables.propagateIfFatal(e);
+   *    Call.propagateIfFatal(e);
    *    log(e, "error getting property {0} from message {1}", name, message);
    *    return null;
    *  }
    * }</pre>
    *
    * @param thrown the JMS exception that was caught
-   * @param msg    the format string
-   * @param zero   will end up as {@code {0}} in the format string
-   * @param one    if present, will end up as {@code {1}} in the format string
+   * @param msg the format string
+   * @param zero will end up as {@code {0}} in the format string
+   * @param one if present, will end up as {@code {1}} in the format string
    */
   static void log(Throwable thrown, String msg, Object zero, @Nullable Object one) {
     Logger logger = LoggerHolder.LOG;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -23,7 +23,16 @@ import brave.test.TestSpanHandler;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.kstream.Transformer;
+import org.apache.kafka.streams.kstream.TransformerSupplier;
+import org.apache.kafka.streams.kstream.ValueTransformer;
+import org.apache.kafka.streams.kstream.ValueTransformerSupplier;
+import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
+import org.apache.kafka.streams.kstream.ValueTransformerWithKeySupplier;
+import org.apache.kafka.streams.processor.AbstractProcessor;
 import org.apache.kafka.streams.processor.ProcessorContext;
+import org.apache.kafka.streams.processor.ProcessorSupplier;
 import org.apache.kafka.streams.processor.TaskId;
 import org.apache.kafka.streams.processor.api.Record;
 
@@ -73,6 +82,16 @@ class KafkaStreamsTest {
       return processorContext;
     };
 
+  ProcessorSupplier<String, String> fakeProcessorSupplier =
+      kafkaStreamsTracing.processor(
+          "forward-1", () ->
+              new AbstractProcessor<String, String>() {
+                @Override
+                public void process(String key, String value) {
+                  context().forward(key, value);
+                }
+              });
+
   org.apache.kafka.streams.processor.api.ProcessorSupplier<String, String, String, String> fakeV2ProcessorSupplier =
     kafkaStreamsTracing.process(
       "forward-1", () ->
@@ -87,4 +106,67 @@ class KafkaStreamsTest {
             context.forward(record);
           }
         });
+
+  TransformerSupplier<String, String, KeyValue<String, String>> fakeTransformerSupplier =
+      kafkaStreamsTracing.transformer(
+          "transformer-1", () ->
+              new Transformer<String, String, KeyValue<String, String>>() {
+                ProcessorContext context;
+
+                @Override
+                public void init(ProcessorContext context) {
+                  this.context = context;
+                }
+
+                @Override
+                public KeyValue<String, String> transform(String key, String value) {
+                  return KeyValue.pair(key, value);
+                }
+
+                @Override
+                public void close() {
+                }
+              });
+
+  ValueTransformerSupplier<String, String> fakeValueTransformerSupplier =
+      kafkaStreamsTracing.valueTransformer(
+          "value-transformer-1", () ->
+              new ValueTransformer<String, String>() {
+                ProcessorContext context;
+
+                @Override
+                public void init(ProcessorContext context) {
+                  this.context = context;
+                }
+
+                @Override
+                public String transform(String value) {
+                  return value;
+                }
+
+                @Override
+                public void close() {
+                }
+              });
+
+  ValueTransformerWithKeySupplier<String, String, String> fakeValueTransformerWithKeySupplier =
+      kafkaStreamsTracing.valueTransformerWithKey(
+          "value-transformer-1", () ->
+              new ValueTransformerWithKey<String, String, String>() {
+                ProcessorContext context;
+
+                @Override
+                public void init(ProcessorContext context) {
+                  this.context = context;
+                }
+
+                @Override
+                public String transform(String key, String value) {
+                  return value;
+                }
+
+                @Override
+                public void close() {
+                }
+              });
 }

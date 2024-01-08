@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -46,7 +46,7 @@ final class SingleHeaderCodec implements BaggageCodec, EntrySplitter.Handler<Val
     return keyNames;
   }
 
-  @Override public boolean decode(ValueUpdater valueUpdater, String value) {
+  @Override public boolean decode(ValueUpdater valueUpdater, Object request, String value) {
     return ENTRY_SPLITTER.parse(this, valueUpdater, value);
   }
 
@@ -57,7 +57,7 @@ final class SingleHeaderCodec implements BaggageCodec, EntrySplitter.Handler<Val
     return target.updateValue(field, value);
   }
 
-  @Override public String encode(Map<String, String> values, TraceContext context) {
+  @Override public String encode(Map<String, String> values, TraceContext context, Object request) {
     StringBuilder result = new StringBuilder();
     for (Map.Entry<String, String> entry : values.entrySet()) {
       if (result.length() > 0) result.append(',');

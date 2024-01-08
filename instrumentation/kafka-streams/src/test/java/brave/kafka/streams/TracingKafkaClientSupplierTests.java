@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,6 +15,7 @@ package brave.kafka.streams;
 
 import java.util.Collections;
 import java.util.Map;
+
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.streams.KafkaClientSupplier;
@@ -27,8 +28,10 @@ class TracingKafkaClientSupplierTests {
 
   final Map<String, Object> props = Collections.singletonMap("bootstrap.servers","localhost:9092");
 
-  @Test void shouldReturnNewAdmin() {
+  @Test
+  public void shouldReturnNewAdminClient() {
     TracingKafkaClientSupplier supplier = new TracingKafkaClientSupplier(null);
+    assertThat(supplier.getAdminClient(props)).isNotNull();
     assertThat(supplier.getAdmin(props)).isNotNull();
   }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,10 +14,17 @@
 package brave.http;
 
 import brave.Tracing;
+import brave.internal.Nullable;
+import brave.sampler.CountingSampler;
 import brave.sampler.Matcher;
 import brave.sampler.ParameterizedSampler;
+import brave.sampler.RateLimitingSampler;
 import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
+
+import static brave.http.HttpRequestMatchers.methodEquals;
+import static brave.http.HttpRequestMatchers.pathStartsWith;
+import static brave.sampler.Matchers.and;
 
 /**
  * Assigns sample rates to http routes.
@@ -56,7 +63,7 @@ import brave.sampler.SamplerFunction;
  *
  * @since 4.4
  */
-public final class HttpRuleSampler implements SamplerFunction<HttpRequest> {
+public final class HttpRuleSampler extends HttpSampler implements SamplerFunction<HttpRequest> {
   /** @since 4.4 */
   public static Builder newBuilder() {
     return new Builder();
@@ -65,6 +72,21 @@ public final class HttpRuleSampler implements SamplerFunction<HttpRequest> {
   /** @since 4.4 */
   public static final class Builder {
     final ParameterizedSampler.Builder<HttpRequest> delegate = ParameterizedSampler.newBuilder();
+
+    /**
+     * @since 4.4
+     * @deprecated Since 5.8, use {@link #putRule(Matcher, Sampler)}
+     */
+    @Deprecated public Builder addRule(@Nullable String method, String path, float probability) {
+      if (path == null) throw new NullPointerException("path == null");
+      Sampler sampler = CountingSampler.create(probability);
+      if (method == null) {
+        delegate.putRule(pathStartsWith(path), RateLimitingSampler.create(10));
+        return this;
+      }
+      delegate.putRule(and(methodEquals(method), pathStartsWith(path)), sampler);
+      return this;
+    }
 
     /**
      * Adds or replaces all rules in this sampler with those of the input.
@@ -110,5 +132,10 @@ public final class HttpRuleSampler implements SamplerFunction<HttpRequest> {
 
   @Override public Boolean trySample(HttpRequest request) {
     return delegate.trySample(request);
+  }
+
+  @Override @Deprecated public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req request) {
+    if (request == null) return null;
+    return trySample(new FromHttpAdapter<Req>(adapter, request));
   }
 }

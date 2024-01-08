@@ -1,0 +1,40 @@
+/*
+ * Copyright 2013-2020 The OpenZipkin Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package brave.http;
+
+import brave.SpanCustomizer;
+import brave.internal.Nullable;
+
+/** @deprecated Since 5.10, use {@link HttpRequestParser} and {@link HttpResponseParser} */
+@Deprecated public class HttpClientParser extends HttpParser {
+  /**
+   * Customizes the span based on the request that will be sent to the server.
+   *
+   * <p>{@inheritDoc}
+   */
+  @Override public <Req> void request(HttpAdapter<Req, ?> adapter, Req req,
+    SpanCustomizer customizer) {
+    super.request(adapter, req, customizer);
+  }
+
+  /**
+   * Customizes the span based on the response received from the server.
+   *
+   * <p>{@inheritDoc}
+   */
+  @Override public <Resp> void response(HttpAdapter<?, Resp> adapter, @Nullable Resp res,
+    @Nullable Throwable error, SpanCustomizer customizer) {
+    super.response(adapter, res, error, customizer);
+  }
+}

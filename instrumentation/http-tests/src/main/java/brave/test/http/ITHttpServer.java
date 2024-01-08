@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,13 +13,16 @@
  */
 package brave.test.http;
 
+import brave.SpanCustomizer;
 import brave.baggage.BaggageField;
 import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
+import brave.http.HttpAdapter;
 import brave.http.HttpRequest;
 import brave.http.HttpRequestParser;
 import brave.http.HttpResponseParser;
 import brave.http.HttpRuleSampler;
+import brave.http.HttpServerParser;
 import brave.http.HttpTags;
 import brave.http.HttpTracing;
 import brave.propagation.B3SingleFormat;
@@ -270,6 +273,36 @@ public abstract class ITHttpServer extends ITRemote {
 
     assertThat(testSpanHandler.takeRemoteSpan(SERVER).tags())
       .containsEntry("http.url", url(uri))
+      .containsEntry("request_customizer.is_span", "false")
+      .containsEntry("response_customizer.is_span", "false");
+  }
+
+  @Test
+  @Deprecated
+  public void supportsPortableCustomizationDeprecated() throws IOException {
+    httpTracing = httpTracing.toBuilder().serverParser(new HttpServerParser() {
+      @Override
+      public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer customizer) {
+        customizer.tag("http.url", adapter.url(req)); // just the path is tagged by default
+        customizer.tag("context.visible", String.valueOf(currentTraceContext.get() != null));
+        customizer.tag("request_customizer.is_span", (customizer instanceof brave.Span) + "");
+      }
+
+      @Override
+      public <Resp> void response(HttpAdapter<?, Resp> adapter, Resp res, Throwable error,
+        SpanCustomizer customizer) {
+        super.response(adapter, res, error, customizer);
+        customizer.tag("response_customizer.is_span", (customizer instanceof brave.Span) + "");
+      }
+    }).build();
+    init();
+
+    String uri = "/foo?z=2&yAA=1";
+    get(uri);
+
+    assertThat(testSpanHandler.takeRemoteSpan(SERVER).tags())
+      .containsEntry("http.url", url(uri))
+      .containsEntry("context.visible", "true")
       .containsEntry("request_customizer.is_span", "false")
       .containsEntry("response_customizer.is_span", "false");
   }

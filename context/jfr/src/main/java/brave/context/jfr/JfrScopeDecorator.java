@@ -61,6 +61,11 @@ public final class JfrScopeDecorator implements ScopeDecorator {
     @Label("Span Id") String spanId;
   }
 
+  /** @deprecated since 5.11 use {@link #get()} */
+  @Deprecated public static ScopeDecorator create() {
+    return new JfrScopeDecorator();
+  }
+
   @Override public Scope decorateScope(@Nullable TraceContext context, Scope scope) {
     if (scope == Scope.NOOP) return scope; // we only scope fields constant in the context
 

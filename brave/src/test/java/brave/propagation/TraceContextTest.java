@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -372,7 +372,7 @@ class TraceContextTest {
   }
 
   @Test void withExtra_empty() {
-    assertThat(context.toBuilder().addExtra(1L).build().withExtra(emptyList()))
+    assertThat(context.toBuilder().extra(Arrays.asList(1L)).build().withExtra(emptyList()))
       .extracting("extraList")
       .isEqualTo(emptyList());
   }

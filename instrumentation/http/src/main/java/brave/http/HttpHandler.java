@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,6 +19,12 @@ import brave.internal.Platform;
 import static brave.internal.Throwables.propagateIfFatal;
 
 abstract class HttpHandler {
+  /**
+   * To avoid passing null to signatures that use HttpAdapter, we use a dummy value when {@link
+   * HttpRequest#unwrap()} or {@link HttpResponse#unwrap()} return null.
+   */
+  static final Object NULL_SENTINEL = new Object();
+
   final HttpRequestParser requestParser;
   final HttpResponseParser responseParser;
 

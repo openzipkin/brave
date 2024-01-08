@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,8 +16,8 @@ package brave.baggage;
 import brave.Tracing;
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
 import brave.internal.baggage.BaggageContext;
-import brave.internal.baggage.BaggageFields;
 import brave.internal.baggage.ExtraBaggageContext;
+import brave.internal.baggage.BaggageFields;
 import brave.propagation.B3Propagation;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.Propagation;
@@ -62,12 +62,40 @@ class BaggageFieldTest {
       .isSameAs(context);
   }
 
+  @Test void getAll_extracted() {
+    assertThat(BaggageField.getAll(emptyExtraction))
+      .containsExactly(REQUEST_ID, AMZN_TRACE_ID)
+      .containsExactlyElementsOf(BaggageField.getAll(extraction));
+  }
+
+  @Test void getAll() {
+    assertThat(BaggageField.getAll(emptyContext))
+      .containsExactly(REQUEST_ID, AMZN_TRACE_ID);
+
+    try (Tracing tracing = Tracing.newBuilder().build();
+         Scope ws = tracing.currentTraceContext().newScope(emptyContext)) {
+      assertThat(BaggageField.getAll())
+        .containsExactly(REQUEST_ID, AMZN_TRACE_ID);
+    }
+  }
+
+  @Test void getAll_doesntExist() {
+    assertThat(BaggageField.getAll(TraceContextOrSamplingFlags.EMPTY)).isEmpty();
+    assertThat(BaggageField.getAll(context)).isEmpty();
+    assertThat(BaggageField.getAll()).isEmpty();
+
+    try (Tracing tracing = Tracing.newBuilder().build();
+         Scope ws = tracing.currentTraceContext().newScope(null)) {
+      assertThat(BaggageField.getAll()).isEmpty();
+    }
+  }
+
   @Test void getByName_doesntExist() {
     assertThat(BaggageField.getByName(emptyContext, "robots")).isNull();
     assertThat(BaggageField.getByName("robots")).isNull();
 
     try (Tracing tracing = Tracing.newBuilder().build();
-         Scope scope = tracing.currentTraceContext().newScope(null)) {
+         Scope ws = tracing.currentTraceContext().newScope(null)) {
       assertThat(BaggageField.getByName(REQUEST_ID.name())).isNull();
     }
   }
@@ -77,7 +105,7 @@ class BaggageFieldTest {
       .isSameAs(REQUEST_ID);
 
     try (Tracing tracing = Tracing.newBuilder().build();
-         Scope scope = tracing.currentTraceContext().newScope(emptyContext)) {
+         Scope ws = tracing.currentTraceContext().newScope(emptyContext)) {
       assertThat(BaggageField.getByName(REQUEST_ID.name()))
         .isSameAs(REQUEST_ID);
     }

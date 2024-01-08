@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -19,6 +19,7 @@ import brave.Tracer.SpanInScope;
 import brave.Tracing;
 import brave.messaging.MessagingRequest;
 import brave.propagation.TraceContext.Extractor;
+import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.SamplerFunction;
 import jakarta.jms.Message;
@@ -50,6 +51,7 @@ final class TracingMessageListener implements MessageListener {
   final Tracing tracing;
   final Tracer tracer;
   final Extractor<MessageConsumerRequest> extractor;
+  final Injector<MessageConsumerRequest> injector;
   final SamplerFunction<MessagingRequest> sampler;
   final String remoteServiceName;
   final boolean addConsumerSpan;
@@ -61,13 +63,14 @@ final class TracingMessageListener implements MessageListener {
     this.tracer = jmsTracing.tracer;
     this.extractor = jmsTracing.messageConsumerExtractor;
     this.sampler = jmsTracing.consumerSampler;
+    this.injector = jmsTracing.messageConsumerInjector;
     this.remoteServiceName = jmsTracing.remoteServiceName;
     this.addConsumerSpan = addConsumerSpan;
   }
 
   @Override public void onMessage(Message message) {
     Span listenerSpan = startMessageListenerSpan(message);
-    SpanInScope scope = tracer.withSpanInScope(listenerSpan);
+    SpanInScope ws = tracer.withSpanInScope(listenerSpan);
     Throwable error = null;
     try {
       delegate.onMessage(message);
@@ -78,7 +81,7 @@ final class TracingMessageListener implements MessageListener {
     } finally {
       if (error != null) listenerSpan.error(error);
       listenerSpan.finish();
-      scope.close();
+      ws.close();
     }
   }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -38,18 +38,6 @@ class TagsTest {
     Tags.ERROR.tag(new RuntimeException(), span);
 
     verify(span).tag("error", "RuntimeException");
-  }
-
-  @Test void error_anonymous() {
-    Tags.ERROR.tag(new RuntimeException() {}, span);
-
-    verify(span).tag("error", "RuntimeException");
-  }
-
-  @Test void error_anonymous_message() {
-    Tags.ERROR.tag(new RuntimeException("this cake is a lie") {}, span);
-
-    verify(span).tag("error", "this cake is a lie");
   }
 
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,9 @@
  */
 package brave.grpc;
 
+import brave.NoopSpanCustomizer;
 import brave.Span;
+import brave.SpanCustomizer;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
@@ -40,11 +42,13 @@ final class TracingClientInterceptor implements ClientInterceptor {
   final Map<String, Key<String>> nameToKey;
   final CurrentTraceContext currentTraceContext;
   final RpcClientHandler handler;
+  final MessageProcessor messageProcessor;
 
   TracingClientInterceptor(GrpcTracing grpcTracing) {
     nameToKey = grpcTracing.nameToKey;
     currentTraceContext = grpcTracing.rpcTracing.tracing().currentTraceContext();
     handler = RpcClientHandler.create(grpcTracing.rpcTracing);
+    messageProcessor = grpcTracing.clientMessageProcessor;
   }
 
   @Override
@@ -153,6 +157,9 @@ final class TracingClientInterceptor implements ClientInterceptor {
       Scope scope = maybeScopeClientOrInvocationContext(spanRef, invocationContext);
       try {
         delegate().sendMessage(message);
+        Span span = spanRef.get(); // could be an error
+        SpanCustomizer customizer = span != null ? span.customizer() : NoopSpanCustomizer.INSTANCE;
+        messageProcessor.onMessageSent(message, customizer);
       } finally {
         scope.close();
       }
@@ -211,6 +218,9 @@ final class TracingClientInterceptor implements ClientInterceptor {
     @Override public void onMessage(RespT message) {
       Scope scope = currentTraceContext.maybeScope(invocationContext);
       try {
+        Span span = spanRef.get(); // could be an error
+        SpanCustomizer customizer = span != null ? span.customizer() : NoopSpanCustomizer.INSTANCE;
+        messageProcessor.onMessageReceived(message, customizer);
         delegate().onMessage(message);
       } finally {
         scope.close();

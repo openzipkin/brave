@@ -87,7 +87,7 @@ When you need more features, or finer control, use the `Span` type:
 // Start a new trace or a span within an existing trace representing an operation
 Span span = tracer.nextSpan().name("encode").start();
 // Put the span in "scope" so that downstream code such as loggers can see trace IDs
-try (SpanInScope scope = tracer.withSpanInScope(span)) {
+try (SpanInScope ws = tracer.withSpanInScope(span)) {
   return encoder.encode();
 } catch (RuntimeException | Error e) {
   span.error(e); // Unless you handle exceptions, you might not know the operation failed!
@@ -192,7 +192,7 @@ tracing.propagation().injector(ClientRequestWrapper::addHeader)
 span.kind(request.spanKind());
 span.name("Report");
 span.start();
-try (Scope scope = currentTraceContext.newScope(span.context())) { // 2.
+try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
   return invoke(request); // 3.
 } catch (Throwable e) {
   span.error(error); // 4.
@@ -721,7 +721,7 @@ external code might be invoked (such as proceeding an interceptor or
 otherwise), place the span in scope like this.
 
 ```java
-try (SpanInScope scope = tracer.withSpanInScope(span)) {
+try (SpanInScope ws = tracer.withSpanInScope(span)) {
   return inboundRequest.invoke();
 } catch (RuntimeException | Error e) {
   span.error(e);

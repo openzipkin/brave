@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -32,6 +32,9 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class HttpRuleSamplerTest {
+  @Deprecated @Mock HttpClientAdapter<Object, Object> adapter;
+  Object request = new Object();
+
   @Mock HttpClientRequest httpClientRequest;
   @Mock HttpServerRequest httpServerRequest;
 
@@ -44,6 +47,11 @@ public class HttpRuleSamplerTest {
       HttpRuleSampler ruleSampler = HttpRuleSampler.newBuilder()
         .putRule(pathStartsWith("/foo"), sampler)
         .build();
+
+      when(adapter.path(request)).thenReturn("/foo");
+
+      assertThat(ruleSampler.trySample(adapter, request))
+        .isEqualTo(answer);
 
       when(httpClientRequest.path()).thenReturn("/foo");
 
@@ -63,6 +71,8 @@ public class HttpRuleSamplerTest {
       .putRule(pathStartsWith("/bar"), Sampler.ALWAYS_SAMPLE)
       .build();
 
+    assertThat(ruleSampler.trySample(adapter, null))
+      .isNull();
     assertThat(ruleSampler.trySample(null))
       .isNull();
   }
@@ -71,6 +81,11 @@ public class HttpRuleSamplerTest {
     HttpRuleSampler ruleSampler = HttpRuleSampler.newBuilder()
       .putRule(pathStartsWith("/bar"), Sampler.ALWAYS_SAMPLE)
       .build();
+
+    when(adapter.path(request)).thenReturn("/foo");
+
+    assertThat(ruleSampler.trySample(adapter, request))
+      .isNull();
 
     when(httpClientRequest.path()).thenReturn("/foo");
 
@@ -110,6 +125,24 @@ public class HttpRuleSamplerTest {
 
     assertThat(sampler.trySample(httpServerRequest))
       .isNull(); // unmatched because country isn't ES
+  }
+
+  /** Tests deprecated method */
+  @Test void addRule() {
+    HttpRuleSampler sampler = HttpRuleSampler.newBuilder()
+      .addRule("GET", "/foo", 0.0f)
+      .build();
+
+    when(httpServerRequest.method()).thenReturn("POST");
+
+    assertThat(sampler.trySample(httpServerRequest))
+      .isNull();
+
+    when(httpServerRequest.method()).thenReturn("GET");
+    when(httpServerRequest.path()).thenReturn("/foo");
+
+    assertThat(sampler.trySample(httpServerRequest))
+      .isFalse();
   }
 
   @Test void putAllRules() {

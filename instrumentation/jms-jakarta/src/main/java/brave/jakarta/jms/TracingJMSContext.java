@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,6 +13,7 @@
  */
 package brave.jakarta.jms;
 
+import java.io.Serializable;
 import jakarta.jms.BytesMessage;
 import jakarta.jms.ConnectionMetaData;
 import jakarta.jms.Destination;
@@ -31,7 +32,6 @@ import jakarta.jms.TemporaryTopic;
 import jakarta.jms.TextMessage;
 import jakarta.jms.Topic;
 import jakarta.jms.XAJMSContext;
-import java.io.Serializable;
 
 class TracingJMSContext implements JMSContext {
   static JMSContext create(JMSContext delegate, JmsTracing jmsTracing) {

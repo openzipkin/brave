@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -23,6 +23,9 @@ import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
 import java.io.Closeable;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static brave.http.HttpSampler.fromHttpRequestSampler;
+import static brave.http.HttpSampler.toHttpRequestSampler;
 
 /**
  * Instances built via {@link #create(Tracing)} or {@link #newBuilder(Tracing)} are registered
@@ -63,6 +66,21 @@ public class HttpTracing implements Closeable {
    */
   public HttpResponseParser clientResponseParser() {
     return clientResponseParser;
+  }
+
+  /**
+   * @deprecated Since 5.10, use {@link #clientRequestParser()} and {@link #clientResponseParser()}
+   */
+  @Deprecated public HttpClientParser clientParser() {
+    if (clientRequestParser instanceof HttpRequestParserAdapters.ClientAdapter) {
+      return (HttpClientParser) ((HttpRequestParserAdapters.ClientAdapter) clientRequestParser).parser;
+    }
+    return new HttpClientParserAdapter(
+      clientRequestParser,
+      clientResponseParser,
+      tracing.currentTraceContext(),
+      tracing.errorParser()
+    );
   }
 
   /**
@@ -108,13 +126,33 @@ public class HttpTracing implements Closeable {
   }
 
   /**
-   * Used by {@link HttpServerHandler#handleSend} to add tags about the
+   * Used by {@link HttpServerHandler#handleSend(Object, Throwable, Span)} to add tags about the
    * response sent to the client.
    *
    * @since 5.10
    */
   public HttpResponseParser serverResponseParser() {
     return serverResponseParser;
+  }
+
+  /**
+   * @deprecated Since 5.10, use {@link #serverRequestParser()} and {@link #serverResponseParser()}
+   */
+  @Deprecated public HttpServerParser serverParser() {
+    if (serverRequestParser instanceof HttpRequestParserAdapters.ServerAdapter) {
+      return (HttpServerParser) ((HttpRequestParserAdapters.ServerAdapter) serverRequestParser).parser;
+    }
+    return new HttpServerParserAdapter(
+      serverRequestParser,
+      serverResponseParser,
+      tracing.currentTraceContext(),
+      tracing.errorParser()
+    );
+  }
+
+  /** @deprecated Since 5.8, use {@link #clientRequestSampler()} */
+  @Deprecated public HttpSampler clientSampler() {
+    return fromHttpRequestSampler(clientSampler);
   }
 
   /**
@@ -130,6 +168,11 @@ public class HttpTracing implements Closeable {
    */
   public SamplerFunction<HttpRequest> clientRequestSampler() {
     return clientSampler;
+  }
+
+  /** @deprecated Since 5.8, use {@link #serverRequestSampler()} */
+  @Deprecated public HttpSampler serverSampler() {
+    return fromHttpRequestSampler(serverSampler);
   }
 
   /**
@@ -266,6 +309,20 @@ public class HttpTracing implements Closeable {
       return this;
     }
 
+    /**
+     * @deprecated Since 5.10, use {@link #clientRequestParser(HttpRequestParser)} and {@link
+     * #clientResponseParser(HttpResponseParser)}
+     */
+    @Deprecated public Builder clientParser(HttpClientParser clientParser) {
+      if (clientParser == null) throw new NullPointerException("clientParser == null");
+      this.clientRequestParser =
+        new HttpRequestParserAdapters.ClientAdapter(tracing.currentTraceContext(), clientParser);
+      this.clientResponseParser =
+        new HttpResponseParserAdapters.ClientAdapter(tracing.currentTraceContext(), clientParser);
+      this.tracing.errorParser();
+      return this;
+    }
+
     Builder serverName(String serverName) {
       if (serverName == null) throw new NullPointerException("serverName == null");
       this.serverName = serverName;
@@ -301,14 +358,38 @@ public class HttpTracing implements Closeable {
     }
 
     /**
+     * @deprecated Since 5.10, use {@link #serverRequestParser(HttpRequestParser)} and {@link
+     * #serverResponseParser(HttpResponseParser)}
+     */
+    @Deprecated public Builder serverParser(HttpServerParser serverParser) {
+      if (serverParser == null) throw new NullPointerException("serverParser == null");
+      this.serverRequestParser =
+        new HttpRequestParserAdapters.ServerAdapter(tracing.currentTraceContext(), serverParser);
+      this.serverResponseParser =
+        new HttpResponseParserAdapters.ServerAdapter(tracing.currentTraceContext(), serverParser);
+      return this;
+    }
+
+    /** @deprecated Since 5.8, use {@link #clientSampler(SamplerFunction)} */
+    public Builder clientSampler(HttpSampler clientSampler) {
+      if (clientSampler == null) throw new NullPointerException("clientSampler == null");
+      return clientSampler((SamplerFunction<HttpRequest>) clientSampler);
+    }
+
+    /**
      * @see SamplerFunctions
      * @see HttpTracing#clientRequestSampler()
      * @since 5.8
      */
     public Builder clientSampler(SamplerFunction<HttpRequest> clientSampler) {
       if (clientSampler == null) throw new NullPointerException("clientSampler == null");
-      this.clientSampler = clientSampler;
+      this.clientSampler = toHttpRequestSampler(clientSampler);
       return this;
+    }
+
+    /** @deprecated Since 5.8, use {@link #serverSampler(SamplerFunction)} */
+    public Builder serverSampler(HttpSampler serverSampler) {
+      return serverSampler((SamplerFunction<HttpRequest>) serverSampler);
     }
 
     /**
@@ -318,7 +399,7 @@ public class HttpTracing implements Closeable {
      */
     public Builder serverSampler(SamplerFunction<HttpRequest> serverSampler) {
       if (serverSampler == null) throw new NullPointerException("serverSampler == null");
-      this.serverSampler = serverSampler;
+      this.serverSampler = toHttpRequestSampler(serverSampler);
       return this;
     }
 

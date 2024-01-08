@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2020 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,6 +14,7 @@
 package brave.context.log4j12;
 
 import brave.baggage.BaggageFields;
+import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
 import brave.baggage.CorrelationScopeDecorator;
 import brave.internal.CorrelationContext;
 import brave.internal.Nullable;
@@ -58,6 +59,23 @@ public final class MDCScopeDecorator {
    */
   public static CorrelationScopeDecorator.Builder newBuilder() {
     return new Builder();
+  }
+
+  /**
+   * Returns a scope decorator that configures {@link BaggageFields#TRACE_ID}, {@link
+   * BaggageFields#PARENT_ID}, {@link BaggageFields#SPAN_ID} and {@link BaggageFields#SAMPLED}
+   *
+   * @since 5.2
+   * @deprecated since 5.11 use {@link #get()} or {@link #newBuilder()}
+   */
+  @Deprecated public static CurrentTraceContext.ScopeDecorator create() {
+    return new Builder()
+      .clear()
+      .add(SingleCorrelationField.create(BaggageFields.TRACE_ID))
+      .add(SingleCorrelationField.create(BaggageFields.PARENT_ID))
+      .add(SingleCorrelationField.create(BaggageFields.SPAN_ID))
+      .add(SingleCorrelationField.create(BaggageFields.SAMPLED))
+      .build();
   }
 
   static final class Builder extends CorrelationScopeDecorator.Builder {

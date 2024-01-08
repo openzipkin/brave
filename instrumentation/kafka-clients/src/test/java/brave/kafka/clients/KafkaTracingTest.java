@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -29,7 +29,7 @@ public class KafkaTracingTest extends KafkaTest {
     consumerRecord.headers().add("b3", B3SingleFormat.writeB3SingleFormatAsBytes(incoming));
 
     Span child;
-    try (Scope scope = tracing.currentTraceContext().newScope(parent)) {
+    try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
       child = kafkaTracing.nextSpan(consumerRecord);
     }
     child.finish();
@@ -40,7 +40,7 @@ public class KafkaTracingTest extends KafkaTest {
 
   @Test void nextSpan_uses_current_context() {
     Span child;
-    try (Scope scope = tracing.currentTraceContext().newScope(parent)) {
+    try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
       child = kafkaTracing.nextSpan(consumerRecord);
     }
     child.finish();

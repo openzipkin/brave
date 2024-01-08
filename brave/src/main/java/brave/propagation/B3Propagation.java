@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -18,6 +18,7 @@ import brave.Span.Kind;
 import brave.internal.Platform;
 import brave.internal.propagation.InjectorFactory;
 import brave.internal.propagation.InjectorFactory.InjectorFunction;
+import brave.internal.propagation.StringPropagationAdapter;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import java.util.Collections;
@@ -221,6 +222,10 @@ public abstract class B3Propagation<K> implements Propagation<K> {
       return this;
     }
 
+    @Override public <K1> Propagation<K1> create(KeyFactory<K1> keyFactory) {
+      return StringPropagationAdapter.create(this, keyFactory);
+    }
+
     @Override public boolean supportsJoin() {
       return true;
     }
@@ -231,7 +236,7 @@ public abstract class B3Propagation<K> implements Propagation<K> {
 
     @Override public <R> Extractor<R> extractor(Getter<R, String> getter) {
       if (getter == null) throw new NullPointerException("getter == null");
-      return new B3Extractor<R>(getter);
+      return new B3Extractor<R>(this, getter);
     }
 
     @Override public int hashCode() {
@@ -252,9 +257,11 @@ public abstract class B3Propagation<K> implements Propagation<K> {
   }
 
   static final class B3Extractor<R> implements Extractor<R> {
+    final Factory factory;
     final Getter<R, String> getter;
 
-    B3Extractor(Getter<R, String> getter) {
+    B3Extractor(Factory factory, Getter<R, String> getter) {
+      this.factory = factory;
       this.getter = getter;
     }
 

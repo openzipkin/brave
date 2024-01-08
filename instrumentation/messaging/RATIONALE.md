@@ -9,7 +9,7 @@ span in scope. This is due to ordering precedence of tools like
 
 Tools that extract incoming IDs from message requests prioritize headers
 over the current span (`Tracer.currentSpan()`). This is to prevent an
-accidentally leaked span (due to lack of `scope.close()`) to become the parent
+accidentally leaked span (due to lack of `Scope.close()`) to become the parent
 of all spans, creating a huge trace. This logic is the same in RPC server
 instrumentation. When we are in control of invoking the message listener, we
 can guarantee no mistakes by clearing the headers first.

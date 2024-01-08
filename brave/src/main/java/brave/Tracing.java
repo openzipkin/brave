@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2024 The OpenZipkin Authors
+ * Copyright 2013-2023 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,6 +14,7 @@
 package brave;
 
 import brave.baggage.BaggageField;
+import brave.handler.FinishedSpanHandler;
 import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
 import brave.internal.Nullable;
@@ -36,6 +37,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import zipkin2.reporter.Reporter;
+import zipkin2.reporter.brave.ZipkinSpanHandler;
 
 /**
  * This provides utilities needed for trace instrumentation. For example, a {@link Tracer}.
@@ -62,6 +65,9 @@ public abstract class Tracing implements Closeable {
    */
   public abstract Propagation<String> propagation();
 
+  /** @deprecated Since 5.12 use {@link #propagation()} as non-string keys are unsupported. */
+  @Deprecated public abstract Propagation.Factory propagationFactory();
+
   /**
    * Sampler is responsible for deciding if a particular trace should be "sampled", i.e. whether the
    * overhead of tracing will occur and/or if a trace will be reported to Zipkin.
@@ -87,6 +93,12 @@ public abstract class Tracing implements Closeable {
   public final Clock clock(TraceContext context) {
     return tracer().pendingSpans.getOrCreate(null, context, false).clock();
   }
+
+  /**
+   * @deprecated This is only used in Zipkin reporting. Since 5.12, use {@link
+   * zipkin2.reporter.brave.ZipkinSpanHandler.Builder#errorTag(Tag)}
+   */
+  @Deprecated public abstract ErrorParser errorParser();
 
   /**
    * Returns the most recently created tracing component iff it hasn't been closed. null otherwise.
@@ -128,12 +140,14 @@ public abstract class Tracing implements Closeable {
 
   public static final class Builder {
     final MutableSpan defaultSpan = new MutableSpan();
+    Object zipkinSpanReporter; // avoid Zipkin type
     Clock clock;
     Sampler sampler = Sampler.ALWAYS_SAMPLE;
     CurrentTraceContext currentTraceContext = CurrentTraceContext.Default.inheritable();
     boolean traceId128Bit = false, supportsJoin = true;
-    boolean alwaysSampleLocal = false, trackOrphans = false;
+    boolean alwaysSampleLocal = false, alwaysReportSpans = false, trackOrphans = false;
     Propagation.Factory propagationFactory = B3Propagation.FACTORY;
+    ErrorParser errorParser = new ErrorParser();
     Set<SpanHandler> spanHandlers = new LinkedHashSet<SpanHandler>(); // dupes not ok
 
     Builder() {
@@ -206,6 +220,52 @@ public abstract class Tracing implements Closeable {
       if (localPort > 0xffff) throw new IllegalArgumentException("invalid localPort " + localPort);
       if (localPort < 0) localPort = 0;
       this.defaultSpan.localPort(localPort);
+      return this;
+    }
+
+    /**
+     * Sets the {@link zipkin2.Span#localEndpoint() Endpoint of the local service} being traced.
+     *
+     * @deprecated Use {@link #localServiceName(String)} {@link #localIp(String)} and {@link
+     * #localPort(int)}. Will be removed in Brave v6.
+     */
+    @Deprecated
+    public Builder endpoint(zipkin2.Endpoint endpoint) {
+      if (endpoint == null) throw new NullPointerException("endpoint == null");
+      this.defaultSpan.localServiceName(endpoint.serviceName());
+      this.defaultSpan.localIp(endpoint.ipv6() != null ? endpoint.ipv6() : endpoint.ipv4());
+      this.defaultSpan.localPort(endpoint.portAsInt());
+      return this;
+    }
+
+    /***
+     * <p>Since 5.12, this is deprecated for using {@link zipkin2.reporter.brave.ZipkinSpanHandler}
+     * in the <a href="https://github.com/openzipkin/zipkin-reporter-java">io.zipkin.reporter2:zipkin-reporter-brave</a>
+     * library.
+     *
+     * <p>For example, here's how to batch send spans via HTTP to a Zipkin-compatible endpoint:
+     * <pre>{@code
+     * // Configure a reporter, which controls how often spans are sent
+     * //   (this dependency is io.zipkin.reporter2:zipkin-sender-okhttp3)
+     * sender = OkHttpSender.create("http://127.0.0.1:9411/api/v2/spans");
+     * //   (this dependency is io.zipkin.reporter2:zipkin-reporter-brave)
+     * zipkinSpanHandler = AsyncZipkinSpanHandler.create(sender); // don't forget to close!
+     *
+     * // Create a tracing component with the service name you want to see in Zipkin.
+     * tracing = Tracing.newBuilder()
+     *                  .localServiceName("my-service")
+     *                  .addSpanHandler(zipkinSpanHandler)
+     *                  .build();
+     * }</pre>
+     *
+     * @see #addSpanHandler(SpanHandler)
+     * @deprecated Since 5.12, use {@link #addSpanHandler(SpanHandler)} with a
+     * {@link zipkin2.reporter.brave.ZipkinSpanHandler}
+     */
+    @Deprecated public Builder spanReporter(Reporter<zipkin2.Span> spanReporter) {
+      if (spanReporter == Reporter.NOOP) return this;
+      if (spanReporter == null) throw new NullPointerException("spanReporter == null");
+      this.zipkinSpanReporter = spanReporter;
       return this;
     }
 
@@ -287,6 +347,27 @@ public abstract class Tracing implements Closeable {
     }
 
     /**
+     * @deprecated This is only used in Zipkin reporting. Since 5.12, use {@link
+     * zipkin2.reporter.brave.ZipkinSpanHandler.Builder#errorTag(Tag)}
+     */
+    @Deprecated public Builder errorParser(ErrorParser errorParser) {
+      this.errorParser = errorParser;
+      return this;
+    }
+
+    /**
+     * @since 5.4
+     * @deprecated Since 5.12 {@linkplain #addSpanHandler(SpanHandler) add a span handler} that
+     * implements {@link SpanHandler#end(TraceContext, MutableSpan, SpanHandler.Cause)} with {@link
+     * SpanHandler.Cause#FINISHED}
+     */
+    public Builder addFinishedSpanHandler(FinishedSpanHandler handler) {
+      // Some configuration can coerce to no-op, ignore in this case.
+      if (handler == FinishedSpanHandler.NOOP) return this;
+      return addSpanHandler(handler);
+    }
+
+    /**
      * Inputs receive {code (context, span)} pairs for every {@linkplain TraceContext#sampledLocal()
      * locally sampled} span. The span is mutable for customization or redaction purposes. Span
      * handlers execute in order: If any handler returns {code false}, the next will not see the
@@ -332,6 +413,15 @@ public abstract class Tracing implements Closeable {
     }
 
     /**
+     * @since 5.8
+     * @deprecated Since 5.12, use {@link ZipkinSpanHandler.Builder#alwaysReportSpans(boolean)}
+     */
+    public Builder alwaysReportSpans() {
+      this.alwaysReportSpans = true;
+      return this;
+    }
+
+    /**
      * When true, a {@link SpanHandler} is added that  logs the caller which orphaned a span to the
      * category "brave.Tracer" at {@link Level#FINE}. Defaults to false.
      *
@@ -372,10 +462,12 @@ public abstract class Tracing implements Closeable {
     final CurrentTraceContext currentTraceContext;
     final Sampler sampler;
     final Clock clock;
+    final ErrorParser errorParser;
     final AtomicBoolean noop;
 
     Default(Builder builder) {
       this.clock = builder.clock != null ? builder.clock : Platform.get().clock();
+      this.errorParser = builder.errorParser;
       this.propagationFactory = builder.propagationFactory;
       this.stringPropagation = builder.propagationFactory.get();
       this.currentTraceContext = builder.currentTraceContext;
@@ -389,6 +481,14 @@ public abstract class Tracing implements Closeable {
       }
 
       Set<SpanHandler> spanHandlers = new LinkedHashSet<SpanHandler>(builder.spanHandlers);
+      // When present, the Zipkin handler is invoked after the user-supplied ones.
+      if (builder.zipkinSpanReporter != null) {
+        spanHandlers.add(
+            ZipkinSpanHandler.newBuilder((Reporter<zipkin2.Span>) builder.zipkinSpanReporter)
+                .errorTag(errorParser)
+                .alwaysReportSpans(builder.alwaysReportSpans)
+                .build());
+      }
       if (spanHandlers.isEmpty()) spanHandlers.add(new LogSpanHandler());
       if (builder.trackOrphans) {
         spanHandlers.add(OrphanTracker.newBuilder().defaultSpan(defaultSpan).clock(clock).build());
@@ -398,7 +498,16 @@ public abstract class Tracing implements Closeable {
       SpanHandler spanHandler =
         NoopAwareSpanHandler.create(spanHandlers.toArray(new SpanHandler[0]), noop);
 
+      boolean alwaysSampleLocal = builder.alwaysSampleLocal;
+      for (SpanHandler handler : spanHandlers) {
+        if (handler instanceof FinishedSpanHandler) {
+          // Handle deprecated FinishedSpanHandler.alwaysSampleLocal
+          if (((FinishedSpanHandler)handler).alwaysSampleLocal()) alwaysSampleLocal = true;
+        }
+      }
+
       this.tracer = new Tracer(
+        builder.clock,
         builder.propagationFactory,
         spanHandler,
         new PendingSpans(defaultSpan, clock, spanHandler, noop),
@@ -406,7 +515,7 @@ public abstract class Tracing implements Closeable {
         builder.currentTraceContext,
         builder.traceId128Bit || propagationFactory.requires128BitTraceId(),
         builder.supportsJoin && propagationFactory.supportsJoin(),
-        builder.alwaysSampleLocal,
+        alwaysSampleLocal,
         noop
       );
       // assign current IFF there's no instance already current
@@ -421,12 +530,20 @@ public abstract class Tracing implements Closeable {
       return stringPropagation;
     }
 
+    @Override public Propagation.Factory propagationFactory() {
+      return propagationFactory;
+    }
+
     @Override public Sampler sampler() {
       return sampler;
     }
 
     @Override public CurrentTraceContext currentTraceContext() {
       return currentTraceContext;
+    }
+
+    @Deprecated @Override public ErrorParser errorParser() {
+      return errorParser;
     }
 
     @Override public boolean isNoop() {
@@ -442,7 +559,7 @@ public abstract class Tracing implements Closeable {
     }
 
     @Override public void close() {
-      // only set null if we are the outermost instance
+      // only set null if we are the outer-most instance
       CURRENT.compareAndSet(this, null);
     }
   }

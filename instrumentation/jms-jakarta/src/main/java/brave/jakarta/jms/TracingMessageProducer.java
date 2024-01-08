@@ -114,7 +114,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
 
   @Override public void send(Message message) throws JMSException {
     Span span = createAndStartProducerSpan(message, destination(message));
-    SpanInScope scope = tracer.withSpanInScope(span);
+    SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
       delegate.send(message);
@@ -125,14 +125,14 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     } finally {
       if (error != null) span.error(error);
       span.finish();
-      scope.close();
+      ws.close();
     }
   }
 
   @Override public void send(Message message, int deliveryMode, int priority, long timeToLive)
     throws JMSException {
     Span span = createAndStartProducerSpan(message, destination(message));
-    SpanInScope scope = tracer.withSpanInScope(span);
+    SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
       delegate.send(message, deliveryMode, priority, timeToLive);
@@ -143,7 +143,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     } finally {
       if (error != null) span.error(error);
       span.finish();
-      scope.close();
+      ws.close();
     }
   }
 
@@ -178,7 +178,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
   void send(SendDestination sendDestination, Destination destination, Message message)
     throws JMSException {
     Span span = createAndStartProducerSpan(message, destination);
-    SpanInScope scope = tracer.withSpanInScope(span);
+    SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
       sendDestination.apply(delegate, destination, message);
@@ -189,7 +189,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     } finally {
       if (error != null) span.error(error);
       span.finish();
-      scope.close();
+      ws.close();
     }
   }
 
@@ -197,7 +197,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
   public void send(Destination destination, Message message, int deliveryMode, int priority,
     long timeToLive) throws JMSException {
     Span span = createAndStartProducerSpan(message, destination);
-    SpanInScope scope = tracer.withSpanInScope(span);
+    SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
       delegate.send(destination, message, deliveryMode, priority, timeToLive);
@@ -208,7 +208,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     } finally {
       if (error != null) span.error(error);
       span.finish();
-      scope.close();
+      ws.close();
     }
   }
 
@@ -216,17 +216,17 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
   public void send(Message message, CompletionListener completionListener) throws JMSException {
     Destination destination = destination(message);
     Span span = createAndStartProducerSpan(message, destination);
-    SpanInScope scope = tracer.withSpanInScope(span);
+    SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
-      delegate.send(message, TracingCompletionListener.create(completionListener, span, current));
+      delegate.send(message, TracingCompletionListener.create(completionListener, destination, span, current));
     } catch (Throwable t) {
       propagateIfFatal(t);
       error = t;
       throw t;
     } finally {
       if (error != null) span.error(error).finish();
-      scope.close();
+      ws.close();
     }
   }
 
@@ -234,8 +234,8 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     CompletionListener completionListener) throws JMSException {
     Destination destination = destination(message);
     Span span = createAndStartProducerSpan(message, destination);
-    completionListener = TracingCompletionListener.create(completionListener, span, current);
-    SpanInScope scope = tracer.withSpanInScope(span);
+    completionListener = TracingCompletionListener.create(completionListener, destination, span, current);
+    SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
       delegate.send(message, deliveryMode, priority, timeToLive, completionListener);
@@ -245,15 +245,15 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
       throw t;
     } finally {
       if (error != null) span.error(error).finish();
-      scope.close();
+      ws.close();
     }
   }
 
   @Override public void send(Destination destination, Message message,
     CompletionListener completionListener) throws JMSException {
     Span span = createAndStartProducerSpan(message, destination);
-    completionListener = TracingCompletionListener.create(completionListener, span, current);
-    SpanInScope scope = tracer.withSpanInScope(span);
+    completionListener = TracingCompletionListener.create(completionListener, destination, span, current);
+    SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
       delegate.send(destination, message, completionListener);
@@ -263,15 +263,15 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
       throw t;
     } finally {
       if (error != null) span.error(error).finish();
-      scope.close();
+      ws.close();
     }
   }
 
   @Override public void send(Destination destination, Message message, int deliveryMode, int priority,
     long timeToLive, CompletionListener completionListener) throws JMSException {
     Span span = createAndStartProducerSpan(message, destination);
-    completionListener = TracingCompletionListener.create(completionListener, span, current);
-    SpanInScope scope = tracer.withSpanInScope(span);
+    completionListener = TracingCompletionListener.create(completionListener, destination, span, current);
+    SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
       delegate.send(destination, message, deliveryMode, priority, timeToLive, completionListener);
@@ -281,7 +281,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
       throw t;
     } finally {
       if (error != null) span.error(error).finish();
-      scope.close();
+      ws.close();
     }
   }
 
@@ -303,7 +303,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     checkQueueSender();
     QueueSender qs = (QueueSender) delegate;
     Span span = createAndStartProducerSpan(message, destination(message));
-    SpanInScope scope = tracer.withSpanInScope(span);
+    SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
       qs.send(queue, message, deliveryMode, priority, timeToLive);
@@ -314,7 +314,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     } finally {
       if (error != null) span.error(error);
       span.finish();
-      scope.close();
+      ws.close();
     }
   }
 
@@ -336,7 +336,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     TopicPublisher tp = (TopicPublisher) delegate;
 
     Span span = createAndStartProducerSpan(message, destination(message));
-    SpanInScope scope = tracer.withSpanInScope(span);
+    SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
       tp.publish(message);
@@ -347,7 +347,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     } finally {
       if (error != null) span.error(error);
       span.finish();
-      scope.close();
+      ws.close();
     }
   }
 
@@ -357,7 +357,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     TopicPublisher tp = (TopicPublisher) delegate;
 
     Span span = createAndStartProducerSpan(message, destination(message));
-    SpanInScope scope = tracer.withSpanInScope(span);
+    SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
       tp.publish(message, deliveryMode, priority, timeToLive);
@@ -368,7 +368,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     } finally {
       if (error != null) span.error(error);
       span.finish();
-      scope.close();
+      ws.close();
     }
   }
 
@@ -384,7 +384,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     TopicPublisher tp = (TopicPublisher) delegate;
 
     Span span = createAndStartProducerSpan(message, destination(message));
-    SpanInScope scope = tracer.withSpanInScope(span);
+    SpanInScope ws = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
       tp.publish(topic, message, deliveryMode, priority, timeToLive);
@@ -395,7 +395,7 @@ final class TracingMessageProducer extends TracingProducer<MessageProducerReques
     } finally {
       if (error != null) span.error(error);
       span.finish();
-      scope.close();
+      ws.close();
     }
   }
 

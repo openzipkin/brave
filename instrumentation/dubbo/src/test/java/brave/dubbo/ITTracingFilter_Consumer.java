@@ -25,8 +25,10 @@ import brave.rpc.RpcTracing;
 import brave.test.util.AssertableCallback;
 import java.util.Map;
 import org.apache.dubbo.common.beanutil.JavaBeanDescriptor;
+import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.config.bootstrap.DubboBootstrap;
+import org.apache.dubbo.rpc.Filter;
 import org.apache.dubbo.rpc.Result;
 import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.RpcException;
@@ -235,6 +237,24 @@ class ITTracingFilter_Consumer extends ITTracingFilter {
 
     assertThat(span.tags())
         .containsEntry("rpc.error_code", "NETWORK_EXCEPTION");
+  }
+
+  /** Shows if you aren't using RpcTracing, the old "dubbo.error_code" works */
+  @Test void setError_onUnimplemented_legacy() {
+    ((TracingFilter) ExtensionLoader.getExtensionLoader(Filter.class)
+        .getExtension("tracing")).isInit = false;
+
+    ((TracingFilter) ExtensionLoader.getExtensionLoader(Filter.class)
+        .getExtension("tracing"))
+        .setTracing(tracing);
+
+    assertThatThrownBy(() -> wrongClient.get().sayHello("jorge"))
+        .isInstanceOf(RpcException.class);
+
+    MutableSpan span =
+        testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Fail to decode request.*");
+    assertThat(span.tags())
+        .containsEntry("dubbo.error_code", "1");
   }
 
   /* RpcTracing-specific feature tests */
