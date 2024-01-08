@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"brave.jakarta.jms","l":"JmsTracing.Builder"},{"p":"brave.jakarta.jms","l":"JmsTracing"}]

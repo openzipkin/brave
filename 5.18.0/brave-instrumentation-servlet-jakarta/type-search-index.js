@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"brave.jakarta.servlet","l":"HttpServletRequestWrapper"},{"p":"brave.jakarta.servlet","l":"HttpServletResponseWrapper"},{"p":"brave.jakarta.servlet","l":"TracingFilter"}]
