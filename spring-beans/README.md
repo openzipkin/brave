@@ -1,10 +1,12 @@
 # brave-spring-beans
 This module contains Spring Factory Beans that allow you to configure
-tracing with only XML
+tracing with only XML.
+
+*Note*: zipkin2.reporter beans require a dependency on
+[io.zipkin.reporter2:zipkin-reporter-spring-beans](https://github.com/openzipkin/zipkin-reporter-java/tree/master/spring-beans)
 
 ## Configuration
 Bean Factories exist for the following types:
-* EndpointFactoryBean - for configuring the service name, IP etc representing this host
 * TracingFactoryBean - wires most together, like reporter and log integration
 * RpcTracingFactoryBean - for RPC tagging and sampling policy
 * HttpTracingFactoryBean - for HTTP tagging and sampling policy
