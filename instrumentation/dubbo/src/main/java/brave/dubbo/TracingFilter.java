@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -15,18 +15,14 @@ package brave.dubbo;
 
 import brave.Span;
 import brave.Span.Kind;
-import brave.SpanCustomizer;
-import brave.Tag;
-import brave.Tracing;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.TraceContext;
 import brave.rpc.RpcClientHandler;
-import brave.rpc.RpcResponse;
-import brave.rpc.RpcResponseParser;
 import brave.rpc.RpcServerHandler;
 import brave.rpc.RpcTracing;
-import org.apache.dubbo.common.Version;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.common.extension.ExtensionLoader;
@@ -37,46 +33,17 @@ import org.apache.dubbo.rpc.Result;
 import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.RpcException;
 
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-
 import static brave.internal.Throwables.propagateIfFatal;
 
 @Activate(group = {CommonConstants.PROVIDER, CommonConstants.CONSUMER}, value = "tracing")
 // http://dubbo.apache.org/en-us/docs/dev/impls/filter.html
 // public constructor permitted to allow dubbo to instantiate this
 public final class TracingFilter implements Filter {
-  static final Tag<Throwable> DUBBO_ERROR_CODE = new Tag<Throwable>("dubbo.error_code") {
-    @Override protected String parseValue(Throwable input, TraceContext context) {
-      if (!(input instanceof RpcException)) return null;
-      return String.valueOf(((RpcException) input).getCode());
-    }
-  };
-  static final RpcResponseParser LEGACY_RESPONSE_PARSER = new RpcResponseParser() {
-    @Override public void parse(RpcResponse response, TraceContext context, SpanCustomizer span) {
-      DUBBO_ERROR_CODE.tag(response.error(), span);
-    }
-  };
 
   CurrentTraceContext currentTraceContext;
   RpcClientHandler clientHandler;
   RpcServerHandler serverHandler;
   volatile boolean isInit = false;
-
-  /**
-   * {@link ExtensionLoader} supplies the tracing implementation which must be named "tracing". For
-   * example, if using the {@link org.apache.dubbo.config.spring.extension.SpringExtensionInjector}, only a bean named "tracing" will be
-   * injected.
-   *
-   * @deprecated Since 5.12 only use {@link #setRpcTracing(RpcTracing)}
-   */
-  @Deprecated public void setTracing(Tracing tracing) {
-    if (tracing == null) throw new NullPointerException("rpcTracing == null");
-    setRpcTracing(RpcTracing.newBuilder(tracing)
-        .clientResponseParser(LEGACY_RESPONSE_PARSER)
-        .serverResponseParser(LEGACY_RESPONSE_PARSER)
-        .build());
-  }
 
   /**
    * {@link ExtensionLoader} supplies the tracing implementation which must be named "rpcTracing".

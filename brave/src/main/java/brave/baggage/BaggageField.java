@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,7 +20,6 @@ import brave.internal.baggage.ExtraBaggageContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Collections;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -142,23 +141,6 @@ public final class BaggageField {
     return new BaggageField(name, ExtraBaggageContext.get());
   }
 
-  /** @deprecated Since 5.12 use {@link #getAllValues(TraceContext)} */
-  @Deprecated public static List<BaggageField> getAll(@Nullable TraceContext context) {
-    if (context == null) return Collections.emptyList();
-    return ExtraBaggageContext.getAllFields(context);
-  }
-
-  /** @deprecated Since 5.12 use {@link #getAllValues(TraceContext)} */
-  @Deprecated public static List<BaggageField> getAll(TraceContextOrSamplingFlags extracted) {
-    if (extracted == null) throw new NullPointerException("extracted == null");
-    return ExtraBaggageContext.getAllFields(extracted);
-  }
-
-  /** @deprecated Since 5.12 use {@link #getAllValues(TraceContext)} */
-  @Deprecated @Nullable public static List<BaggageField> getAll() {
-    return getAll(currentTraceContext());
-  }
-
   /**
    * Returns a map of all {@linkplain BaggageField#name() name} to {@linkplain
    * BaggageField#getValue(TraceContext) non-{@code null} value} pairs in the {@linkplain
@@ -251,7 +233,7 @@ public final class BaggageField {
    * @see CorrelationScopeConfig.SingleCorrelationField#name()
    * @since 5.11
    */
-  public final String name() {
+  public String name() {
     return name;
   }
 

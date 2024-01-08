@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -41,7 +41,6 @@ import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
-import zipkin2.reporter.Reporter;
 
 import static brave.EndToEndBenchmarks.COUNTRY_CODE;
 import static brave.EndToEndBenchmarks.REQUEST_ID;
@@ -60,7 +59,7 @@ public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
     static final AttributeKey<String> URI_ATTRIBUTE = AttributeKey.valueOf("uri");
 
     final ChannelDuplexHandler unsampled = NettyHttpTracing.create(
-      Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).spanReporter(Reporter.NOOP).build()
+      Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).build()
     ).serverHandler();
     final ChannelDuplexHandler traced = NettyHttpTracing.create(
       Tracing.newBuilder()
@@ -70,14 +69,13 @@ public class NettyHttpServerBenchmarks extends HttpServerBenchmarks {
             SingleBaggageField.newBuilder(COUNTRY_CODE).addKeyName("baggage-country-code").build())
           .add(SingleBaggageField.newBuilder(USER_ID).addKeyName("baggage-user-id").build())
           .build())
-        .spanReporter(Reporter.NOOP)
         .build()
     ).serverHandler();
     final ChannelDuplexHandler tracedBaggage = NettyHttpTracing.create(
-      Tracing.newBuilder().spanReporter(Reporter.NOOP).build()
+      Tracing.newBuilder().build()
     ).serverHandler();
     final ChannelDuplexHandler traced128 = NettyHttpTracing.create(
-      Tracing.newBuilder().traceId128Bit(true).spanReporter(Reporter.NOOP).build()
+      Tracing.newBuilder().traceId128Bit(true).build()
     ).serverHandler();
 
     @Override public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {

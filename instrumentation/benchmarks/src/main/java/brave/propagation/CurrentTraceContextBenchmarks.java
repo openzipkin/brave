@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -86,77 +86,77 @@ public class CurrentTraceContextBenchmarks {
   }
 
   @Benchmark public void newScope_default() {
-    try (Scope ws = base.newScope(context)) {
+    try (Scope scope = base.newScope(context)) {
     }
   }
 
   @Benchmark public void newScope_log4j2() {
-    try (Scope ws = log4j2.newScope(context)) {
+    try (Scope scope = log4j2.newScope(context)) {
     }
   }
 
   @Benchmark public void newScope_log4j2_onlyTraceId() {
-    try (Scope ws = log4j2OnlyTraceId.newScope(context)) {
+    try (Scope scope = log4j2OnlyTraceId.newScope(context)) {
     }
   }
 
   @Benchmark public void newScope_log4j2_onlyBaggage() {
-    try (Scope ws = log4j2OnlyBaggage.newScope(context)) {
+    try (Scope scope = log4j2OnlyBaggage.newScope(context)) {
     }
   }
 
   @Benchmark public void newScope_log4j2_baggage() {
-    try (Scope ws = log4j2Baggage.newScope(context)) {
+    try (Scope scope = log4j2Baggage.newScope(context)) {
     }
   }
 
   @Benchmark public void newScope_redundant_default() {
-    try (Scope ws = base.newScope(context)) {
+    try (Scope scope = base.newScope(context)) {
     }
   }
 
   @Benchmark public void newScope_redundant_log4j2() {
-    try (Scope ws = log4j2.newScope(context)) {
+    try (Scope scope = log4j2.newScope(context)) {
     }
   }
 
   @Benchmark public void newScope_clear_default() {
-    try (Scope ws = base.newScope(null)) {
+    try (Scope scope = base.newScope(null)) {
     }
   }
 
   @Benchmark public void newScope_clear_log4j2() {
-    try (Scope ws = log4j2.newScope(null)) {
+    try (Scope scope = log4j2.newScope(null)) {
     }
   }
 
   @Benchmark public void maybeScope_default() {
-    try (Scope ws = base.maybeScope(context)) {
+    try (Scope scope = base.maybeScope(context)) {
     }
   }
 
   @Benchmark public void maybeScope_log4j2() {
-    try (Scope ws = log4j2.maybeScope(context)) {
+    try (Scope scope = log4j2.maybeScope(context)) {
     }
   }
 
   @Benchmark public void maybeScope_redundant_default() {
-    try (Scope ws = base.maybeScope(context)) {
+    try (Scope scope = base.maybeScope(context)) {
     }
   }
 
   @Benchmark public void maybeScope_redundant_log4j2() {
-    try (Scope ws = log4j2.maybeScope(context)) {
+    try (Scope scope = log4j2.maybeScope(context)) {
     }
   }
 
   @Benchmark public void maybeScope_clear_default() {
-    try (Scope ws = base.maybeScope(null)) {
+    try (Scope scope = base.maybeScope(null)) {
     }
   }
 
   @Benchmark public void maybeScope_clear_log4j2() {
-    try (Scope ws = log4j2.maybeScope(null)) {
+    try (Scope scope = log4j2.maybeScope(null)) {
     }
   }
 

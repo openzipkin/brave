@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -11,7 +11,6 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package brave.httpclient5;
 
 import brave.Span;
@@ -30,6 +29,7 @@ import org.apache.hc.core5.http.HttpRequest;
 import org.apache.hc.core5.http.nio.AsyncEntityProducer;
 
 import static brave.httpclient5.HttpClientUtils.parseTargetAddress;
+import static brave.internal.Throwables.propagateIfFatal;
 
 class AsyncHandleSendHandler implements AsyncExecChainHandler {
   final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
@@ -57,6 +57,7 @@ class AsyncHandleSendHandler implements AsyncExecChainHandler {
     try {
       chain.proceed(request, entityProducer, scope, callbackWrapper);
     } catch (Throwable e) {
+      propagateIfFatal(e);
       // Handle if exception is raised before sending.
       context.removeAttribute(Span.class.getName());
       HttpClientUtils.closeScope(context);

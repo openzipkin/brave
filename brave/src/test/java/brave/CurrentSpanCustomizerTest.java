@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -35,7 +35,7 @@ class CurrentSpanCustomizerTest {
 
   @Test void name() {
     span.start();
-    try (SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
+    try (SpanInScope scope = tracing.tracer().withSpanInScope(span)) {
       spanCustomizer.name("newname");
     }
     span.flush();
@@ -50,7 +50,7 @@ class CurrentSpanCustomizerTest {
 
   @Test void tag() {
     span.start();
-    try (SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
+    try (SpanInScope scope = tracing.tracer().withSpanInScope(span)) {
       spanCustomizer.tag("foo", "bar");
     }
     span.flush();
@@ -65,7 +65,7 @@ class CurrentSpanCustomizerTest {
 
   @Test void annotate() {
     span.start();
-    try (SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
+    try (SpanInScope scope = tracing.tracer().withSpanInScope(span)) {
       spanCustomizer.annotate("foo");
     }
     span.flush();

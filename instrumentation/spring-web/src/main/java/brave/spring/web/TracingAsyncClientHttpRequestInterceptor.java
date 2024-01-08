@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -64,7 +64,7 @@ public final class TracingAsyncClientHttpRequestInterceptor
       ? currentTraceContext.get()
       : null;
 
-    Scope ws = currentTraceContext.maybeScope(span.context());
+    Scope scope = currentTraceContext.maybeScope(span.context());
     Throwable error = null;
     try {
       ListenableFuture<ClientHttpResponse> result = execution.executeAsync(req, body);
@@ -86,7 +86,7 @@ public final class TracingAsyncClientHttpRequestInterceptor
       if (error != null) {
         handler.handleReceive(new ClientHttpResponseWrapper(request, null, error), span);
       }
-      ws.close();
+      scope.close();
     }
   }
 

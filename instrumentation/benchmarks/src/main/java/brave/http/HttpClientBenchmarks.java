@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -32,7 +32,6 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
-import zipkin2.reporter.Reporter;
 
 import static io.undertow.util.Headers.CONTENT_TYPE;
 
@@ -77,10 +76,10 @@ public abstract class HttpClientBenchmarks<C> {
 
     client = newClient();
     tracedClient = newClient(HttpTracing.create(
-      Tracing.newBuilder().spanReporter(Reporter.NOOP).build()
+      Tracing.newBuilder().build()
     ));
     unsampledClient = newClient(HttpTracing.create(
-      Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).spanReporter(Reporter.NOOP).build()
+      Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).build()
     ));
   }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,8 +14,6 @@
 package brave.jms;
 
 import brave.Span;
-import brave.Tracer.SpanInScope;
-import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import java.io.Serializable;
 import java.util.Map;
@@ -99,10 +97,10 @@ import static brave.internal.Throwables.propagateIfFatal;
 
   void send(Send send, Destination destination, Object message) {
     Span span = createAndStartProducerSpan(new JMSProducerRequest(delegate, destination));
-    Scope ws = current.newScope(span.context());
+    Scope scope = current.newScope(span.context());
     final CompletionListener async = getAsync();
     if (async != null) {
-      delegate.setAsync(TracingCompletionListener.create(async, destination, span, current));
+      delegate.setAsync(TracingCompletionListener.create(async, span, current));
     }
     Throwable error = null;
     try {
@@ -122,7 +120,7 @@ import static brave.internal.Throwables.propagateIfFatal;
       } else {
         span.finish(); // handle success synchronous send
       }
-      ws.close();
+      scope.close();
     }
   }
 

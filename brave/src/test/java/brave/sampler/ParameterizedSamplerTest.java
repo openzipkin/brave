@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,7 +13,6 @@
  */
 package brave.sampler;
 
-import brave.propagation.SamplingFlags;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,8 +24,8 @@ class ParameterizedSamplerTest {
       .putRule(Boolean::booleanValue, Sampler.ALWAYS_SAMPLE)
       .build();
 
-    assertThat(sampler.sample(true))
-      .isEqualTo(SamplingFlags.SAMPLED);
+    assertThat(sampler.trySample(true))
+      .isTrue();
   }
 
   @Test void emptyOnNoMatch() {
@@ -34,8 +33,8 @@ class ParameterizedSamplerTest {
       .putRule(Boolean::booleanValue, Sampler.ALWAYS_SAMPLE)
       .build();
 
-    assertThat(sampler.sample(false))
-      .isEqualTo(SamplingFlags.EMPTY);
+    assertThat(sampler.trySample(false))
+      .isNull();
   }
 
   @Test void emptyOnNull() {
@@ -43,8 +42,8 @@ class ParameterizedSamplerTest {
       .putRule(v -> true, Sampler.ALWAYS_SAMPLE)
       .build();
 
-    assertThat(sampler.sample(null))
-      .isEqualTo(SamplingFlags.EMPTY);
+    assertThat(sampler.trySample(null))
+      .isNull();
   }
 
   @Test void nullOnNull() {
@@ -62,8 +61,8 @@ class ParameterizedSamplerTest {
       .putRule(v -> true, Sampler.NEVER_SAMPLE) // match
       .build();
 
-    assertThat(sampler.sample(true))
-      .isEqualTo(SamplingFlags.NOT_SAMPLED);
+    assertThat(sampler.trySample(true))
+      .isFalse();
   }
 
   @Test void putAllRules() {

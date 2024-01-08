@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -25,8 +25,7 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import zipkin2.codec.SpanBytesDecoder;
-
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -70,15 +69,15 @@ class MutableSpanAsyncReporterTest {
       .finish(3L);
 
     assertThat(messages).hasSize(1).first()
-      .extracting(SpanBytesDecoder.JSON_V2::decodeOne)
-      .hasToString(
+      .extracting(b -> new String(b, UTF_8))
+      .isEqualTo(
         "{\"traceId\":\"50d980fffa300f29\","
           + "\"id\":\"86154a4ba6e91385\","
           + "\"name\":\"test\","
           + "\"timestamp\":1,"
           + "\"duration\":2,"
           + "\"localEndpoint\":{"
-          + "\"serviceName\":\"aa\","
+          + "\"serviceName\":\"Aa\","
           + "\"ipv4\":\"1.2.3.4\","
           + "\"port\":80},"
           + "\"tags\":{\"error\":\"this cake is a lie\"}}"

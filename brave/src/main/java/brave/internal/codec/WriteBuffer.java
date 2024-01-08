@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -47,11 +47,6 @@ public final class WriteBuffer {
 
   public void writeByte(int v) {
     buf[pos++] = (byte) (v & 0xff);
-  }
-
-  public void write(byte[] v) {
-    System.arraycopy(v, 0, buf, pos, v.length);
-    pos += v.length;
   }
 
   void writeBackwards(long v) {

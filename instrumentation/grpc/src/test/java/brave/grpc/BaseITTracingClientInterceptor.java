@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -43,7 +43,6 @@ import io.grpc.StatusRuntimeException;
 import io.grpc.examples.helloworld.GraterGrpc;
 import io.grpc.examples.helloworld.GreeterGrpc;
 import io.grpc.examples.helloworld.HelloReply;
-import io.grpc.examples.helloworld.HelloRequest;
 import io.grpc.internal.GrpcUtil;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
@@ -58,7 +57,6 @@ import org.junit.jupiter.api.Test;
 
 import static brave.Span.Kind.CLIENT;
 import static brave.grpc.GreeterImpl.HELLO_REQUEST;
-import static brave.grpc.GrpcPropagation.GRPC_TRACE_BIN;
 import static brave.rpc.RpcRequestMatchers.methodEquals;
 import static brave.rpc.RpcRequestMatchers.serviceEquals;
 import static brave.sampler.Sampler.ALWAYS_SAMPLE;
@@ -215,7 +213,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote { // publi
 
     // The error format of the exception message can differ from the span's "error" tag in CI
     MutableSpan span = testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*Connection refused.*");
-    assertThat(span.tags()).containsEntry("grpc.status_code", "UNAVAILABLE");
+    assertThat(span.tags()).containsEntry("rpc.error_code", "UNAVAILABLE");
   }
 
   @Test void setsErrorTag_onUnimplemented() {
@@ -223,7 +221,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote { // publi
         .isInstanceOf(StatusRuntimeException.class);
 
     MutableSpan span = testSpanHandler.takeRemoteSpanWithErrorTag(CLIENT, "UNIMPLEMENTED");
-    assertThat(span.tags().get("grpc.status_code")).isEqualTo("UNIMPLEMENTED");
+    assertThat(span.tags().get("rpc.error_code")).isEqualTo("UNIMPLEMENTED");
   }
 
   @Test void setsErrorTag_onCanceledFuture() {
@@ -233,7 +231,7 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote { // publi
     assumeTrue(resp.cancel(true), "lost race on cancel");
 
     MutableSpan span = testSpanHandler.takeRemoteSpanWithErrorTag(CLIENT, "CANCELLED");
-    assertThat(span.tags().get("grpc.status_code")).isEqualTo("CANCELLED");
+    assertThat(span.tags().get("rpc.error_code")).isEqualTo("CANCELLED");
   }
 
   /**
@@ -270,103 +268,6 @@ public abstract class BaseITTracingClientInterceptor extends ITRemote { // publi
     assertThat(testSpanHandler.takeRemoteSpan(CLIENT).annotations())
         .extracting(Entry::getValue)
         .containsOnly("start", "sendMessage");
-  }
-
-  @Test void clientParserTest() {
-    closeClient(client);
-    grpcTracing = grpcTracing.toBuilder().clientParser(new GrpcClientParser() {
-      @Override protected <M> void onMessageSent(M message, SpanCustomizer span) {
-        span.tag("grpc.message_sent", message.toString());
-        if (tracing.currentTraceContext().get() != null) {
-          span.tag("grpc.message_sent.visible", "true");
-        }
-      }
-
-      @Override protected <M> void onMessageReceived(M message, SpanCustomizer span) {
-        span.tag("grpc.message_received", message.toString());
-        if (tracing.currentTraceContext().get() != null) {
-          span.tag("grpc.message_received.visible", "true");
-        }
-      }
-
-      @Override
-      protected <ReqT, RespT> String spanName(MethodDescriptor<ReqT, RespT> methodDescriptor) {
-        return methodDescriptor.getType().name();
-      }
-    }).build();
-    client = newClient();
-
-    ScopedSpan parent = tracing.tracer().startScopedSpan("parent");
-    try {
-      GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
-    } finally {
-      parent.finish();
-    }
-
-    MutableSpan span = testSpanHandler.takeRemoteSpan(CLIENT);
-    assertThat(span.name()).isEqualTo("UNARY");
-    assertThat(span.tags()).containsKeys(
-        "grpc.message_received", "grpc.message_sent",
-        "grpc.message_received.visible", "grpc.message_sent.visible"
-    );
-    testSpanHandler.takeLocalSpan();
-  }
-
-  @Test void deprecated_grpcPropagationFormatEnabled() {
-    closeClient(client);
-    grpcTracing = grpcTracing.toBuilder().grpcPropagationFormatEnabled(true).build();
-    client = newClient();
-
-    GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST);
-
-    // Check the grpc-trace-bin header was sent and equal to the one encoded with B3
-    Metadata headers = server.headers.poll();
-    byte[] traceBin = headers.get(GRPC_TRACE_BIN);
-    assertThat(TraceContextBinaryFormat.parseBytes(traceBin, null))
-      .isEqualTo(server.requests.poll().context());
-
-    testSpanHandler.takeRemoteSpan(CLIENT);
-  }
-
-  @Test void deprecated_clientParserTestStreamingResponse() {
-    closeClient(client);
-    grpcTracing = grpcTracing.toBuilder().clientParser(new GrpcClientParser() {
-      int receiveCount = 0;
-
-      @Override protected <M> void onMessageReceived(M message, SpanCustomizer span) {
-        span.tag("grpc.message_received." + receiveCount++, message.toString());
-      }
-    }).build();
-    client = newClient();
-
-    Iterator<HelloReply> replies = GreeterGrpc.newBlockingStub(client)
-        .sayHelloWithManyReplies(HelloRequest.newBuilder().setName("this is dog").build());
-    assertThat(replies).toIterable().hasSize(10);
-
-    // all response messages are tagged to the same span
-    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).tags()).hasSize(10);
-  }
-
-  // Make sure we work well with bad user interceptors.
-
-  @Test void userInterceptor_throwsOnStart() {
-    closeClient(client);
-    client = newClient(new ClientInterceptor() {
-      @Override public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
-          MethodDescriptor<ReqT, RespT> methodDescriptor, CallOptions callOptions,
-          Channel channel) {
-        ClientCall<ReqT, RespT> call = channel.newCall(methodDescriptor, callOptions);
-        return new SimpleForwardingClientCall<ReqT, RespT>(call) {
-          @Override public void start(Listener<RespT> responseListener, Metadata headers) {
-            throw new IllegalStateException("I'm a bad interceptor.");
-          }
-        };
-      }
-    }, grpcTracing.newClientInterceptor());
-
-    assertThatThrownBy(() -> GreeterGrpc.newBlockingStub(client).sayHello(HELLO_REQUEST))
-        .isInstanceOf(IllegalStateException.class);
-    testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, "I'm a bad interceptor.");
   }
 
   @Test void userInterceptor_throwsOnHalfClose() {

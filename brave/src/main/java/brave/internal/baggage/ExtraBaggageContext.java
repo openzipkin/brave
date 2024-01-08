@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -31,15 +31,6 @@ public final class ExtraBaggageContext extends BaggageContext {
 
   public static BaggageContext get() {
     return INSTANCE;
-  }
-
-  public static List<BaggageField> getAllFields(TraceContextOrSamplingFlags extracted) {
-    if (extracted.context() != null) return getAllFields(extracted.context());
-    return getAllFields(extracted.extra());
-  }
-
-  public static List<BaggageField> getAllFields(TraceContext context) {
-    return getAllFields(context.extra());
   }
 
   public static Map<String, String> getAllValues(TraceContextOrSamplingFlags extracted) {

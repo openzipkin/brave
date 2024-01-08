@@ -132,17 +132,6 @@
 
     <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>brave-instrumentation-sparkjava</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.sparkjava</groupId>
-      <artifactId>spark-core</artifactId>
-      <version>${sparkjava.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>${project.groupId}</groupId>
       <artifactId>brave-instrumentation-jersey-server</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -232,23 +221,6 @@
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-context-log4j2</artifactId>
       <version>${project.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>brave-instrumentation-grpc</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.grpc</groupId>
-      <artifactId>grpc-testing</artifactId>
-      <version>${grpc.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>junit</groupId>
-          <artifactId>junit</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
   </dependencies>
 
