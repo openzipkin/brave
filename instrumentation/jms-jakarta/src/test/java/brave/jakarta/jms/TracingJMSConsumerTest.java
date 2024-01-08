@@ -19,7 +19,6 @@ import brave.propagation.B3SingleFormat;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import jakarta.jms.JMSConsumer;
-import jakarta.jms.JMSException;
 import jakarta.jms.Message;
 import java.util.Collections;
 import org.apache.activemq.artemis.api.core.client.ClientSession;
@@ -91,16 +90,8 @@ public class TracingJMSConsumerTest extends ITJms {
     testSpanHandler.takeRemoteSpan(CONSUMER);
   }
 
-  void receive(Message message) throws Exception {
+  void receive(Message message) {
     when(delegate.receive()).thenReturn(message);
     tracingJMSConsumer.receive();
-  }
-
-  void assertNoProperties(ActiveMQTextMessage message) {
-    try {
-      assertThat(Collections.list(message.getPropertyNames())).isEmpty();
-    } catch (JMSException e) {
-      throw new AssertionError(e);
-    }
   }
 }

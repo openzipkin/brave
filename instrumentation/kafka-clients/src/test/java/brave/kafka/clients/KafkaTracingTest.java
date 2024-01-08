@@ -29,7 +29,7 @@ public class KafkaTracingTest extends KafkaTest {
     consumerRecord.headers().add("b3", B3SingleFormat.writeB3SingleFormatAsBytes(incoming));
 
     Span child;
-    try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
+    try (Scope scope = tracing.currentTraceContext().newScope(parent)) {
       child = kafkaTracing.nextSpan(consumerRecord);
     }
     child.finish();
@@ -40,7 +40,7 @@ public class KafkaTracingTest extends KafkaTest {
 
   @Test void nextSpan_uses_current_context() {
     Span child;
-    try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
+    try (Scope scope = tracing.currentTraceContext().newScope(parent)) {
       child = kafkaTracing.nextSpan(consumerRecord);
     }
     child.finish();

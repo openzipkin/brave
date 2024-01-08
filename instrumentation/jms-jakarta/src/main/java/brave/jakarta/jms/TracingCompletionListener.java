@@ -14,11 +14,9 @@
 package brave.jakarta.jms;
 
 import brave.Span;
-import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
 import jakarta.jms.CompletionListener;
-import jakarta.jms.Destination;
 import jakarta.jms.Message;
 
 /**
@@ -26,26 +24,23 @@ import jakarta.jms.Message;
  * for send and actual send.
  */
 final class TracingCompletionListener implements CompletionListener {
-  static CompletionListener create(CompletionListener delegate,
-    @Nullable Destination destination, Span span, CurrentTraceContext current) {
-    return new TracingCompletionListener(delegate, destination, span, current);
+  static CompletionListener create(CompletionListener delegate, Span span,
+    CurrentTraceContext current) {
+    return new TracingCompletionListener(delegate, span, current);
   }
 
   final CompletionListener delegate;
   final CurrentTraceContext current;
-  @Nullable final Destination destination;
   final Span span;
 
-  TracingCompletionListener(CompletionListener delegate, Destination destination, Span span,
-    CurrentTraceContext current) {
+  TracingCompletionListener(CompletionListener delegate, Span span, CurrentTraceContext current) {
     this.delegate = delegate;
-    this.destination = destination;
     this.span = span;
     this.current = current;
   }
 
   @Override public void onCompletion(Message message) {
-    try (Scope ws = current.maybeScope(span.context())) {
+    try (Scope scope = current.maybeScope(span.context())) {
       delegate.onCompletion(message);
     } finally {
       // TODO: in order to tag messageId
@@ -55,7 +50,7 @@ final class TracingCompletionListener implements CompletionListener {
   }
 
   @Override public void onException(Message message, Exception exception) {
-    try (Scope ws = current.maybeScope(span.context())) {
+    try (Scope scope = current.maybeScope(span.context())) {
       // TODO: in order to tag messageId
       // parse(new MessageConsumerRequest(message, destination))
       delegate.onException(message, exception);

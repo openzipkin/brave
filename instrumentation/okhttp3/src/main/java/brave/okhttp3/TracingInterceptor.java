@@ -70,7 +70,7 @@ public final class TracingInterceptor implements Interceptor {
 
     Response response = null;
     Throwable error = null;
-    try (Scope ws = currentTraceContext.newScope(span.context())) {
+    try (Scope scope = currentTraceContext.newScope(span.context())) {
       return response = chain.proceed(request.build());
     } catch (Throwable t) {
       error = t;

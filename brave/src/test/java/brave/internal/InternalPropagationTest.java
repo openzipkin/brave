@@ -15,7 +15,6 @@ package brave.internal;
 
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
-import java.util.Collections;
 import org.junit.jupiter.api.Test;
 
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
@@ -40,7 +39,7 @@ class InternalPropagationTest {
 
   @Test void shallowCopy() {
     TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).debug(true)
-      .extra(Collections.singletonList(1L)).build();
+      .addExtra(1L).build();
 
     assertThat(InternalPropagation.instance.shallowCopy(context))
       .isNotSameAs(context)

@@ -19,12 +19,6 @@ import brave.internal.Platform;
 import static brave.internal.Throwables.propagateIfFatal;
 
 abstract class HttpHandler {
-  /**
-   * To avoid passing null to signatures that use HttpAdapter, we use a dummy value when {@link
-   * HttpRequest#unwrap()} or {@link HttpResponse#unwrap()} return null.
-   */
-  static final Object NULL_SENTINEL = new Object();
-
   final HttpRequestParser requestParser;
   final HttpResponseParser responseParser;
 

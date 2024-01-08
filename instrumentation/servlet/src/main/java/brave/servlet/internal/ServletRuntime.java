@@ -17,7 +17,6 @@ import brave.Span;
 import brave.http.HttpServerHandler;
 import brave.http.HttpServerRequest;
 import brave.http.HttpServerResponse;
-import brave.servlet.TracingFilter;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.LinkedHashMap;

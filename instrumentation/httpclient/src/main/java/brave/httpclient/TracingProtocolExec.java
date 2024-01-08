@@ -64,7 +64,7 @@ final class TracingProtocolExec implements ClientExecChain {
 
     CloseableHttpResponse response = null;
     Throwable error = null;
-    SpanInScope ws = tracer.withSpanInScope(span);
+    SpanInScope scope = tracer.withSpanInScope(span);
     try {
       return response = protocolExec.execute(route, req, context, execAware);
     } catch (RuntimeException e) {
@@ -82,7 +82,7 @@ final class TracingProtocolExec implements ClientExecChain {
       throw e;
     } finally {
       handler.handleReceive(new HttpResponseWrapper(response, context, error), span);
-      ws.close();
+      scope.close();
     }
   }
 

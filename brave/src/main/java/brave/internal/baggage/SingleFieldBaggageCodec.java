@@ -44,12 +44,11 @@ public final class SingleFieldBaggageCodec implements BaggageCodec {
     return keyNamesList;
   }
 
-  @Override
-  public boolean decode(BaggageField.ValueUpdater valueUpdater, Object request, String value) {
+  @Override public boolean decode(BaggageField.ValueUpdater valueUpdater, String value) {
     return valueUpdater.updateValue(field, value);
   }
 
-  @Override public String encode(Map<String, String> values, TraceContext context, Object request) {
+  @Override public String encode(Map<String, String> values, TraceContext context) {
     return field.getValue(context);
   }
 }

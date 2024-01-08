@@ -14,7 +14,6 @@
 package brave.spring.rabbit;
 
 import brave.Span.Kind;
-import brave.internal.Nullable;
 import brave.messaging.ConsumerRequest;
 import brave.propagation.Propagation.RemoteGetter;
 import brave.propagation.Propagation.RemoteSetter;

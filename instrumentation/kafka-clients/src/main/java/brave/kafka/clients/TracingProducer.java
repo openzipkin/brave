@@ -123,7 +123,7 @@ final class TracingProducer<K, V> implements Producer<K, V> {
 
     injector.inject(span.context(), request);
 
-    Tracer.SpanInScope ws = tracer.withSpanInScope(span);
+    Tracer.SpanInScope scope = tracer.withSpanInScope(span);
     Throwable error = null;
     try {
       return delegate.send(record, TracingCallback.create(callback, span, currentTraceContext));
@@ -133,7 +133,7 @@ final class TracingProducer<K, V> implements Producer<K, V> {
     } finally {
       // finish as an exception means the callback won't finish the span
       if (error != null) span.error(error).finish();
-      ws.close();
+      scope.close();
     }
   }
 

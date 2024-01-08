@@ -41,7 +41,7 @@ final class TracingDispatcher extends Dispatcher {
     Span span = handler.handleReceive(request);
     MockResponse response = null;
     Throwable error = null;
-    try (SpanInScope ws = tracer.withSpanInScope(span)) {
+    try (SpanInScope scope = tracer.withSpanInScope(span)) {
       return response = delegate.dispatch(req);
     } catch (Throwable e) {
       error = e;

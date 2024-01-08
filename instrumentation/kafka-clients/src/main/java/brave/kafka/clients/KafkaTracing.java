@@ -20,7 +20,6 @@ import brave.Tracing;
 import brave.internal.Nullable;
 import brave.messaging.MessagingRequest;
 import brave.messaging.MessagingTracing;
-import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.TraceContext.Extractor;
@@ -33,7 +32,6 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.Producer;
@@ -119,14 +117,6 @@ public final class KafkaTracing {
      */
     public Builder singleRootSpanOnReceiveBatch(boolean singleRootSpanOnReceiveBatch) {
       this.singleRootSpanOnReceiveBatch = singleRootSpanOnReceiveBatch;
-      return this;
-    }
-
-    /**
-     * @deprecated as of v5.9, this is ignored because single format is default for messaging. Use
-     * {@link B3Propagation#newFactoryBuilder()} to change the default.
-     */
-    @Deprecated public Builder writeB3SingleFormat(boolean writeB3SingleFormat) {
       return this;
     }
 
@@ -264,7 +254,7 @@ public final class KafkaTracing {
    * try {
    *    tracePropagationThatMayThrow(record);
    *  } catch (Throwable e) {
-   *    Call.propagateIfFatal(e);
+   *    Throwables.propagateIfFatal(e);
    *    log(e, "error adding propagation information to {0}", record, null);
    *    return null;
    *  }

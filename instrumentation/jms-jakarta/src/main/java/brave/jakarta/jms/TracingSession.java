@@ -13,7 +13,6 @@
  */
 package brave.jakarta.jms;
 
-import java.io.Serializable;
 import jakarta.jms.BytesMessage;
 import jakarta.jms.Destination;
 import jakarta.jms.JMSException;
@@ -40,6 +39,7 @@ import jakarta.jms.TopicSubscriber;
 import jakarta.jms.XAQueueSession;
 import jakarta.jms.XASession;
 import jakarta.jms.XATopicSession;
+import java.io.Serializable;
 
 import static brave.jakarta.jms.TracingConnection.TYPE_QUEUE;
 import static brave.jakarta.jms.TracingConnection.TYPE_TOPIC;

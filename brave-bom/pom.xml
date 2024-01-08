@@ -18,7 +18,7 @@
 
   <groupId>io.zipkin.brave</groupId>
   <artifactId>brave-bom</artifactId>
-  <version>5.18.2-SNAPSHOT</version>
+  <version>6.0.0-SNAPSHOT</version>
   <name>Brave BOM</name>
   <description>Bill Of Materials POM for all Brave artifacts</description>
   <packaging>pom</packaging>
@@ -32,10 +32,6 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
     <main.basedir>${project.basedir}/..</main.basedir>
-
-    <!-- use the same values in ../pom.xml -->
-    <zipkin.version>2.27.0</zipkin.version>
-    <zipkin-reporter.version>2.17.2</zipkin-reporter.version>
   </properties>
 
   <organization>
@@ -86,18 +82,6 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>io.zipkin.reporter2</groupId>
-        <artifactId>zipkin-reporter-bom</artifactId>
-        <version>${zipkin-reporter.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-      <dependency>
-        <groupId>io.zipkin.zipkin2</groupId>
-        <artifactId>zipkin</artifactId>
-        <version>${zipkin.version}</version>
-      </dependency>
-      <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>brave</artifactId>
         <version>${project.version}</version>
@@ -129,22 +113,12 @@
       </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
-        <artifactId>brave-context-rxjava2</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-benchmarks</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-dubbo</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>brave-instrumentation-dubbo-rpc</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -254,11 +228,6 @@
       </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
-        <artifactId>brave-instrumentation-p6spy</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-rpc</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -270,11 +239,6 @@
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-servlet-jakarta</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>brave-instrumentation-sparkjava</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>

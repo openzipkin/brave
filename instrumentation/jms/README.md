@@ -87,7 +87,7 @@ void process(Message message) {
   Span span = jmsTracing.nextSpan(message).name("process").start();
 
   // Below is the same setup as any synchronous tracing
-  try (SpanInScope ws = tracer.withSpanInScope(span)) { // so logging can see trace ID
+  try (SpanInScope scope = tracer.withSpanInScope(span)) { // so logging can see trace ID
     return doProcess(message); // do the actual work
   } catch (RuntimeException | Error e) {
     span.error(e); // make sure any error gets into the span before it is finished

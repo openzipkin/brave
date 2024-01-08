@@ -13,8 +13,8 @@
  */
 package brave;
 
-import brave.handler.SpanHandler;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.internal.Nullable;
 
 /**

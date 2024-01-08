@@ -35,7 +35,7 @@ class CurrentSpanCustomizerTest {
 
   @Test void name() {
     span.start();
-    try (SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
+    try (SpanInScope scope = tracing.tracer().withSpanInScope(span)) {
       spanCustomizer.name("newname");
     }
     span.flush();
@@ -50,7 +50,7 @@ class CurrentSpanCustomizerTest {
 
   @Test void tag() {
     span.start();
-    try (SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
+    try (SpanInScope scope = tracing.tracer().withSpanInScope(span)) {
       spanCustomizer.tag("foo", "bar");
     }
     span.flush();
@@ -65,7 +65,7 @@ class CurrentSpanCustomizerTest {
 
   @Test void annotate() {
     span.start();
-    try (SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
+    try (SpanInScope scope = tracing.tracer().withSpanInScope(span)) {
       spanCustomizer.annotate("foo");
     }
     span.flush();

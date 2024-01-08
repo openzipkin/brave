@@ -13,9 +13,7 @@
  */
 package brave.sampler;
 
-import brave.Tracer;
 import brave.internal.Nullable;
-import brave.propagation.SamplingFlags;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -143,51 +141,4 @@ public abstract class DeclarativeSampler<M> implements SamplerFunction<M> {
   DeclarativeSampler() {
   }
 
-  /**
-   * @since 4.4
-   * @deprecated since 5.8, use {@link #createWithProbability(ProbabilityOfMethod)}
-   */
-  public static <M> DeclarativeSampler<M> create(RateForMethod<M> rateForMethod) {
-    return createWithProbability(rateForMethod);
-  }
-
-  /**
-   * @since 4.4
-   * @deprecated since 5.8, use {@link ProbabilityOfMethod}
-   */
-  public interface RateForMethod<M> extends ProbabilityOfMethod<M> {
-  }
-
-  /**
-   * @since 4.4
-   * @deprecated Since 5.8, use {@link Tracer#startScopedSpan(String, SamplerFunction, Object)}
-   */
-  @Deprecated public Sampler toSampler(M method) {
-    return toSampler(method, Sampler.NEVER_SAMPLE);
-  }
-
-  /**
-   * @since 4.19
-   * @deprecated Since 5.8, use {@link Tracer#startScopedSpan(String, SamplerFunction, Object)}
-   */
-  @Deprecated public Sampler toSampler(final M method, final Sampler fallback) {
-    if (fallback == null) throw new NullPointerException("fallback == null");
-    if (method == null) return fallback;
-    return new Sampler() {
-      @Override public boolean isSampled(long traceId) {
-        Boolean decision = trySample(method);
-        if (decision == null) return fallback.isSampled(traceId);
-        return decision;
-      }
-    };
-  }
-
-  /**
-   * @since 4.4
-   * @deprecated Since 5.8, use {@link #trySample(Object)}
-   */
-  @Deprecated public SamplingFlags sample(@Nullable M method) {
-    if (method == null) return SamplingFlags.EMPTY;
-    return SamplingFlags.Builder.build(trySample(method));
-  }
 }

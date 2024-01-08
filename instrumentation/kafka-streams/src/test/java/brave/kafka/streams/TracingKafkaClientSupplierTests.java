@@ -15,7 +15,6 @@ package brave.kafka.streams;
 
 import java.util.Collections;
 import java.util.Map;
-
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.streams.KafkaClientSupplier;
@@ -28,10 +27,8 @@ class TracingKafkaClientSupplierTests {
 
   final Map<String, Object> props = Collections.singletonMap("bootstrap.servers","localhost:9092");
 
-  @Test
-  public void shouldReturnNewAdminClient() {
+  @Test void shouldReturnNewAdmin() {
     TracingKafkaClientSupplier supplier = new TracingKafkaClientSupplier(null);
-    assertThat(supplier.getAdminClient(props)).isNotNull();
     assertThat(supplier.getAdmin(props)).isNotNull();
   }
 

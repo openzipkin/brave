@@ -18,7 +18,6 @@ import brave.internal.Nullable;
 import brave.internal.baggage.BaggageCodec;
 import brave.internal.baggage.BaggageFields;
 import brave.internal.collect.Lists;
-import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
@@ -36,7 +35,7 @@ import static brave.internal.baggage.ExtraBaggageContext.findExtra;
 /**
  * This implements in-process and remote {@linkplain BaggageField baggage} propagation.
  *
- * <p>For example, if you have a need to know the a specific request's country code, you can
+ * <p>For example, if you have a need to know the specific request's country code, you can
  * propagate it through the trace as HTTP headers.
  * <pre>{@code
  * import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
@@ -84,6 +83,7 @@ import static brave.internal.baggage.ExtraBaggageContext.findExtra;
  * );
  * }</pre>
  *
+ * @param <K> Retained for compatibility with pre Brave v6, but always String.
  * @see BaggageField
  * @see BaggagePropagationConfig
  * @see BaggagePropagationCustomizer
@@ -256,11 +256,7 @@ public final class BaggagePropagation<K> implements Propagation<K> {
    * <h3>Details</h3>
    * The {@code propagation} parameter is required because there may be multiple tracers with
    * different baggage configuration. Also, {@link Propagation} instances can be wrapped, so you
-   * cannot use {@code instanceof} to identify if baggage is internally supported. For example,
-   * {@link ExtraFieldPropagation} internally wraps {@link BaggagePropagation}.
-   *
-   * <p>This is different than {@link BaggageField#getAll(TraceContext)}, as propagation keys may be
-   * different than {@linkplain BaggageField#name() baggage field names}.
+   * cannot use {@code instanceof} to identify if baggage is internally supported.
    *
    * @param propagation used to extract configuration
    * @return a list of remote propagation key names used for trace context and baggage.
@@ -327,7 +323,7 @@ public final class BaggagePropagation<K> implements Propagation<K> {
       for (BaggagePropagationConfig config : factory.configs) {
         if (config.baggageCodec == BaggageCodec.NOOP) continue; // local field
 
-        String value = config.baggageCodec.encode(values, context, request);
+        String value = config.baggageCodec.encode(values, context);
         if (value == null) continue;
 
         List<String> keys = config.baggageCodec.injectKeyNames();
@@ -362,7 +358,7 @@ public final class BaggagePropagation<K> implements Propagation<K> {
         List<String> keys = config.baggageCodec.injectKeyNames();
         for (int i = 0, length = keys.size(); i < length; i++) {
           String value = getter.get(request, keys.get(i));
-          if (value != null && config.baggageCodec.decode(extra, request, value)) {
+          if (value != null && config.baggageCodec.decode(extra, value)) {
             break; // accept the first match
           }
         }

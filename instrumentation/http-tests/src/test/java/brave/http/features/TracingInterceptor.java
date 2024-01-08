@@ -41,7 +41,7 @@ final class TracingInterceptor implements Interceptor {
     Span span = handler.handleSend(request);
     Response response = null;
     Throwable error = null;
-    try (SpanInScope ws = tracer.withSpanInScope(span)) {
+    try (SpanInScope scope = tracer.withSpanInScope(span)) {
       return response = chain.proceed(request.build());
     } catch (Throwable e) {
       error = e;

@@ -33,15 +33,6 @@ public final class ExtraBaggageContext extends BaggageContext {
     return INSTANCE;
   }
 
-  public static List<BaggageField> getAllFields(TraceContextOrSamplingFlags extracted) {
-    if (extracted.context() != null) return getAllFields(extracted.context());
-    return getAllFields(extracted.extra());
-  }
-
-  public static List<BaggageField> getAllFields(TraceContext context) {
-    return getAllFields(context.extra());
-  }
-
   public static Map<String, String> getAllValues(TraceContextOrSamplingFlags extracted) {
     if (extracted.context() != null) return getAllValues(extracted.context());
     return getAllValues(extracted.extra());

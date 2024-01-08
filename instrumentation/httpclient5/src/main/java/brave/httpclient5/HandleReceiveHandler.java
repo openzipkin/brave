@@ -32,6 +32,8 @@ import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.HttpException;
 import org.apache.hc.core5.http.HttpHost;
 
+import static brave.internal.Throwables.propagateIfFatal;
+
 class HandleReceiveHandler implements ExecChainHandler {
   final Tracer tracer;
   final SamplerFunction<HttpRequest> httpSampler;
@@ -46,20 +48,21 @@ class HandleReceiveHandler implements ExecChainHandler {
   @Override
   public ClassicHttpResponse execute(
     ClassicHttpRequest classicHttpRequest,
-    Scope scope,
+    ExecChain.Scope execChainScope,
     ExecChain execChain) throws IOException, HttpException {
-    HttpHost targetHost = scope.route.getTargetHost();
+    HttpHost targetHost = execChainScope.route.getTargetHost();
     HttpRequestWrapper request = new HttpRequestWrapper(classicHttpRequest, targetHost);
     Span span = tracer.nextSpan(httpSampler, request);
 
-    HttpClientContext clientContext = scope.clientContext;
+    HttpClientContext clientContext = execChainScope.clientContext;
     clientContext.setAttribute(Span.class.getName(), span);
 
     ClassicHttpResponse response = null;
     Throwable error = null;
-    try (SpanInScope ws = tracer.withSpanInScope(span)) {
-      return response = execChain.proceed(classicHttpRequest, scope);
+    try (SpanInScope scope = tracer.withSpanInScope(span)) {
+      return response = execChain.proceed(classicHttpRequest, execChainScope);
     } catch (Throwable e) {
+      propagateIfFatal(e);
       error = e;
       throw e;
     } finally {

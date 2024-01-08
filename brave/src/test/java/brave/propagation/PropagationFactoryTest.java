@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class PropagationFactoryTest {
   Propagation.Factory factory = new Propagation.Factory() {
-    @Deprecated @Override public <K> Propagation<K> create(Propagation.KeyFactory<K> keyFactory) {
+    @Override public Propagation<String> get() {
       return null;
     }
   };

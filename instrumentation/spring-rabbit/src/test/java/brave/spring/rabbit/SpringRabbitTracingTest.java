@@ -16,7 +16,6 @@ package brave.spring.rabbit;
 import brave.Tracing;
 import java.util.Collection;
 import java.util.List;
-
 import org.aopalliance.aop.Advice;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;

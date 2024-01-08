@@ -15,8 +15,8 @@ package brave.handler;
 
 import brave.Tag;
 import brave.internal.codec.JsonWriter;
-import brave.internal.codec.ZipkinV2JsonWriter;
 import brave.internal.codec.WriteBuffer;
+import brave.internal.codec.ZipkinV2JsonWriter;
 import java.util.List;
 
 /** Similar to {@code zipkin2.MutableSpan.SpanBytesEncoder} except no Zipkin dependency. */

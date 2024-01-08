@@ -14,10 +14,10 @@
 package brave.kafka.clients;
 
 import brave.Tracing;
-import com.google.common.util.concurrent.Futures;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
@@ -47,7 +47,6 @@ import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
-import zipkin2.reporter.Reporter;
 
 @Measurement(iterations = 5, time = 1)
 @Warmup(iterations = 10, time = 1)
@@ -57,14 +56,12 @@ import zipkin2.reporter.Reporter;
 @State(Scope.Thread)
 public class TracingProducerBenchmarks {
   ProducerRecord<String, String> record = new ProducerRecord<>("topic", "key", "value");
-  Producer<String, String> producer, tracingProducer, tracingB3SingleProducer;
+  Producer<String, String> producer, tracingProducer;
 
   @Setup(Level.Trial) public void init() {
-    Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build();
+    Tracing tracing = Tracing.newBuilder().build();
     producer = new FakeProducer();
     tracingProducer = KafkaTracing.create(tracing).producer(producer);
-    tracingB3SingleProducer =
-      KafkaTracing.newBuilder(tracing).writeB3SingleFormat(true).build().producer(producer);
   }
 
   @TearDown(Level.Trial) public void close() {
@@ -77,10 +74,6 @@ public class TracingProducerBenchmarks {
 
   @Benchmark public RecordMetadata send_traced() throws Exception {
     return tracingProducer.send(record).get();
-  }
-
-  @Benchmark public RecordMetadata send_traced_b3Single() throws Exception {
-    return tracingB3SingleProducer.send(record).get();
   }
 
   // Convenience main entry-point
@@ -124,7 +117,7 @@ public class TracingProducerBenchmarks {
       TopicPartition tp = new TopicPartition(record.topic(), 0);
       RecordMetadata rm = new RecordMetadata(tp, -1L, -1, 1L, 3, 4);
       if (callback != null) callback.onCompletion(rm, null);
-      return Futures.immediateFuture(rm);
+      return CompletableFuture.completedFuture(rm);
     }
 
     @Override public void flush() {

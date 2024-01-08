@@ -46,7 +46,7 @@ final class SingleHeaderCodec implements BaggageCodec, EntrySplitter.Handler<Val
     return keyNames;
   }
 
-  @Override public boolean decode(ValueUpdater valueUpdater, Object request, String value) {
+  @Override public boolean decode(ValueUpdater valueUpdater, String value) {
     return ENTRY_SPLITTER.parse(this, valueUpdater, value);
   }
 
@@ -57,7 +57,7 @@ final class SingleHeaderCodec implements BaggageCodec, EntrySplitter.Handler<Val
     return target.updateValue(field, value);
   }
 
-  @Override public String encode(Map<String, String> values, TraceContext context, Object request) {
+  @Override public String encode(Map<String, String> values, TraceContext context) {
     StringBuilder result = new StringBuilder();
     for (Map.Entry<String, String> entry : values.entrySet()) {
       if (result.length() > 0) result.append(',');

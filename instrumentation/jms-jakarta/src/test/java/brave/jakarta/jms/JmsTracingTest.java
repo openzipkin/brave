@@ -53,7 +53,7 @@ public class JmsTracingTest extends ITJms {
   TraceContext parent = newTraceContext(SamplingFlags.DEBUG);
   ActiveMQTextMessage message;
 
-  @BeforeEach void setup() throws JMSException {
+  @BeforeEach void setup() {
     final ClientSession clientSession = mock(ClientSession.class);
     when(clientSession.createMessage(anyByte(), eq(true), eq(0L), anyLong(), eq((byte) 4)))
       .thenReturn(new ClientMessageImpl());
@@ -213,7 +213,7 @@ public class JmsTracingTest extends ITJms {
     setStringProperty(message, "b3", B3SingleFormat.writeB3SingleFormat(incoming));
 
     Span child;
-    try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
+    try (Scope scope = tracing.currentTraceContext().newScope(parent)) {
       child = jmsTracing.nextSpan(message);
     }
     assertChildOf(child.context(), incoming);
@@ -222,7 +222,7 @@ public class JmsTracingTest extends ITJms {
 
   @Test void nextSpan_uses_current_context() {
     Span child;
-    try (Scope ws = tracing.currentTraceContext().newScope(parent)) {
+    try (Scope scope = tracing.currentTraceContext().newScope(parent)) {
       child = jmsTracing.nextSpan(message);
     }
     assertChildOf(child.context(), parent);
@@ -263,7 +263,6 @@ public class JmsTracingTest extends ITJms {
 
   @Test void nextSpan_should_clear_propagation_headers() {
     Propagation.B3_STRING.injector(SETTER).inject(parent, message);
-    Propagation.B3_SINGLE_STRING.injector(SETTER).inject(parent, message);
 
     jmsTracing.nextSpan(message);
     assertThat(ITJms.propertiesToMap(message))

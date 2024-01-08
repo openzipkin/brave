@@ -24,7 +24,6 @@ import brave.propagation.CurrentTraceContext.ScopeDecorator;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import java.util.BitSet;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -252,26 +251,26 @@ class CorrelationScopeDecoratorTest {
     FIELD.baggageField().updateValue(contextWithBaggage, "romeo");
     map.put(FIELD.name(), "romeo");
 
-    try (Scope s = onlyScopeDecorator.decorateScope(null, Scope.NOOP)) {
+    try (Scope scope = onlyScopeDecorator.decorateScope(null, Scope.NOOP)) {
       assertThat(map).isEmpty();
-      s.close();
+      scope.close();
       assertThat(map).isNotEmpty();
       map.clear();
 
-      s.close();
+      scope.close();
       assertThat(map).isEmpty(); // didn't revert again
     }
 
     map.put("flushed", "excel");
     FLUSH_FIELD.baggageField().updateValue(contextWithBaggage, "excel");
 
-    try (Scope s = onlyFlushOnUpdateScopeDecorator.decorateScope(null, mock(Scope.class))) {
+    try (Scope scope = onlyFlushOnUpdateScopeDecorator.decorateScope(null, mock(Scope.class))) {
       assertThat(map).isEmpty();
-      s.close();
+      scope.close();
       assertThat(map).isNotEmpty();
       map.clear();
 
-      s.close();
+      scope.close();
       assertThat(map).isEmpty(); // didn't revert again
     }
   }
@@ -284,26 +283,26 @@ class CorrelationScopeDecoratorTest {
     map.put(LOCAL_FIELD.name(), "abcd");
     map.put(FIELD.name(), "romeo");
 
-    try (Scope s = withBaggageFieldsDecorator.decorateScope(null, Scope.NOOP)) {
+    try (Scope scope = withBaggageFieldsDecorator.decorateScope(null, Scope.NOOP)) {
       assertThat(map).isEmpty();
-      s.close();
+      scope.close();
       assertThat(map).isNotEmpty();
       map.clear();
 
-      s.close();
+      scope.close();
       assertThat(map).isEmpty(); // didn't revert again
     }
 
     map.put("flushed", "excel");
     FLUSH_FIELD.baggageField().updateValue(contextWithBaggage, "excel");
 
-    try (Scope s = withFlushOnUpdateScopeDecorator.decorateScope(null, mock(Scope.class))) {
+    try (Scope scope = withFlushOnUpdateScopeDecorator.decorateScope(null, mock(Scope.class))) {
       assertThat(map).isEmpty();
-      s.close();
+      scope.close();
       assertThat(map).isNotEmpty();
       map.clear();
 
-      s.close();
+      scope.close();
       assertThat(map).isEmpty(); // didn't revert again
     }
   }
@@ -317,29 +316,29 @@ class CorrelationScopeDecoratorTest {
     map.put(FIELD_2.name(), "FO");
     map.put(LOCAL_FIELD.name(), "abcd");
 
-    try (Scope s = withBaggageFieldsDecorator.decorateScope(null, Scope.NOOP)) {
+    try (Scope scope = withBaggageFieldsDecorator.decorateScope(null, Scope.NOOP)) {
       assertThat(map).isEmpty();
     }
 
-    try (Scope s = onlyScopeDecorator.decorateScope(null, Scope.NOOP)) {
+    try (Scope scope = onlyScopeDecorator.decorateScope(null, Scope.NOOP)) {
       assertThat(map).doesNotContainKey(FIELD.name());
     }
 
     FLUSH_FIELD.baggageField().updateValue(contextWithBaggage, "excel");
     map.put("flushed", "excel");
 
-    try (Scope s = withFlushOnUpdateScopeDecorator.decorateScope(null, Scope.NOOP)) {
+    try (Scope scope = withFlushOnUpdateScopeDecorator.decorateScope(null, Scope.NOOP)) {
       assertThat(map).isEmpty();
     }
 
-    try (Scope s = onlyFlushOnUpdateScopeDecorator.decorateScope(null, Scope.NOOP)) {
+    try (Scope scope = onlyFlushOnUpdateScopeDecorator.decorateScope(null, Scope.NOOP)) {
       assertThat(map).doesNotContainKey("flushed");
     }
     map.clear();
   }
 
   @Test void addsAndRemoves() {
-    try (Scope s = decorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+    try (Scope scope = decorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       assertThat(map).containsOnly(
         entry("traceId", "0000000000000001"),
         entry("spanId", "0000000000000003")
@@ -349,7 +348,7 @@ class CorrelationScopeDecoratorTest {
   }
 
   @Test void addsAndRemoves_onlyTraceId() {
-    try (Scope s = onlyTraceIdDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+    try (Scope scope = onlyTraceIdDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       assertThat(map).containsOnly(entry("X-B3-TraceId", "0000000000000001"));
     }
     assertThat(map.isEmpty());
@@ -357,14 +356,14 @@ class CorrelationScopeDecoratorTest {
 
   @Test void addsAndRemoves_onlyBaggageField() {
     FIELD.baggageField().updateValue(contextWithBaggage, "romeo");
-    try (Scope s = onlyScopeDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+    try (Scope scope = onlyScopeDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       assertThat(map).containsOnly(entry(FIELD.name(), "romeo"));
     }
     assertThat(map.isEmpty());
 
     FLUSH_FIELD.baggageField().updateValue(contextWithBaggage, "excel");
     try (
-      Scope s = onlyFlushOnUpdateScopeDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+      Scope scope = onlyFlushOnUpdateScopeDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       assertThat(map).containsOnly(entry("flushed", "excel"));
     }
 
@@ -376,7 +375,7 @@ class CorrelationScopeDecoratorTest {
     FIELD_2.baggageField().updateValue(contextWithBaggage, "FO");
     LOCAL_FIELD.baggageField().updateValue(contextWithBaggage, "abcd");
 
-    try (Scope s = withBaggageFieldsDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+    try (Scope scope = withBaggageFieldsDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       assertThat(map).containsOnly(
         entry("X-B3-TraceId", "0000000000000001"),
         entry(FIELD.name(), "romeo"),
@@ -388,7 +387,7 @@ class CorrelationScopeDecoratorTest {
 
     FLUSH_FIELD.baggageField().updateValue(contextWithBaggage, "excel");
     try (
-      Scope s = withFlushOnUpdateScopeDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+      Scope scope = withFlushOnUpdateScopeDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       assertThat(map).containsOnly(
         entry("traceId", "0000000000000001"),
         entry("spanId", "0000000000000003"),
@@ -406,7 +405,7 @@ class CorrelationScopeDecoratorTest {
     map.put("spanId", "000000000000000c");
     Map<String, String> snapshot = new LinkedHashMap<>(map);
 
-    try (Scope s = decorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+    try (Scope scope = decorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       assertThat(map).containsOnly(
         entry("traceId", "0000000000000001"),
         entry("spanId", "0000000000000003")
@@ -421,7 +420,7 @@ class CorrelationScopeDecoratorTest {
     map.put("X-B3-TraceId", "000000000000000a");
     Map<String, String> snapshot = new LinkedHashMap<>(map);
 
-    try (Scope s = onlyTraceIdDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+    try (Scope scope = onlyTraceIdDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       assertThat(map).containsOnly(entry("X-B3-TraceId", "0000000000000001"));
     }
 
@@ -434,7 +433,7 @@ class CorrelationScopeDecoratorTest {
     Map<String, String> snapshot = new LinkedHashMap<>(map);
 
     FIELD.baggageField().updateValue(contextWithBaggage, "romeo");
-    try (Scope s = onlyScopeDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+    try (Scope scope = onlyScopeDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       assertThat(map).containsOnly(entry(FIELD.name(), "romeo"));
     }
 
@@ -453,7 +452,7 @@ class CorrelationScopeDecoratorTest {
     FIELD_2.baggageField().updateValue(contextWithBaggage, "FO");
     LOCAL_FIELD.baggageField().updateValue(contextWithBaggage, "abcd");
 
-    try (Scope s = withBaggageFieldsDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+    try (Scope scope = withBaggageFieldsDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       assertThat(map).containsOnly(
         entry("X-B3-TraceId", "0000000000000001"),
         entry(FIELD.name(), "romeo"),
@@ -479,7 +478,7 @@ class CorrelationScopeDecoratorTest {
     LOCAL_FIELD.baggageField().updateValue(contextWithBaggage, "abcd");
     FLUSH_FIELD.baggageField().updateValue(contextWithBaggage, "excel");
     try (
-      Scope s = withFlushOnUpdateScopeDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+      Scope scope = withFlushOnUpdateScopeDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       assertThat(map).containsOnly(
         entry("traceId", "0000000000000001"),
         entry("spanId", "0000000000000003"),
@@ -495,7 +494,7 @@ class CorrelationScopeDecoratorTest {
   }
 
   @Test void revertsLateChanges() {
-    try (Scope s = decorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+    try (Scope scope = decorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       // late changes
       map.put("traceId", "000000000000000a");
       map.put("spanId", "000000000000000c");
@@ -503,7 +502,7 @@ class CorrelationScopeDecoratorTest {
   }
 
   @Test void revertsLateChanges_onlyTraceId() {
-    try (Scope s = onlyTraceIdDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+    try (Scope scope = onlyTraceIdDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       // late changes
       map.put("X-B3-TraceId", "000000000000000a");
     }
@@ -511,7 +510,7 @@ class CorrelationScopeDecoratorTest {
 
   @Test void revertsLateChanges_onlyBaggageField() {
     FIELD.baggageField().updateValue(contextWithBaggage, "romeo");
-    try (Scope s = onlyScopeDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+    try (Scope scope = onlyScopeDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       // late changes
       map.put(FIELD.name(), "bob");
     }
@@ -519,7 +518,7 @@ class CorrelationScopeDecoratorTest {
 
     FLUSH_FIELD.baggageField().updateValue(contextWithBaggage, "excel");
     try (
-      Scope s = onlyFlushOnUpdateScopeDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+      Scope scope = onlyFlushOnUpdateScopeDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       // late changes
       map.put("flushed", "word");
     }
@@ -531,7 +530,7 @@ class CorrelationScopeDecoratorTest {
     FIELD_2.baggageField().updateValue(contextWithBaggage, "FO");
     LOCAL_FIELD.baggageField().updateValue(contextWithBaggage, "abcd");
 
-    try (Scope s = withBaggageFieldsDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+    try (Scope scope = withBaggageFieldsDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       // late changes
       map.put("X-B3-TraceId", "000000000000000a");
       map.put(FIELD.name(), "bob");
@@ -540,7 +539,7 @@ class CorrelationScopeDecoratorTest {
 
     FLUSH_FIELD.baggageField().updateValue(contextWithBaggage, "excel");
     try (
-      Scope s = withFlushOnUpdateScopeDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+      Scope scope = withFlushOnUpdateScopeDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       // late changes
       map.put("flushed", "word");
     }
@@ -549,7 +548,7 @@ class CorrelationScopeDecoratorTest {
 
   @Test void ignoresUpdate_onlyBaggageField() {
     FIELD.baggageField().updateValue(contextWithBaggage, "romeo");
-    try (Scope s = onlyScopeDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+    try (Scope scope = onlyScopeDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       FIELD.baggageField().updateValue(contextWithBaggage, "bob");
       assertThat(map).containsEntry(FIELD.name(), "romeo");
     }
@@ -567,7 +566,7 @@ class CorrelationScopeDecoratorTest {
     FIELD_2.baggageField().updateValue(contextWithBaggage, "FO");
     LOCAL_FIELD.baggageField().updateValue(contextWithBaggage, "abcd");
 
-    try (Scope s = withBaggageFieldsDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+    try (Scope scope = withBaggageFieldsDecorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       Map<String, String> snapshot = new LinkedHashMap<>(map);
       FIELD.baggageField().updateValue(contextWithBaggage, "bob");
       assertThat(map).isEqualTo(snapshot);
@@ -586,7 +585,7 @@ class CorrelationScopeDecoratorTest {
   }
 
   void assertNestedUpdatesCoherent(ScopeDecorator decorator) {
-    try (Scope s = decorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
+    try (Scope scope = decorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
       FLUSH_FIELD.baggageField().updateValue(contextWithBaggage, "word");
       try (Scope s1 = decorator.decorateScope(contextWithBaggage, mock(Scope.class))) {
         assertThat(map).containsEntry("flushed", "word");

@@ -21,6 +21,7 @@ import brave.propagation.TraceContext;
 import brave.rpc.RpcResponseParser;
 import brave.rpc.RpcRuleSampler;
 import brave.rpc.RpcTracing;
+import java.util.Map;
 import org.apache.dubbo.common.beanutil.JavaBeanDescriptor;
 import org.apache.dubbo.common.beanutil.JavaBeanSerializeUtil;
 import org.apache.dubbo.config.ReferenceConfig;
@@ -28,7 +29,6 @@ import org.apache.dubbo.rpc.Result;
 import org.apache.dubbo.rpc.RpcContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import java.util.Map;
 
 import static brave.Span.Kind.SERVER;
 import static brave.rpc.RpcRequestMatchers.methodEquals;

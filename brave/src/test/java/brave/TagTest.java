@@ -300,6 +300,6 @@ class TagTest {
     verify(parseValue).apply(input, context);
     verifyNoMoreInteractions(parseValue); // doesn't parse twice
 
-    assertThat(mutableSpan.isEmpty()).isTrue();
+    assertThat(mutableSpan.error()).isNull();
   }
 }

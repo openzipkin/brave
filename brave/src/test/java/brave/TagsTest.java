@@ -40,6 +40,18 @@ class TagsTest {
     verify(span).tag("error", "RuntimeException");
   }
 
+  @Test void error_anonymous() {
+    Tags.ERROR.tag(new RuntimeException() {}, span);
+
+    verify(span).tag("error", "RuntimeException");
+  }
+
+  @Test void error_anonymous_message() {
+    Tags.ERROR.tag(new RuntimeException("this cake is a lie") {}, span);
+
+    verify(span).tag("error", "this cake is a lie");
+  }
+
   TraceContext context = TraceContext.newBuilder().traceId(1).spanId(2).build();
 
   /** These are not good examples of actual baggage.. just to test the types. */

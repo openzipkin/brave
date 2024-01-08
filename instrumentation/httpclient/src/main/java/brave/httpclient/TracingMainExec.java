@@ -14,14 +14,12 @@
 package brave.httpclient;
 
 import brave.Span;
-import brave.Tracer;
 import brave.http.HttpClientHandler;
 import brave.http.HttpClientRequest;
 import brave.http.HttpClientResponse;
 import brave.http.HttpTracing;
 import brave.httpclient.TracingProtocolExec.HttpRequestWrapper;
 import brave.internal.Nullable;
-import brave.propagation.CurrentTraceContext;
 import java.io.IOException;
 import java.net.InetAddress;
 import org.apache.http.HttpException;
@@ -38,15 +36,11 @@ import org.apache.http.protocol.HttpContext;
  * request, so this is where the span is started.
  */
 class TracingMainExec implements ClientExecChain { // not final for subclassing
-  final Tracer tracer;
-  final CurrentTraceContext currentTraceContext;
   final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
   @Nullable final String serverName;
   final ClientExecChain mainExec;
 
   TracingMainExec(HttpTracing httpTracing, ClientExecChain mainExec) {
-    this.tracer = httpTracing.tracing().tracer();
-    this.currentTraceContext = httpTracing.tracing().currentTraceContext();
     this.serverName = "".equals(httpTracing.serverName()) ? null : httpTracing.serverName();
     this.handler = HttpClientHandler.create(httpTracing);
     this.mainExec = mainExec;

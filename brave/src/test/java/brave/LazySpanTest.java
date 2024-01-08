@@ -39,7 +39,7 @@ class LazySpanTest {
 
   @Test void equals_sameContext() {
     Span current1, current2;
-    try (Scope ws = tracing.currentTraceContext().newScope(context)) {
+    try (Scope scope = tracing.currentTraceContext().newScope(context)) {
       current1 = tracing.tracer().currentSpan();
       current2 = tracing.tracer().currentSpan();
     }
@@ -52,10 +52,10 @@ class LazySpanTest {
 
   @Test void equals_notSameContext() {
     Span current1, current2;
-    try (Scope ws = tracing.currentTraceContext().newScope(context)) {
+    try (Scope scope = tracing.currentTraceContext().newScope(context)) {
       current1 = tracing.tracer().currentSpan();
     }
-    try (Scope ws = tracing.currentTraceContext().newScope(context2)) {
+    try (Scope scope = tracing.currentTraceContext().newScope(context2)) {
       current2 = tracing.tracer().currentSpan();
     }
 
@@ -64,7 +64,7 @@ class LazySpanTest {
 
   @Test void equals_realSpan_sameContext() {
     Span current;
-    try (Scope ws = tracing.currentTraceContext().newScope(context)) {
+    try (Scope scope = tracing.currentTraceContext().newScope(context)) {
       current = tracing.tracer().currentSpan();
     }
 
@@ -73,7 +73,7 @@ class LazySpanTest {
 
   @Test void equals_realSpan_notSameContext() {
     Span current;
-    try (Scope ws = tracing.currentTraceContext().newScope(context)) {
+    try (Scope scope = tracing.currentTraceContext().newScope(context)) {
       current = tracing.tracer().currentSpan();
     }
 
@@ -82,7 +82,7 @@ class LazySpanTest {
 
   @Test void equals_noopSpan_sameContext() {
     Span current;
-    try (Scope ws = tracing.currentTraceContext().newScope(unsampledContext)) {
+    try (Scope scope = tracing.currentTraceContext().newScope(unsampledContext)) {
       current = tracing.tracer().currentSpan();
     }
 
@@ -91,7 +91,7 @@ class LazySpanTest {
 
   @Test void equals_noopSpan_notSameContext() {
     Span current;
-    try (Scope ws = tracing.currentTraceContext().newScope(unsampledContext)) {
+    try (Scope scope = tracing.currentTraceContext().newScope(unsampledContext)) {
       current = tracing.tracer().currentSpan();
     }
 

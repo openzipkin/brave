@@ -57,12 +57,12 @@ final class TracingExceptionListener {
         delegate.onException(exception);
         return;
       }
-      SpanInScope ws = tracer.withSpanInScope(span);
+      SpanInScope scope = tracer.withSpanInScope(span);
       try {
         delegate.onException(exception);
       } finally {
         span.error(exception);
-        ws.close();
+        scope.close();
       }
     }
   }

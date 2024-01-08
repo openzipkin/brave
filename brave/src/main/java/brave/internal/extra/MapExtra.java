@@ -63,6 +63,7 @@ public class MapExtra<K, V, A extends MapExtra<K, V, A, F>,
   }
 
   /** Returns a possibly empty map of all key to non-{@code null} values. */
+  // Exposed for zipkin-secondary-sampling
   protected Map<K, V> asReadOnlyMap() {
     return UnsafeArrayMap.<K, V>newBuilder().build(state());
   }

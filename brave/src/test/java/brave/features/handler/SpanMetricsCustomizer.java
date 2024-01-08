@@ -15,8 +15,8 @@ package brave.features.handler;
 
 import brave.Tracing;
 import brave.TracingCustomizer;
-import brave.handler.SpanHandler;
 import brave.handler.MutableSpan;
+import brave.handler.SpanHandler;
 import brave.propagation.TraceContext;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;

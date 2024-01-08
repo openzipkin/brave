@@ -15,7 +15,6 @@ package brave;
 
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
-import zipkin2.Endpoint;
 
 /**
  * Subtype of {@link SpanCustomizer} which can capture latency and remote context of an operation.
@@ -25,7 +24,7 @@ import zipkin2.Endpoint;
  * // Note span methods chain. Explicitly start the span when ready.
  * Span span = tracer.nextSpan().name("encode").start();
  * // A span is not responsible for making itself current (scoped); the tracer is
- * try (SpanInScope ws = tracer.withSpanInScope(span)) {
+ * try (SpanInScope scope = tracer.withSpanInScope(span)) {
  *   return encoder.encode();
  * } catch (RuntimeException | Error e) {
  *   span.error(e); // Unless you handle exceptions, you might not know the operation failed!
@@ -53,7 +52,7 @@ public abstract class Span implements SpanCustomizer {
     /**
      * When present, {@link #start()} is the moment a producer sent a message to a destination. A
      * duration between {@link #start()} and {@link #finish()} may imply batching delay. {@link
-     * #remoteEndpoint(Endpoint)} indicates the destination, such as a broker.
+     * #remoteServiceName(String)} indicates the destination, such as a broker.
      *
      * <p>Unlike {@link #CLIENT}, messaging spans never share a span ID. For example, the {@link
      * #CONSUMER} of the same message has {@link TraceContext#parentId()} set to this span's {@link
@@ -63,7 +62,7 @@ public abstract class Span implements SpanCustomizer {
     /**
      * When present, {@link #start()} is the moment a consumer received a message from an origin. A
      * duration between {@link #start()} and {@link #finish()} may imply a processing backlog. while
-     * {@link #remoteEndpoint(Endpoint)} indicates the origin, such as a broker.
+     * {@link #remoteServiceName(String)} indicates the origin, such as a broker.
      *
      * <p>Unlike {@link #SERVER}, messaging spans never share a span ID. For example, the {@link
      * #PRODUCER} of this message is the {@link TraceContext#parentId()} of this span.
@@ -136,18 +135,6 @@ public abstract class Span implements SpanCustomizer {
   // Design note: <T extends Throwable> T error(T throwable) is tempting but this doesn't work in
   // multi-catch. In practice, you should always at least catch RuntimeException and Error.
   public abstract Span error(Throwable throwable);
-
-  /**
-   * @deprecated Since 5.0, use {@link #remoteServiceName(String)} {@link #remoteIpAndPort(String,
-   * int)}.
-   */
-  @Deprecated public Span remoteEndpoint(Endpoint endpoint) {
-    if (endpoint == null) return this;
-    if (endpoint.serviceName() != null) remoteServiceName(endpoint.serviceName());
-    String ip = endpoint.ipv6() != null ? endpoint.ipv6() : endpoint.ipv4();
-    remoteIpAndPort(ip, endpoint.portAsInt());
-    return this;
-  }
 
   /**
    * Lower-case label of the remote node in the service graph, such as "favstar". Do not set if

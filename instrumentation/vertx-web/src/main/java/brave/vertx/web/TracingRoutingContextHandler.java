@@ -59,7 +59,7 @@ final class TracingRoutingContextHandler implements Handler<RoutingContext> {
     context.put(TracingHandler.class.getName(), handler);
     context.addHeadersEndHandler(handler);
 
-    try (Scope ws = currentTraceContext.maybeScope(span.context())) {
+    try (Scope scope = currentTraceContext.maybeScope(span.context())) {
       context.next();
     }
   }

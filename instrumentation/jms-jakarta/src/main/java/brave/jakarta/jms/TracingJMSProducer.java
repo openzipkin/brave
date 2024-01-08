@@ -15,13 +15,13 @@ package brave.jakarta.jms;
 
 import brave.Span;
 import brave.propagation.CurrentTraceContext.Scope;
-import java.io.Serializable;
-import java.util.Map;
-import java.util.Set;
 import jakarta.jms.CompletionListener;
 import jakarta.jms.Destination;
 import jakarta.jms.JMSProducer;
 import jakarta.jms.Message;
+import java.io.Serializable;
+import java.util.Map;
+import java.util.Set;
 
 import static brave.internal.Throwables.propagateIfFatal;
 
@@ -97,10 +97,10 @@ final class TracingJMSProducer extends TracingProducer<JMSProducerRequest>
 
   void send(Send send, Destination destination, Object message) {
     Span span = createAndStartProducerSpan(new JMSProducerRequest(delegate, destination));
-    Scope ws = current.newScope(span.context());
+    Scope scope = current.newScope(span.context());
     final CompletionListener async = getAsync();
     if (async != null) {
-      delegate.setAsync(TracingCompletionListener.create(async, destination, span, current));
+      delegate.setAsync(TracingCompletionListener.create(async, span, current));
     }
     Throwable error = null;
     try {
@@ -117,7 +117,7 @@ final class TracingJMSProducer extends TracingProducer<JMSProducerRequest>
       } else {
         span.finish(); // handle success synchronous send
       }
-      ws.close();
+      scope.close();
     }
   }
 

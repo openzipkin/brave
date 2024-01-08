@@ -14,7 +14,6 @@
 package brave.messaging;
 
 import brave.Span;
-import brave.internal.Nullable;
 
 import static brave.Span.Kind.CONSUMER;
 

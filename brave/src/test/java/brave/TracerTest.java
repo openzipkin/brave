@@ -40,8 +40,6 @@ import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import zipkin2.Endpoint;
-import zipkin2.reporter.Reporter;
 
 import static brave.Span.Kind.CLIENT;
 import static brave.Span.Kind.SERVER;
@@ -109,19 +107,6 @@ public class TracerTest {
       .isSameAs(sampler);
   }
 
-  @Test void withSampler() {
-    Sampler sampler = new Sampler() {
-      @Override public boolean isSampled(long traceId) {
-        return false;
-      }
-    };
-
-    tracer = tracer.withSampler(sampler);
-
-    assertThat(tracer.sampler)
-      .isSameAs(sampler);
-  }
-
   @Test void localServiceName() {
     tracer = Tracing.newBuilder().localServiceName("my-foo").build().tracer();
 
@@ -136,16 +121,6 @@ public class TracerTest {
       .isEqualTo("unknown");
   }
 
-  @Test void localServiceName_ignoredWhenGivenLocalEndpoint() {
-    Endpoint endpoint = Endpoint.newBuilder().ip("1.2.3.4").serviceName("my-bar").build();
-    tracer = Tracing.newBuilder().localServiceName("my-foo").endpoint(endpoint).build().tracer();
-
-    MutableSpan defaultSpan = new MutableSpan();
-    defaultSpan.localServiceName("my-bar");
-    defaultSpan.localIp("1.2.3.4");
-    assertThat(tracer).extracting("pendingSpans.defaultSpan").isEqualTo(defaultSpan);
-  }
-
   @Test void newTrace_isRootSpan() {
     assertThat(tracer.newTrace())
       .satisfies(s -> assertThat(s.context().parentId()).isNull())
@@ -157,13 +132,6 @@ public class TracerTest {
 
     assertThat(tracer.newTrace().context().traceIdHigh())
       .isNotZero();
-  }
-
-  @Test void newTrace_notSampled_tracer() {
-    tracer = tracer.withSampler(Sampler.NEVER_SAMPLE);
-
-    assertThat(tracer.newTrace())
-      .isInstanceOf(NoopSpan.class);
   }
 
   /** When we join a sampled request, we are sharing the same trace identifiers. */
@@ -363,16 +331,6 @@ public class TracerTest {
       .isSameAs(NoopSpanCustomizer.INSTANCE);
   }
 
-  @Test void currentSpanCustomizer_noop_when_notSampled() {
-    ScopedSpan parent = tracer.withSampler(Sampler.NEVER_SAMPLE).startScopedSpan("parent");
-    try {
-      assertThat(tracer.currentSpanCustomizer())
-        .isSameAs(NoopSpanCustomizer.INSTANCE);
-    } finally {
-      parent.finish();
-    }
-  }
-
   @Test void currentSpanCustomizer_notSampled() {
     tracer = Tracing.newBuilder().sampler(Sampler.NEVER_SAMPLE).build().tracer();
 
@@ -401,7 +359,7 @@ public class TracerTest {
   }
 
   @Test void currentSpan_decoratesExternalContext() {
-    try (Scope ws = currentTraceContext.newScope(context)) {
+    try (Scope scope = currentTraceContext.newScope(context)) {
       assertThat(tracer.currentSpan().context())
         .isNotSameAs(context)
         .extracting(TraceContext::localRootId)
@@ -413,13 +371,13 @@ public class TracerTest {
     TraceContext context =
       TraceContext.newBuilder().traceId(1L).spanId(2L).shared(true).sampled(true).build();
 
-    try (Scope ws = currentTraceContext.newScope(context)) {
+    try (Scope scope = currentTraceContext.newScope(context)) {
       assertThat(tracer.currentSpan().context().shared()).isTrue();
     }
   }
 
   @Test void currentSpan_doesntSetSharedFlag() {
-    try (Scope ws = currentTraceContext.newScope(context)) {
+    try (Scope scope = currentTraceContext.newScope(context)) {
       assertThat(tracer.currentSpan().context().shared()).isFalse();
     }
   }
@@ -427,7 +385,7 @@ public class TracerTest {
   @Test void currentSpan_doesntRedundantlyDecorateContext() {
     TraceContext context = tracer.newTrace().context();
 
-    try (Scope ws = currentTraceContext.newScope(context)) {
+    try (Scope scope = currentTraceContext.newScope(context)) {
       assertThat(tracer.currentSpan().context())
         .isSameAs(context)
         .extracting(TraceContext::localRootId)
@@ -453,7 +411,7 @@ public class TracerTest {
 
   @Test void nextSpanWithParent_overrideToMakeNewTrace() {
     Span span;
-    try (Scope ws = currentTraceContext.newScope(context)) {
+    try (Scope scope = currentTraceContext.newScope(context)) {
       span = tracer.nextSpanWithParent(deferDecision(), false, null);
     }
 
@@ -463,7 +421,7 @@ public class TracerTest {
   @Test void nextSpan_extractedNothing_makesChildOfCurrent() {
     Span parent = tracer.newTrace();
 
-    try (SpanInScope ws = tracer.withSpanInScope(parent)) {
+    try (SpanInScope scope = tracer.withSpanInScope(parent)) {
       Span nextSpan = tracer.nextSpan(TraceContextOrSamplingFlags.create(EMPTY));
       assertThat(nextSpan.context().parentId())
         .isEqualTo(parent.context().spanId());
@@ -480,7 +438,7 @@ public class TracerTest {
   @Test void nextSpan_makesChildOfCurrent() {
     Span parent = tracer.newTrace();
 
-    try (SpanInScope ws = tracer.withSpanInScope(parent)) {
+    try (SpanInScope scope = tracer.withSpanInScope(parent)) {
       assertThat(tracer.nextSpan().context().parentId())
         .isEqualTo(parent.context().spanId());
     }
@@ -500,7 +458,7 @@ public class TracerTest {
     TraceContextOrSamplingFlags extracted =
       TraceContextOrSamplingFlags.newBuilder(EMPTY).addExtra(1L).build();
 
-    try (SpanInScope ws = tracer.withSpanInScope(parent)) {
+    try (SpanInScope scope = tracer.withSpanInScope(parent)) {
       assertThat(tracer.nextSpan(extracted).context().extra())
         .containsExactly(1L);
     }
@@ -516,7 +474,7 @@ public class TracerTest {
       .addExtra(1F)
       .build();
 
-    try (SpanInScope ws = tracer.withSpanInScope(parent)) {
+    try (SpanInScope scope = tracer.withSpanInScope(parent)) {
       assertThat(tracer.nextSpan(extracted).context().extra())
         .containsExactlyInAnyOrder(1L, 1F);
     }
@@ -595,7 +553,7 @@ public class TracerTest {
   @Test void withSpanInScope() {
     Span current = tracer.newTrace();
 
-    try (SpanInScope ws = tracer.withSpanInScope(current)) {
+    try (SpanInScope scope = tracer.withSpanInScope(current)) {
       assertThat(tracer.currentSpan())
         .isEqualTo(current);
       assertThat(tracer.currentSpanCustomizer())
@@ -607,24 +565,9 @@ public class TracerTest {
     assertThat(tracer.currentSpan()).isNull();
   }
 
-  @Test void withNoopSpanInScope() {
-    Span current = tracer.withSampler(Sampler.NEVER_SAMPLE).nextSpan();
-
-    try (SpanInScope ws = tracer.withSpanInScope(current)) {
-      assertThat(tracer.currentSpan())
-        .isEqualTo(current);
-      assertThat(tracer.currentSpanCustomizer())
-        .isNotEqualTo(current)
-        .isEqualTo(NoopSpanCustomizer.INSTANCE);
-    }
-
-    // context was cleared
-    assertThat(tracer.currentSpan()).isNull();
-  }
-
   @Test void toString_withSpanInScope() {
     TraceContext context = TraceContext.newBuilder().traceId(1L).spanId(10L).sampled(true).build();
-    try (SpanInScope ws = tracer.withSpanInScope(tracer.toSpan(context))) {
+    try (SpanInScope scope = tracer.withSpanInScope(tracer.toSpan(context))) {
       assertThat(tracer.toString()).hasToString(
         "Tracer{currentSpan=0000000000000001/000000000000000a, spanHandler=[TestSpanHandler{[]}, OrphanTracker{}]}"
       );
@@ -636,29 +579,6 @@ public class TracerTest {
 
     assertThat(tracer).hasToString(
       "Tracer{noop=true, spanHandler=[TestSpanHandler{[]}, OrphanTracker{}]}"
-    );
-  }
-
-  @Test void toString_withSpanReporter() {
-    tracer = Tracing.newBuilder().addSpanHandler(new SpanHandler() {
-      @Override public boolean end(TraceContext context, MutableSpan span, Cause cause) {
-        return true;
-      }
-
-      @Override public String toString() {
-        return "MyHandler";
-      }
-    }).spanReporter(new Reporter<zipkin2.Span>() {
-      @Override public void report(zipkin2.Span span) {
-      }
-
-      @Override public String toString() {
-        return "MyReporter";
-      }
-    }).build().tracer();
-
-    assertThat(tracer).hasToString(
-      "Tracer{spanHandler=[MyHandler, MyReporter]}"
     );
   }
 
@@ -795,8 +715,8 @@ public class TracerTest {
   }
 
   @Test void useSpanAfterFinishedInOtherTracer_doesNotCauseBraveFlush() {
-    Tracer noOpTracer = Tracing.newBuilder().spanReporter(s -> {
-      // intentionally avoid any special-casing of Reporter.NOOP
+    Tracer noOpTracer = Tracing.newBuilder().addSpanHandler(new SpanHandler() {
+      // intentionally avoid any special-casing of SpanHandler.NOOP
     }).build().tracer();
     simulateInProcessPropagation(noOpTracer, tracer);
     GarbageCollectors.blockOnGC();
@@ -1110,7 +1030,7 @@ public class TracerTest {
 
   @Test void currentSpan_sameContextReference() {
     Span span = tracer.newTrace();
-    try (SpanInScope ws = tracer.withSpanInScope(span)) {
+    try (SpanInScope scope = tracer.withSpanInScope(span)) {
       assertThat(tracer.currentSpan().context())
         .isSameAs(span.context());
     }

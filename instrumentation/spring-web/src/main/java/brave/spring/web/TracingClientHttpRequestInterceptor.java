@@ -53,7 +53,7 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
     HttpRequestWrapper request = new HttpRequestWrapper(req);
     Span span = handler.handleSend(request);
     ClientHttpResponse response = null;
-    Scope ws = currentTraceContext.newScope(span.context());
+    Scope scope = currentTraceContext.newScope(span.context());
     Throwable error = null;
     try {
       return response = execution.execute(req, body);
@@ -69,7 +69,7 @@ public final class TracingClientHttpRequestInterceptor implements ClientHttpRequ
       throw e;
     } finally {
       handler.handleReceive(new ClientHttpResponseWrapper(request, response, error), span);
-      ws.close();
+      scope.close();
     }
   }
 

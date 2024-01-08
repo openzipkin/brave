@@ -21,10 +21,8 @@ import brave.propagation.B3SingleFormat;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
-import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Map;
-import java.util.Optional;
 import javax.jms.BytesMessage;
 import javax.jms.JMSException;
 import javax.jms.Message;
@@ -41,7 +39,6 @@ import javax.jms.TopicSubscriber;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import static brave.Span.Kind.CONSUMER;

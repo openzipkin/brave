@@ -14,7 +14,6 @@
 package brave.jakarta.servlet;
 
 import brave.Span;
-
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;

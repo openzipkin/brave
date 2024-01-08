@@ -20,10 +20,8 @@ import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.sampler.Sampler;
-import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Map;
-import java.util.Optional;
 import javax.jms.CompletionListener;
 import javax.jms.JMSConsumer;
 import javax.jms.JMSContext;
@@ -34,7 +32,6 @@ import javax.jms.Message;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import static brave.Span.Kind.PRODUCER;

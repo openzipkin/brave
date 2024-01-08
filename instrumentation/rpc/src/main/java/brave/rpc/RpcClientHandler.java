@@ -41,7 +41,7 @@ import brave.sampler.SamplerFunction;
  * Span span = handler.handleSend(requestWrapper); // 1.
  * ClientResponse response = null;
  * Throwable error = null;
- * try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
+ * try (Scope scope = currentTraceContext.newScope(span.context())) { // 2.
  *   return response = invoke(request); // 3.
  * } catch (Throwable e) {
  *   error = e; // 4.

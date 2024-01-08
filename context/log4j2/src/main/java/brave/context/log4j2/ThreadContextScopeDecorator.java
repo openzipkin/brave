@@ -14,7 +14,6 @@
 package brave.context.log4j2;
 
 import brave.baggage.BaggageFields;
-import brave.baggage.CorrelationScopeConfig.SingleCorrelationField;
 import brave.baggage.CorrelationScopeDecorator;
 import brave.internal.CorrelationContext;
 import brave.internal.Nullable;
@@ -59,23 +58,6 @@ public final class ThreadContextScopeDecorator {
    */
   public static CorrelationScopeDecorator.Builder newBuilder() {
     return new Builder();
-  }
-
-  /**
-   * Returns a scope decorator that configures {@link BaggageFields#TRACE_ID}, {@link
-   * BaggageFields#PARENT_ID}, {@link BaggageFields#SPAN_ID} and {@link BaggageFields#SAMPLED}
-   *
-   * @since 5.2
-   * @deprecated since 5.11 use {@link #get()} or {@link #newBuilder()}
-   */
-  @Deprecated public static CurrentTraceContext.ScopeDecorator create() {
-    return new Builder()
-      .clear()
-      .add(SingleCorrelationField.create(BaggageFields.TRACE_ID))
-      .add(SingleCorrelationField.create(BaggageFields.PARENT_ID))
-      .add(SingleCorrelationField.create(BaggageFields.SPAN_ID))
-      .add(SingleCorrelationField.create(BaggageFields.SAMPLED))
-      .build();
   }
 
   static final class Builder extends CorrelationScopeDecorator.Builder {

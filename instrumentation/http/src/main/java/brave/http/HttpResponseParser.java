@@ -13,7 +13,6 @@
  */
 package brave.http;
 
-import brave.ErrorParser;
 import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tags;

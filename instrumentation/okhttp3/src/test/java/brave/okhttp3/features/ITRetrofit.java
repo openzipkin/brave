@@ -82,8 +82,5 @@ class ITRetrofit extends ITRemote {
       .containsKey("http.path")
       .withFailMessage("HTTP span wasn't reported!")
       .isNotNull();
-
-    // Context propagation, ex using RxJava2 or similar to follow-up with another call,
-    // is a different matter. See brave-context-rxjava2
   }
 }

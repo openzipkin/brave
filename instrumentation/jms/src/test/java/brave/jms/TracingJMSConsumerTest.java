@@ -18,7 +18,6 @@ import brave.propagation.B3Propagation;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
-import java.io.IOException;
 import javax.jms.JMSConsumer;
 import javax.jms.Message;
 import org.apache.activemq.command.ActiveMQTextMessage;
@@ -78,16 +77,8 @@ public class TracingJMSConsumerTest extends ITJms {
     testSpanHandler.takeRemoteSpan(CONSUMER);
   }
 
-  void receive(Message message) throws Exception {
+  void receive(Message message) {
     when(delegate.receive()).thenReturn(message);
     tracingJMSConsumer.receive();
-  }
-
-  void assertNoProperties(ActiveMQTextMessage message) {
-    try {
-      assertThat(message.getProperties()).isEmpty();
-    } catch (IOException e) {
-      throw new AssertionError(e);
-    }
   }
 }

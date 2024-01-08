@@ -17,8 +17,6 @@ import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
-import brave.http.HttpServerAdapters.FromResponseAdapter;
-import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContextOrSamplingFlags;
@@ -43,7 +41,7 @@ import brave.sampler.SamplerFunction;
  * Span span = handler.handleReceive(requestWrapper); // 1.
  * HttpServerResponse response = null;
  * Throwable error = null;
- * try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
+ * try (Scope scope = currentTraceContext.newScope(span.context())) { // 2.
  *   return response = process(request); // 3.
  * } catch (Throwable e) {
  *   error = e; // 4.
@@ -67,29 +65,16 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
   public static HttpServerHandler<HttpServerRequest, HttpServerResponse> create(
     HttpTracing httpTracing) {
     if (httpTracing == null) throw new NullPointerException("httpTracing == null");
-    return new HttpServerHandler<HttpServerRequest, HttpServerResponse>(httpTracing, null);
+    return new HttpServerHandler<HttpServerRequest, HttpServerResponse>(httpTracing);
   }
 
-  /**
-   * @since 4.3
-   * @deprecated Since 5.7, use {@link #create(HttpTracing)} as it is more portable.
-   */
-  @Deprecated
-  public static <Req, Resp> HttpServerHandler<Req, Resp> create(HttpTracing httpTracing,
-    HttpServerAdapter<Req, Resp> adapter) {
-    if (httpTracing == null) throw new NullPointerException("httpTracing == null");
-    if (adapter == null) throw new NullPointerException("adapter == null");
-    return new HttpServerHandler<Req, Resp>(httpTracing, adapter);
-  }
 
   final Tracer tracer;
   final SamplerFunction<HttpRequest> sampler;
-  @Deprecated @Nullable final HttpServerAdapter<Req, Resp> adapter; // null when using default types
   final Extractor<HttpServerRequest> defaultExtractor;
 
-  HttpServerHandler(HttpTracing httpTracing, @Deprecated HttpServerAdapter<Req, Resp> adapter) {
+  HttpServerHandler(HttpTracing httpTracing) {
     super(httpTracing.serverRequestParser(), httpTracing.serverResponseParser());
-    this.adapter = adapter;
     this.tracer = httpTracing.tracing().tracer();
     this.sampler = httpTracing.serverRequestSampler();
     // The following allows us to add the method: handleReceive(HttpServerRequest request) without
@@ -112,32 +97,6 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
     return handleStart(request, span);
   }
 
-  /**
-   * @since 4.3
-   * @deprecated Since 5.7, use {@link #handleReceive(HttpServerRequest)}
-   */
-  @Deprecated public Span handleReceive(Extractor<Req> extractor, Req request) {
-    return handleReceive(extractor, request, request);
-  }
-
-  /**
-   * @since 4.3
-   * @deprecated Since 5.7, use {@link #handleReceive(HttpServerRequest)}
-   */
-  @Deprecated public <C> Span handleReceive(Extractor<C> extractor, C carrier, Req request) {
-    if (carrier == null) throw new NullPointerException("request == null");
-
-    HttpServerRequest serverRequest;
-    if (request instanceof HttpServerRequest) {
-      serverRequest = (HttpServerRequest) request;
-    } else {
-      serverRequest = new HttpServerAdapters.FromRequestAdapter<Req>(adapter, request);
-    }
-
-    Span span = nextSpan(extractor.extract(carrier), serverRequest);
-    return handleStart(serverRequest, span);
-  }
-
   @Override void parseRequest(HttpRequest request, Span span) {
     ((HttpServerRequest) request).parseClientIpAndPort(span);
     super.parseRequest(request, span);
@@ -153,34 +112,6 @@ public final class HttpServerHandler<Req, Resp> extends HttpHandler {
     return extracted.context() != null
       ? tracer.joinSpan(extracted.context())
       : tracer.nextSpan(extracted);
-  }
-
-  /**
-   * @since 4.3
-   * @deprecated Since 5.12, use {@link #handleSend(HttpServerResponse, Span)}
-   */
-  public void handleSend(@Nullable Resp response, @Nullable Throwable error, Span span) {
-    if (span == null) throw new NullPointerException("span == null");
-    if (response == null && error == null) {
-      throw new IllegalArgumentException(
-        "Either the response or error parameters may be null, but not both");
-    }
-
-    if (response == null) {
-      span.error(error).finish();
-      return;
-    }
-
-    HttpServerResponse serverResponse;
-    if (response instanceof HttpServerResponse) {
-      serverResponse = (HttpServerResponse) response;
-      if (serverResponse.error() == null && error != null) {
-        span.error(error);
-      }
-    } else {
-      serverResponse = new FromResponseAdapter<Resp>(adapter, response, error);
-    }
-    handleFinish(serverResponse, span);
   }
 
   /**

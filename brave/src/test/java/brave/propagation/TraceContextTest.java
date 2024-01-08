@@ -372,7 +372,7 @@ class TraceContextTest {
   }
 
   @Test void withExtra_empty() {
-    assertThat(context.toBuilder().extra(Arrays.asList(1L)).build().withExtra(emptyList()))
+    assertThat(context.toBuilder().addExtra(1L).build().withExtra(emptyList()))
       .extracting("extraList")
       .isEqualTo(emptyList());
   }

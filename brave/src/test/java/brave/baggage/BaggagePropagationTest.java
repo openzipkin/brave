@@ -19,7 +19,6 @@ import brave.internal.baggage.BaggageFields;
 import brave.propagation.B3Propagation;
 import brave.propagation.B3SingleFormat;
 import brave.propagation.B3SinglePropagation;
-import brave.propagation.ExtraFieldPropagation;
 import brave.propagation.Propagation;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
@@ -322,13 +321,5 @@ public class BaggagePropagationTest {
 
     assertThat(BaggagePropagation.allKeyNames(factory.get()))
         .containsExactly("b3");
-  }
-
-  @Test void allKeyNames_extraFieldPropagation() {
-    ExtraFieldPropagation.Factory factory =
-      ExtraFieldPropagation.newFactory(B3SinglePropagation.FACTORY, "user-id", "session-id");
-
-    assertThat(BaggagePropagation.allKeyNames(factory.get()))
-      .containsExactly("b3", "user-id", "session-id");
   }
 }

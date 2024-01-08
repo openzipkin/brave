@@ -13,8 +13,8 @@
  */
 package brave.test.propagation;
 
-import brave.internal.codec.HexCodec;
 import brave.internal.Nullable;
+import brave.internal.codec.HexCodec;
 import brave.propagation.Propagation;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.Propagation.Setter;

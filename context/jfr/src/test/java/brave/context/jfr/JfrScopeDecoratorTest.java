@@ -98,7 +98,7 @@ class JfrScopeDecoratorTest {
   void makeFiveScopes() throws InterruptedException {
     CountDownLatch latch = new CountDownLatch(1);
 
-    try (Scope ws = currentTraceContext.newScope(context)) {
+    try (Scope scope = currentTraceContext.newScope(context)) {
       executor.execute(() -> {
         try (Scope clear = currentTraceContext.newScope(null)) {
         }
@@ -108,7 +108,7 @@ class JfrScopeDecoratorTest {
       });
     }
 
-    try (Scope ws = currentTraceContext.newScope(context3)) {
+    try (Scope scope = currentTraceContext.newScope(context3)) {
       latch.countDown();
       shutdownExecutor();
     }

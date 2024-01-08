@@ -29,6 +29,7 @@ import org.apache.hc.core5.http.HttpRequest;
 import org.apache.hc.core5.http.nio.AsyncEntityProducer;
 
 import static brave.httpclient5.HttpClientUtils.parseTargetAddress;
+import static brave.internal.Throwables.propagateIfFatal;
 
 class AsyncHandleSendHandler implements AsyncExecChainHandler {
   final HttpClientHandler<HttpClientRequest, HttpClientResponse> handler;
@@ -56,6 +57,7 @@ class AsyncHandleSendHandler implements AsyncExecChainHandler {
     try {
       chain.proceed(request, entityProducer, scope, callbackWrapper);
     } catch (Throwable e) {
+      propagateIfFatal(e);
       // Handle if exception is raised before sending.
       context.removeAttribute(Span.class.getName());
       HttpClientUtils.closeScope(context);

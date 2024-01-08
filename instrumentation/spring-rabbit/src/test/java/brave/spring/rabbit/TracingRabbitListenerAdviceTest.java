@@ -20,15 +20,14 @@ import brave.handler.MutableSpan;
 import brave.propagation.B3Propagation;
 import brave.propagation.StrictCurrentTraceContext;
 import brave.test.TestSpanHandler;
+import java.util.Arrays;
+import java.util.List;
 import org.aopalliance.intercept.MethodInvocation;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageProperties;
-
-import java.util.Arrays;
-import java.util.List;
 
 import static brave.Span.Kind.CONSUMER;
 import static brave.test.ITRemote.BAGGAGE_FIELD;
@@ -309,19 +308,4 @@ public class TracingRabbitListenerAdviceTest {
 
     tracingRabbitListenerAdvice.invoke(methodInvocation);
   }
-
-  void onBatchMessageConsumeFailed(List<Message> messages, Throwable throwable) throws Throwable {
-    when(methodInvocation.getArguments()).thenReturn(new Object[] {
-      null, // AMQPChannel - doesn't matter
-      messages
-    });
-    when(methodInvocation.proceed()).thenThrow(throwable);
-
-    try {
-      tracingRabbitListenerAdvice.invoke(methodInvocation);
-      fail("should have thrown exception");
-    } catch (RuntimeException ex) {
-    }
-  }
-
 }

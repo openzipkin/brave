@@ -313,14 +313,6 @@ public class MutableSpanTest {
     assertThat(span.kind()).isNull();
   }
 
-  @Test void isEmpty() {
-    assertThat(PERMUTATIONS.get(0).get().isEmpty()).isTrue();
-
-    for (int i = 1, length = PERMUTATIONS.size(); i < length; i++) {
-      assertThat(PERMUTATIONS.get(i).get().isEmpty()).isFalse();
-    }
-  }
-
   static final Exception EX1 = new Exception(), EX2 = new Exception();
 
   @Test void equalsOnHashCodeClash() {

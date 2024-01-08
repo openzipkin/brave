@@ -117,7 +117,7 @@ public class RpcClientHandlerTest {
   }
 
   @Test void handleSendWithParent_overrideContext() {
-    try (Scope ws = httpTracing.tracing.currentTraceContext().newScope(context)) {
+    try (Scope scope = httpTracing.tracing.currentTraceContext().newScope(context)) {
       brave.Span span = handler.handleSendWithParent(request, null);
 
       // If the overwrite was successful, we have a root span.
@@ -126,7 +126,7 @@ public class RpcClientHandlerTest {
   }
 
   @Test void handleSendWithParent_overrideNull() {
-    try (Scope ws = httpTracing.tracing.currentTraceContext().newScope(null)) {
+    try (Scope scope = httpTracing.tracing.currentTraceContext().newScope(null)) {
       brave.Span span = handler.handleSendWithParent(request, context);
 
       // If the overwrite was successful, we have a child span.

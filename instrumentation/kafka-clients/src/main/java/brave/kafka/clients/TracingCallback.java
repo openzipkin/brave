@@ -54,7 +54,7 @@ final class TracingCallback {
     }
 
     @Override public void onCompletion(RecordMetadata metadata, @Nullable Exception exception) {
-      try (Scope ws = current.maybeScope(span.context())) {
+      try (Scope scope = current.maybeScope(span.context())) {
         delegate.onCompletion(metadata, exception);
       } finally {
         super.onCompletion(metadata, exception);

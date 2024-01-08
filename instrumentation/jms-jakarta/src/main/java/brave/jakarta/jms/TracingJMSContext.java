@@ -13,7 +13,6 @@
  */
 package brave.jakarta.jms;
 
-import java.io.Serializable;
 import jakarta.jms.BytesMessage;
 import jakarta.jms.ConnectionMetaData;
 import jakarta.jms.Destination;
@@ -32,6 +31,7 @@ import jakarta.jms.TemporaryTopic;
 import jakarta.jms.TextMessage;
 import jakarta.jms.Topic;
 import jakarta.jms.XAJMSContext;
+import java.io.Serializable;
 
 class TracingJMSContext implements JMSContext {
   static JMSContext create(JMSContext delegate, JmsTracing jmsTracing) {

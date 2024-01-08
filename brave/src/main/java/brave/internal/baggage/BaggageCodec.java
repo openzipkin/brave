@@ -38,13 +38,11 @@ public interface BaggageCodec {
       return Collections.emptyList();
     }
 
-    @Override
-    public boolean decode(ValueUpdater valueUpdater, Object request, String value) {
+    @Override public boolean decode(ValueUpdater valueUpdater, String value) {
       return false;
     }
 
-    @Override
-    public String encode(Map<String, String> values, TraceContext context, Object request) {
+    @Override public String encode(Map<String, String> values, TraceContext context) {
       return null;
     }
 
@@ -76,16 +74,11 @@ public interface BaggageCodec {
    * Called on the first non-{@code null} value from an {@link #extractKeyNames() extract key}.
    * Decodes any field state from an extracted value or returns {@code null} if there were none.
    *
-   * <p>Ex. When the state is a simple string, this will just use the request value directly.
-   * {@linkplain BaggageFields#isDynamic() dynamic values} will need to perform some decoding,
-   * such as splitting on comma and equals.
-   *
    * @param valueUpdater used to assign {@link BaggageField} values.
-   * @param request the parameter of {@link Extractor#extract(Object)}
    * @param value a non-{@code null} result of {@link Getter#get(Object, Object)}
    * @see #extractKeyNames()
    */
-  boolean decode(ValueUpdater valueUpdater, Object request, String value);
+  boolean decode(ValueUpdater valueUpdater, String value);
 
   /**
    * Encodes any state to a request value used by {@link Setter#put(Object, Object, String)}. When
@@ -98,5 +91,5 @@ public interface BaggageCodec {
    * @return an input to {@link Setter#put(Object, Object, String)}
    * @see #injectKeyNames()
    */
-  @Nullable String encode(Map<String, String> values, TraceContext context, Object request);
+  @Nullable String encode(Map<String, String> values, TraceContext context);
 }

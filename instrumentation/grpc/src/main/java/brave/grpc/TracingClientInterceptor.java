@@ -13,9 +13,7 @@
  */
 package brave.grpc;
 
-import brave.NoopSpanCustomizer;
 import brave.Span;
-import brave.SpanCustomizer;
 import brave.internal.Nullable;
 import brave.propagation.CurrentTraceContext;
 import brave.propagation.CurrentTraceContext.Scope;
@@ -42,13 +40,11 @@ final class TracingClientInterceptor implements ClientInterceptor {
   final Map<String, Key<String>> nameToKey;
   final CurrentTraceContext currentTraceContext;
   final RpcClientHandler handler;
-  final MessageProcessor messageProcessor;
 
   TracingClientInterceptor(GrpcTracing grpcTracing) {
     nameToKey = grpcTracing.nameToKey;
     currentTraceContext = grpcTracing.rpcTracing.tracing().currentTraceContext();
     handler = RpcClientHandler.create(grpcTracing.rpcTracing);
-    messageProcessor = grpcTracing.clientMessageProcessor;
   }
 
   @Override
@@ -157,9 +153,6 @@ final class TracingClientInterceptor implements ClientInterceptor {
       Scope scope = maybeScopeClientOrInvocationContext(spanRef, invocationContext);
       try {
         delegate().sendMessage(message);
-        Span span = spanRef.get(); // could be an error
-        SpanCustomizer customizer = span != null ? span.customizer() : NoopSpanCustomizer.INSTANCE;
-        messageProcessor.onMessageSent(message, customizer);
       } finally {
         scope.close();
       }
@@ -218,9 +211,6 @@ final class TracingClientInterceptor implements ClientInterceptor {
     @Override public void onMessage(RespT message) {
       Scope scope = currentTraceContext.maybeScope(invocationContext);
       try {
-        Span span = spanRef.get(); // could be an error
-        SpanCustomizer customizer = span != null ? span.customizer() : NoopSpanCustomizer.INSTANCE;
-        messageProcessor.onMessageReceived(message, customizer);
         delegate().onMessage(message);
       } finally {
         scope.close();

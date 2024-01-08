@@ -57,7 +57,7 @@ final class TracingExceptionListener {
         delegate.onException(exception);
         return;
       }
-      try (SpanInScope ws = tracer.withSpanInScope(span)) {
+      try (SpanInScope scope = tracer.withSpanInScope(span)) {
         delegate.onException(exception);
       } finally {
         span.error(exception);

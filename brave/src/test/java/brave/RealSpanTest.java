@@ -20,8 +20,6 @@ import brave.test.TestSpanHandler;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import zipkin2.Endpoint;
-
 import static brave.Span.Kind;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -98,16 +96,6 @@ class RealSpanTest {
 
     assertThat(spans.get(0).containsAnnotation("foo"))
       .isTrue();
-  }
-
-  @Deprecated
-  @Test void remoteEndpoint_nulls() {
-    span.remoteEndpoint(Endpoint.newBuilder().build());
-    span.flush();
-
-    assertThat(spans.get(0).remoteServiceName()).isNull();
-    assertThat(spans.get(0).remoteIp()).isNull();
-    assertThat(spans.get(0).remotePort()).isZero();
   }
 
   @Test void annotate_timestamp() {
@@ -199,7 +187,7 @@ class RealSpanTest {
 
   @Test void equals_lazySpan_sameContext() {
     Span current;
-    try (Scope ws = tracing.currentTraceContext().newScope(context)) {
+    try (Scope scope = tracing.currentTraceContext().newScope(context)) {
       current = tracing.tracer().currentSpan();
     }
 
@@ -208,7 +196,7 @@ class RealSpanTest {
 
   @Test void equals_lazySpan_notSameContext() {
     Span current;
-    try (Scope ws = tracing.currentTraceContext().newScope(context2)) {
+    try (Scope scope = tracing.currentTraceContext().newScope(context2)) {
       current = tracing.tracer().currentSpan();
     }
 

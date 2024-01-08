@@ -311,7 +311,7 @@ public abstract class CurrentTraceContextTest {
   }
 
   @Test void restoresSpanAfterCallable() throws Exception {
-    try (Scope scope0 = currentTraceContext.newScope(context)) {
+    try (Scope scope = currentTraceContext.newScope(context)) {
       attachesSpanInCallable();
       assertThat(currentTraceContext.get())
         .isEqualTo(context);
@@ -341,7 +341,7 @@ public abstract class CurrentTraceContextTest {
   @Test void restoresSpanAfterRunnable() throws Exception {
     TraceContext context0 = TraceContext.newBuilder().traceId(3L).spanId(3L).build();
 
-    try (Scope scope0 = currentTraceContext.newScope(context0)) {
+    try (Scope scope = currentTraceContext.newScope(context0)) {
       attachesSpanInRunnable();
       assertThat(currentTraceContext.get())
         .isEqualTo(context0);
@@ -366,7 +366,7 @@ public abstract class CurrentTraceContextTest {
   static class ClosedScope extends ClassLoaders.ConsumerRunnable<CurrentTraceContext.Builder> {
     @Override public void accept(CurrentTraceContext.Builder builder) {
       CurrentTraceContext current = builder.build();
-      try (Scope ws = current.newScope(TraceContext.newBuilder().traceId(1L).spanId(2L).build())) {
+      try (Scope scope = current.newScope(TraceContext.newBuilder().traceId(1L).spanId(2L).build())) {
       }
     }
   }

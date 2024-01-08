@@ -13,7 +13,6 @@
  */
 package brave.http;
 
-import brave.SpanCustomizer;
 import brave.Tracing;
 import brave.handler.MutableSpan;
 import brave.propagation.CurrentTraceContext;
@@ -22,7 +21,6 @@ import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
 import brave.test.IntegrationTestSpanHandler;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,7 +32,6 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import static brave.Span.Kind.CLIENT;
-import static brave.http.HttpHandler.NULL_SENTINEL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Answers.CALLS_REAL_METHODS;
@@ -126,7 +123,7 @@ public class HttpClientHandlerTest {
 
   @Test void handleSendWithParent_overrideContext() {
     try (
-      CurrentTraceContext.Scope ws = httpTracing.tracing.currentTraceContext().newScope(context)) {
+      CurrentTraceContext.Scope scope = httpTracing.tracing.currentTraceContext().newScope(context)) {
       brave.Span span = handler.handleSendWithParent(request, null);
 
       // If the overwrite was successful, we have a root span.
@@ -135,7 +132,7 @@ public class HttpClientHandlerTest {
   }
 
   @Test void handleSendWithParent_overrideNull() {
-    try (CurrentTraceContext.Scope ws = httpTracing.tracing.currentTraceContext().newScope(null)) {
+    try (CurrentTraceContext.Scope scope = httpTracing.tracing.currentTraceContext().newScope(null)) {
       brave.Span span = handler.handleSendWithParent(request, context);
 
       // If the overwrite was successful, we have a child span.
@@ -181,109 +178,5 @@ public class HttpClientHandlerTest {
     assertThatThrownBy(() -> handler.handleReceive(null, span))
       .isInstanceOf(NullPointerException.class)
       .hasMessage("response == null");
-  }
-
-  @Test void deprecatedHandleReceive_externalTimestamps() {
-    when(request.startTimestamp()).thenReturn(123000L);
-    when(response.finishTimestamp()).thenReturn(124000L);
-
-    brave.Span span = handler.handleSend(request);
-    handler.handleReceive(response, null, span);
-
-    assertThat(spanHandler.takeRemoteSpan(CLIENT))
-        .extracting(MutableSpan::startTimestamp, MutableSpan::finishTimestamp)
-        .containsExactly(123000L, 124000L);
-  }
-
-  @Test void deprecatedNextSpan_samplerSeesHttpClientRequest() {
-    SamplerFunction<HttpRequest> clientSampler = mock(SamplerFunction.class);
-    init(httpTracingBuilder(tracingBuilder()).clientSampler(clientSampler));
-
-    handler.nextSpan(request);
-
-    verify(clientSampler).trySample(request);
-  }
-
-  @Test void deprecatedHandleReceive_finishesSpanEvenIfUnwrappedNull() {
-    brave.Span span = mock(brave.Span.class);
-    when(span.context()).thenReturn(context);
-    when(span.customizer()).thenReturn(span);
-
-    handler.handleReceive(mock(HttpClientResponse.class), null, span);
-
-    verify(span).isNoop();
-    verify(span).context();
-    verify(span).customizer();
-    verify(span).finish();
-    verifyNoMoreInteractions(span);
-  }
-
-  @Test void deprecatedHandleReceive_finishesSpanEvenIfUnwrappedNull_withError() {
-    brave.Span span = mock(brave.Span.class);
-    when(span.context()).thenReturn(context);
-    when(span.customizer()).thenReturn(span);
-
-    Exception error = new RuntimeException("peanuts");
-
-    handler.handleReceive(mock(HttpClientResponse.class), error, span);
-
-    verify(span).isNoop();
-    verify(span).context();
-    verify(span).customizer();
-    verify(span).error(error);
-    verify(span).finish();
-    verifyNoMoreInteractions(span);
-  }
-
-  @Test void handleSend_oldSamplerDoesntSeeNullWhenUnwrappedNull() {
-    AtomicBoolean reachedAssertion = new AtomicBoolean();
-    init(httpTracingBuilder(tracingBuilder())
-      .clientSampler(new HttpSampler() {
-        @Override public <Req> Boolean trySample(HttpAdapter<Req, ?> adapter, Req req) {
-          assertThat(req).isSameAs(NULL_SENTINEL);
-          reachedAssertion.set(true);
-          return true;
-        }
-      }));
-
-    handler.handleSend(request);
-
-    assertThat(reachedAssertion).isTrue();
-  }
-
-  @Test void handleSend_requestParserDoesntSeeNullWhenUnwrappedNull() {
-    AtomicBoolean reachedAssertion = new AtomicBoolean();
-    init(httpTracingBuilder(tracingBuilder())
-      .clientParser(new HttpClientParser() {
-        @Override
-        public <Req> void request(HttpAdapter<Req, ?> adapter, Req req, SpanCustomizer span) {
-          assertThat(req).isSameAs(NULL_SENTINEL);
-          reachedAssertion.set(true);
-        }
-      }));
-
-    handler.handleSend(request);
-
-    assertThat(reachedAssertion).isTrue();
-  }
-
-  @Test void handleReceive_responseParserDoesntSeeNullWhenUnwrappedNull() {
-    AtomicBoolean reachedAssertion = new AtomicBoolean();
-    init(httpTracingBuilder(tracingBuilder())
-      .clientParser(new HttpClientParser() {
-        @Override
-        public <Resp> void response(HttpAdapter<?, Resp> adapter, Resp resp, Throwable error,
-          SpanCustomizer span) {
-          assertThat(resp).isSameAs(NULL_SENTINEL);
-          reachedAssertion.set(true);
-        }
-      }));
-
-    brave.Span span = mock(brave.Span.class);
-    when(span.isNoop()).thenReturn(false);
-
-    handler.handleReceive(response, null, span);
-
-    assertThat(reachedAssertion).isTrue();
   }
 }

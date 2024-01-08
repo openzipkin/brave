@@ -49,11 +49,6 @@ public final class WriteBuffer {
     buf[pos++] = (byte) (v & 0xff);
   }
 
-  public void write(byte[] v) {
-    System.arraycopy(v, 0, buf, pos, v.length);
-    pos += v.length;
-  }
-
   void writeBackwards(long v) {
     int lastPos = pos + asciiSizeInBytes(v); // We write backwards from right to left.
     pos = lastPos;

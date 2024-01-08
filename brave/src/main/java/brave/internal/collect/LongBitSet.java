@@ -29,10 +29,6 @@ public final class LongBitSet {
     return (bitset & (1 << i)) != 0;
   }
 
-  public static long unsetBit(long bitset, long i) {
-    return bitset & ~(1 << i);
-  }
-
   public static long setBit(long bitset, long i) {
     return bitset | (1 << i);
   }

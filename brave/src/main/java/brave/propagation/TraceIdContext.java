@@ -17,10 +17,10 @@ import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.RecyclableBuffers;
 
-import static brave.internal.codec.HexCodec.toLowerHex;
-import static brave.internal.codec.HexCodec.writeHexLong;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED;
 import static brave.internal.InternalPropagation.FLAG_SAMPLED_SET;
+import static brave.internal.codec.HexCodec.toLowerHex;
+import static brave.internal.codec.HexCodec.writeHexLong;
 
 /**
  * Contains inbound trace ID and sampling flags, used when users control the root trace ID, but not

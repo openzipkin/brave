@@ -69,7 +69,7 @@ class NoopSpanTest {
 
   @Test void equals_lazySpan_sameContext() {
     Span current;
-    try (SpanInScope ws = tracer.withSpanInScope(span)) {
+    try (SpanInScope scope = tracer.withSpanInScope(span)) {
       current = tracer.currentSpan();
     }
 
@@ -78,7 +78,7 @@ class NoopSpanTest {
 
   @Test void equals_lazySpan_notSameContext() {
     Span current;
-    try (SpanInScope ws = tracer.withSpanInScope(tracer.newTrace())) {
+    try (SpanInScope scope = tracer.withSpanInScope(tracer.newTrace())) {
       current = tracer.currentSpan();
     }
 

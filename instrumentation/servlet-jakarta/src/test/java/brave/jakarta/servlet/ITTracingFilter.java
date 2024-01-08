@@ -13,7 +13,7 @@
  */
 package brave.jakarta.servlet;
 
-import java.util.EnumSet;
+import brave.test.jakarta.http.ITServlet5Container;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterRegistration;
@@ -21,9 +21,9 @@ import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.UnavailableException;
+import java.util.EnumSet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.junit.jupiter.api.Disabled;
-import brave.test.jakarta.http.ITServlet5Container;
 
 class ITTracingFilter extends ITServlet5Container {
 

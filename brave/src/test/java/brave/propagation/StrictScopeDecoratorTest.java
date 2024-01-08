@@ -46,8 +46,8 @@ class StrictScopeDecoratorTest {
   }
 
   @Test void decorator_close_afterCorrectUsage() {
-    try (Scope ws = currentTraceContext.newScope(null)) {
-      try (Scope ws2 = currentTraceContext.newScope(context)) {
+    try (Scope scope = currentTraceContext.newScope(null)) {
+      try (Scope scope2 = currentTraceContext.newScope(context)) {
       }
     }
 

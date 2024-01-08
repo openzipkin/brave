@@ -16,14 +16,10 @@ package brave.http;
 import brave.Span;
 import brave.SpanCustomizer;
 import brave.Tracer;
-import brave.http.HttpClientAdapters.FromRequestAdapter;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Injector;
-import brave.sampler.Sampler;
 import brave.sampler.SamplerFunction;
-
-import static brave.http.HttpClientAdapters.FromResponseAdapter;
 
 /**
  * This standardizes a way to instrument http clients, particularly in a way that encourages use of
@@ -45,7 +41,7 @@ import static brave.http.HttpClientAdapters.FromResponseAdapter;
  * Span span = handler.handleSend(requestWrapper); // 1.
  * HttpClientResponse response = null;
  * Throwable error = null;
- * try (Scope ws = currentTraceContext.newScope(span.context())) { // 2.
+ * try (Scope scope = currentTraceContext.newScope(span.context())) { // 2.
  *   return response = invoke(request); // 3.
  * } catch (Throwable e) {
  *   error = e; // 4.
@@ -69,33 +65,17 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
   public static HttpClientHandler<HttpClientRequest, HttpClientResponse> create(
     HttpTracing httpTracing) {
     if (httpTracing == null) throw new NullPointerException("httpTracing == null");
-    return new HttpClientHandler<HttpClientRequest, HttpClientResponse>(httpTracing, null);
-  }
-
-  /**
-   * @since 4.3
-   * @deprecated Since 5.7, use {@link #create(HttpTracing)} as it is more portable.
-   */
-  @Deprecated
-  public static <Req, Resp> HttpClientHandler<Req, Resp> create(HttpTracing httpTracing,
-    HttpClientAdapter<Req, Resp> adapter) {
-    if (httpTracing == null) throw new NullPointerException("httpTracing == null");
-    if (adapter == null) throw new NullPointerException("adapter == null");
-    return new HttpClientHandler<Req, Resp>(httpTracing, adapter);
+    return new HttpClientHandler<HttpClientRequest, HttpClientResponse>(httpTracing);
   }
 
   final Tracer tracer;
-  @Deprecated @Nullable final HttpClientAdapter<Req, Resp> adapter; // null when using default types
-  final Sampler sampler;
   final SamplerFunction<HttpRequest> httpSampler;
   @Nullable final String serverName;
   final Injector<HttpClientRequest> defaultInjector;
 
-  HttpClientHandler(HttpTracing httpTracing, @Deprecated HttpClientAdapter<Req, Resp> adapter) {
+  HttpClientHandler(HttpTracing httpTracing) {
     super(httpTracing.clientRequestParser(), httpTracing.clientResponseParser());
-    this.adapter = adapter;
     this.tracer = httpTracing.tracing().tracer();
-    this.sampler = httpTracing.tracing().sampler();
     this.httpSampler = httpTracing.clientRequestSampler();
     this.serverName = !"".equals(httpTracing.serverName()) ? httpTracing.serverName() : null;
     // The following allows us to add the method: handleSend(HttpClientRequest request) without
@@ -150,95 +130,6 @@ public final class HttpClientHandler<Req, Resp> extends HttpHandler {
   @Override void parseRequest(HttpRequest request, Span span) {
     if (serverName != null) span.remoteServiceName(serverName);
     super.parseRequest(request, span);
-  }
-
-  /**
-   * @since 4.3
-   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest)}, as this allows more advanced
-   * samplers to be used.
-   */
-  @Deprecated public Span handleSend(Injector<Req> injector, Req request) {
-    return handleSend(injector, request, request);
-  }
-
-  /**
-   * @since 4.3
-   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest)}.
-   */
-  @Deprecated public <C> Span handleSend(Injector<C> injector, C carrier, Req request) {
-    return handleSend(injector, carrier, request, nextSpan(request));
-  }
-
-  /**
-   * @since 4.4
-   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest, Span)}.
-   */
-  @Deprecated public Span handleSend(Injector<Req> injector, Req request, Span span) {
-    return handleSend(injector, request, request, span);
-  }
-
-  /**
-   * @since 4.4
-   * @deprecated Since 5.7, use {@link #handleSend(HttpClientRequest)}.
-   */
-  @Deprecated public <C> Span handleSend(Injector<C> injector, C carrier, Req request, Span span) {
-    if (request == null) throw new NullPointerException("carrier == null");
-    if (span == null) throw new NullPointerException("span == null");
-
-    injector.inject(span.context(), carrier);
-    HttpClientRequest clientRequest;
-    if (request instanceof HttpClientRequest) {
-      clientRequest = (HttpClientRequest) request;
-    } else {
-      clientRequest = new HttpClientAdapters.FromRequestAdapter<Req>(adapter, request);
-    }
-
-    return handleStart(clientRequest, span);
-  }
-
-  /**
-   * @since 4.4
-   * @deprecated since 5.8 use {@link Tracer#nextSpan(SamplerFunction, Object)}
-   */
-  @Deprecated public Span nextSpan(Req request) {
-    // nextSpan can be called independently when interceptors control lifecycle directly. In these
-    // cases, it is possible to have HttpClientRequest as an argument.
-    HttpClientRequest clientRequest;
-    if (request instanceof HttpClientRequest) {
-      clientRequest = (HttpClientRequest) request;
-    } else {
-      clientRequest = new FromRequestAdapter<Req>(adapter, request);
-    }
-    return tracer.nextSpan(httpSampler, clientRequest);
-  }
-
-  /**
-   * @since 4.3
-   * @deprecated since 5.12 use {@link #handleReceive(HttpClientResponse, Span)}
-   */
-  @Deprecated
-  public void handleReceive(@Nullable Resp response, @Nullable Throwable error, Span span) {
-    if (span == null) throw new NullPointerException("span == null");
-    if (response == null && error == null) {
-      throw new IllegalArgumentException(
-        "Either the response or error parameters may be null, but not both");
-    }
-
-    if (response == null) {
-      span.error(error).finish();
-      return;
-    }
-
-    HttpClientResponse clientResponse;
-    if (response instanceof HttpClientResponse) {
-      clientResponse = (HttpClientResponse) response;
-      if (clientResponse.error() == null && error != null) {
-        span.error(error);
-      }
-    } else {
-      clientResponse = new FromResponseAdapter<Resp>(adapter, response, error);
-    }
-    handleFinish(clientResponse, span);
   }
 
   /**

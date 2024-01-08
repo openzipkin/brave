@@ -64,7 +64,7 @@ public final class TracingAsyncClientHttpRequestInterceptor
       ? currentTraceContext.get()
       : null;
 
-    Scope ws = currentTraceContext.maybeScope(span.context());
+    Scope scope = currentTraceContext.maybeScope(span.context());
     Throwable error = null;
     try {
       ListenableFuture<ClientHttpResponse> result = execution.executeAsync(req, body);
@@ -86,7 +86,7 @@ public final class TracingAsyncClientHttpRequestInterceptor
       if (error != null) {
         handler.handleReceive(new ClientHttpResponseWrapper(request, null, error), span);
       }
-      ws.close();
+      scope.close();
     }
   }
 

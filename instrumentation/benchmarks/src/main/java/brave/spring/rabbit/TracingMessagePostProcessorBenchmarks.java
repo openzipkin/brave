@@ -33,7 +33,6 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
-import zipkin2.reporter.Reporter;
 
 @Measurement(iterations = 5, time = 1)
 @Warmup(iterations = 10, time = 1)
@@ -43,14 +42,11 @@ import zipkin2.reporter.Reporter;
 @State(Scope.Thread)
 public class TracingMessagePostProcessorBenchmarks {
   Message message = MessageBuilder.withBody(new byte[0]).build();
-  TracingMessagePostProcessor tracingPostProcessor, tracingB3SinglePostProcessor;
+  TracingMessagePostProcessor tracingPostProcessor;
 
   @Setup(Level.Trial) public void init() {
-    Tracing tracing = Tracing.newBuilder().spanReporter(Reporter.NOOP).build();
+    Tracing tracing = Tracing.newBuilder().build();
     tracingPostProcessor = new TracingMessagePostProcessor(SpringRabbitTracing.create(tracing));
-    tracingB3SinglePostProcessor = new TracingMessagePostProcessor(
-      SpringRabbitTracing.newBuilder(tracing).writeB3SingleFormat(true).build()
-    );
   }
 
   @TearDown(Level.Trial) public void close() {
@@ -59,10 +55,6 @@ public class TracingMessagePostProcessorBenchmarks {
 
   @Benchmark public Message send_traced() {
     return tracingPostProcessor.postProcessMessage(message);
-  }
-
-  @Benchmark public Message send_traced_b3Single() {
-    return tracingB3SinglePostProcessor.postProcessMessage(message);
   }
 
   // Convenience main entry-point

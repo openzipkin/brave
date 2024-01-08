@@ -198,14 +198,6 @@ public final class MutableSpan implements Cloneable {
   }
 
   /**
-   * @since 5.4
-   * @deprecated Since 5.12 use {@link #equals(Object)} against a base value.
-   */
-  @Deprecated public boolean isEmpty() {
-    return equals(EMPTY);
-  }
-
-  /**
    * Returns the {@linkplain TraceContext#traceIdString() trace ID}
    *
    * @since 5.12

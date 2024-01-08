@@ -16,7 +16,6 @@ package brave.jakarta.jms;
 import brave.Span;
 import brave.propagation.TraceContextOrSamplingFlags;
 import jakarta.jms.CompletionListener;
-import jakarta.jms.Destination;
 import jakarta.jms.Message;
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +25,6 @@ import static org.mockito.Mockito.verify;
 
 public class TracingCompletionListenerTest extends ITJms {
   Message message = mock(Message.class);
-  Destination destination = mock(Destination.class);
 
   @Test void onCompletion_shouldKeepContext_whenNotSampled() {
     Span span = tracing.tracer().nextSpan(TraceContextOrSamplingFlags.NOT_SAMPLED);
@@ -40,7 +38,7 @@ public class TracingCompletionListenerTest extends ITJms {
       }
     };
     CompletionListener tracingCompletionListener =
-      TracingCompletionListener.create(delegate, destination, span, currentTraceContext);
+      TracingCompletionListener.create(delegate, span, currentTraceContext);
 
     tracingCompletionListener.onCompletion(null);
 
@@ -51,7 +49,7 @@ public class TracingCompletionListenerTest extends ITJms {
     Span span = tracing.tracer().nextSpan().start();
 
     CompletionListener tracingCompletionListener =
-      TracingCompletionListener.create(mock(CompletionListener.class), destination, span,
+      TracingCompletionListener.create(mock(CompletionListener.class), span,
         currentTraceContext);
     tracingCompletionListener.onCompletion(message);
 
@@ -64,7 +62,7 @@ public class TracingCompletionListenerTest extends ITJms {
 
     RuntimeException error = new RuntimeException("Test exception");
     CompletionListener tracingCompletionListener =
-      TracingCompletionListener.create(mock(CompletionListener.class), destination, span,
+      TracingCompletionListener.create(mock(CompletionListener.class), span,
         currentTraceContext);
     tracingCompletionListener.onException(message, error);
 
@@ -76,7 +74,7 @@ public class TracingCompletionListenerTest extends ITJms {
 
     CompletionListener delegate = mock(CompletionListener.class);
     CompletionListener tracingCompletionListener =
-      TracingCompletionListener.create(delegate, destination, span, currentTraceContext);
+      TracingCompletionListener.create(delegate, span, currentTraceContext);
     tracingCompletionListener.onCompletion(message);
 
     verify(delegate).onCompletion(message);
@@ -97,7 +95,7 @@ public class TracingCompletionListenerTest extends ITJms {
       }
     };
 
-    TracingCompletionListener.create(delegate, destination, span, currentTraceContext)
+    TracingCompletionListener.create(delegate, span, currentTraceContext)
       .onCompletion(message);
 
     testSpanHandler.takeLocalSpan();
@@ -108,7 +106,7 @@ public class TracingCompletionListenerTest extends ITJms {
 
     CompletionListener delegate = mock(CompletionListener.class);
     CompletionListener tracingCompletionListener =
-      TracingCompletionListener.create(delegate, destination, span, currentTraceContext);
+      TracingCompletionListener.create(delegate, span, currentTraceContext);
     RuntimeException error = new RuntimeException("Test exception");
     tracingCompletionListener.onException(message, error);
 

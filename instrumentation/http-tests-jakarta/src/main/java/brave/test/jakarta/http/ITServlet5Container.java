@@ -18,11 +18,6 @@ import brave.Tracing;
 import brave.http.HttpTracing;
 import brave.propagation.TraceContext;
 import brave.test.http.ITServletContainer;
-
-import java.io.IOException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 import jakarta.servlet.AsyncContext;
 import jakarta.servlet.AsyncEvent;
 import jakarta.servlet.AsyncListener;
@@ -37,6 +32,9 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.eclipse.jetty.servlet.ServletContextHandler;

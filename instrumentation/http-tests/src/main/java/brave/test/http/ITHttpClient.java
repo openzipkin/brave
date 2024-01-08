@@ -14,11 +14,8 @@
 package brave.test.http;
 
 import brave.Clock;
-import brave.SpanCustomizer;
 import brave.handler.MutableSpan;
 import brave.handler.SpanHandler;
-import brave.http.HttpAdapter;
-import brave.http.HttpClientParser;
 import brave.http.HttpRequest;
 import brave.http.HttpResponseParser;
 import brave.http.HttpRuleSampler;
@@ -254,49 +251,6 @@ public abstract class ITHttpClient<C> extends ITRemote {
 
     assertThat(span.tags())
       .containsEntry("http.url", url(uri))
-      .containsEntry("request_customizer.is_span", "false")
-      .containsEntry("response_customizer.is_span", "false");
-  }
-
-  @Deprecated
-  @Test protected void supportsDeprecatedPortableCustomization() throws IOException {
-    String uri = "/foo/bar?z=2&yAA=1";
-
-    closeClient(client);
-    httpTracing = httpTracing.toBuilder()
-      .clientParser(new HttpClientParser() {
-        @Override
-        public <Req> void request(HttpAdapter<Req, ?> adapter, Req req,
-          SpanCustomizer customizer) {
-          customizer.name(adapter.method(req).toLowerCase() + " " + adapter.path(req));
-          customizer.tag("http.url", adapter.url(req)); // just the path is tagged by default
-          customizer.tag("context.visible", String.valueOf(currentTraceContext.get() != null));
-          customizer.tag("request_customizer.is_span", (customizer instanceof brave.Span) + "");
-        }
-
-        @Override
-        public <Resp> void response(HttpAdapter<?, Resp> adapter, Resp res, Throwable error,
-          SpanCustomizer customizer) {
-          super.response(adapter, res, error, customizer);
-          customizer.tag("response_customizer.is_span", (customizer instanceof brave.Span) + "");
-        }
-      })
-      .build().clientOf("remote-service");
-
-    client = newClient(server.getPort());
-    server.enqueue(new MockResponse());
-    get(client, uri);
-
-    MutableSpan span = testSpanHandler.takeRemoteSpan(CLIENT);
-    assertThat(span.name())
-      .isEqualTo("get /foo/bar");
-
-    assertThat(span.remoteServiceName())
-      .isEqualTo("remote-service");
-
-    assertThat(span.tags())
-      .containsEntry("http.url", url(uri))
-      .containsEntry("context.visible", "true")
       .containsEntry("request_customizer.is_span", "false")
       .containsEntry("response_customizer.is_span", "false");
   }

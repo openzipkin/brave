@@ -13,7 +13,6 @@
  */
 package brave.test.jakarta.http;
 
-import brave.test.http.ServletContainer;
 import brave.test.http.ServletContainer.ServerController;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;

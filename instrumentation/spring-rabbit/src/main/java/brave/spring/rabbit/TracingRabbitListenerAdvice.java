@@ -19,10 +19,10 @@ import brave.Tracing;
 import brave.internal.Nullable;
 import brave.messaging.MessagingRequest;
 import brave.propagation.TraceContext.Extractor;
-import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.SamplerFunction;
 import com.rabbitmq.client.Channel;
+import java.util.List;
 import org.aopalliance.aop.Advice;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
@@ -31,9 +31,8 @@ import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 
-import java.util.List;
-
 import static brave.Span.Kind.CONSUMER;
+import static brave.internal.Throwables.propagateIfFatal;
 import static brave.spring.rabbit.SpringRabbitTracing.RABBIT_EXCHANGE;
 import static brave.spring.rabbit.SpringRabbitTracing.RABBIT_QUEUE;
 import static brave.spring.rabbit.SpringRabbitTracing.RABBIT_ROUTING_KEY;
@@ -55,7 +54,6 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
   final Tracing tracing;
   final Tracer tracer;
   final Extractor<MessageConsumerRequest> extractor;
-  final Injector<MessageConsumerRequest> injector;
   final SamplerFunction<MessagingRequest> sampler;
   @Nullable final String remoteServiceName;
 
@@ -65,7 +63,6 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
     this.tracer = tracing.tracer();
     this.extractor = springRabbitTracing.consumerExtractor;
     this.sampler = springRabbitTracing.consumerSampler;
-    this.injector = springRabbitTracing.consumerInjector;
     this.remoteServiceName = springRabbitTracing.remoteServiceName;
   }
 
@@ -102,17 +99,18 @@ final class TracingRabbitListenerAdvice implements MethodInterceptor {
       listenerSpan.name("on-message").start(consumerFinish);
     }
 
-    Tracer.SpanInScope ws = tracer.withSpanInScope(listenerSpan);
+    Tracer.SpanInScope scope = tracer.withSpanInScope(listenerSpan);
     Throwable error = null;
     try {
       return methodInvocation.proceed();
     } catch (Throwable t) {
+      propagateIfFatal(t);
       error = t;
       throw t;
     } finally {
       if (error != null) listenerSpan.error(error);
       listenerSpan.finish();
-      ws.close();
+      scope.close();
     }
   }
 

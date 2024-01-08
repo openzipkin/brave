@@ -113,14 +113,14 @@ class CurrentTraceContextExecutorServiceTest {
     // First task should block the queue, forcing the latter to not be scheduled immediately
     // Both should have the same parent, as the parent applies to the task creation time, not
     // execution time.
-    try (CurrentTraceContext.Scope ws = currentTraceContext.newScope(context)) {
+    try (CurrentTraceContext.Scope scope = currentTraceContext.newScope(context)) {
       scheduleTwoTasks.call();
     }
 
     // switch the current span to something else. If there's a bug, when the
     // second runnable starts, it will have this span as opposed to the one it was
     // invoked with
-    try (CurrentTraceContext.Scope ws = currentTraceContext.newScope(context2)) {
+    try (CurrentTraceContext.Scope scope = currentTraceContext.newScope(context2)) {
       latch.countDown();
       shutdownExecutor();
       assertThat(threadValues)

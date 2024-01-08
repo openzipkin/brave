@@ -294,7 +294,7 @@ public final class JmsTracing {
    * try {
    *    return message.getStringProperty(name);
    *  } catch (Throwable t) {
-   *    Call.propagateIfFatal(e);
+   *    Throwables.propagateIfFatal(e);
    *    log(e, "error getting property {0} from message {1}", name, message);
    *    return null;
    *  }
