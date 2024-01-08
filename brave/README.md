@@ -52,6 +52,9 @@ reporter = AsyncReporter.builder(sender)
 zipkinSpanHandler = ZipkinSpanHandler.create(reporter)
 ```
 
+*Note*: `ZipkinSpanHandler` requires an explicit dependency on
+[io.zipkin.reporter2:zipkin-reporter](https://github.com/openzipkin/zipkin-reporter-java/tree/master/core)
+
 ## Tracing
 
 The tracer creates and joins spans that model the latency of potentially
