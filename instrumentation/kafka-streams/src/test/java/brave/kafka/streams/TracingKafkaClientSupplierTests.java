@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class TracingKafkaClientSupplierTests {
 
-  final Map<String, Object> props = Collections.singletonMap("bootstrap.servers","localhost:9092");
+  final Map<String, Object> props = Collections.singletonMap("bootstrap.servers", "localhost:9092");
 
   @Test void shouldReturnNewAdmin() {
     TracingKafkaClientSupplier supplier = new TracingKafkaClientSupplier(null);
@@ -61,5 +61,4 @@ class TracingKafkaClientSupplierTests {
       return null;
     }
   }
-
 }

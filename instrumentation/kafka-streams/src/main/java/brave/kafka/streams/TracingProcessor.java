@@ -21,11 +21,7 @@ import org.apache.kafka.streams.processor.api.Record;
 
 import static brave.internal.Throwables.propagateIfFatal;
 
-/*
- * Note. the V2 naming convention has been introduced here to help distinguish between the existing TracingProcessor classes
- * and those that implement the new kafka streams API introduced in version 3.4.0
- */
-class TracingV2Processor<KIn, VIn, KOut, VOut> implements Processor<KIn, VIn, KOut, VOut> {
+class TracingProcessor<KIn, VIn, KOut, VOut> implements Processor<KIn, VIn, KOut, VOut> {
   final KafkaStreamsTracing kafkaStreamsTracing;
   final Tracer tracer;
   final String spanName;
@@ -33,8 +29,8 @@ class TracingV2Processor<KIn, VIn, KOut, VOut> implements Processor<KIn, VIn, KO
 
   ProcessorContext processorContext;
 
-  TracingV2Processor(KafkaStreamsTracing kafkaStreamsTracing,
-                     String spanName, Processor<KIn, VIn, KOut, VOut> delegateProcessor) {
+  TracingProcessor(KafkaStreamsTracing kafkaStreamsTracing,
+    String spanName, Processor<KIn, VIn, KOut, VOut> delegateProcessor) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.tracer = kafkaStreamsTracing.tracer;
     this.spanName = spanName;
