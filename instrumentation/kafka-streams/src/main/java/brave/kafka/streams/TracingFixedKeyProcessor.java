@@ -21,11 +21,7 @@ import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 
 import static brave.internal.Throwables.propagateIfFatal;
 
-/*
- * Note. the V2 naming convention has been introduced here to help distinguish between the existing TracingProcessor classes
- * and those that implement the new kafka streams API introduced in version 3.4.0
- */
-class TracingV2FixedKeyProcessor<KIn, VIn, VOut> implements FixedKeyProcessor<KIn, VIn, VOut> {
+class TracingFixedKeyProcessor<KIn, VIn, VOut> implements FixedKeyProcessor<KIn, VIn, VOut> {
   final KafkaStreamsTracing kafkaStreamsTracing;
   final Tracer tracer;
   final String spanName;
@@ -33,8 +29,8 @@ class TracingV2FixedKeyProcessor<KIn, VIn, VOut> implements FixedKeyProcessor<KI
 
   FixedKeyProcessorContext processorContext;
 
-  TracingV2FixedKeyProcessor(KafkaStreamsTracing kafkaStreamsTracing,
-                             String spanName, FixedKeyProcessor<KIn, VIn, VOut> delegateProcessor) {
+  TracingFixedKeyProcessor(KafkaStreamsTracing kafkaStreamsTracing,
+    String spanName, FixedKeyProcessor<KIn, VIn, VOut> delegateProcessor) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.tracer = kafkaStreamsTracing.tracer;
     this.spanName = spanName;

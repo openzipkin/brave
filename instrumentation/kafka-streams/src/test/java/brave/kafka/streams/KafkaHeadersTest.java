@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -25,7 +25,7 @@ public class KafkaHeadersTest {
     record.headers().add("b3", new byte[] {'1'});
 
     assertThat(KafkaHeaders.lastStringHeader(record.headers(), "b3"))
-        .isEqualTo("1");
+      .isEqualTo("1");
   }
 
   @Test void lastStringHeader_null() {
@@ -36,7 +36,7 @@ public class KafkaHeadersTest {
     KafkaHeaders.replaceHeader(record.headers(), "b3", "1");
 
     assertThat(record.headers().lastHeader("b3").value())
-        .containsExactly('1');
+      .containsExactly('1');
   }
 
   @Test void replaceHeader_replace() {
@@ -44,6 +44,6 @@ public class KafkaHeadersTest {
     KafkaHeaders.replaceHeader(record.headers(), "b3", "1");
 
     assertThat(record.headers().lastHeader("b3").value())
-        .containsExactly('1');
+      .containsExactly('1');
   }
 }

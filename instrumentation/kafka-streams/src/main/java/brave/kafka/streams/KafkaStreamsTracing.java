@@ -33,7 +33,9 @@ import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.processor.ProcessorContext;
+import org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier;
 import org.apache.kafka.streams.processor.api.ProcessingContext;
+import org.apache.kafka.streams.processor.api.ProcessorSupplier;
 
 /** Use this class to decorate Kafka Stream Topologies and enable Tracing. */
 public final class KafkaStreamsTracing {
@@ -85,7 +87,7 @@ public final class KafkaStreamsTracing {
    * Provides a {@link KafkaClientSupplier} with tracing enabled, hence Producer and Consumer
    * operations will be traced.
    * <p>
-   * This is mean to be used in scenarios {@link KafkaStreams} creation is not controlled by the
+   * This is meant to be used in scenarios {@link KafkaStreams} creation is not controlled by the
    * user but framework (e.g. Spring Kafka Streams) creates it, and {@link KafkaClientSupplier} is
    * accepted.
    */
@@ -113,7 +115,7 @@ public final class KafkaStreamsTracing {
   }
 
   /**
-   * Create a tracing-decorated {@link org.apache.kafka.streams.processor.api.ProcessorSupplier}
+   * Create a tracing-decorated {@link ProcessorSupplier}
    *
    * <p>Simple example using Kafka Streams DSL:
    * <pre>{@code
@@ -124,13 +126,13 @@ public final class KafkaStreamsTracing {
    *
    * @see TracingKafkaClientSupplier
    */
-  public <KIn, VIn, KOut, VOut> org.apache.kafka.streams.processor.api.ProcessorSupplier<KIn, VIn, KOut, VOut> process(String spanName,
-    org.apache.kafka.streams.processor.api.ProcessorSupplier<KIn, VIn, KOut, VOut> processorSupplier) {
-    return new TracingV2ProcessorSupplier<>(this, spanName, processorSupplier);
+  public <KIn, VIn, KOut, VOut> ProcessorSupplier<KIn, VIn, KOut, VOut> process(String spanName,
+    ProcessorSupplier<KIn, VIn, KOut, VOut> processorSupplier) {
+    return new TracingProcessorSupplier<>(this, spanName, processorSupplier);
   }
 
   /**
-   * Create a tracing-decorated {@link org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier}
+   * Create a tracing-decorated {@link FixedKeyProcessorSupplier}
    *
    * <p>Simple example using Kafka Streams DSL:
    * <pre>{@code
@@ -141,9 +143,9 @@ public final class KafkaStreamsTracing {
    *
    * @see TracingKafkaClientSupplier
    */
-  public <KIn, VIn, VOut> org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier<KIn, VIn, VOut> processValues(String spanName,
-    org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier<KIn, VIn, VOut> processorSupplier) {
-    return new TracingV2FixedKeyProcessorSupplier<>(this, spanName, processorSupplier);
+  public <KIn, VIn, VOut> FixedKeyProcessorSupplier<KIn, VIn, VOut> processValues(String spanName,
+    FixedKeyProcessorSupplier<KIn, VIn, VOut> processorSupplier) {
+    return new TracingFixedKeyProcessorSupplier<>(this, spanName, processorSupplier);
   }
 
   static void addTags(ProcessorContext processorContext, SpanCustomizer result) {
@@ -151,22 +153,10 @@ public final class KafkaStreamsTracing {
     result.tag(KafkaStreamsTags.KAFKA_STREAMS_TASK_ID_TAG, processorContext.taskId().toString());
   }
 
-  static void addTags(org.apache.kafka.streams.processor.api.ProcessingContext processingContext, SpanCustomizer result) {
-    result.tag(KafkaStreamsTags.KAFKA_STREAMS_APPLICATION_ID_TAG, processingContext.applicationId());
+  static void addTags(ProcessingContext processingContext, SpanCustomizer result) {
+    result.tag(KafkaStreamsTags.KAFKA_STREAMS_APPLICATION_ID_TAG,
+      processingContext.applicationId());
     result.tag(KafkaStreamsTags.KAFKA_STREAMS_TASK_ID_TAG, processingContext.taskId().toString());
-  }
-
-  Span nextSpan(ProcessorContext context) {
-    TraceContextOrSamplingFlags extracted = extractor.extract(context.headers());
-    // Clear any propagation keys present in the headers
-    if (!extracted.equals(emptyExtraction)) {
-      clearHeaders(context.headers());
-    }
-    Span result = tracer.nextSpan(extracted);
-    if (!result.isNoop()) {
-      addTags(context, result);
-    }
-    return result;
   }
 
   Span nextSpan(ProcessingContext context, Headers headers) {
@@ -183,7 +173,7 @@ public final class KafkaStreamsTracing {
   }
 
   // We can't just skip clearing headers we use because we might inject B3 single, yet have stale B3
-  // multi, or visa versa.
+  // multi, or vice versa.
   void clearHeaders(Headers headers) {
     // Headers::remove creates and consumes an iterator each time. This does one loop instead.
     for (Iterator<Header> i = headers.iterator(); i.hasNext(); ) {
