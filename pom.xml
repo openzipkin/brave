@@ -671,9 +671,13 @@
             <configuration>
               <serverId>ossrh</serverId>
               <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-              <!-- Recent slowdowns with Sonatype staging have pushed latencies over 10-20 minutes.
-                   Increasing the timeout avoids failures and retries, which still often fail when
-                   Sonatype servers are overloaded. -->
+              <!-- Increase timeouts due to recent load related failures described in OSSRH-76308:
+
+                   A message body reader for Java class com.sonatype.nexus.staging.api.dto.StagingProfileRepositoryDTO,
+                   and Java type class com.sonatype.nexus.staging.api.dto.StagingProfileRepositoryDTO,
+                   and MIME media type text/html was not found -> [Help 1]
+              -->
+              <stagingProgressPauseDurationSeconds>20</stagingProgressPauseDurationSeconds>
               <stagingProgressTimeoutMinutes>30</stagingProgressTimeoutMinutes>
               <autoReleaseAfterClose>true</autoReleaseAfterClose>
             </configuration>
