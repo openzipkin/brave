@@ -14,7 +14,17 @@ on:
 
 jobs:
   deploy:
+    name: deploy (${{ matrix.name }})
     runs-on: ubuntu-22.04  # newest available distribution, aka jellyfish
+    strategy:
+      fail-fast: false  # don't fail fast as we can re-run one job that failed
+      matrix:
+        include:
+          - name: jars
+            deploy_script: build-bin/deploy
+          # Deploy the Bill of Materials (BOM) separately as it is unhooked from the main project intentionally
+          - name: bom
+            deploy_script: build-bin/deploy_bom
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -57,4 +67,4 @@ jobs:
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
         run: |  # GITHUB_REF will be refs/heads/master or refs/tags/MAJOR.MINOR.PATCH
           build-bin/configure_deploy &&
-          build-bin/deploy $(echo ${GITHUB_REF} | cut -d/ -f 3)
+          ${{ matrix.deploy_script }} $(echo ${GITHUB_REF} | cut -d/ -f 3)
