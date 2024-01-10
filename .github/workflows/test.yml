@@ -69,4 +69,4 @@ jobs:
       # via forks, and login session ends up in ~/.docker. This is ok because
       # we publish DOCKER_PARENT_IMAGE to ghcr.io, hence local to the runner.
       - name: Test
-        run: build-bin/configure_test && build-bin/test
+        run: build-bin/configure_test && build-bin/test ${{ matrix.maven_args }}

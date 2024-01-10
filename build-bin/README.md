@@ -9,6 +9,9 @@ On deploy:
 * [javadoc_to_gh_pages] pushes Javadoc to the gh-pages branch on N.M.L branch, but not master.
   * gh-pages is addressable via https://zipkin.io/zipkin/
 
+On deploy_bom:
+* The artifact `brave-bom` is deployed. Intentionally separate to allow a retry.
+
 [//]: # (Below here should be standard for all projects)
 
 ## Build Overview

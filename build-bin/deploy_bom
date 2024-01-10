@@ -1,0 +1,4 @@
+#!/bin/sh -ue
+
+# Deploy the Bill of Materials (BOM) separately as it is unhooked from the main project intentionally
+build-bin/maven/maven_deploy -f brave-bom/pom.xml
