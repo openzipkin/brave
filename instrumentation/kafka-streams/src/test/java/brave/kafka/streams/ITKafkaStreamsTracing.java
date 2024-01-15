@@ -34,9 +34,13 @@ import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static brave.Span.Kind.CONSUMER;
 import static brave.Span.Kind.PRODUCER;
@@ -44,9 +48,11 @@ import static brave.kafka.streams.KafkaStreamsTracingTest.TEST_KEY;
 import static brave.kafka.streams.KafkaStreamsTracingTest.TEST_VALUE;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag("docker")
+@Testcontainers(disabledWithoutDocker = true)
+@Timeout(60)
 class ITKafkaStreamsTracing extends ITKafkaStreams {
-  @RegisterExtension KafkaExtension kafka = new KafkaExtension();
+  @Container KafkaContainer kafka = new KafkaContainer();
 
   Producer<String, String> producer;
 

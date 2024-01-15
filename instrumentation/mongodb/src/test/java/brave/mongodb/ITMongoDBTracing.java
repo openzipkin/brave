@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -32,12 +32,13 @@ import java.lang.reflect.Field;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.Document;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.Timeout;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static brave.Span.Kind.CLIENT;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,25 +46,28 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS) class ITMongoDBTracing extends ITRemote {
+@Tag("docker")
+@Testcontainers(disabledWithoutDocker = true)
+@Timeout(60)
+class ITMongoDBTracing extends ITRemote {
   static final String DATABASE_NAME = "myDatabase";
   static final String COLLECTION_NAME = "myCollection";
   static final String INVALID_COLLECTION_NAME = "?.$";
 
-  @RegisterExtension MongoDBExtension mongo = new MongoDBExtension();
+  @Container MongoDBContainer mongo = new MongoDBContainer();
   CommandListener listener = MongoDBTracing.newBuilder(tracing).build().commandListener();
   MongoClientSettings settings;
   MongoClient mongoClient;
   MongoDatabase database;
   String clusterId;
 
-  @BeforeAll void initClient() {
+  @BeforeEach void initClient() {
     settings = mongo.mongoClientSettingsBuilder().addCommandListener(listener).build();
     mongoClient = MongoClients.create(settings);
     database = mongoClient.getDatabase(DATABASE_NAME);
   }
 
-  @AfterAll void closeClient() {
+  @AfterEach void closeClient() {
     mongoClient.close();
   }
 
