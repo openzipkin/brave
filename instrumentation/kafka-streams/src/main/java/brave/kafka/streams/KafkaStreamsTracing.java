@@ -202,12 +202,4 @@ public final class KafkaStreamsTracing {
       return new KafkaStreamsTracing(this);
     }
   }
-
-  interface Processor<C extends ProcessingContext, R> {
-    void init(C context);
-
-    void process(R record);
-
-    void close();
-  }
 }
