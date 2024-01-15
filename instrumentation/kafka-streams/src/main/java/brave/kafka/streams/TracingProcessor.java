@@ -13,63 +13,34 @@
  */
 package brave.kafka.streams;
 
-import brave.Span;
-import brave.Tracer;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
 
-import static brave.internal.Throwables.propagateIfFatal;
+final class TracingProcessor<KIn, VIn, KOut, VOut> extends
+  BaseTracingProcessor<ProcessorContext<KOut, VOut>, Record<KIn, VIn>, Processor<KIn, VIn, KOut, VOut>>
+  implements Processor<KIn, VIn, KOut, VOut> {
 
-class TracingProcessor<KIn, VIn, KOut, VOut> implements Processor<KIn, VIn, KOut, VOut> {
-  final KafkaStreamsTracing kafkaStreamsTracing;
-  final Tracer tracer;
-  final String spanName;
-  final Processor<KIn, VIn, KOut, VOut> delegateProcessor;
-
-  ProcessorContext processorContext;
-
-  TracingProcessor(KafkaStreamsTracing kafkaStreamsTracing,
-    String spanName, Processor<KIn, VIn, KOut, VOut> delegateProcessor) {
-    this.kafkaStreamsTracing = kafkaStreamsTracing;
-    this.tracer = kafkaStreamsTracing.tracer;
-    this.spanName = spanName;
-    this.delegateProcessor = delegateProcessor;
+  TracingProcessor(KafkaStreamsTracing kafkaStreamsTracing, String spanName,
+    Processor<KIn, VIn, KOut, VOut> delegate) {
+    super(kafkaStreamsTracing, spanName, delegate);
   }
 
-  @Override
-  public void init(ProcessorContext<KOut, VOut> context) {
-    this.processorContext = context;
-    delegateProcessor.init(processorContext);
+  @Override Headers headers(Record<KIn, VIn> record) {
+    return record.headers();
   }
 
-  @Override
-  public void process(Record<KIn, VIn> record) {
-    Span span = kafkaStreamsTracing.nextSpan(processorContext, record.headers());
-    if (!span.isNoop()) {
-      span.name(spanName);
-      span.start();
-    }
-
-    Tracer.SpanInScope scope = tracer.withSpanInScope(span);
-    Throwable error = null;
-    try {
-      delegateProcessor.process(record);
-    } catch (Throwable e) {
-      error = e;
-      propagateIfFatal(e);
-      throw e;
-    } finally {
-      // Inject this span so that the next stage uses it as a parent
-      kafkaStreamsTracing.injector.inject(span.context(), record.headers());
-      if (error != null) span.error(error);
-      span.finish();
-      scope.close();
-    }
+  @Override void process(Processor<KIn, VIn, KOut, VOut> delegate, Record<KIn, VIn> record) {
+    delegate.process(record);
   }
 
-  @Override
-  public void close() {
-    delegateProcessor.close();
+  @Override public void init(ProcessorContext<KOut, VOut> context) {
+    this.context = context;
+    delegate.init(context);
+  }
+
+  @Override public void close() {
+    delegate.close();
   }
 }
