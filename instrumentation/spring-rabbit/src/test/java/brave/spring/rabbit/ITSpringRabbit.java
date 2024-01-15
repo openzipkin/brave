@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -24,12 +24,11 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import org.junit.AssumptionViolatedException;
 import org.junit.Rule;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Binding;
@@ -51,12 +50,18 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.utility.DockerImageName;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.springframework.amqp.core.BindingBuilder.bind;
 import static org.springframework.amqp.core.ExchangeBuilder.topicExchange;
+import static org.testcontainers.utility.DockerImageName.parse;
 
+@Tag("docker")
+@Testcontainers(disabledWithoutDocker = true)
+@Timeout(60)
 abstract class ITSpringRabbit extends ITRemote {
   static final Logger LOGGER = LoggerFactory.getLogger(ITSpringRabbit.class);
 
@@ -85,62 +90,44 @@ abstract class ITSpringRabbit extends ITRemote {
   static final Binding binding_reply =
     bind(queue_reply).to(exchange_request_reply).with("test.binding.reply").noargs();
 
-  // Use a ghcr.io mirror to prevent build outages due to Docker Hub pull quotas
-  static final DockerImageName IMAGE =
-    DockerImageName.parse("ghcr.io/openzipkin/rabbitmq-management-alpine:latest");
   static final int RABBIT_PORT = 5672;
 
+  @Container RabbitMQContainer rabbit = new RabbitMQContainer();
+
+
   static final class RabbitMQContainer extends GenericContainer<RabbitMQContainer> {
-    RabbitMQContainer(DockerImageName image) {
-      super(image);
-      addExposedPorts(RABBIT_PORT);
-      this.waitStrategy = Wait.forLogMessage(".*Server startup complete.*", 1)
-        .withStartupTimeout(Duration.ofSeconds(60));
-    }
-  }
-
-  static RabbitMQContainer rabbit;
-
-  @BeforeAll public static void startRabbit() {
-    if ("true".equals(System.getProperty("docker.skip"))) {
-      throw new AssumptionViolatedException("Skipping startup of docker " + IMAGE);
+    RabbitMQContainer() {
+      super(parse("ghcr.io/openzipkin/zipkin-rabbitmq:3.0.2"));
+      withExposedPorts(RABBIT_PORT);
+      waitStrategy = Wait.forLogMessage(".*Server startup complete.*", 1);
+      withStartupTimeout(Duration.ofSeconds(60));
+      withLogConsumer(new Slf4jLogConsumer(LOGGER));
     }
 
-    try {
-      LOGGER.info("Starting docker image " + IMAGE);
-      rabbit = new RabbitMQContainer(IMAGE);
-      rabbit.start();
-    } catch (Throwable e) {
-      throw new AssumptionViolatedException(
-        "Couldn't start docker image " + IMAGE + ": " + e.getMessage(), e);
+    @Override public void start() {
+      super.start();
+
+      CachingConnectionFactory connectionFactory =
+        new CachingConnectionFactory(getHost(), getMappedPort(RABBIT_PORT));
+      try {
+        RabbitAdmin amqpAdmin = new RabbitAdmin(connectionFactory);
+        amqpAdmin.declareExchange(exchange);
+        amqpAdmin.declareQueue(queue);
+        amqpAdmin.declareBinding(binding);
+
+        amqpAdmin.declareExchange(exchange_batch);
+        amqpAdmin.declareQueue(queue_batch);
+        amqpAdmin.declareBinding(binding_batch);
+
+        amqpAdmin.declareExchange(exchange_request_reply);
+        amqpAdmin.declareQueue(queue_request);
+        amqpAdmin.declareQueue(queue_reply);
+        amqpAdmin.declareBinding(binding_request);
+        amqpAdmin.declareBinding(binding_reply);
+      } finally {
+        connectionFactory.destroy();
+      }
     }
-
-    CachingConnectionFactory connectionFactory = new CachingConnectionFactory(
-      rabbit.getContainerIpAddress(),
-      rabbit.getMappedPort(RABBIT_PORT)
-    );
-    try {
-      RabbitAdmin amqpAdmin = new RabbitAdmin(connectionFactory);
-      amqpAdmin.declareExchange(exchange);
-      amqpAdmin.declareQueue(queue);
-      amqpAdmin.declareBinding(binding);
-
-      amqpAdmin.declareExchange(exchange_batch);
-      amqpAdmin.declareQueue(queue_batch);
-      amqpAdmin.declareBinding(binding_batch);
-
-      amqpAdmin.declareExchange(exchange_request_reply);
-      amqpAdmin.declareQueue(queue_request);
-      amqpAdmin.declareQueue(queue_reply);
-      amqpAdmin.declareBinding(binding_request);
-      amqpAdmin.declareBinding(binding_reply);
-    } finally {
-      connectionFactory.destroy();
-    }
-  }
-
-  @AfterAll public static void kiwwTheWabbit() {
-    if (rabbit != null) rabbit.stop();
   }
 
   @Rule public IntegrationTestSpanHandler producerSpanHandler = new IntegrationTestSpanHandler();
@@ -151,24 +138,25 @@ abstract class ITSpringRabbit extends ITRemote {
 
   SpringRabbitTracing producerTracing = SpringRabbitTracing.create(
     MessagingTracing.newBuilder(tracingBuilder(Sampler.ALWAYS_SAMPLE).localServiceName("producer")
-      .clearSpanHandlers().addSpanHandler(producerSpanHandler).build())
+        .clearSpanHandlers().addSpanHandler(producerSpanHandler).build())
       .producerSampler(r -> producerSampler.trySample(r))
       .build()
   );
 
   SpringRabbitTracing consumerTracing = SpringRabbitTracing.create(
     MessagingTracing.newBuilder(tracingBuilder(Sampler.ALWAYS_SAMPLE).localServiceName("consumer")
-      .clearSpanHandlers().addSpanHandler(consumerSpanHandler).build())
+        .clearSpanHandlers().addSpanHandler(consumerSpanHandler).build())
       .consumerSampler(r -> consumerSampler.trySample(r))
       .build()
   );
 
-  CachingConnectionFactory connectionFactory =
-    new CachingConnectionFactory(rabbit.getContainerIpAddress(), rabbit.getMappedPort(RABBIT_PORT));
+  CachingConnectionFactory connectionFactory;
   AnnotationConfigApplicationContext producerContext = new AnnotationConfigApplicationContext();
   AnnotationConfigApplicationContext consumerContext = new AnnotationConfigApplicationContext();
 
   @BeforeEach void refresh() {
+    connectionFactory =
+      new CachingConnectionFactory(rabbit.getHost(), rabbit.getMappedPort(RABBIT_PORT));
     producerContext.registerBean(SpringRabbitTracing.class, () -> producerTracing);
     producerContext.registerBean(CachingConnectionFactory.class, () -> connectionFactory);
     producerContext.registerBean(Binding.class, () -> binding);

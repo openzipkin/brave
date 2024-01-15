@@ -37,9 +37,12 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static brave.kafka.clients.KafkaTags.KAFKA_TOPIC_TAG;
 import static brave.kafka.clients.KafkaTest.TEST_KEY;
@@ -48,9 +51,11 @@ import static brave.messaging.MessagingRequestMatchers.channelNameEquals;
 import static brave.messaging.MessagingRequestMatchers.operationEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag("docker")
+@Testcontainers(disabledWithoutDocker = true)
+@Timeout(60)
 public class ITKafkaTracing extends ITKafka { // public for src/it
-  @RegisterExtension KafkaExtension kafka = new KafkaExtension();
+  @Container KafkaContainer kafka = new KafkaContainer();
   @RegisterExtension IntegrationTestSpanHandler producerSpanHandler =
     new IntegrationTestSpanHandler();
   @RegisterExtension IntegrationTestSpanHandler consumerSpanHandler =

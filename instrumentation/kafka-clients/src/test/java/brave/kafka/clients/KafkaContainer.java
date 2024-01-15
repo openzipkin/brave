@@ -18,10 +18,6 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.junit.jupiter.api.extension.AfterAllCallback;
-import org.junit.jupiter.api.extension.BeforeAllCallback;
-import org.junit.jupiter.api.extension.ExtensionContext;
-import org.opentest4j.TestAbortedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -31,32 +27,20 @@ import org.testcontainers.containers.wait.strategy.Wait;
 
 import static org.testcontainers.utility.DockerImageName.parse;
 
-class KafkaExtension implements BeforeAllCallback, AfterAllCallback {
-  static final Logger LOGGER = LoggerFactory.getLogger(KafkaExtension.class);
+final class KafkaContainer extends GenericContainer<KafkaContainer> {
+  static final Logger LOGGER = LoggerFactory.getLogger(KafkaContainer.class);
   static final int KAFKA_PORT = 19092;
 
-  final KafkaContainer container = new KafkaContainer();
-
-  @Override public void beforeAll(ExtensionContext context) {
-    if (context.getRequiredTestClass().getEnclosingClass() != null) {
-      // Only run once in outermost scope.
-      return;
-    }
-
-    container.start();
-    LOGGER.info("Using bootstrapServer " + bootstrapServer());
+  KafkaContainer() {
+    super(parse("ghcr.io/openzipkin/zipkin-kafka:3.0.2"));
+    waitStrategy = Wait.forHealthcheck();
+    // Kafka broker listener port (19092) needs to be exposed for test cases to access it.
+    addFixedExposedPort(KAFKA_PORT, KAFKA_PORT, InternetProtocol.TCP);
+    withLogConsumer(new Slf4jLogConsumer(LOGGER));
   }
 
   String bootstrapServer() {
-    return container.getHost() + ":" + container.getMappedPort(KAFKA_PORT);
-  }
-
-  @Override public void afterAll(ExtensionContext context) {
-    if (context.getRequiredTestClass().getEnclosingClass() != null) {
-      // Only run once in outermost scope.
-      return;
-    }
-    container.stop();
+    return getHost() + ":" + getMappedPort(KAFKA_PORT);
   }
 
   KafkaProducer<String, String> createStringProducer() {
@@ -90,19 +74,5 @@ class KafkaExtension implements BeforeAllCallback, AfterAllCallback {
     props.put("fetch.max.wait.ms", "200");
     props.put("metadata.max.age.ms", "100");
     return props;
-  }
-
-  // mostly waiting for https://github.com/testcontainers/testcontainers-java/issues/3537
-  static final class KafkaContainer extends GenericContainer<KafkaContainer> {
-    KafkaContainer() {
-      super(parse("ghcr.io/openzipkin/zipkin-kafka:2.27.0"));
-      if ("true".equals(System.getProperty("docker.skip"))) {
-        throw new TestAbortedException("${docker.skip} == true");
-      }
-      waitStrategy = Wait.forHealthcheck();
-      // Kafka broker listener port (19092) needs to be exposed for test cases to access it.
-      addFixedExposedPort(KAFKA_PORT, KAFKA_PORT, InternetProtocol.TCP);
-      withLogConsumer(new Slf4jLogConsumer(LOGGER));
-    }
   }
 }
