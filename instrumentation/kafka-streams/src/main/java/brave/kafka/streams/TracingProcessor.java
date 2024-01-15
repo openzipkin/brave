@@ -13,6 +13,8 @@
  */
 package brave.kafka.streams;
 
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.TraceContext;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
@@ -37,6 +39,12 @@ final class TracingProcessor<KIn, VIn, KOut, VOut> extends
 
   @Override public void init(ProcessorContext<KOut, VOut> context) {
     this.context = context;
+    CurrentTraceContext current =
+      kafkaStreamsTracing.kafkaTracing.messagingTracing().tracing().currentTraceContext();
+    TraceContext traceContext = current.get();
+    if (traceContext != null) {
+      context = new TracingProcessorContext<>(context, kafkaStreamsTracing.injector, traceContext);
+    }
     delegate.init(context);
   }
 

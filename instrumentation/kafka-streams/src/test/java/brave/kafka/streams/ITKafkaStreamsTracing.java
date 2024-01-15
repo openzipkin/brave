@@ -16,9 +16,13 @@ package brave.kafka.streams;
 import brave.handler.MutableSpan;
 import brave.kafka.clients.KafkaTracing;
 import brave.messaging.MessagingTracing;
+import brave.propagation.SamplingFlags;
+import brave.propagation.TraceContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.LinkedBlockingDeque;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -32,13 +36,16 @@ import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.Consumed;
+import org.apache.kafka.streams.processor.api.ContextualProcessor;
+import org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier;
+import org.apache.kafka.streams.processor.api.Processor;
+import org.apache.kafka.streams.processor.api.ProcessorSupplier;
+import org.apache.kafka.streams.processor.api.Record;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.extension.RegisterExtension;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -191,18 +198,15 @@ class ITKafkaStreamsTracing extends ITKafkaStreams {
     consumer.close();
   }
 
-  @Test void should_create_spans_from_stream_with_tracing_v2_processor() {
-    org.apache.kafka.streams.processor.api.ProcessorSupplier<String, String, String, String>
-      processorSupplier =
-      kafkaStreamsTracing.process(
-        "forward-1", () ->
-          record -> {
-            try {
-              Thread.sleep(100L);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
-            }
-          });
+  @Test void should_create_spans_from_stream_with_tracing_processor() {
+    ProcessorSupplier<String, String, String, String> processorSupplier =
+      kafkaStreamsTracing.process("forward-1", () -> record -> {
+        try {
+          Thread.sleep(100L);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      });
 
     String inputTopic = testName + "-input";
 
@@ -227,18 +231,15 @@ class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test void should_create_spans_from_stream_with_tracing_v2_fixed_key_processor() {
-    org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier<String, String, String>
-      processorSupplier =
-      kafkaStreamsTracing.processValues(
-        "forward-1", () ->
-          record -> {
-            try {
-              Thread.sleep(100L);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
-            }
-          });
+  @Test void should_create_spans_from_stream_with_tracing_fixed_key_processor() {
+    FixedKeyProcessorSupplier<String, String, String> processorSupplier =
+      kafkaStreamsTracing.processValues("forward-1", () -> record -> {
+        try {
+          Thread.sleep(100L);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      });
 
     String inputTopic = testName + "-input";
 
@@ -258,6 +259,61 @@ class ITKafkaStreamsTracing extends ITKafkaStreams {
 
     MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
     assertChildOf(spanProcessor, spanInput);
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test void injectsInitContextOnForward() {
+    String inputTopic = testName + "-input";
+
+    BlockingDeque<TraceContext> contexts = new LinkedBlockingDeque<>();
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.<String, String>stream(inputTopic)
+      .process(kafkaStreamsTracing.process("forward",
+        () -> new ContextualProcessor<String, String, String, String>() {
+          @Override public void process(Record<String, String> record) {
+            context().forward(record);
+          }
+        }))
+      .process(kafkaStreamsTracing.process("check",
+        () -> (Processor<String, String, String, String>) record -> {
+          contexts.add(currentTraceContext.get());
+        }));
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreams(topology);
+
+    // Simulate a trace that started from an external producer
+    TraceContext root = newTraceContext(SamplingFlags.SAMPLED);
+    ProducerRecord<String, String> record = new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE);
+    kafkaStreamsTracing.injector.inject(root, record.headers());
+    send(record);
+
+    waitForStreamToRun(streams);
+
+    MutableSpan spanPoll = testSpanHandler.takeRemoteSpan(CONSUMER);
+    assertThat(spanPoll.name()).isEqualTo("poll");
+    assertThat(spanPoll.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanCheck = testSpanHandler.takeLocalSpan();
+    assertThat(spanCheck.name()).isEqualTo("check");
+    assertThat(spanCheck.tags()).doesNotContainKey("kafka.topic"); // not remote
+
+    MutableSpan spanForward = testSpanHandler.takeLocalSpan();
+    assertThat(spanForward.name()).isEqualTo("forward");
+    assertThat(spanCheck.tags()).doesNotContainKey("kafka.topic"); // not remote
+
+    // All spans are in the same trace
+    assertChildOf(spanCheck, spanForward);
+    assertChildOf(spanForward, spanPoll);
+    assertChildOf(spanPoll, root);
+
+    // The terminal processor had the right span in context
+    TraceContext contextCheck = contexts.poll();
+    assertThat(contextCheck).isNotNull();
+    assertSameIds(spanCheck, contextCheck);
 
     streams.close();
     streams.cleanUp();

@@ -190,7 +190,7 @@ public final class KafkaTracing {
    * one couldn't be extracted.
    */
   public Span nextSpan(ConsumerRecord<?, ?> record) {
-    // Eventhough the type is ConsumerRecord, this is not a (remote) consumer span. Only "poll"
+    // Even though the type is ConsumerRecord, this is not a (remote) consumer span. Only "poll"
     // events create consumer spans. Since this is a processor span, we use the normal sampler.
     TraceContextOrSamplingFlags extracted =
       extractAndClearTraceIdHeaders(processorExtractor, record.headers(), record.headers());
