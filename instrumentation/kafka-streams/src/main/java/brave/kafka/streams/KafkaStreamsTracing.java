@@ -32,7 +32,6 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.Topology;
-import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier;
 import org.apache.kafka.streams.processor.api.ProcessingContext;
 import org.apache.kafka.streams.processor.api.ProcessorSupplier;
@@ -148,18 +147,12 @@ public final class KafkaStreamsTracing {
     return new TracingFixedKeyProcessorSupplier<>(this, spanName, processorSupplier);
   }
 
-  static void addTags(ProcessorContext processorContext, SpanCustomizer result) {
-    result.tag(KafkaStreamsTags.KAFKA_STREAMS_APPLICATION_ID_TAG, processorContext.applicationId());
-    result.tag(KafkaStreamsTags.KAFKA_STREAMS_TASK_ID_TAG, processorContext.taskId().toString());
+  static <C extends ProcessingContext> void addTags(C context, SpanCustomizer result) {
+    result.tag(KafkaStreamsTags.KAFKA_STREAMS_APPLICATION_ID_TAG, context.applicationId());
+    result.tag(KafkaStreamsTags.KAFKA_STREAMS_TASK_ID_TAG, context.taskId().toString());
   }
 
-  static void addTags(ProcessingContext processingContext, SpanCustomizer result) {
-    result.tag(KafkaStreamsTags.KAFKA_STREAMS_APPLICATION_ID_TAG,
-      processingContext.applicationId());
-    result.tag(KafkaStreamsTags.KAFKA_STREAMS_TASK_ID_TAG, processingContext.taskId().toString());
-  }
-
-  Span nextSpan(ProcessingContext context, Headers headers) {
+  <C extends ProcessingContext> Span nextSpan(C context, Headers headers) {
     TraceContextOrSamplingFlags extracted = extractor.extract(headers);
     // Clear any propagation keys present in the headers
     if (!extracted.equals(emptyExtraction)) {
