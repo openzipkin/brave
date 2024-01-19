@@ -71,6 +71,7 @@ public class JmsExtension implements BeforeEachCallback, AfterEachCallback {
   JmsExtension() {
     factory = new ActiveMQJMSConnectionFactory("vm://0");
     factory.setProducerMaxRate(1); // to allow tests to use production order
+    factory.setReconnectAttempts(3); // to allow tests to reconnect on failure
   }
 
   void maybeStartServer() throws Exception {
