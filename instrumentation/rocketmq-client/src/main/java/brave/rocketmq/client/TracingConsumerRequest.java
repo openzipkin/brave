@@ -19,8 +19,8 @@ import brave.propagation.Propagation.RemoteGetter;
 import brave.propagation.Propagation.RemoteSetter;
 import org.apache.rocketmq.common.message.MessageExt;
 
+// intentionally not yet public until we add tag parsing functionality
 final class TracingConsumerRequest extends ConsumerRequest {
-
   static final RemoteGetter<TracingConsumerRequest> GETTER =
     new RemoteGetter<TracingConsumerRequest>() {
       @Override public Span.Kind spanKind() {
@@ -32,7 +32,7 @@ final class TracingConsumerRequest extends ConsumerRequest {
       }
 
       @Override public String toString() {
-        return "Message::getUserProperty";
+        return "MessageExt::getUserProperty";
       }
     };
 
@@ -47,7 +47,7 @@ final class TracingConsumerRequest extends ConsumerRequest {
       }
 
       @Override public String toString() {
-        return "Message::putUserProperty";
+        return "MessageExt::putUserProperty";
       }
     };
 

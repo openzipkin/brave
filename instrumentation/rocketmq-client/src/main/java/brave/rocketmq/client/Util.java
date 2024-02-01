@@ -22,7 +22,7 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.SamplerFunction;
 import java.util.Map;
 
-class SpanUtil {
+class Util {
   static <T extends MessagingRequest> Span createAndStartSpan(RocketMQTracing tracing,
     TraceContext.Extractor<T> extractor, SamplerFunction<MessagingRequest> sampler, T request,
     Map<String, String> props) {
@@ -41,9 +41,18 @@ class SpanUtil {
 
     span.kind(request.spanKind());
     span.remoteServiceName(tracing.remoteServiceName);
-    span.tag(TraceConstants.ROCKETMQ_TOPIC, request.channelName());
+    span.tag(RocketMQTags.ROCKETMQ_TOPIC, request.channelName());
     long timestamp = tracing.tracing.clock(span.context()).currentTimeMicroseconds();
     span.start(timestamp);
     return span;
+  }
+
+  // TODO: we shouldn't add tags with empty values!
+  static String getOrEmpty(String obj) {
+    if (obj == null) {
+      return "";
+    } else {
+      return obj;
+    }
   }
 }

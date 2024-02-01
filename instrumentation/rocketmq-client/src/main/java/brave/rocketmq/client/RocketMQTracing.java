@@ -27,11 +27,11 @@ import java.util.Map;
 
 public class RocketMQTracing {
   public static RocketMQTracing create(Tracing tracing) {
-    return new RocketMQTracing(MessagingTracing.create(tracing), TraceConstants.ROCKETMQ_SERVICE);
+    return new RocketMQTracing(MessagingTracing.create(tracing), RocketMQTags.ROCKETMQ_SERVICE);
   }
 
   public static RocketMQTracing create(MessagingTracing messagingTracing) {
-    return new RocketMQTracing(messagingTracing, TraceConstants.ROCKETMQ_SERVICE);
+    return new RocketMQTracing(messagingTracing, RocketMQTags.ROCKETMQ_SERVICE);
   }
 
   public static RocketMQTracing create(MessagingTracing messagingTracing,

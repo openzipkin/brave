@@ -50,8 +50,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers(disabledWithoutDocker = true)
 @Timeout(60)
 class ITRocketMQTracingTest extends ITRemote {
-  static final String TOPIC_PREFIX = "JoeKerouac_Test_";
-
   @Container static RocketMQContainer rocketMQ = new RocketMQContainer();
 
   IntegrationTestSpanHandler producerSpanHandler = new IntegrationTestSpanHandler();
@@ -75,7 +73,7 @@ class ITRocketMQTracingTest extends ITRemote {
       .consumerSampler(r -> consumerSampler.trySample(r)).build());
 
   @Test void send() throws Exception {
-    String topic = TOPIC_PREFIX + "testSend";
+    String topic = "testSend";
     Message message = new Message(topic, "JoeKerouac", "hello".getBytes());
     DefaultMQProducer producer = new DefaultMQProducer("testSend");
     // TODO: what is this deprecated in favor of?
@@ -92,7 +90,7 @@ class ITRocketMQTracingTest extends ITRemote {
   }
 
   @Test void sendOneway() throws Exception {
-    String topic = TOPIC_PREFIX + "testSendOneway";
+    String topic = "testSendOneway";
     Message message = new Message(topic, "JoeKerouac", "hello".getBytes());
     DefaultMQProducer producer = new DefaultMQProducer("testSendOneway");
     producer.getDefaultMQProducerImpl()
@@ -108,7 +106,7 @@ class ITRocketMQTracingTest extends ITRemote {
   }
 
   @Test void sendAsync() throws Exception {
-    String topic = TOPIC_PREFIX + "testSendAsync";
+    String topic = "testSendAsync";
     Message message = new Message(topic, "JoeKerouac", "hello".getBytes());
     DefaultMQProducer producer = new DefaultMQProducer("testSendAsync");
     producer.getDefaultMQProducerImpl()
@@ -134,7 +132,7 @@ class ITRocketMQTracingTest extends ITRemote {
   }
 
   @Test void tracingMessageListenerConcurrently() throws Exception {
-    String topic = TOPIC_PREFIX + "tracingMessageListenerConcurrently";
+    String topic = "tracingMessageListenerConcurrently";
     Message message = new Message(topic, "JoeKerouac", "hello".getBytes());
     String nameserverAddr = rocketMQ.getNamesrvAddr();
     DefaultMQProducer producer = new DefaultMQProducer("tracingMessageListenerConcurrently");
@@ -174,7 +172,7 @@ class ITRocketMQTracingTest extends ITRemote {
   }
 
   @Test void tracingMessageListenerOrderly() throws Exception {
-    String topic = TOPIC_PREFIX + "tracingMessageListenerOrderly";
+    String topic = "tracingMessageListenerOrderly";
     Message message = new Message(topic, "JoeKerouac", "hello".getBytes());
     String nameserverAddr = rocketMQ.getNamesrvAddr();
     DefaultMQProducer producer = new DefaultMQProducer("tracingMessageListenerOrderly");
@@ -214,7 +212,7 @@ class ITRocketMQTracingTest extends ITRemote {
   }
 
   @Test void all() throws Exception {
-    String topic = TOPIC_PREFIX + "testAll";
+    String topic = "testAll";
     Message message = new Message(topic, "JoeKerouac", "hello".getBytes());
     String nameserverAddr = rocketMQ.getNamesrvAddr();
     DefaultMQProducer producer = new DefaultMQProducer("testAll");

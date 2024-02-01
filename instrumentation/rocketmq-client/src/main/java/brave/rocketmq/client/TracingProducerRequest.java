@@ -19,6 +19,7 @@ import brave.propagation.Propagation.RemoteGetter;
 import brave.propagation.Propagation.RemoteSetter;
 import org.apache.rocketmq.common.message.Message;
 
+// intentionally not yet public until we add tag parsing functionality
 final class TracingProducerRequest extends ProducerRequest {
   static final RemoteGetter<TracingProducerRequest> GETTER =
     new RemoteGetter<TracingProducerRequest>() {

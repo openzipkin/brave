@@ -33,7 +33,7 @@
 
     <main.basedir>${project.basedir}/../..</main.basedir>
 
-    <rocketmq.version>4.7.0</rocketmq.version>
+    <rocketmq.version>5.1.4</rocketmq.version>
 
     <maven-failsafe-plugin.argLine>--add-opens java.base/java.nio=ALL-UNNAMED</maven-failsafe-plugin.argLine>
   </properties>

@@ -15,6 +15,7 @@ package brave.rocketmq.client;
 
 import brave.Span;
 import brave.Tracer;
+import brave.Tracer.SpanInScope;
 import java.util.List;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyContext;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyStatus;
@@ -43,12 +44,12 @@ public abstract class TracingMessageListenerConcurrently implements MessageListe
     for (MessageExt msg : msgs) {
       TracingConsumerRequest request = new TracingConsumerRequest(msg);
       Span span =
-        SpanUtil.createAndStartSpan(tracing, tracing.consumerExtractor, tracing.consumerSampler,
+        Util.createAndStartSpan(tracing, tracing.consumerExtractor, tracing.consumerSampler,
           request, msg.getProperties());
-      span.name(TraceConstants.FROM_PREFIX + msg.getTopic());
+      span.name(RocketMQTags.FROM_PREFIX + msg.getTopic());
 
       ConsumeConcurrentlyStatus result;
-      try (Tracer.SpanInScope scope = tracing.tracer().withSpanInScope(span)) {
+      try (SpanInScope scope = tracing.tracer().withSpanInScope(span)) {
         result = handleMessage(msg, context);
       } catch (Exception e) {
         context.setDelayLevelWhenNextConsume(delayLevelWhenNextConsume);

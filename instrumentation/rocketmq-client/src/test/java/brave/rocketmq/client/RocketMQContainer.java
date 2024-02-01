@@ -53,8 +53,8 @@ final class RocketMQContainer extends GenericContainer<RocketMQContainer> {
   private void mount(String fileName) {
     URL confUrl = getClass().getClassLoader().getResource(fileName);
     try {
-      withFileSystemBind(new File(confUrl.toURI()).getAbsolutePath(), "/" + fileName,
-        BindMode.READ_ONLY);
+      String confPath = new File(confUrl.toURI()).getAbsolutePath();
+      withFileSystemBind(confPath, "/" + fileName, BindMode.READ_ONLY);
     } catch (URISyntaxException e) {
       throw new RuntimeException(e);
     }

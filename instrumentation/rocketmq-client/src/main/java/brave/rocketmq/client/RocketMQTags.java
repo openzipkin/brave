@@ -13,14 +13,13 @@
  */
 package brave.rocketmq.client;
 
-class StringUtils {
+public class RocketMQTags {
 
-  // TODO: we shouldn't add tags with empty values!
-  static String getOrEmpty(String obj) {
-    if (obj == null) {
-      return "";
-    } else {
-      return obj;
-    }
-  }
+  public static final String TO_PREFIX = "To_";
+  public static final String FROM_PREFIX = "From_";
+  public static final String ROCKETMQ_SERVICE = "rocketmq";
+
+  // TODO: maybe like HttpTags.PATH if we support extended tags on first version
+  public static final String ROCKETMQ_TAGS = "rocketmq.tags";
+  public static final String ROCKETMQ_TOPIC = "rocketmq.topic";
 }

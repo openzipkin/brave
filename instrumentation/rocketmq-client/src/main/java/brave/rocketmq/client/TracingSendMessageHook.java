@@ -29,7 +29,7 @@ final class TracingSendMessageHook implements SendMessageHook {
 
   @Override
   public String hookName() {
-    return "SendMessageBraveHook";
+    return "TracingSendMessageHook";
   }
 
   @Override
@@ -41,11 +41,11 @@ final class TracingSendMessageHook implements SendMessageHook {
     Message msg = context.getMessage();
     TracingProducerRequest request = new TracingProducerRequest(msg);
     Span span =
-      SpanUtil.createAndStartSpan(tracing, tracing.producerExtractor, tracing.producerSampler,
+      Util.createAndStartSpan(tracing, tracing.producerExtractor, tracing.producerSampler,
         request,
         msg.getProperties());
-    span.name(TraceConstants.TO_PREFIX + msg.getTopic());
-    span.tag(TraceConstants.ROCKETMQ_TAGS, StringUtils.getOrEmpty(msg.getTags()));
+    span.name(RocketMQTags.TO_PREFIX + msg.getTopic());
+    span.tag(RocketMQTags.ROCKETMQ_TAGS, Util.getOrEmpty(msg.getTags()));
     context.setMqTraceContext(span);
     tracing.producerInjector.inject(span.context(), request);
   }
