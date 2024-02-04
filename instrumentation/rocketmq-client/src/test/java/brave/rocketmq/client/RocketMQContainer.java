@@ -29,7 +29,7 @@ final class RocketMQContainer extends GenericContainer<RocketMQContainer> {
   static final int BROKER_PORT = 10911;
 
   RocketMQContainer() {
-    super(DockerImageName.parse("apache/rocketmq:5.1.4"));
+    super(DockerImageName.parse("apache/rocketmq:4.6.0"));
     List<String> portBindings = new ArrayList<>();
     portBindings.add(String.format("%d:%d", NAMESERVER_PORT, NAMESERVER_PORT));
     portBindings.add(String.format("%d:%d", BROKER_PORT, BROKER_PORT));
@@ -44,7 +44,7 @@ final class RocketMQContainer extends GenericContainer<RocketMQContainer> {
 
     setCommand("sh /start.sh");
     this.waitStrategy =
-      Wait.forLogMessage(".*boot success.*", 1).withStartupTimeout(Duration.ofSeconds(60));
+      Wait.forLogMessage(".*--JoeKerouac--.*", 1).withStartupTimeout(Duration.ofSeconds(60));
 
     mount("broker.conf");
     mount("start.sh");

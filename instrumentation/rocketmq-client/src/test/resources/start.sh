@@ -22,7 +22,7 @@ check "The Name Server boot success" ~/ns.log
 sh  /home/rocketmq/rocketmq-4.6.0/bin/mqbroker -n 127.0.0.1:9876 -c /broker.conf > ~/broker.log &
 check "boot success" ~/broker.log
 
-echo "boot success"
+echo "--JoeKerouac--"
 
 while true
 do
