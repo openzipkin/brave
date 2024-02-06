@@ -75,11 +75,8 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>@maven-surefire-plugin.version@</version>
         <configuration>
+          <!-- This helps with mistakes, e.g. testSourceDirectory is wrong -->
           <failIfNoTests>true</failIfNoTests>
-          <!-- Try to prevent flakes in CI -->
-          <reuseForks>false</reuseForks>
-          <!-- workaround to SUREFIRE-1831 -->
-          <useModulePath>false</useModulePath>
         </configuration>
       </plugin>
     </plugins>
