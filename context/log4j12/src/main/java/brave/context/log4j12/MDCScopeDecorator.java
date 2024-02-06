@@ -76,7 +76,8 @@ public final class MDCScopeDecorator {
 
     @Override public boolean update(String name, @Nullable String value) {
       if (value != null) {
-        MDC.put(name, value);
+        // Cast to Object to ensure we don't use an overload added after Log4J 1.2!
+        MDC.put(name, (Object) value);
       } else {
         MDC.remove(name);
       }

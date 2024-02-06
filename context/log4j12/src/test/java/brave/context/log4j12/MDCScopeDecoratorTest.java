@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -37,7 +37,8 @@ class MDCScopeDecoratorTest extends CurrentTraceContextTest {
     String realJavaVersion = System.getProperty("java.version");
     try {
       System.setProperty("java.version", "1.8");
-      MDC.put("foo", "bar");
+      // Cast to Object to ensure we don't use an overload added after Log4J 1.2!
+      MDC.put("foo", (Object) "bar");
       assumeThat(MDC.get("foo"))
         .withFailMessage("Couldn't verify MDC in general")
         .isEqualTo("bar");
