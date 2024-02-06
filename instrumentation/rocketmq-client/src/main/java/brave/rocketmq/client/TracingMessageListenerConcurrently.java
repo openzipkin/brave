@@ -13,29 +13,28 @@
  */
 package brave.rocketmq.client;
 
-import brave.Span;
-import brave.Tracer;
-import brave.Tracer.SpanInScope;
+import java.util.Collections;
 import java.util.List;
+
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyContext;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyStatus;
 import org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently;
 import org.apache.rocketmq.common.message.MessageExt;
 
-// TODO: I think we don't want to expose a custom class rather wrap in context and prove a user can
-// do custom tagging via their own MessageListenerConcurrently.
-// Maybe expose RocketMQTracing.messageListenerConcurrently() to wrap theirs or make spans default
-// and not expose this.
-public abstract class TracingMessageListenerConcurrently implements MessageListenerConcurrently {
+import brave.Span;
+import brave.Tracer.SpanInScope;
+
+class TracingMessageListenerConcurrently implements MessageListenerConcurrently {
 
   private final int delayLevelWhenNextConsume;
-
   private final RocketMQTracing tracing;
+  final MessageListenerConcurrently messageListenerConcurrently;
 
-  public TracingMessageListenerConcurrently(int delayLevelWhenNextConsume,
-    RocketMQTracing tracing) {
+  TracingMessageListenerConcurrently(int delayLevelWhenNextConsume,
+                                     RocketMQTracing tracing, MessageListenerConcurrently messageListenerConcurrently) {
     this.delayLevelWhenNextConsume = delayLevelWhenNextConsume;
     this.tracing = tracing;
+    this.messageListenerConcurrently = messageListenerConcurrently;
   }
 
   @Override
@@ -50,7 +49,7 @@ public abstract class TracingMessageListenerConcurrently implements MessageListe
 
       ConsumeConcurrentlyStatus result;
       try (SpanInScope scope = tracing.tracer().withSpanInScope(span)) {
-        result = handleMessage(msg, context);
+        result = messageListenerConcurrently.consumeMessage(Collections.singletonList(msg), context);
       } catch (Exception e) {
         context.setDelayLevelWhenNextConsume(delayLevelWhenNextConsume);
         result = ConsumeConcurrentlyStatus.RECONSUME_LATER;
@@ -66,7 +65,4 @@ public abstract class TracingMessageListenerConcurrently implements MessageListe
 
     return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
   }
-
-  protected abstract ConsumeConcurrentlyStatus handleMessage(MessageExt messageExt,
-    ConsumeConcurrentlyContext context);
 }

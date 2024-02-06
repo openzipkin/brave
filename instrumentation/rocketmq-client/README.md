@@ -49,25 +49,31 @@ public class ProducerExample {
 
 ### consumer
 
-Replace `org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently`
-with `brave.rocketmq.client.TracingMessageListenerConcurrently`
-or `org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly`
-with `brave.rocketmq.client.TracingMessageListenerOrderly`;
+wrap `org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently`
+using `brave.rocketmq.client.RocketMQTracing.wrap(long, org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly)`,
+or alternatively, wrap `org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly`
+using `brave.rocketmq.client.RocketMQTracing.wrap(int, org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently)`;
 
 ```java
 package brave.rocketmq.client;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
+import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyContext;
+import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyStatus;
+import org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently;
+import org.apache.rocketmq.common.message.MessageExt;
 
 import brave.Span;
 import brave.Tracer;
 import brave.Tracing;
 import brave.messaging.MessagingRequest;
 import brave.messaging.MessagingTracing;
+import brave.rocketmq.client.RocketMQTracing;
 import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
-import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
-import org.apache.rocketmq.common.message.MessageExt;
-
-import java.util.Optional;
 
 public class ProducerExample {
 
@@ -75,7 +81,7 @@ public class ProducerExample {
     // todo Replaced with actual tracing construct
     Tracing tracing = Tracing.newBuilder().build();
     SamplerFunction<MessagingRequest> producerSampler = SamplerFunctions.deferDecision();
-    RocketMQTracing producerTracing = RocketMQTracing.create(
+    RocketMQTracing rocketMQTracing = RocketMQTracing.create(
       MessagingTracing.newBuilder(tracing).producerSampler(producerSampler).build());
 
     String topic = "testPushConsumer";
@@ -84,16 +90,20 @@ public class ProducerExample {
     DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("testPushConsumer");
     consumer.setNamesrvAddr(nameserverAddr);
     consumer.subscribe(topic, "*");
-    consumer.registerMessageListener(new TraceableMessageListenerConcurrently(0, producerTracing) {
+    MessageListenerConcurrently messageListenerConcurrently = rocketMQTracing.wrap(new MessageListenerConcurrently() {
       @Override
-      protected void handleMessage(MessageExt messageExt) {
+      public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> list, ConsumeConcurrentlyContext consumeConcurrentlyContext) {
         Span span =
           Optional.ofNullable(Tracing.currentTracer()).map(Tracer::currentSpan).orElse(null);
         // do something
+        return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
       }
     });
+    consumer.registerMessageListener(messageListenerConcurrently);
+
     consumer.start();
   }
+
 }
 
 ```

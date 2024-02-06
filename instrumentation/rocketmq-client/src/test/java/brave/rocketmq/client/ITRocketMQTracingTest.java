@@ -24,6 +24,8 @@ import brave.sampler.SamplerFunction;
 import brave.sampler.SamplerFunctions;
 import brave.test.ITRemote;
 import brave.test.IntegrationTestSpanHandler;
+
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +35,8 @@ import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyContext;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyStatus;
 import org.apache.rocketmq.client.consumer.listener.ConsumeOrderlyContext;
 import org.apache.rocketmq.client.consumer.listener.ConsumeOrderlyStatus;
+import org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently;
+import org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly;
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
 import org.apache.rocketmq.client.producer.SendCallback;
 import org.apache.rocketmq.client.producer.SendResult;
@@ -145,10 +149,9 @@ class ITRocketMQTracingTest extends ITRemote {
     consumer.subscribe(topic, "*");
     CountDownLatch latch = new CountDownLatch(1);
     AtomicReference<Span> reference = new AtomicReference<>();
-    consumer.registerMessageListener(new TracingMessageListenerConcurrently(0, consumerTracing) {
+    MessageListenerConcurrently messageListenerConcurrently = consumerTracing.wrap(new MessageListenerConcurrently() {
       @Override
-      protected ConsumeConcurrentlyStatus handleMessage(MessageExt messageExt,
-        ConsumeConcurrentlyContext context) {
+      public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> list, ConsumeConcurrentlyContext consumeConcurrentlyContext) {
         Span span =
           Optional.ofNullable(Tracing.currentTracer()).map(Tracer::currentSpan).orElse(null);
         reference.set(span);
@@ -156,6 +159,7 @@ class ITRocketMQTracingTest extends ITRemote {
         return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
       }
     });
+    consumer.registerMessageListener(messageListenerConcurrently);
     producer.send(message);
     consumer.start();
 
@@ -185,10 +189,9 @@ class ITRocketMQTracingTest extends ITRemote {
     consumer.subscribe(topic, "*");
     CountDownLatch latch = new CountDownLatch(1);
     AtomicReference<Span> reference = new AtomicReference<>();
-    consumer.registerMessageListener(new TracingMessageListenerOrderly(0, consumerTracing) {
+    MessageListenerOrderly messageListenerOrderly = consumerTracing.wrap(new MessageListenerOrderly() {
       @Override
-      protected ConsumeOrderlyStatus handleMessage(MessageExt messageExt,
-        ConsumeOrderlyContext context) {
+      public ConsumeOrderlyStatus consumeMessage(List<MessageExt> list, ConsumeOrderlyContext consumeOrderlyContext) {
         Span span =
           Optional.ofNullable(Tracing.currentTracer()).map(Tracer::currentSpan).orElse(null);
         reference.set(span);
@@ -196,6 +199,7 @@ class ITRocketMQTracingTest extends ITRemote {
         return ConsumeOrderlyStatus.SUCCESS;
       }
     });
+    consumer.registerMessageListener(messageListenerOrderly);
     producer.send(message);
     consumer.start();
 
@@ -226,10 +230,9 @@ class ITRocketMQTracingTest extends ITRemote {
     consumer.subscribe(topic, "*");
     CountDownLatch latch = new CountDownLatch(1);
     AtomicReference<Span> reference = new AtomicReference<>();
-    consumer.registerMessageListener(new TracingMessageListenerOrderly(0, consumerTracing) {
+    MessageListenerOrderly messageListenerOrderly = consumerTracing.wrap(new MessageListenerOrderly() {
       @Override
-      protected ConsumeOrderlyStatus handleMessage(MessageExt messageExt,
-        ConsumeOrderlyContext context) {
+      public ConsumeOrderlyStatus consumeMessage(List<MessageExt> list, ConsumeOrderlyContext consumeOrderlyContext) {
         Span span =
           Optional.ofNullable(Tracing.currentTracer()).map(Tracer::currentSpan).orElse(null);
         reference.set(span);
@@ -237,6 +240,7 @@ class ITRocketMQTracingTest extends ITRemote {
         return ConsumeOrderlyStatus.SUCCESS;
       }
     });
+    consumer.registerMessageListener(messageListenerOrderly);
 
     producer.send(message);
     consumer.start();

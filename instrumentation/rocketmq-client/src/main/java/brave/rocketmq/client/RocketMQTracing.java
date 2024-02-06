@@ -23,9 +23,16 @@ import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.SamplerFunction;
+import org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently;
+import org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly;
+
 import java.util.Map;
 
 public class RocketMQTracing {
+
+  private static final long defaultSuspendCurrentQueueTimeMillis = 1000;
+  private static final int defaultDelayLevelWhenNextConsume = 0;
+
   public static RocketMQTracing create(Tracing tracing) {
     return new RocketMQTracing(MessagingTracing.create(tracing), RocketMQTags.ROCKETMQ_SERVICE);
   }
@@ -106,4 +113,35 @@ public class RocketMQTracing {
   public Tracer tracer() {
     return tracer;
   }
+
+  public MessageListenerOrderly wrap(MessageListenerOrderly messageListenerOrderly) {
+    return new TracingMessageListenerOrderly(defaultSuspendCurrentQueueTimeMillis, this, messageListenerOrderly);
+  }
+
+  public MessageListenerOrderly wrap(long suspendCurrentQueueTimeMillis, MessageListenerOrderly messageListenerOrderly) {
+    return new TracingMessageListenerOrderly(suspendCurrentQueueTimeMillis, this, messageListenerOrderly);
+  }
+
+  public MessageListenerConcurrently wrap(MessageListenerConcurrently messageListenerConcurrently) {
+    return new TracingMessageListenerConcurrently(defaultDelayLevelWhenNextConsume, this, messageListenerConcurrently);
+  }
+
+  public MessageListenerConcurrently wrap(int delayLevelWhenNextConsume, MessageListenerConcurrently messageListenerConcurrently) {
+    return new TracingMessageListenerConcurrently(delayLevelWhenNextConsume, this, messageListenerConcurrently);
+  }
+
+  public MessageListenerOrderly unwrap(MessageListenerOrderly messageListenerOrderly) {
+    if (messageListenerOrderly instanceof TracingMessageListenerOrderly) {
+      return ((TracingMessageListenerOrderly)messageListenerOrderly).messageListenerOrderly;
+    }
+    return null;
+  }
+
+  public MessageListenerConcurrently unwrap(MessageListenerConcurrently messageListenerConcurrently) {
+    if (messageListenerConcurrently instanceof TracingMessageListenerConcurrently) {
+      return ((TracingMessageListenerConcurrently)messageListenerConcurrently).messageListenerConcurrently;
+    }
+    return null;
+  }
+
 }

@@ -45,7 +45,9 @@ final class TracingSendMessageHook implements SendMessageHook {
         request,
         msg.getProperties());
     span.name(RocketMQTags.TO_PREFIX + msg.getTopic());
-    span.tag(RocketMQTags.ROCKETMQ_TAGS, Util.getOrEmpty(msg.getTags()));
+    if (msg.getTags() != null && !msg.getTags().isEmpty()) {
+      span.tag(RocketMQTags.ROCKETMQ_TAGS, msg.getTags());
+    }
     context.setMqTraceContext(span);
     tracing.producerInjector.inject(span.context(), request);
   }

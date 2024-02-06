@@ -47,12 +47,4 @@ class Util {
     return span;
   }
 
-  // TODO: we shouldn't add tags with empty values!
-  static String getOrEmpty(String obj) {
-    if (obj == null) {
-      return "";
-    } else {
-      return obj;
-    }
-  }
 }

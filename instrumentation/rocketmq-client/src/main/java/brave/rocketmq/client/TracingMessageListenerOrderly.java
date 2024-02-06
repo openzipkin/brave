@@ -13,27 +13,27 @@
  */
 package brave.rocketmq.client;
 
-import brave.Span;
-import brave.Tracer;
-import brave.Tracer.SpanInScope;
+import java.util.Collections;
 import java.util.List;
+
 import org.apache.rocketmq.client.consumer.listener.ConsumeOrderlyContext;
 import org.apache.rocketmq.client.consumer.listener.ConsumeOrderlyStatus;
 import org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly;
 import org.apache.rocketmq.common.message.MessageExt;
 
-// TODO: I think we don't want to expose a custom class rather wrap in context and prove a user can
-// do custom tagging via their own MessageListenerOrderly.
-// Maybe expose RocketMQTracing.messageListenerOrderly() to wrap theirs or make spans default
-// and not expose this.
-public abstract class TracingMessageListenerOrderly implements MessageListenerOrderly {
+import brave.Span;
+import brave.Tracer.SpanInScope;
+
+class TracingMessageListenerOrderly implements MessageListenerOrderly {
   private final long suspendCurrentQueueTimeMillis;
   private final RocketMQTracing tracing;
+  final MessageListenerOrderly messageListenerOrderly;
 
-  public TracingMessageListenerOrderly(long suspendCurrentQueueTimeMillis,
-    RocketMQTracing tracing) {
+  TracingMessageListenerOrderly(long suspendCurrentQueueTimeMillis,
+                                RocketMQTracing tracing, MessageListenerOrderly messageListenerOrderly) {
     this.suspendCurrentQueueTimeMillis = suspendCurrentQueueTimeMillis;
     this.tracing = tracing;
+    this.messageListenerOrderly = messageListenerOrderly;
   }
 
   @Override
@@ -48,7 +48,7 @@ public abstract class TracingMessageListenerOrderly implements MessageListenerOr
 
       ConsumeOrderlyStatus result;
       try (SpanInScope scope = tracing.tracer().withSpanInScope(span)) {
-        result = handleMessage(msg, context);
+        result = messageListenerOrderly.consumeMessage(Collections.singletonList(msg), context);
       } catch (Exception e) {
         span.error(e);
         context.setSuspendCurrentQueueTimeMillis(suspendCurrentQueueTimeMillis);
@@ -65,7 +65,4 @@ public abstract class TracingMessageListenerOrderly implements MessageListenerOr
 
     return ConsumeOrderlyStatus.SUCCESS;
   }
-
-  protected abstract ConsumeOrderlyStatus handleMessage(MessageExt messageExt,
-    ConsumeOrderlyContext context);
 }
