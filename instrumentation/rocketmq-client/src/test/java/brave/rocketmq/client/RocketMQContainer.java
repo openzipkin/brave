@@ -29,7 +29,7 @@ final class RocketMQContainer extends GenericContainer<RocketMQContainer> {
   static final int BROKER_PORT = 10911;
 
   RocketMQContainer() {
-    super(DockerImageName.parse("apache/rocketmq:4.6.0"));
+    super(DockerImageName.parse("apache/rocketmq:5.1.4"));
     List<String> portBindings = new ArrayList<>();
     portBindings.add(String.format("%d:%d", NAMESERVER_PORT, NAMESERVER_PORT));
     portBindings.add(String.format("%d:%d", BROKER_PORT, BROKER_PORT));
