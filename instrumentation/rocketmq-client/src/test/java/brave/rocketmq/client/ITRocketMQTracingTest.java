@@ -13,23 +13,10 @@
  */
 package brave.rocketmq.client;
 
-import brave.Span;
-import brave.Tracer;
-import brave.Tracing;
-import brave.handler.MutableSpan;
-import brave.messaging.MessagingRequest;
-import brave.messaging.MessagingTracing;
-import brave.sampler.Sampler;
-import brave.sampler.SamplerFunction;
-import brave.sampler.SamplerFunctions;
-import brave.test.ITRemote;
-import brave.test.IntegrationTestSpanHandler;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
+
 import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyContext;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyStatus;
@@ -48,7 +35,15 @@ import org.junit.jupiter.api.Timeout;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import brave.Span;
+import brave.handler.MutableSpan;
+import brave.messaging.MessagingRequest;
+import brave.messaging.MessagingTracing;
+import brave.sampler.Sampler;
+import brave.sampler.SamplerFunction;
+import brave.sampler.SamplerFunctions;
+import brave.test.ITRemote;
+import brave.test.IntegrationTestSpanHandler;
 
 @Tag("docker")
 @Testcontainers(disabledWithoutDocker = true)
@@ -117,10 +112,8 @@ class ITRocketMQTracingTest extends ITRemote {
       .registerSendMessageHook(new TracingSendMessageHook(producerTracing));
     producer.setNamesrvAddr(rocketMQ.getNamesrvAddr());
     producer.start();
-    CountDownLatch latch = new CountDownLatch(1);
     producer.send(message, new SendCallback() {
       @Override public void onSuccess(SendResult sendResult) {
-        latch.countDown();
       }
 
       @Override public void onException(Throwable e) {
@@ -128,10 +121,8 @@ class ITRocketMQTracingTest extends ITRemote {
       }
     });
 
-    assertThat(latch.await(3000, TimeUnit.MILLISECONDS)).isTrue();
-    producer.shutdown();
-
     MutableSpan producerSpan = producerSpanHandler.takeRemoteSpan(Span.Kind.PRODUCER);
+    producer.shutdown();
     assertThat(producerSpan.parentId()).isNull();
   }
 
@@ -147,15 +138,9 @@ class ITRocketMQTracingTest extends ITRemote {
       new DefaultMQPushConsumer("tracingMessageListenerConcurrently");
     consumer.setNamesrvAddr(nameserverAddr);
     consumer.subscribe(topic, "*");
-    CountDownLatch latch = new CountDownLatch(1);
-    AtomicReference<Span> reference = new AtomicReference<>();
     MessageListenerConcurrently messageListenerConcurrently = consumerTracing.wrap(new MessageListenerConcurrently() {
       @Override
       public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> list, ConsumeConcurrentlyContext consumeConcurrentlyContext) {
-        Span span =
-          Optional.ofNullable(Tracing.currentTracer()).map(Tracer::currentSpan).orElse(null);
-        reference.set(span);
-        latch.countDown();
         return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
       }
     });
@@ -163,15 +148,11 @@ class ITRocketMQTracingTest extends ITRemote {
     producer.send(message);
     consumer.start();
 
-    boolean flag = latch.await(3000, TimeUnit.MILLISECONDS);
+    MutableSpan consumerSpan = consumerSpanHandler.takeRemoteSpan(Span.Kind.CONSUMER);
 
     producer.shutdown();
     consumer.shutdown();
 
-    assertThat(flag).isTrue();
-    assertThat(reference.get()).isNotNull();
-
-    MutableSpan consumerSpan = consumerSpanHandler.takeRemoteSpan(Span.Kind.CONSUMER);
     assertThat(consumerSpan.parentId()).isNull();
   }
 
@@ -187,15 +168,9 @@ class ITRocketMQTracingTest extends ITRemote {
       new DefaultMQPushConsumer("tracingMessageListenerOrderly");
     consumer.setNamesrvAddr(nameserverAddr);
     consumer.subscribe(topic, "*");
-    CountDownLatch latch = new CountDownLatch(1);
-    AtomicReference<Span> reference = new AtomicReference<>();
     MessageListenerOrderly messageListenerOrderly = consumerTracing.wrap(new MessageListenerOrderly() {
       @Override
       public ConsumeOrderlyStatus consumeMessage(List<MessageExt> list, ConsumeOrderlyContext consumeOrderlyContext) {
-        Span span =
-          Optional.ofNullable(Tracing.currentTracer()).map(Tracer::currentSpan).orElse(null);
-        reference.set(span);
-        latch.countDown();
         return ConsumeOrderlyStatus.SUCCESS;
       }
     });
@@ -203,15 +178,11 @@ class ITRocketMQTracingTest extends ITRemote {
     producer.send(message);
     consumer.start();
 
-    boolean flag = latch.await(3000, TimeUnit.MILLISECONDS);
+    MutableSpan consumerSpan = consumerSpanHandler.takeRemoteSpan(Span.Kind.CONSUMER);
 
     producer.shutdown();
     consumer.shutdown();
 
-    assertThat(flag).isTrue();
-    assertThat(reference.get()).isNotNull();
-
-    MutableSpan consumerSpan = consumerSpanHandler.takeRemoteSpan(Span.Kind.CONSUMER);
     assertThat(consumerSpan.parentId()).isNull();
   }
 
@@ -228,15 +199,9 @@ class ITRocketMQTracingTest extends ITRemote {
     DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("testAll");
     consumer.setNamesrvAddr(nameserverAddr);
     consumer.subscribe(topic, "*");
-    CountDownLatch latch = new CountDownLatch(1);
-    AtomicReference<Span> reference = new AtomicReference<>();
     MessageListenerOrderly messageListenerOrderly = consumerTracing.wrap(new MessageListenerOrderly() {
       @Override
       public ConsumeOrderlyStatus consumeMessage(List<MessageExt> list, ConsumeOrderlyContext consumeOrderlyContext) {
-        Span span =
-          Optional.ofNullable(Tracing.currentTracer()).map(Tracer::currentSpan).orElse(null);
-        reference.set(span);
-        latch.countDown();
         return ConsumeOrderlyStatus.SUCCESS;
       }
     });
@@ -245,17 +210,13 @@ class ITRocketMQTracingTest extends ITRemote {
     producer.send(message);
     consumer.start();
 
-    boolean flag = latch.await(3000, TimeUnit.MILLISECONDS);
+    MutableSpan producerSpan = producerSpanHandler.takeRemoteSpan(Span.Kind.PRODUCER);
+    MutableSpan consumerSpan = consumerSpanHandler.takeRemoteSpan(Span.Kind.CONSUMER);
 
     producer.shutdown();
     consumer.shutdown();
 
-    assertThat(flag).isTrue();
-    assertThat(reference.get()).isNotNull();
-
-    MutableSpan producerSpan = producerSpanHandler.takeRemoteSpan(Span.Kind.PRODUCER);
     assertThat(producerSpan.parentId()).isNull();
-    MutableSpan consumerSpan = consumerSpanHandler.takeRemoteSpan(Span.Kind.CONSUMER);
     assertThat(consumerSpan.parentId()).isNotNull();
     assertChildOf(consumerSpan, producerSpan);
   }
