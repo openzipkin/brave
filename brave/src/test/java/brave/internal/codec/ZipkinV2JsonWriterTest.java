@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,16 +14,18 @@
 package brave.internal.codec;
 
 import brave.Span;
+import brave.Tag;
 import brave.Tags;
 import brave.handler.MutableSpan;
 import brave.handler.MutableSpanTest;
+import brave.propagation.TraceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class ZipkinJsonV2JsonWriterTest {
+class ZipkinV2JsonWriterTest {
   ZipkinV2JsonWriter jsonWriter = new ZipkinV2JsonWriter(Tags.ERROR);
   WriteBuffer buffer = new WriteBuffer(new byte[512], 0);
 
@@ -76,6 +78,75 @@ class ZipkinJsonV2JsonWriterTest {
     assertThat(string)
       .isEqualTo(
         "{\"name\":\"\\u2028 and \\u2029\",\"localEndpoint\":{\"serviceName\":\"\\\"foo\"},\"annotations\":[{\"timestamp\":1,\"value\":\"\uD83D\uDCA9\"}],\"tags\":{\"hello \\n\":\"\\t\\b\"}}");
+
+    assertThat(jsonWriter.sizeInBytes(span))
+      .isEqualTo(string.getBytes(UTF_8).length);
+  }
+
+  @Test void errorTag() {
+    MutableSpan span = new MutableSpan();
+    span.tag("a", "1");
+    span.tag("error", "true");
+    span.tag("b", "2");
+
+    jsonWriter.write(span, buffer);
+    String string = buffer.toString();
+    assertThat(string)
+      .isEqualTo("{\"tags\":{\"a\":\"1\",\"error\":\"true\",\"b\":\"2\"}}");
+
+    assertThat(jsonWriter.sizeInBytes(span))
+      .isEqualTo(string.getBytes(UTF_8).length);
+  }
+
+  @Test void error() {
+    MutableSpan span = new MutableSpan();
+    span.tag("a", "1");
+    span.tag("b", "2");
+    span.error(new RuntimeException("ice cream"));
+
+    jsonWriter.write(span, buffer);
+    String string = buffer.toString();
+    assertThat(string)
+      .isEqualTo("{\"tags\":{\"a\":\"1\",\"b\":\"2\",\"error\":\"ice cream\"}}");
+
+    assertThat(jsonWriter.sizeInBytes(span))
+      .isEqualTo(string.getBytes(UTF_8).length);
+  }
+
+  @Test void existingErrorTagWins() {
+    MutableSpan span = new MutableSpan();
+    span.tag("a", "1");
+    span.tag("error", "true");
+    span.tag("b", "2");
+    span.error(new RuntimeException("ice cream"));
+
+    jsonWriter.write(span, buffer);
+    String string = buffer.toString();
+    assertThat(string)
+      .isEqualTo("{\"tags\":{\"a\":\"1\",\"error\":\"true\",\"b\":\"2\"}}");
+
+    assertThat(jsonWriter.sizeInBytes(span))
+      .isEqualTo(string.getBytes(UTF_8).length);
+  }
+
+  @Test void differentErrorTagName() {
+    ZipkinV2JsonWriter jsonWriter = new ZipkinV2JsonWriter(new Tag<Throwable>("exception") {
+      @Override protected String parseValue(Throwable input, TraceContext context) {
+        return input.getMessage();
+      }
+    });
+
+    MutableSpan span = new MutableSpan();
+    span.tag("a", "1");
+    span.tag("error", "true");
+    span.tag("b", "2");
+    span.error(new RuntimeException("ice cream"));
+
+    jsonWriter.write(span, buffer);
+    String string = buffer.toString();
+    assertThat(string)
+      .isEqualTo(
+        "{\"tags\":{\"a\":\"1\",\"error\":\"true\",\"b\":\"2\",\"exception\":\"ice cream\"}}");
 
     assertThat(jsonWriter.sizeInBytes(span))
       .isEqualTo(string.getBytes(UTF_8).length);

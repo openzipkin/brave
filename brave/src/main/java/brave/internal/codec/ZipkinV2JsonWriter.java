@@ -88,19 +88,19 @@ public final class ZipkinV2JsonWriter implements WriteBuffer.Writer<MutableSpan>
     }
     int tagCount = span.tagCount();
     String errorValue = errorTag.value(span.error(), null);
-    if (tagCount > 0 || errorValue != null) {
+    String errorTagName = errorValue != null ? errorTag.key() : null;
+    boolean writeError = errorTagName != null;
+    if (tagCount > 0 || writeError) {
       if (sizeInBytes > 1) sizeInBytes++; // ,
       sizeInBytes += 9; // "tags":{}
-      boolean foundError = false;
       for (int i = 0; i < tagCount; i++) {
         String key = span.tagKeyAt(i);
-        if (!foundError && key.equals("error")) foundError = true;
-        String value = span.tagValueAt(i);
-        sizeInBytes += tagSizeInBytes(key, value);
+        if (writeError && key.equals(errorTagName)) writeError = false;
+        sizeInBytes += tagSizeInBytes(key, span.tagValueAt(i));
       }
-      if (errorValue != null && !foundError) {
+      if (writeError) {
         tagCount++;
-        sizeInBytes += tagSizeInBytes(errorTag.key(), errorValue);
+        sizeInBytes += tagSizeInBytes(errorTagName, errorValue);
       }
       if (tagCount > 1) sizeInBytes += tagCount - 1; // comma to join elements
     }
@@ -179,20 +179,20 @@ public final class ZipkinV2JsonWriter implements WriteBuffer.Writer<MutableSpan>
     }
     int tagCount = span.tagCount();
     String errorValue = errorTag.value(span.error(), null);
-    if (tagCount > 0 || errorValue != null) {
+    String errorTagName = errorValue != null ? errorTag.key() : null;
+    boolean writeError = errorTagName != null;
+    if (tagCount > 0 || writeError) {
       wroteField = writeFieldBegin(b, "tags", wroteField);
       b.writeByte('{');
-      boolean foundError = false;
       for (int i = 0; i < tagCount; ) {
         String key = span.tagKeyAt(i);
-        if (!foundError && key.equals("error")) foundError = true;
-        String value = span.tagValueAt(i);
-        writeKeyValue(b, key, value);
+        if (writeError && key.equals(errorTagName)) writeError = false;
+        writeKeyValue(b, key, span.tagValueAt(i));
         if (++i < tagCount) b.writeByte(',');
       }
-      if (errorValue != null && !foundError) {
+      if (writeError) {
         if (tagCount > 0) b.writeByte(',');
-        writeKeyValue(b, errorTag.key(), errorValue);
+        writeKeyValue(b, errorTagName, errorValue);
       }
       b.writeByte('}');
     }

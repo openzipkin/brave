@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -76,9 +76,11 @@ public class MutableSpanBenchmarks {
     span.tag("http.path", "/thrift/shopForTalk");
     span.tag("http.status_code", "200");
     span.tag("http.url", "tbinary+h2c://abasdasgad.hsadas.ism/thrift/shopForTalk");
+    span.tag("error", "true");
     span.tag("instanceId", "line-wallet-api");
     span.tag("phase", "beta");
     span.tag("siteId", "shop");
+    span.error(new RuntimeException("ice cream"));
     return span;
   }
 
