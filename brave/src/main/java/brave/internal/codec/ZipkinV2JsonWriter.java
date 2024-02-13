@@ -263,7 +263,7 @@ public final class ZipkinV2JsonWriter implements WriteBuffer.Writer<MutableSpan>
     }
     if (ip != null) {
       if (wroteField) b.writeByte(',');
-      // MutableSpan forces IPs to be an IPv4, IPv6 (coerces embedded to IPv4) or null.
+      // MutableSpan unwraps any Ipv4 from a mapped or compatability mode IPv6.
       if (ip.indexOf('.') != -1) {
         b.writeAscii("\"ipv4\":\"");
       } else {
