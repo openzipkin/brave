@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -263,7 +263,8 @@ public final class ZipkinV2JsonWriter implements WriteBuffer.Writer<MutableSpan>
     }
     if (ip != null) {
       if (wroteField) b.writeByte(',');
-      if (IpLiteral.detectFamily(ip) == IpLiteral.IpFamily.IPv4) {
+      // MutableSpan forces IPs to be an IPv4, IPv6 (coerces embedded to IPv4) or null.
+      if (ip.indexOf('.') != -1) {
         b.writeAscii("\"ipv4\":\"");
       } else {
         b.writeAscii("\"ipv6\":\"");
