@@ -70,7 +70,7 @@ public class ZipkinV2JsonWriterBenchmarks {
   public static void main(String[] args) throws RunnerException {
     Options opt = new OptionsBuilder()
       .addProfiler("gc")
-      .include(".*" + ZipkinV2JsonWriter.class.getSimpleName() + ".*")
+      .include(".*" + ZipkinV2JsonWriter.class.getSimpleName() + ".*bigClientSpan")
       .build();
 
     new Runner(opt).run();

@@ -22,6 +22,12 @@ import java.util.List;
 /** Similar to {@code zipkin2.MutableSpan.SpanBytesEncoder} except no Zipkin dependency. */
 public abstract class MutableSpanBytesEncoder {
 
+  /**
+   * Encodes a {@linkplain MutableSpan} into Zipkin's V2 json format.
+   *
+   * @param errorTag sets the tag for a {@linkplain MutableSpan#error()}, if the corresponding key
+   *                 doesn't already exist.
+   */
   public static MutableSpanBytesEncoder zipkinJsonV2(Tag<Throwable> errorTag) {
     if (errorTag == null) throw new NullPointerException("errorTag == null");
     return new ZipkinJsonV2(errorTag);

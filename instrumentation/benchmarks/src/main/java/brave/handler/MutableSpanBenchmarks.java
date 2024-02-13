@@ -76,9 +76,11 @@ public class MutableSpanBenchmarks {
     span.tag("http.path", "/thrift/shopForTalk");
     span.tag("http.status_code", "200");
     span.tag("http.url", "tbinary+h2c://abasdasgad.hsadas.ism/thrift/shopForTalk");
+    span.tag("error", "true");
     span.tag("instanceId", "line-wallet-api");
     span.tag("phase", "beta");
     span.tag("siteId", "shop");
+    span.error(new RuntimeException("ice cream"));
     return span;
   }
 
