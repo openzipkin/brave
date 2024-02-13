@@ -652,6 +652,15 @@ public class MutableSpanTest {
       .isEqualTo(new MutableSpan(context, null));
   }
 
+  @Test void unwrapsIpv4() {
+    MutableSpan span = new MutableSpan();
+    span.localIp("::FFFF:43.0.192.2"); // mapped
+    span.remoteIp("::0000:43.0.192.2"); // compat
+
+    assertThat(span.localIp()).isEqualTo("43.0.192.2");
+    assertThat(span.remoteIp()).isEqualTo("43.0.192.2");
+  }
+
   @Test void tags() {
     MutableSpan span = new MutableSpan();
     assertThat(span.tagCount()).isZero();
