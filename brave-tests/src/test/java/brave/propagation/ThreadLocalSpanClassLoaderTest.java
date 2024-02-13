@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -14,12 +14,18 @@
 package brave.propagation;
 
 import brave.Tracing;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static brave.test.util.ClassLoaders.assertRunIsUnloadable;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ThreadLocalSpanClassLoaderTest {
+
+  @BeforeEach void ensureNothingCurrent(){
+    Tracing current = Tracing.current();
+    if (current != null) current.close();
+  }
 
   @Test void noop_unloadable() {
     assertRunIsUnloadable(CurrentTracerUnassigned.class, getClass().getClassLoader());
@@ -32,13 +38,13 @@ class ThreadLocalSpanClassLoaderTest {
   }
 
   @Test void currentTracer_basicUsage_unloadable() {
-    assertRunIsUnloadable(ExplicitTracerBasicUsage.class, getClass().getClassLoader());
+    assertRunIsUnloadable(CurrentTracerBasicUsage.class, getClass().getClassLoader());
   }
 
-  static class ExplicitTracerBasicUsage implements Runnable {
+  static class CurrentTracerBasicUsage implements Runnable {
     @Override public void run() {
       try (Tracing tracing = Tracing.newBuilder().build()) {
-        ThreadLocalSpan tlSpan = ThreadLocalSpan.create(tracing.tracer());
+        ThreadLocalSpan tlSpan = ThreadLocalSpan.CURRENT_TRACER;
 
         tlSpan.next();
         tlSpan.remove().finish();
@@ -47,13 +53,13 @@ class ThreadLocalSpanClassLoaderTest {
   }
 
   @Test void explicitTracer_basicUsage_unloadable() {
-    assertRunIsUnloadable(CurrentTracerBasicUsage.class, getClass().getClassLoader());
+    assertRunIsUnloadable(ExplicitTracerBasicUsage.class, getClass().getClassLoader());
   }
 
-  static class CurrentTracerBasicUsage implements Runnable {
+  static class ExplicitTracerBasicUsage implements Runnable {
     @Override public void run() {
       try (Tracing tracing = Tracing.newBuilder().build()) {
-        ThreadLocalSpan tlSpan = ThreadLocalSpan.CURRENT_TRACER;
+        ThreadLocalSpan tlSpan = ThreadLocalSpan.create(tracing.tracer());
 
         tlSpan.next();
         tlSpan.remove().finish();
