@@ -13,33 +13,30 @@
  */
 package brave.rocketmq.client;
 
-import java.util.Collections;
-import java.util.List;
-
+import brave.Span;
+import brave.Tracer.SpanInScope;
+import brave.Tracing;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyContext;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyStatus;
 import org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently;
 import org.apache.rocketmq.common.message.MessageExt;
 
-import brave.Span;
-import brave.Tracer.SpanInScope;
+import java.util.Collections;
+import java.util.List;
 
 class TracingMessageListenerConcurrently implements MessageListenerConcurrently {
 
-  private final int delayLevelWhenNextConsume;
   private final RocketMQTracing tracing;
   final MessageListenerConcurrently messageListenerConcurrently;
 
-  TracingMessageListenerConcurrently(int delayLevelWhenNextConsume,
-                                     RocketMQTracing tracing, MessageListenerConcurrently messageListenerConcurrently) {
-    this.delayLevelWhenNextConsume = delayLevelWhenNextConsume;
+  TracingMessageListenerConcurrently(RocketMQTracing tracing, MessageListenerConcurrently messageListenerConcurrently) {
     this.tracing = tracing;
     this.messageListenerConcurrently = messageListenerConcurrently;
   }
 
   @Override
   public final ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgs,
-    ConsumeConcurrentlyContext context) {
+                                                        ConsumeConcurrentlyContext context) {
     for (MessageExt msg : msgs) {
       TracingConsumerRequest request = new TracingConsumerRequest(msg);
       Span span =
@@ -48,14 +45,13 @@ class TracingMessageListenerConcurrently implements MessageListenerConcurrently 
       span.name(RocketMQTags.FROM_PREFIX + msg.getTopic());
 
       ConsumeConcurrentlyStatus result;
-      try (SpanInScope scope = tracing.tracer().withSpanInScope(span)) {
+      try (SpanInScope scope = tracing.tracer.withSpanInScope(span)) {
         result = messageListenerConcurrently.consumeMessage(Collections.singletonList(msg), context);
-      } catch (Exception e) {
-        context.setDelayLevelWhenNextConsume(delayLevelWhenNextConsume);
-        result = ConsumeConcurrentlyStatus.RECONSUME_LATER;
+      } catch (Throwable e) {
+        span.error(e);
+        throw e;
       } finally {
-        long timestamp = tracing.tracing.clock(span.context()).currentTimeMicroseconds();
-        span.finish(timestamp);
+        span.finish();
       }
 
       if (result != ConsumeConcurrentlyStatus.CONSUME_SUCCESS) {

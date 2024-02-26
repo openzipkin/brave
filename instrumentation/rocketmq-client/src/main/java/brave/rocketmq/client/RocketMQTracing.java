@@ -42,7 +42,7 @@ public class RocketMQTracing {
   }
 
   public static RocketMQTracing create(MessagingTracing messagingTracing,
-    String remoteServiceName) {
+                                       String remoteServiceName) {
     return new RocketMQTracing(messagingTracing, remoteServiceName);
   }
 
@@ -57,7 +57,7 @@ public class RocketMQTracing {
   final String remoteServiceName;
 
   RocketMQTracing(MessagingTracing messagingTracing,
-    String remoteServiceName) { // intentionally hidden constructor
+                  String remoteServiceName) { // intentionally hidden constructor
     this.tracing = messagingTracing.tracing();
     this.tracer = tracing.tracer();
     Propagation<String> propagation = messagingTracing.propagation();
@@ -76,8 +76,8 @@ public class RocketMQTracing {
   }
 
   <R> TraceContextOrSamplingFlags extractAndClearTraceIdHeaders(Extractor<R> extractor,
-    R request,
-    Map<String, String> properties) {
+                                                                R request,
+                                                                Map<String, String> properties) {
     TraceContextOrSamplingFlags extracted = extractor.extract(request);
     // Clear any propagation keys present in the headers
     if (extracted.samplingFlags() == null) { // then trace IDs were extracted
@@ -88,9 +88,11 @@ public class RocketMQTracing {
     return extracted;
   }
 
-  /** Creates a potentially noop remote span representing this request. */
+  /**
+   * Creates a potentially noop remote span representing this request.
+   */
   Span nextMessagingSpan(SamplerFunction<MessagingRequest> sampler, MessagingRequest request,
-    TraceContextOrSamplingFlags extracted) {
+                         TraceContextOrSamplingFlags extracted) {
     Boolean sampled = extracted.sampled();
     // only recreate the context if the messaging sampler made a decision
     if (sampled == null && (sampled = sampler.trySample(request)) != null) {
@@ -106,42 +108,20 @@ public class RocketMQTracing {
       headers.remove(traceIDHeader);
   }
 
-  public Tracing tracing() {
-    return tracing;
+  /**
+   * Extracts or creates a {@link Span.Kind#CONSUMER} span for each message received. This span is
+   * injected onto each message so it becomes the parent when a processor later calls {@link Tracer#nextSpan(TraceContextOrSamplingFlags)}.
+   */
+  public MessageListenerOrderly messageListenerOrderly(MessageListenerOrderly messageListenerOrderly) {
+    return new TracingMessageListenerOrderly(this, messageListenerOrderly);
   }
 
-  public Tracer tracer() {
-    return tracer;
-  }
-
-  public MessageListenerOrderly wrap(MessageListenerOrderly messageListenerOrderly) {
-    return new TracingMessageListenerOrderly(defaultSuspendCurrentQueueTimeMillis, this, messageListenerOrderly);
-  }
-
-  public MessageListenerOrderly wrap(long suspendCurrentQueueTimeMillis, MessageListenerOrderly messageListenerOrderly) {
-    return new TracingMessageListenerOrderly(suspendCurrentQueueTimeMillis, this, messageListenerOrderly);
-  }
-
-  public MessageListenerConcurrently wrap(MessageListenerConcurrently messageListenerConcurrently) {
-    return new TracingMessageListenerConcurrently(defaultDelayLevelWhenNextConsume, this, messageListenerConcurrently);
-  }
-
-  public MessageListenerConcurrently wrap(int delayLevelWhenNextConsume, MessageListenerConcurrently messageListenerConcurrently) {
-    return new TracingMessageListenerConcurrently(delayLevelWhenNextConsume, this, messageListenerConcurrently);
-  }
-
-  public MessageListenerOrderly unwrap(MessageListenerOrderly messageListenerOrderly) {
-    if (messageListenerOrderly instanceof TracingMessageListenerOrderly) {
-      return ((TracingMessageListenerOrderly)messageListenerOrderly).messageListenerOrderly;
-    }
-    return null;
-  }
-
-  public MessageListenerConcurrently unwrap(MessageListenerConcurrently messageListenerConcurrently) {
-    if (messageListenerConcurrently instanceof TracingMessageListenerConcurrently) {
-      return ((TracingMessageListenerConcurrently)messageListenerConcurrently).messageListenerConcurrently;
-    }
-    return null;
+  /**
+   * Extracts or creates a {@link Span.Kind#CONSUMER} span for each message received. This span is
+   * injected onto each message so it becomes the parent when a processor later calls {@link Tracer#nextSpan(TraceContextOrSamplingFlags)}.
+   */
+  public MessageListenerConcurrently messageListenerConcurrently(MessageListenerConcurrently messageListenerConcurrently) {
+    return new TracingMessageListenerConcurrently(this, messageListenerConcurrently);
   }
 
 }

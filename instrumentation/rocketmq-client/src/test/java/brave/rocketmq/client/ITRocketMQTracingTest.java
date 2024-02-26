@@ -138,7 +138,7 @@ class ITRocketMQTracingTest extends ITRemote {
       new DefaultMQPushConsumer("tracingMessageListenerConcurrently");
     consumer.setNamesrvAddr(nameserverAddr);
     consumer.subscribe(topic, "*");
-    MessageListenerConcurrently messageListenerConcurrently = consumerTracing.wrap(new MessageListenerConcurrently() {
+    MessageListenerConcurrently messageListenerConcurrently = consumerTracing.messageListenerConcurrently(new MessageListenerConcurrently() {
       @Override
       public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> list, ConsumeConcurrentlyContext consumeConcurrentlyContext) {
         return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
@@ -168,7 +168,7 @@ class ITRocketMQTracingTest extends ITRemote {
       new DefaultMQPushConsumer("tracingMessageListenerOrderly");
     consumer.setNamesrvAddr(nameserverAddr);
     consumer.subscribe(topic, "*");
-    MessageListenerOrderly messageListenerOrderly = consumerTracing.wrap(new MessageListenerOrderly() {
+    MessageListenerOrderly messageListenerOrderly = consumerTracing.messageListenerOrderly(new MessageListenerOrderly() {
       @Override
       public ConsumeOrderlyStatus consumeMessage(List<MessageExt> list, ConsumeOrderlyContext consumeOrderlyContext) {
         return ConsumeOrderlyStatus.SUCCESS;
@@ -199,7 +199,7 @@ class ITRocketMQTracingTest extends ITRemote {
     DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("testAll");
     consumer.setNamesrvAddr(nameserverAddr);
     consumer.subscribe(topic, "*");
-    MessageListenerOrderly messageListenerOrderly = consumerTracing.wrap(new MessageListenerOrderly() {
+    MessageListenerOrderly messageListenerOrderly = consumerTracing.messageListenerOrderly(new MessageListenerOrderly() {
       @Override
       public ConsumeOrderlyStatus consumeMessage(List<MessageExt> list, ConsumeOrderlyContext consumeOrderlyContext) {
         return ConsumeOrderlyStatus.SUCCESS;

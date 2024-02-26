@@ -233,11 +233,6 @@
       </dependency>
       <dependency>
         <groupId>${project.groupId}</groupId>
-        <artifactId>brave-instrumentation-rocketmq-clients</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-rpc</artifactId>
         <version>${project.version}</version>
       </dependency>

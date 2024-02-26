@@ -62,17 +62,16 @@ final class TracingSendMessageHook implements SendMessageHook {
     Span span = (Span) context.getMqTraceContext();
     TracingProducerRequest request = new TracingProducerRequest(context.getMessage());
 
-    long timestamp = tracing.tracing.clock(span.context()).currentTimeMicroseconds();
     if (sendResult == null) {
       if (context.getCommunicationMode() == CommunicationMode.ASYNC) {
         return;
       }
-      span.finish(timestamp);
+      span.finish();
       tracing.producerInjector.inject(span.context(), request);
       return;
     }
 
     tracing.producerInjector.inject(span.context(), request);
-    span.finish(timestamp);
+    span.finish();
   }
 }

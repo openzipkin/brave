@@ -42,8 +42,7 @@ class Util {
     span.kind(request.spanKind());
     span.remoteServiceName(tracing.remoteServiceName);
     span.tag(RocketMQTags.ROCKETMQ_TOPIC, request.channelName());
-    long timestamp = tracing.tracing.clock(span.context()).currentTimeMicroseconds();
-    span.start(timestamp);
+    span.start();
     return span;
   }
 

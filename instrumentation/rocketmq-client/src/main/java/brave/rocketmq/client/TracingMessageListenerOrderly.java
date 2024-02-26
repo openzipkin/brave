@@ -13,32 +13,28 @@
  */
 package brave.rocketmq.client;
 
-import java.util.Collections;
-import java.util.List;
-
+import brave.Span;
+import brave.Tracer.SpanInScope;
 import org.apache.rocketmq.client.consumer.listener.ConsumeOrderlyContext;
 import org.apache.rocketmq.client.consumer.listener.ConsumeOrderlyStatus;
 import org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly;
 import org.apache.rocketmq.common.message.MessageExt;
 
-import brave.Span;
-import brave.Tracer.SpanInScope;
+import java.util.Collections;
+import java.util.List;
 
 class TracingMessageListenerOrderly implements MessageListenerOrderly {
-  private final long suspendCurrentQueueTimeMillis;
   private final RocketMQTracing tracing;
   final MessageListenerOrderly messageListenerOrderly;
 
-  TracingMessageListenerOrderly(long suspendCurrentQueueTimeMillis,
-                                RocketMQTracing tracing, MessageListenerOrderly messageListenerOrderly) {
-    this.suspendCurrentQueueTimeMillis = suspendCurrentQueueTimeMillis;
+  TracingMessageListenerOrderly(RocketMQTracing tracing, MessageListenerOrderly messageListenerOrderly) {
     this.tracing = tracing;
     this.messageListenerOrderly = messageListenerOrderly;
   }
 
   @Override
   public final ConsumeOrderlyStatus consumeMessage(List<MessageExt> msgs,
-    ConsumeOrderlyContext context) {
+                                                   ConsumeOrderlyContext context) {
     for (MessageExt msg : msgs) {
       TracingConsumerRequest request = new TracingConsumerRequest(msg);
       Span span =
@@ -47,15 +43,13 @@ class TracingMessageListenerOrderly implements MessageListenerOrderly {
       span.name(RocketMQTags.FROM_PREFIX + msg.getTopic());
 
       ConsumeOrderlyStatus result;
-      try (SpanInScope scope = tracing.tracer().withSpanInScope(span)) {
+      try (SpanInScope scope = tracing.tracer.withSpanInScope(span)) {
         result = messageListenerOrderly.consumeMessage(Collections.singletonList(msg), context);
-      } catch (Exception e) {
+      } catch (Throwable e) {
         span.error(e);
-        context.setSuspendCurrentQueueTimeMillis(suspendCurrentQueueTimeMillis);
-        result = ConsumeOrderlyStatus.SUSPEND_CURRENT_QUEUE_A_MOMENT;
+        throw e;
       } finally {
-        long timestamp = tracing.tracing.clock(span.context()).currentTimeMicroseconds();
-        span.finish(timestamp);
+        span.finish();
       }
 
       if (result != ConsumeOrderlyStatus.SUCCESS) {
