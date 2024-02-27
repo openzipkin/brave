@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.function.BiFunction;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -36,9 +37,11 @@ import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.Consumed;
+import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.processor.api.ContextualFixedKeyProcessor;
 import org.apache.kafka.streams.processor.api.ContextualProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorSupplier;
-import org.apache.kafka.streams.processor.api.Processor;
+import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 import org.apache.kafka.streams.processor.api.ProcessorSupplier;
 import org.apache.kafka.streams.processor.api.Record;
 import org.junit.jupiter.api.AfterEach;
@@ -264,23 +267,41 @@ class ITKafkaStreamsTracing extends ITKafkaStreams {
     streams.cleanUp();
   }
 
-  @Test void injectsInitContextOnForward() {
+  @Test void injectsInitContextOnForward_process() {
+    injectsInitContextOnForward(
+      (stream, contexts) -> stream.process(kafkaStreamsTracing.process("forward",
+          () -> new ContextualProcessor<String, String, String, String>() {
+            @Override public void process(Record<String, String> record) {
+              context().forward(record);
+            }
+          }))
+        .process(kafkaStreamsTracing.process("check",
+          () -> record -> contexts.add(currentTraceContext.get()))
+        ));
+  }
+
+  @Test void injectsInitContextOnForward_processValues() {
+    injectsInitContextOnForward(
+      (stream, contexts) -> stream.processValues(kafkaStreamsTracing.processValues("forward",
+          () -> new ContextualFixedKeyProcessor<String, String, String>() {
+            @Override public void process(FixedKeyRecord<String, String> record) {
+              context().forward(record);
+            }
+          }))
+        .processValues(kafkaStreamsTracing.processValues("check",
+          () -> record -> contexts.add(currentTraceContext.get()))
+        ));
+  }
+
+  void injectsInitContextOnForward(
+    BiFunction<KStream<String, String>, BlockingDeque<TraceContext>, KStream<String, String>> configureStream) {
+
     String inputTopic = testName + "-input";
 
     BlockingDeque<TraceContext> contexts = new LinkedBlockingDeque<>();
 
     StreamsBuilder builder = new StreamsBuilder();
-    builder.<String, String>stream(inputTopic)
-      .process(kafkaStreamsTracing.process("forward",
-        () -> new ContextualProcessor<String, String, String, String>() {
-          @Override public void process(Record<String, String> record) {
-            context().forward(record);
-          }
-        }))
-      .process(kafkaStreamsTracing.process("check",
-        () -> (Processor<String, String, String, String>) record -> {
-          contexts.add(currentTraceContext.get());
-        }));
+    configureStream.apply(builder.stream(inputTopic), contexts);
     Topology topology = builder.build();
 
     KafkaStreams streams = buildKafkaStreams(topology);
