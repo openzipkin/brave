@@ -29,7 +29,6 @@
     <!-- Matches Export-Package in bnd.bnd -->
     <module.name>brave.context.log4j12</module.name>
 
-    <log4j12.version>1.2.17</log4j12.version>
     <main.basedir>${project.basedir}/../..</main.basedir>
   </properties>
 

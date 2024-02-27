@@ -87,9 +87,13 @@
     <!-- to test @Inject annotations. Note 7.x is for jakarta annotations! -->
     <guice.version>6.0.0</guice.version>
 
+    <!-- Note: Spring 6 is JDK 17 bytecode, so we can't update to it until we
+         stop supporting Java 6 compilation target, or change our release to
+         use multiple tool chains. -->
+    <spring5.version>5.3.32</spring5.version>
     <!-- Ensure older versions of spring still work -->
-    <spring5.version>5.3.31</spring5.version>
-    <spring.version>3.2.18.RELEASE</spring.version>
+    <spring25.version>2.5.6</spring25.version>
+    <spring3.version>3.2.18.RELEASE</spring3.version>
 
     <!-- Apis used, but not in Jetty 7.6* imply duplication in servlet25 test fixtures -->
     <jetty.version>9.4.53.v20231009</jetty.version>
@@ -103,12 +107,14 @@
     <kafka.version>3.6.1</kafka.version>
     <activemq.version>5.18.3</activemq.version>
     <activemq.artemis.version>2.31.2</activemq.artemis.version>
-    <!-- TODO: reflection drift after this version -->
+    <!-- TODO: reflection drift after this version. Make changes as necessary
+         and add an invoker test that 2.3.6 still works. -->
     <spring-rabbit.version>2.3.6</spring-rabbit.version>
 
     <!-- TODO: update and fix drift or remove the FinagleContextInteropTest -->
     <finagle.version>20.12.0</finagle.version>
-    <log4j.version>2.22.1</log4j.version>
+    <log4j.version>2.23.0</log4j.version>
+    <log4j12.version>1.2.17</log4j12.version>
     <okhttp.version>4.12.0</okhttp.version>
     <httpclient.version>4.5.14</httpclient.version>
 
@@ -123,9 +129,9 @@
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
 
     <!-- Test only dependencies -->
-    <junit-jupiter.version>5.10.1</junit-jupiter.version>
-    <assertj.version>3.25.1</assertj.version>
-    <mockito.version>5.8.0</mockito.version>
+    <junit-jupiter.version>5.10.2</junit-jupiter.version>
+    <assertj.version>3.25.3</assertj.version>
+    <mockito.version>5.10.0</mockito.version>
     <jersey.version>2.41</jersey.version>
     <testcontainers.version>1.19.3</testcontainers.version>
 
@@ -501,6 +507,7 @@
           <excludes>
             <exclude>**/jetty-logging.properties</exclude>
             <exclude>**/log4j2.properties</exclude>
+            <exclude>**/log4j.properties</exclude>
             <exclude>.editorconfig</exclude>
             <exclude>.gitattributes</exclude>
             <exclude>.gitignore</exclude>
