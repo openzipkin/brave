@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2022 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -42,6 +42,7 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.Uuid;
 
 /**
  * Kafka Consumer decorator. Read records headers to create and complete a child of the incoming
@@ -252,6 +253,11 @@ final class TracingConsumer<K, V> implements Consumer<K, V> {
   public Map<TopicPartition, OffsetAndMetadata> committed(
     Set<TopicPartition> partitions, Duration timeout) {
     return delegate.committed(partitions, timeout);
+  }
+
+  // Do not use @Override annotation to avoid compatibility issue version < 3.7
+  public Uuid clientInstanceId(Duration duration) {
+    return delegate.clientInstanceId(duration);
   }
 
   @Override public Map<MetricName, ? extends Metric> metrics() {

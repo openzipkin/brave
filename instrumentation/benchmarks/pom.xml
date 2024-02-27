@@ -28,7 +28,7 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
     <jmh.version>1.37</jmh.version>
     <!-- Note: versions above 2.2 move to jakarta package -->
-    <undertow-servlet.version>2.2.28.Final</undertow-servlet.version>
+    <undertow-servlet.version>2.2.30.Final</undertow-servlet.version>
   </properties>
 
   <!-- can't import brave-bom due to build-support/go-offline.sh -->
@@ -55,7 +55,7 @@
     <dependency>
       <groupId>com.amazonaws</groupId>
       <artifactId>aws-xray-recorder-sdk-core</artifactId>
-      <version>2.15.0</version>
+      <version>2.15.1</version>
     </dependency>
 
     <dependency>
@@ -111,6 +111,12 @@
       <groupId>net.ltgt.jaxrs</groupId>
       <artifactId>resteasy-client-okhttp3</artifactId>
       <version>1.1</version>
+    </dependency>
+    <!-- Avoid CVE ridden version from resteasy-client-okhttp3 -->
+    <dependency>
+      <groupId>org.jboss.resteasy</groupId>
+      <artifactId>resteasy-client</artifactId>
+      <version>${resteasy.version}</version>
     </dependency>
 
     <dependency>

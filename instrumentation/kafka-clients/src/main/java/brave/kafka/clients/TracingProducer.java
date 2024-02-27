@@ -38,6 +38,7 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.Uuid;
 import org.apache.kafka.common.errors.ProducerFencedException;
 
 final class TracingProducer<K, V> implements Producer<K, V> {
@@ -147,6 +148,11 @@ final class TracingProducer<K, V> implements Producer<K, V> {
 
   @Override public Map<MetricName, ? extends Metric> metrics() {
     return delegate.metrics();
+  }
+
+  // Do not use @Override annotation to avoid compatibility issue version < 3.7
+  public Uuid clientInstanceId(Duration duration) {
+    return delegate.clientInstanceId(duration);
   }
 
   @Override public void close() {
