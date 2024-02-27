@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -16,12 +16,12 @@ package brave.kafka.streams;
 import brave.propagation.Propagation.Getter;
 import brave.propagation.Propagation.Setter;
 import org.apache.kafka.common.header.Headers;
-import org.apache.kafka.streams.processor.ProcessorContext;
+import org.apache.kafka.streams.processor.api.ProcessingContext;
 
 final class KafkaStreamsPropagation {
   /**
-   * Used by {@link KafkaStreamsTracing#nextSpan(ProcessorContext)} to extract a trace context from
-   * a prior stage.
+   * Used by {@link KafkaStreamsTracing#nextSpan(ProcessingContext, Headers)} to extract a trace
+   * context from a prior stage.
    */
   static final Getter<Headers, String> GETTER = new Getter<Headers, String>() {
     @Override public String get(Headers headers, String key) {
