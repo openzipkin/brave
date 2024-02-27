@@ -30,7 +30,7 @@ import org.apache.kafka.streams.processor.TaskId;
 import org.apache.kafka.streams.processor.api.ProcessingContext;
 import org.apache.kafka.streams.processor.api.RecordMetadata;
 
-class TracingProcessingContext<C extends ProcessingContext> implements ProcessingContext {
+abstract class TracingProcessingContext<C extends ProcessingContext> implements ProcessingContext {
   final C delegate;
   final Injector<Headers> injector;
   final TraceContext context;
