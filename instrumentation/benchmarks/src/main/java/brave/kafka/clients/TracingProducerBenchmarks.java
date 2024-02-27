@@ -30,6 +30,7 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.Uuid;
 import org.apache.kafka.common.errors.ProducerFencedException;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -128,6 +129,10 @@ public class TracingProducerBenchmarks {
     }
 
     @Override public Map<MetricName, ? extends Metric> metrics() {
+      return null;
+    }
+
+    @Override public Uuid clientInstanceId(Duration duration) {
       return null;
     }
 
