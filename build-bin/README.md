@@ -12,6 +12,10 @@ On deploy:
 On deploy_bom:
 * The artifact `brave-bom` is deployed. Intentionally separate to allow a retry.
 
+We also include a [Trivy configuration](trivy.yaml) which works around its lack
+of support for maven-invoker-plugin. Run `./build-bin/trivy` from the project
+root to get a vulnerability assessment.
+
 [//]: # (Below here should be standard for all projects)
 
 ## Build Overview

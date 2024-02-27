@@ -1,0 +1,7 @@
+# As of Feb 2024, Trivy has no plans to handle maven-invoker-plugin.
+# Skip to reduce noise about intentional tests against old versions.
+# https://github.com/aquasecurity/trivy/discussions/5787
+image:
+  skip-files:
+    - "**/src/it/*/pom.xml"
+    - "**/target/it/*/pom.xml"

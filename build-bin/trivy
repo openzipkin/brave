@@ -1,0 +1,6 @@
+#!/bin/sh -ue
+
+# This script deploys a master or release version.
+#
+# See [README.md] for an explanation of this and how CI should use it.
+trivy -c $(dirname "$0")/trivy.yaml repo .
