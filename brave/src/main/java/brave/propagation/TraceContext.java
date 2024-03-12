@@ -14,9 +14,12 @@
 package brave.propagation;
 
 import brave.Span;
+import brave.baggage.BaggageFields;
+import brave.baggage.BaggagePropagation;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.internal.Platform;
+import brave.internal.baggage.ExtraBaggageContext;
 import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.List;
@@ -182,15 +185,15 @@ public final class TraceContext extends SamplingFlags {
   }
 
   /**
-   * Returns a list of additional data propagated through this trace.
+   * Used internally by propagation plugins to search for their instance of state regardless of if
+   * it is in a {@linkplain TraceContext} or {@linkplain TraceContextOrSamplingFlags}.
    *
-   * <p>The contents are intentionally opaque, deferring to {@linkplain Propagation} to define. An
-   * example implementation could be storing a class containing a correlation value, which is
-   * extracted from incoming requests and injected as-is onto outgoing requests.
+   * <p>Tools that work only on {@linkplain TraceContext} should use {@link #findExtra(Class)}
+   * instead.
    *
-   * <p>Implementations are responsible for scoping any data stored here. This can be performed
-   * when {@link Propagation.Factory#decorate(TraceContext)} is called.
-   *
+   * @see #findExtra(Class)
+   * @see TraceContextOrSamplingFlags#extra()
+   * @see Builder#addExtra(Object) for notes on extra values.
    * @since 4.9
    */
   public List<Object> extra() {
@@ -198,11 +201,10 @@ public final class TraceContext extends SamplingFlags {
   }
 
   /**
-   * Returns a {@linkplain #extra() propagated state} of the given type if present or null if not.
+   * Used internally by propagation plugins to search for their instance of state.
    *
-   * <p>Note: It is the responsibility of {@link Propagation.Factory#decorate(TraceContext)}
-   * to consolidate elements. If it doesn't, there could be multiple instances of a given type and
-   * this can break logic.
+   * @see #extra()
+   * @see Builder#addExtra(Object) for notes on extra values.
    */
   @Nullable public <T> T findExtra(Class<T> type) {
     return findExtra(type, extraList);
@@ -372,6 +374,24 @@ public final class TraceContext extends SamplingFlags {
     }
 
     /**
+     * This is an advanced function used for {@link Propagation} plugins, such as
+     * {@link BaggagePropagation}, to add an internal object to hold state when it isn't already in
+     * {@linkplain #extra()}.
+     *
+     * <p>The "extra" parameter is intentionally opaque, and should be an internal type defined by
+     * a {@linkplain Propagation} plugin. An example implementation could be storing a class
+     * containing a correlation value, which is extracted from incoming requests and injected as-is
+     * onto outgoing requests. A real world use is {@link BaggageFields}, which holds all baggage
+     * fields to propagate in one instance.
+     *
+     * <p>Note: It is the responsibility of {@link Propagation.Factory#decorate(TraceContext)}
+     * to consolidate elements (by searching for an existing instance of their state with {@link
+     * #findExtra(Class)} or {@link #extra()}). If it doesn't, there could be multiple instances of
+     * a given type and this can break logic and add overhead. Decoration is also when
+     * implementations define their scope. For example, a plugin that only propagates a field
+     * without changing will be constant for the whole request. A plugin that allows changes of
+     * state need careful coding, such as done in {@link BaggagePropagation}.
+     *
      * @see #extra()
      * @since 5.12
      */

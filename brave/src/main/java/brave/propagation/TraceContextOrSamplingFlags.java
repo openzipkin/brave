@@ -14,6 +14,7 @@
 package brave.propagation;
 
 import brave.Tracer;
+import brave.baggage.BaggagePropagation;
 import brave.internal.InternalPropagation;
 import brave.internal.Nullable;
 import brave.propagation.TraceContext.Extractor;
@@ -245,9 +246,10 @@ public final class TraceContextOrSamplingFlags {
    * #context()} is {@code null}.
    *
    * @see TraceContext#extra()
+   * @see Builder#addExtra(Object) for notes on extra values.
    * @since 4.9
    */
-  public final List<Object> extra() {
+  public List<Object> extra() {
     return extraList;
   }
 
@@ -309,7 +311,16 @@ public final class TraceContextOrSamplingFlags {
     }
 
     /**
+     * This is an advanced function used for {@link Propagation} plugins, such as
+     * {@link BaggagePropagation}, to add an internal object to hold state before extracting a
+     * remote request.
+     *
+     * <p>Implications of data are the same as {@link TraceContext.Builder#addExtra(Object)}. The
+     * main difference here is that {@link Extractor#extract(Object)} may not result in a trace
+     * context. For example, baggage fields can exist without an incoming trace.
+     *
      * @see TraceContextOrSamplingFlags#extra()
+     * @see TraceContext.Builder#addExtra(Object)
      * @since 4.9
      */
     public Builder addExtra(Object extra) {
