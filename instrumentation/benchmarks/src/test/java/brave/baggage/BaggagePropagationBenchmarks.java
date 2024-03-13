@@ -14,6 +14,7 @@
 package brave.baggage;
 
 import brave.baggage.BaggagePropagationConfig.SingleBaggageField;
+import brave.internal.InternalPropagation;
 import brave.internal.codec.HexCodec;
 import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
@@ -65,6 +66,8 @@ public class BaggagePropagationBenchmarks {
     }
   };
 
+  static final TraceContext contextWithBaggage = extractor.extract(incoming).context();
+
   static final Map<String, String> incomingNoBaggage = new LinkedHashMap<String, String>() {
     {
       injector.inject(context, this);
@@ -72,6 +75,14 @@ public class BaggagePropagationBenchmarks {
   };
 
   static final Map<String, String> nothingIncoming = Collections.emptyMap();
+
+  @Benchmark public TraceContext decorate() {
+    return factory.decorate(InternalPropagation.instance.shallowCopy(context));
+  }
+
+  @Benchmark public TraceContext decorate_withBaggage() {
+    return factory.decorate(InternalPropagation.instance.shallowCopy(contextWithBaggage));
+  }
 
   @Benchmark public void inject() {
     Map<String, String> request = new LinkedHashMap<>();

@@ -43,6 +43,13 @@
       <version>${jmh.version}</version>
       <scope>test</scope>
     </dependency>
+    <!-- IntelliJ doesn't know to use annotation processing on tests without this -->
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-generator-annprocess</artifactId>
+      <version>${jmh.version}</version>
+      <scope>test</scope>
+    </dependency>
 
     <dependency>
       <groupId>com.amazonaws</groupId>
