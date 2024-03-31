@@ -92,7 +92,8 @@ public class MapExtra<K, V, A extends MapExtra<K, V, A, F>,
       return false;
     }
 
-    synchronized (lock) {
+    lock.lock();
+    try {
       Object[] prior = state();
 
       // double-check lost race in dynamic case
@@ -105,6 +106,8 @@ public class MapExtra<K, V, A extends MapExtra<K, V, A, F>,
       newState[i + 1] = value;
       this.state = newState;
       return true;
+    } finally {
+        lock.unlock();
     }
   }
 

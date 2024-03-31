@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,6 +17,7 @@ import brave.internal.Nullable;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Arrays;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Holds extended state in {@link TraceContext#extra()} or {@link TraceContextOrSamplingFlags#extra()}.
@@ -39,7 +40,7 @@ public abstract class Extra<E extends Extra<E, F>, F extends ExtraFactory<E, F>>
    * Updates like {@link #tryToClaim(long, long)} lock on this object, as should any non-atomic
    * {@link #state} updates.
    */
-  protected final Object lock = new Object();
+  protected final ReentrantLock lock = new ReentrantLock();
   /**
    * Lock on {@link #lock} when comparing existing values for a state update that happens after
    * {@link #mergeStateKeepingOursOnConflict(Extra)}.
@@ -74,13 +75,16 @@ public abstract class Extra<E extends Extra<E, F>, F extends ExtraFactory<E, F>>
 
   /** Fields are extracted before a context is created. We need to lazy set the context */
   final boolean tryToClaim(long traceId, long spanId) {
-    synchronized (lock) {
+    lock.lock();
+    try {
       if (this.traceId == 0L) {
         this.traceId = traceId;
         this.spanId = spanId;
         return true;
       }
       return this.traceId == traceId && this.spanId == spanId;
+    } finally {
+      lock.unlock();
     }
   }
 

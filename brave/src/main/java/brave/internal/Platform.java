@@ -21,6 +21,7 @@ import java.net.NetworkInterface;
 import java.security.SecureRandom;
 import java.util.Enumeration;
 import java.util.Random;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
@@ -35,6 +36,7 @@ import java.util.logging.Logger;
 public abstract class Platform implements Clock {
   private static final Platform PLATFORM = findPlatform();
 
+  private final ReentrantLock lock = new ReentrantLock();
   volatile String linkLocalIp;
 
   /** Returns the same value as {@link System#nanoTime()}. */
@@ -47,10 +49,13 @@ public abstract class Platform implements Clock {
   @Nullable public String linkLocalIp() {
     // uses synchronized variant of double-checked locking as getting the endpoint can be expensive
     if (linkLocalIp != null) return linkLocalIp;
-    synchronized (this) {
+    lock.lock();
+    try {
       if (linkLocalIp == null) {
         linkLocalIp = produceLinkLocalIp();
       }
+    } finally {
+      lock.unlock();
     }
     return linkLocalIp;
   }

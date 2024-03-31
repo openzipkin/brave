@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2020 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,12 +13,15 @@
  */
 package brave;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 import brave.handler.MutableSpan;
 import brave.internal.recorder.PendingSpans;
 import brave.propagation.TraceContext;
 
 /** This wraps the public api and guards access to a mutable span. */
 final class RealSpan extends Span {
+  final ReentrantLock lock = new ReentrantLock();
   final TraceContext context;
   final PendingSpans pendingSpans;
   final MutableSpan state;
@@ -139,17 +142,30 @@ final class RealSpan extends Span {
   }
 
   @Override public void finish(long timestamp) {
-    synchronized (state) {
+    lock.lock();
+    try {
       pendingSpans.finish(context, timestamp);
+    } finally {
+      lock.unlock();
     }
   }
 
   @Override public void abandon() {
-    pendingSpans.abandon(context);
+    lock.lock();
+    try {
+      pendingSpans.abandon(context);
+    } finally {
+      lock.unlock();
+    }
   }
 
   @Override public void flush() {
-    pendingSpans.flush(context);
+    lock.lock();
+    try {
+      pendingSpans.flush(context);
+    } finally {
+      lock.unlock();
+    }
   }
 
   @Override public String toString() {
