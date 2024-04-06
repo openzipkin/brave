@@ -285,11 +285,25 @@ public class MutableSpanTest {
     );
   }
 
+  @Test void localServiceNameCoercesEmptyToNull() {
+    MutableSpan span = new MutableSpan();
+    span.localServiceName("FavStar");
+    span.localServiceName("");
+    assertThat(span.localServiceName()).isNull();
+  }
+
   @Test void localServiceNamePreservesCase() {
     String expectedLocalServiceName = "FavStar";
     MutableSpan span = new MutableSpan();
     span.localServiceName(expectedLocalServiceName);
     assertThat(span.localServiceName()).isEqualTo(expectedLocalServiceName);
+  }
+
+  @Test void remoteServiceNameCoercesEmptyToNull() {
+    MutableSpan span = new MutableSpan();
+    span.remoteServiceName("FavStar");
+    span.remoteServiceName("");
+    assertThat(span.remoteServiceName()).isNull();
   }
 
   @Test void remoteServiceNamePreservesCase() {

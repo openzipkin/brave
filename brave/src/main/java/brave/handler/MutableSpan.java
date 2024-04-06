@@ -365,8 +365,9 @@ public final class MutableSpan implements Cloneable {
   public void localServiceName(@Nullable String localServiceName) {
     if (localServiceName == null || localServiceName.isEmpty()) {
       this.localServiceName = null;
+    } else {
+      this.localServiceName = localServiceName;
     }
-    this.localServiceName = localServiceName;
   }
 
   /**
@@ -438,8 +439,9 @@ public final class MutableSpan implements Cloneable {
   public void remoteServiceName(@Nullable String remoteServiceName) {
     if (remoteServiceName == null || remoteServiceName.isEmpty()) {
       this.remoteServiceName = null;
+    } else {
+      this.remoteServiceName = remoteServiceName;
     }
-    this.remoteServiceName = remoteServiceName;
   }
 
   /**
