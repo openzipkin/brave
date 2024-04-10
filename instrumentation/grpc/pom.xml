@@ -33,8 +33,8 @@
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
     <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
 
-    <old-grpc.version>1.2.0</old-grpc.version>
-    <old-protoc.version>3.2.0</old-protoc.version>
+    <floor-grpc.version>1.2.0</floor-grpc.version>
+    <floor-protoc.version>3.2.0</floor-protoc.version>
 
     <!-- disable mutability warning as TagContextBinaryMarshaller intentionally returns mixed -->
     <errorprone.args>-Xep:MixedMutabilityReturnType:OFF</errorprone.args>
@@ -183,7 +183,7 @@
                 <DynamicDependency>
                   <groupId>io.grpc</groupId>
                   <artifactId>grpc-all</artifactId>
-                  <version>${old-grpc.version}</version>
+                  <version>${floor-grpc.version}</version>
                   <repositoryType>MAIN</repositoryType>
                   <type>jar</type>
                 </DynamicDependency>

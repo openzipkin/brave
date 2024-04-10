@@ -97,7 +97,7 @@ abstract class ITSpringRabbit extends ITRemote {
 
   static final class RabbitMQContainer extends GenericContainer<RabbitMQContainer> {
     RabbitMQContainer() {
-      super(parse("ghcr.io/openzipkin/zipkin-rabbitmq:3.1.0"));
+      super(parse("ghcr.io/openzipkin/zipkin-rabbitmq:3.1.1"));
       withExposedPorts(RABBIT_PORT);
       waitStrategy = Wait.forLogMessage(".*Server startup complete.*", 1);
       withStartupTimeout(Duration.ofSeconds(60));

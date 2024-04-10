@@ -31,7 +31,7 @@
 
     <main.basedir>${project.basedir}/../..</main.basedir>
 
-    <old-httpclient.version>4.3.6</old-httpclient.version>
+    <floor-httpclient.version>4.3.6</floor-httpclient.version>
   </properties>
 
   <dependencies>
@@ -82,14 +82,14 @@
             <DynamicDependency>
               <groupId>org.apache.httpcomponents</groupId>
               <artifactId>httpclient</artifactId>
-              <version>${old-httpclient.version}</version>
+              <version>${floor-httpclient.version}</version>
               <repositoryType>MAIN</repositoryType>
               <type>jar</type>
             </DynamicDependency>
             <DynamicDependency>
               <groupId>org.apache.httpcomponents</groupId>
               <artifactId>httpclient-cache</artifactId>
-              <version>${old-httpclient.version}</version>
+              <version>${floor-httpclient.version}</version>
               <repositoryType>MAIN</repositoryType>
               <type>jar</type>
             </DynamicDependency>

@@ -23,7 +23,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.config.ApplicationConfig;
-import org.apache.dubbo.config.Constants;
 import org.apache.dubbo.config.ProtocolConfig;
 import org.apache.dubbo.config.RegistryConfig;
 import org.apache.dubbo.config.ServiceConfig;
@@ -42,8 +41,10 @@ class TestServer {
     if (linkLocalIp != null) {
       // avoid dubbo's logic which might pick docker ip
       System.setProperty(CommonConstants.DUBBO_IP_TO_BIND, linkLocalIp);
-      System.setProperty(Constants.DUBBO_IP_TO_REGISTRY, linkLocalIp);
+      System.setProperty(CommonConstants.DubboProperty.DUBBO_IP_TO_REGISTRY, linkLocalIp);
     }
+    // reduce dubbo shutdown timeout to 1s
+    System.setProperty(CommonConstants.SHUTDOWN_WAIT_KEY, "1000");
     service = new ServiceConfig<>();
     service.setApplication(application);
     service.setRegistry(new RegistryConfig(RegistryConfig.NO_AVAILABLE));
@@ -51,7 +52,6 @@ class TestServer {
   }
 
   public void initService() {
-
     service.setInterface(GreeterService.class);
     service.setRef((method, parameterTypes, args) -> {
       requestQueue.add(extractor.extract(RpcContext.getContext().getAttachments()));

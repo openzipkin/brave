@@ -30,6 +30,8 @@
     <module.name>brave.spring.webmvc</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
+
+    <spring-floor.version>${spring25.version}</spring-floor.version>
   </properties>
 
   <dependencies>
@@ -96,7 +98,7 @@
             <DynamicDependency>
               <groupId>org.springframework</groupId>
               <artifactId>spring-webmvc</artifactId>
-              <version>${spring25.version}</version>
+              <version>${spring-floor.version}</version>
               <repositoryType>MAIN</repositoryType>
               <type>jar</type>
             </DynamicDependency>

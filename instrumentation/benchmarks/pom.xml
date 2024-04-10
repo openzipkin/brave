@@ -30,7 +30,7 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
     <jmh.version>1.37</jmh.version>
     <!-- Note: versions above 2.2 move to jakarta package -->
-    <undertow-servlet.version>2.2.30.Final</undertow-servlet.version>
+    <undertow-servlet.version>2.2.31.Final</undertow-servlet.version>
   </properties>
 
   <!-- All dependencies are marked test, because benchmarks are a form of test.
@@ -54,7 +54,7 @@
     <dependency>
       <groupId>com.amazonaws</groupId>
       <artifactId>aws-xray-recorder-sdk-core</artifactId>
-      <version>2.15.1</version>
+      <version>2.15.2</version>
       <scope>test</scope>
     </dependency>
 
