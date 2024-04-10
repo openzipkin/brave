@@ -11,7 +11,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package brave.mongodb_v3;
+package brave.mongodb_floor;
 
 class ITMongoDBTracing extends brave.mongodb.ITMongoDBTracing {
 }

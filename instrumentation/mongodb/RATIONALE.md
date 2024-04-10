@@ -1,5 +1,13 @@
 # brave-instrumentation-mongodb rationale
 
+## Floor JRE version
+
+MongoDB client 3.x has a floor JRE version of 1.6, while 4.x moved to 8. We
+test on MongoDB client 3.x, despite it being 1.6 bytecode. This is a
+maintenance compromise beginning with MongoDB 5.x. We believe this will be less
+significant than more widely used libraries, such as Servlet or OkHttp, which
+could be used in old environments or Android.
+
 ## Default data policy
 We tried to make the default data policy similar to other instrumentation, such as MySQL, and also current practice
 from existing sites. Like other instrumentation, the policy is intentionally conservative, in efforts to avoid large

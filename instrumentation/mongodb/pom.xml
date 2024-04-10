@@ -32,7 +32,7 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
 
     <mongodb-driver.version>5.0.1</mongodb-driver.version>
-    <old-mongodb-driver.version>3.11.0</old-mongodb-driver.version>
+    <floor-mongodb-driver.version>3.11.0</floor-mongodb-driver.version>
   </properties>
 
   <dependencies>
@@ -84,7 +84,7 @@
             <DynamicDependency>
               <groupId>org.mongodb</groupId>
               <artifactId>mongodb-driver</artifactId>
-              <version>${old-mongodb-driver.version}</version>
+              <version>${floor-mongodb-driver.version}</version>
               <repositoryType>MAIN</repositoryType>
               <type>jar</type>
             </DynamicDependency>
@@ -98,10 +98,10 @@
     <profile>
       <id>release</id>
       <properties>
-        <!-- mongodb-driver 3.x requires Java 6 -->
-        <maven.compiler.source>1.6</maven.compiler.source>
-        <maven.compiler.target>1.6</maven.compiler.target>
-        <maven.compiler.release>6</maven.compiler.release>
+        <!-- mongodb-driver 3.x requires Java 6, but we only support 7 -->
+        <maven.compiler.source>1.7</maven.compiler.source>
+        <maven.compiler.target>1.7</maven.compiler.target>
+        <maven.compiler.release>7</maven.compiler.release>
       </properties>
       <build>
         <plugins>

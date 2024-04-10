@@ -15,7 +15,9 @@ package brave.mongodb;
 
 import brave.Span;
 import com.mongodb.ServerAddress;
-import java.lang.reflect.Method;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.net.InetSocketAddress;
 
 import static brave.internal.Throwables.propagateIfFatal;
@@ -49,16 +51,21 @@ class MongoDBDriver {
    * </ol>
    */
   private static MongoDBDriver findMongoDBDriver() {
+    MethodHandles.Lookup lookup = MethodHandles.lookup();
     try {
-      Method getHost = ServerAddress.class.getMethod("getHost");
-      Method getPort = ServerAddress.class.getMethod("getPort");
+      MethodHandle getHost =
+        lookup.findVirtual(ServerAddress.class, "getHost", MethodType.methodType(String.class));
+      MethodHandle getPort =
+        lookup.findVirtual(ServerAddress.class, "getPort", MethodType.methodType(int.class));
       return new Driver5x(getHost, getPort);
-    } catch (NoSuchMethodException e) {
+    } catch (NoSuchMethodException | IllegalAccessException e) {
       // not 5.x
     }
     try {
-      return new Driver3x(ServerAddress.class.getMethod("getSocketAddress"));
-    } catch (NoSuchMethodException e) {
+      MethodHandle getSocketAddress = lookup.findVirtual(ServerAddress.class, "getSocketAddress",
+        MethodType.methodType(InetSocketAddress.class));
+      return new Driver3x(getSocketAddress);
+    } catch (NoSuchMethodException | IllegalAccessException e) {
       // unknown version
     }
 
@@ -67,16 +74,16 @@ class MongoDBDriver {
   }
 
   static final class Driver3x extends MongoDBDriver {
-    final Method getSocketAddress;
+    final MethodHandle getSocketAddress;
 
-    Driver3x(Method getSocketAddress) {
+    Driver3x(MethodHandle getSocketAddress) {
       this.getSocketAddress = getSocketAddress;
     }
 
     @Override void setRemoteIpAndPort(Span span, ServerAddress serverAddress) {
       try {
         InetSocketAddress socketAddress =
-          (InetSocketAddress) getSocketAddress.invoke(serverAddress);
+          (InetSocketAddress) getSocketAddress.invokeExact(serverAddress);
         span.remoteIpAndPort(socketAddress.getAddress().getHostAddress(), socketAddress.getPort());
       } catch (Throwable t) {
         propagateIfFatal(t);
@@ -85,17 +92,18 @@ class MongoDBDriver {
   }
 
   static final class Driver5x extends MongoDBDriver {
-    final Method getHost, getPort;
+    final MethodHandle getHost, getPort;
 
-    Driver5x(Method getHost, Method getPort) {
+    Driver5x(MethodHandle getHost, MethodHandle getPort) {
       this.getHost = getHost;
       this.getPort = getPort;
     }
 
     @Override void setRemoteIpAndPort(Span span, ServerAddress serverAddress) {
       try {
-        span.remoteIpAndPort((String) getHost.invoke(serverAddress),
-          (int) getPort.invoke(serverAddress));
+        String host = (String) getHost.invokeExact(serverAddress);
+        int port = (int) getPort.invokeExact(serverAddress);
+        span.remoteIpAndPort(host, port);
       } catch (Throwable t) {
         propagateIfFatal(t);
       }
