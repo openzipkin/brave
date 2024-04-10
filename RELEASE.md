@@ -45,31 +45,6 @@ Here's an example of a snapshot deploy with specified credentials.
 $ export GPG_TTY=$(tty) && GPG_PASSPHRASE=whackamole SONATYPE_USER=adrianmole SONATYPE_PASSWORD=ed6f20bde9123bbb2312b221 build-bin/build-bin/maven/maven_deploy
 ```
 
-## First release of the year
-
-The license plugin verifies license headers of files include a copyright notice indicating the years a file was affected.
-This information is taken from git history. There's a once-a-year problem with files that include version numbers (pom.xml).
-When a release tag is made, it increments version numbers, then commits them to git. On the first release of the year,
-further commands will fail due to the version increments invalidating the copyright statement. The way to sort this out is
-the following:
-
-Before you do the first release of the year, move the SNAPSHOT version back and forth from whatever the current is.
-In-between, re-apply the licenses.
-
-Note: the command below is more complex than a normal project because this
-project has a bom.
-```bash
-$ mvn=$PWD/mvnw
-$ for p in ./brave-bom .; do
- (cd $p
- $mvn versions:set -DnewVersion=5.17.2-SNAPSHOT -DgenerateBackupPoms=false
- $mvn -o clean install -DskipTests
- $mvn com.mycila:license-maven-plugin:format
- $mvn versions:set -DnewVersion=5.17.1-SNAPSHOT -DgenerateBackupPoms=false)
- done
-$ git commit -asm"Adjusts copyright headers for this year"
-```
-
 ## Manually releasing
 
 If for some reason, you lost access to CI or otherwise cannot get automation to work, bear in mind
