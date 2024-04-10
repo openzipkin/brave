@@ -28,7 +28,7 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.internal.MongoClientImpl;
 import com.mongodb.connection.ClusterId;
 import com.mongodb.event.CommandListener;
-import java.lang.reflect.Field;
+import java.lang.invoke.VarHandle;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.Document;
@@ -41,6 +41,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static brave.Span.Kind.CLIENT;
+import static java.lang.invoke.MethodHandles.Lookup;
+import static java.lang.invoke.MethodHandles.lookup;
+import static java.lang.invoke.MethodHandles.privateLookupIn;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
@@ -49,7 +52,7 @@ import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 @Tag("docker")
 @Testcontainers(disabledWithoutDocker = true)
 @Timeout(60)
-class ITMongoDBTracing extends ITRemote {
+public class ITMongoDBTracing extends ITRemote { // public for invoker test
   static final String DATABASE_NAME = "myDatabase";
   static final String COLLECTION_NAME = "myCollection";
   static final String INVALID_COLLECTION_NAME = "?.$";
@@ -72,13 +75,13 @@ class ITMongoDBTracing extends ITRemote {
   }
 
   @BeforeEach void getClusterId() throws Exception {
-    // TODO: Figure out an easier way to get this!
-    Field clusterIdField =
-      Class.forName("com.mongodb.internal.connection.BaseCluster").getDeclaredField("clusterId");
-
-    clusterIdField.setAccessible(true);
-    ClusterId clusterId =
-      (ClusterId) clusterIdField.get(((MongoClientImpl) mongoClient).getCluster());
+    // Object because the type changed between 3.x and 5.x
+    Object cluster = ((MongoClientImpl) mongoClient).getCluster();
+    // Before 5.x, there is no public API to get the clusterId.
+    Class<?> clazz = Class.forName("com.mongodb.internal.connection.BaseCluster");
+    Lookup lookup = privateLookupIn(clazz, lookup());
+    VarHandle clusterIdHandle = lookup.findVarHandle(clazz, "clusterId", ClusterId.class);
+    ClusterId clusterId = (ClusterId) clusterIdHandle.get(cluster);
     this.clusterId = clusterId.getValue();
   }
 
@@ -108,11 +111,12 @@ class ITMongoDBTracing extends ITRemote {
     mongoCursor.next();
 
     // Name extracted from {"find": "myCollection"}
-    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).name()).isEqualTo("find " + COLLECTION_NAME);
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).name())
+      .isEqualTo("find " + COLLECTION_NAME);
 
     // Name extracted from {"getMore": <cursorId>, "collection": "myCollection"}
-    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).name()).isEqualTo(
-      "getMore " + COLLECTION_NAME);
+    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).name())
+      .isEqualTo("getMore " + COLLECTION_NAME);
   }
 
   /**
@@ -143,8 +147,10 @@ class ITMongoDBTracing extends ITRemote {
     executeFind(COLLECTION_NAME);
 
     assertThat(testSpanHandler.takeRemoteSpan(CLIENT).tags()).containsOnly(
-      entry("mongodb.collection", COLLECTION_NAME), entry("mongodb.command", "find"),
-      entry("mongodb.cluster_id", clusterId));
+      entry("mongodb.collection", COLLECTION_NAME),
+      entry("mongodb.command", "find"),
+      entry("mongodb.cluster_id", clusterId)
+    );
   }
 
   @Test void addsTagsForLargePayloadCommand() {
@@ -155,20 +161,24 @@ class ITMongoDBTracing extends ITRemote {
     database.getCollection("largeCollection").insertOne(largeDocument);
 
     assertThat(testSpanHandler.takeRemoteSpan(CLIENT).tags()).containsOnly(
-      entry("mongodb.collection", "largeCollection"), entry("mongodb.command", "insert"),
-      entry("mongodb.cluster_id", clusterId));
+      entry("mongodb.collection", "largeCollection"),
+      entry("mongodb.command", "insert"),
+      entry("mongodb.cluster_id", clusterId)
+    );
   }
 
   @Test void reportsServerAddress() {
     executeFind(COLLECTION_NAME);
 
-    assertThat(testSpanHandler.takeRemoteSpan(CLIENT).remoteServiceName()).isEqualTo(
-      "mongodb-" + DATABASE_NAME);
+    MutableSpan span = testSpanHandler.takeRemoteSpan(CLIENT);
+    assertThat(span.remoteServiceName()).isEqualTo("mongodb-" + DATABASE_NAME);
+    assertThat(span.remoteIp()).isEqualTo(mongo.host());
+    assertThat(span.remotePort()).isEqualTo(mongo.port());
   }
 
   @Test void setsError() {
-    assertThatThrownBy(() -> executeFind(INVALID_COLLECTION_NAME)).isInstanceOf(
-      MongoQueryException.class);
+    assertThatThrownBy(() -> executeFind(INVALID_COLLECTION_NAME))
+      .isInstanceOf(MongoQueryException.class);
 
     // the error the interceptor receives is a MongoCommandException!
     testSpanHandler.takeRemoteSpanWithErrorMessage(CLIENT, ".*InvalidNamespace.*");

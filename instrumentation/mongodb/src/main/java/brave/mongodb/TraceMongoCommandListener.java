@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -35,7 +35,7 @@ import static brave.Span.Kind.CLIENT;
 /**
  * A MongoDB command listener that will report via Brave how long each command takes and other
  * information about the commands.
- *
+ * <p>
  * See <a href="https://github.com/openzipkin/brave/blob/master/instrumentation/mongodb/RATIONALE.md">RATIONALE.md</a>
  * for implementation notes.
  */
@@ -87,13 +87,7 @@ final class TraceMongoCommandListener implements CommandListener {
         span.tag("mongodb.cluster_id", connectionId.getServerId().getClusterId().getValue());
       }
 
-      try {
-        InetSocketAddress socketAddress =
-          connectionDescription.getServerAddress().getSocketAddress();
-        span.remoteIpAndPort(socketAddress.getAddress().getHostAddress(), socketAddress.getPort());
-      } catch (MongoSocketException ignored) {
-
-      }
+      MongoDBDriver.get().setRemoteIpAndPort(span, connectionDescription.getServerAddress());
     }
 
     span.start();

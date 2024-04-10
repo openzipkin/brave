@@ -66,8 +66,9 @@ final class MongoDBContainer extends GenericContainer<MongoDBContainer> {
       new ServerAddress(host(), port()))));
   }
 
+  /** Return an IP address to ensure remote IP checks work. */
   String host() {
-    return getHost();
+    return "127.0.0.1";
   }
 
   int port() {
