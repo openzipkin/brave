@@ -165,7 +165,10 @@ public abstract class Tag<I> {
     if (span instanceof SpanCustomizer) {
       ((SpanCustomizer) span).tag(key, value);
     } else if (span instanceof MutableSpan) {
-      ((MutableSpan) span).tag(key, value);
+      MutableSpan mSpan = (MutableSpan) span;
+      synchronized (mSpan) {
+        mSpan.tag(key, value);
+      }
     }
   }
 

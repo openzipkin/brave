@@ -6,6 +6,9 @@ package brave;
 
 import brave.handler.MutableSpan;
 import brave.propagation.TraceContext;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -255,6 +258,27 @@ class TagTest {
     MutableSpan expected = new MutableSpan();
     expected.tag("key", "value");
     assertThat(mutableSpan).isEqualTo(expected);
+  }
+
+  @Test
+  public void tag_mutableSpan_threadSafe() throws InterruptedException {
+    int numThreads = 1000;
+    ExecutorService service = Executors.newFixedThreadPool(numThreads);
+    try {
+      for (int i = 0; i < numThreads; i++) {
+        String val = String.valueOf(i);
+        Tag<Object> tag = new Tag<Object>("key" + i) {
+          @Override protected String parseValue(Object input, TraceContext context) {
+            return val;
+          }
+        };
+        service.submit(() -> tag.tag(input, context, mutableSpan));
+      }
+    } finally {
+      service.shutdown();
+      service.awaitTermination(1, TimeUnit.MINUTES);
+    }
+    assertThat(mutableSpan.tagCount()).isEqualTo(numThreads);
   }
 
   @Test void tag_mutableSpan_nullContext() {
