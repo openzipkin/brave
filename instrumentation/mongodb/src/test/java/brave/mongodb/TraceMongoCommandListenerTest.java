@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 The OpenZipkin Authors
+ * Copyright 2013-2024 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -38,6 +38,8 @@ import static brave.mongodb.TraceMongoCommandListener.getSpanName;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -225,33 +227,23 @@ public class TraceMongoCommandListenerTest {
   }
 
   CommandStartedEvent createCommandStartedEvent() {
-    return new CommandStartedEvent(
-      1,
-      createConnectionDescription(),
-      "dbName",
-      "insert",
-      LONG_COMMAND
-    );
+    CommandStartedEvent event = mock(CommandStartedEvent.class);
+    lenient().when(event.getRequestId()).thenReturn(1);
+    lenient().when(event.getConnectionDescription()).thenReturn(createConnectionDescription());
+    when(event.getDatabaseName()).thenReturn("dbName");
+    lenient().when(event.getCommandName()).thenReturn("insert");
+    lenient().when(event.getCommand()).thenReturn(LONG_COMMAND);
+    return event;
   }
 
   CommandSucceededEvent createCommandSucceededEvent() {
-    return new CommandSucceededEvent(
-      1,
-      createConnectionDescription(),
-      "insert",
-      new BsonDocument(),
-      1000
-    );
+    return mock(CommandSucceededEvent.class);
   }
 
   CommandFailedEvent createCommandFailedEvent(Throwable throwable) {
-    return new CommandFailedEvent(
-      1,
-      createConnectionDescription(),
-      "insert",
-      2000,
-      throwable
-    );
+    CommandFailedEvent event = mock(CommandFailedEvent.class);
+    lenient().when(event.getThrowable()).thenReturn(throwable);
+    return event;
   }
 
   ConnectionDescription createConnectionDescription() {

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Copyright 2013-2024 The OpenZipkin Authors
+
+    Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+    in compliance with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software distributed under the License
+    is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+    or implied. See the License for the specific language governing permissions and limitations under
+    the License.
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>@project.groupId@</groupId>
+  <artifactId>mongodb_v3</artifactId>
+  <version>@project.version@</version>
+  <name>mongodb_v3</name>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
+
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.mongodb</groupId>
+      <artifactId>mongodb-driver</artifactId>
+      <version>@old-mongodb-driver.version@</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>@project.groupId@</groupId>
+      <artifactId>brave-instrumentation-mongodb</artifactId>
+      <version>@project.version@</version>
+    </dependency>
+
+    <dependency>
+      <groupId>@project.groupId@</groupId>
+      <artifactId>brave-tests</artifactId>
+      <version>@project.version@</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>@junit-jupiter.version@</version>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-junit-jupiter</artifactId>
+      <version>@mockito.version@</version>
+    </dependency>
+    <!-- Route jul over log4j2 during integration tests -->
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-slf4j-impl</artifactId>
+      <version>@log4j.version@</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
+      <version>@log4j.version@</version>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>@testcontainers.version@</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <sourceDirectory>@project.build.testSourceDirectory@</sourceDirectory>
+    <testResources>
+      <testResource>
+        <directory>@project.basedir@/src/test/resources</directory>
+      </testResource>
+    </testResources>
+    <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>@maven-compiler-plugin.version@</version>
+        <configuration>
+          <includes>
+            <include>**/IT*.java</include>
+          </includes>
+        </configuration>
+      </plugin>
+      <plugin>
+        <!-- Use surefire to run the ITs until someone figures out how to get invoker to run
+             failsafe -->
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>@maven-surefire-plugin.version@</version>
+        <configuration>
+          <failIfNoTests>true</failIfNoTests>
+          <includes>
+            <include>**/IT*.java</include>
+          </includes>
+          <!-- Try to prevent flakes in CI -->
+          <reuseForks>false</reuseForks>
+          <!-- workaround to SUREFIRE-1831 -->
+          <useModulePath>false</useModulePath>
+          <!-- Ensure scope leak cause ends up in the console -->
+          <trimStackTrace>false</trimStackTrace>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

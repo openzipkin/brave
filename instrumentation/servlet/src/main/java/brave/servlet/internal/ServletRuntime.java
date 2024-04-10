@@ -69,7 +69,7 @@ public abstract class ServletRuntime {
     try {
       Class.forName("javax.servlet.AsyncEvent");
       HttpServletRequest.class.getMethod("isAsyncStarted");
-      return new Servlet3(); // intentionally doesn't not access the type prior to the above guard
+      return new Servlet3(); // intentionally doesn't access the type prior to the above guard
     } catch (NoSuchMethodException e) {
       // pre Servlet v3
     } catch (ClassNotFoundException e) {

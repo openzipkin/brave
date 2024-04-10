@@ -49,7 +49,7 @@ import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 @Tag("docker")
 @Testcontainers(disabledWithoutDocker = true)
 @Timeout(60)
-class ITMongoDBTracing extends ITRemote {
+public class ITMongoDBTracing extends ITRemote { // public for invoker test
   static final String DATABASE_NAME = "myDatabase";
   static final String COLLECTION_NAME = "myCollection";
   static final String INVALID_COLLECTION_NAME = "?.$";
