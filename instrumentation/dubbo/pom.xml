@@ -30,7 +30,7 @@
 
     <main.basedir>${project.basedir}/../..</main.basedir>
 
-    <dubbo.version>3.3.0-beta.1</dubbo.version>
+    <dubbo.version>3.3.0-beta.2</dubbo.version>
     <!-- add opens to avoid below in JRE 21:
          com.alibaba.com.caucho.hessian.io.JavaSerializer -->
     <maven-failsafe-plugin.argLine>

@@ -80,7 +80,7 @@
 
     <!-- override to set exclusions per-project -->
     <errorprone.args />
-    <errorprone.version>2.25.0</errorprone.version>
+    <errorprone.version>2.26.1</errorprone.version>
 
     <!-- Used for Generated annotations -->
     <javax-annotation-api.version>1.3.2</javax-annotation-api.version>
@@ -90,7 +90,7 @@
     <!-- Note: Spring 6 is JDK 17 bytecode, so we can't update to it until we
          stop supporting Java 6 compilation target, or change our release to
          use multiple tool chains. -->
-    <spring5.version>5.3.32</spring5.version>
+    <spring5.version>5.3.33</spring5.version>
     <!-- Ensure older versions of spring still work -->
     <spring25.version>2.5.6</spring25.version>
     <spring3.version>3.2.18.RELEASE</spring3.version>
@@ -106,14 +106,14 @@
 
     <kafka.version>3.7.0</kafka.version>
     <activemq.version>5.18.3</activemq.version>
-    <activemq.artemis.version>2.32.0</activemq.artemis.version>
+    <activemq.artemis.version>2.33.0</activemq.artemis.version>
     <!-- TODO: reflection drift after this version. Make changes as necessary
          and add an invoker test that 2.3.6 still works. -->
     <spring-rabbit.version>2.3.6</spring-rabbit.version>
 
     <!-- TODO: update and fix drift or remove the FinagleContextInteropTest -->
     <finagle.version>20.12.0</finagle.version>
-    <log4j.version>2.23.0</log4j.version>
+    <log4j.version>2.23.1</log4j.version>
     <log4j12.version>1.2.17</log4j12.version>
     <okhttp.version>4.12.0</okhttp.version>
     <httpclient.version>4.5.14</httpclient.version>
@@ -124,16 +124,16 @@
     <grpc.version>1.57.2</grpc.version>
     <protobuf.version>3.22.3</protobuf.version>
     <!-- latest netty 4.1 that works with our version of grpc -->
-    <netty.version>4.1.107.Final</netty.version>
+    <netty.version>4.1.108.Final</netty.version>
 
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
 
     <!-- Test only dependencies -->
     <junit-jupiter.version>5.10.2</junit-jupiter.version>
     <assertj.version>3.25.3</assertj.version>
-    <mockito.version>5.10.0</mockito.version>
-    <jersey.version>2.41</jersey.version>
-    <testcontainers.version>1.19.6</testcontainers.version>
+    <mockito.version>5.11.0</mockito.version>
+    <jersey.version>2.42</jersey.version>
+    <testcontainers.version>1.19.7</testcontainers.version>
 
     <license.skip>${skipTests}</license.skip>
     <maven-surefire-plugin.argLine />
@@ -144,7 +144,7 @@
     <license-maven-plugin.version>4.3</license-maven-plugin.version>
     <maven-assembly-plugin.version>3.6.0</maven-assembly-plugin.version>
     <maven-bundle-plugin.version>5.1.9</maven-bundle-plugin.version>
-    <maven-compiler-plugin.version>3.12.1</maven-compiler-plugin.version>
+    <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
     <!-- Use same version as https://github.com/openzipkin/docker-java -->
     <maven-dependency-plugin.version>3.6.1</maven-dependency-plugin.version>
     <maven-deploy-plugin.version>3.1.1</maven-deploy-plugin.version>
@@ -156,7 +156,7 @@
     <maven-javadoc-plugin.version>3.6.3</maven-javadoc-plugin.version>
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
     <maven-release-plugin.version>3.0.1</maven-release-plugin.version>
-    <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
+    <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
     <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
     <nexus-staging-maven-plugin.version>1.6.13</nexus-staging-maven-plugin.version>
   </properties>
@@ -687,7 +687,7 @@
 
           <plugin>
             <artifactId>maven-gpg-plugin</artifactId>
-            <version>3.1.0</version>
+            <version>3.2.2</version>
             <executions>
               <execution>
                 <id>sign-artifacts</id>

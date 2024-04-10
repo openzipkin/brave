@@ -31,8 +31,8 @@
 
     <main.basedir>${project.basedir}/../..</main.basedir>
     <!-- Last version before Call.timeout was added -->
-    <old-okhttp.version>3.11.0</old-okhttp.version>
-    <retrofit.version>2.9.0</retrofit.version>
+    <okhttp-floor.version>3.11.0</okhttp-floor.version>
+    <retrofit.version>2.11.0</retrofit.version>
   </properties>
 
   <dependencies>
@@ -83,7 +83,7 @@
             <DynamicDependency>
               <groupId>com.squareup.okhttp3</groupId>
               <artifactId>mockwebserver</artifactId>
-              <version>${old-okhttp.version}</version>
+              <version>${okhttp-floor.version}</version>
               <repositoryType>MAIN</repositoryType>
               <type>jar</type>
             </DynamicDependency>

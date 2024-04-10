@@ -30,6 +30,7 @@
     <module.name>brave.spring.web</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
+    <spring-floor.version>${spring3.version}</spring-floor.version>
   </properties>
 
   <dependencies>
@@ -110,7 +111,7 @@
             <DynamicDependency>
               <groupId>org.springframework</groupId>
               <artifactId>spring-web</artifactId>
-              <version>${spring3.version}</version>
+              <version>${spring-floor.version}</version>
               <repositoryType>MAIN</repositoryType>
               <type>jar</type>
             </DynamicDependency>
