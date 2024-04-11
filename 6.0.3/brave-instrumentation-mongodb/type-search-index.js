@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"brave.mongodb","l":"MongoDBTracing.Builder"},{"p":"brave.mongodb","l":"MongoDBTracing"}]
