@@ -32,7 +32,7 @@ jobs:
           # Prevent use of implicit GitHub Actions read-only token GITHUB_TOKEN.
           # We push Javadocs to the gh-pages branch on commit.
           token: ${{ secrets.GH_TOKEN }}
-          fetch-depth: 0  # allow build-bin/idl_to_gh_pages to get the full history
+          fetch-depth: 0  # build-bin/javadoc_to_gh_pages checks out gh-pages
       - name: Setup java
         uses: actions/setup-java@v4
         with:
