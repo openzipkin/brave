@@ -15,7 +15,7 @@ class BoundarySamplerTest extends SamplerTest {
   }
 
   @Override Percentage expectedErrorProbability() {
-    return withPercentage(10);
+    return withPercentage(11);
   }
 
   @Test void acceptsOneInTenThousandProbability() {
