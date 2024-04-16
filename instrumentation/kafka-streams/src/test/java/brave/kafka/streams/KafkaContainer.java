@@ -23,7 +23,7 @@ final class KafkaContainer extends GenericContainer<KafkaContainer> {
   static final int KAFKA_PORT = 19092;
 
   KafkaContainer() {
-    super(parse("ghcr.io/openzipkin/zipkin-kafka:3.1.1"));
+    super(parse("ghcr.io/openzipkin/zipkin-kafka:3.3.0"));
     waitStrategy = Wait.forHealthcheck();
     // Kafka broker listener port (19092) needs to be exposed for test cases to access it.
     addFixedExposedPort(KAFKA_PORT, KAFKA_PORT, InternetProtocol.TCP);
