@@ -71,7 +71,7 @@
 
     <!-- override to set exclusions per-project -->
     <errorprone.args />
-    <errorprone.version>2.26.1</errorprone.version>
+    <errorprone.version>2.29.2</errorprone.version>
 
     <!-- Used for Generated annotations -->
     <javax-annotation-api.version>1.3.2</javax-annotation-api.version>
@@ -81,21 +81,21 @@
     <!-- Note: Spring 6 is JDK 17 bytecode, so we can't update to it until we
          stop supporting Java 6 compilation target, or change our release to
          use multiple tool chains. -->
-    <spring5.version>5.3.33</spring5.version>
+    <spring5.version>5.3.39</spring5.version>
     <!-- Ensure older versions of spring still work -->
     <spring25.version>2.5.6</spring25.version>
     <spring3.version>3.2.18.RELEASE</spring3.version>
 
     <!-- Apis used, but not in Jetty 7.6* imply duplication in servlet25 test fixtures -->
-    <jetty.version>9.4.54.v20240208</jetty.version>
+    <jetty.version>9.4.56.v20240826</jetty.version>
     <jetty-servlet25.version>7.6.21.v20160908</jetty-servlet25.version>
     <resteasy.version>3.15.6.Final</resteasy.version>
 
     <!-- Jakarta -->
-    <jetty11.version>11.0.20</jetty11.version>
+    <jetty11.version>11.0.24</jetty11.version>
     <jakarta.servlet>5.0.0</jakarta.servlet>
 
-    <kafka.version>3.7.0</kafka.version>
+    <kafka.version>3.8.0</kafka.version>
     <activemq.version>5.18.3</activemq.version>
     <activemq.artemis.version>2.33.0</activemq.artemis.version>
     <!-- TODO: reflection drift after this version. Make changes as necessary
@@ -104,7 +104,7 @@
 
     <!-- TODO: update and fix drift or remove the FinagleContextInteropTest -->
     <finagle.version>20.12.0</finagle.version>
-    <log4j.version>2.23.1</log4j.version>
+    <log4j.version>2.24.1</log4j.version>
     <log4j12.version>1.2.17</log4j12.version>
     <okhttp.version>4.12.0</okhttp.version>
     <httpclient.version>4.5.14</httpclient.version>
@@ -113,18 +113,18 @@
          Port the attachHeaders code from here.
          https://github.com/grpc/grpc-java/commit/a589eacc8f83c80bb44c8fae0b0b173b5ff51e61 -->
     <grpc.version>1.57.2</grpc.version>
-    <protobuf.version>3.22.3</protobuf.version>
+    <protobuf.version>3.25.5</protobuf.version>
     <!-- latest netty 4.1 that works with our version of grpc -->
-    <netty.version>4.1.108.Final</netty.version>
+    <netty.version>4.1.114.Final</netty.version>
 
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
 
     <!-- Test only dependencies -->
-    <junit-jupiter.version>5.10.2</junit-jupiter.version>
-    <assertj.version>3.25.3</assertj.version>
-    <mockito.version>5.11.0</mockito.version>
+    <junit-jupiter.version>5.11.1</junit-jupiter.version>
+    <assertj.version>3.26.3</assertj.version>
+    <mockito.version>5.14.1</mockito.version>
     <jersey.version>2.42</jersey.version>
-    <testcontainers.version>1.19.7</testcontainers.version>
+    <testcontainers.version>1.20.2</testcontainers.version>
 
     <license.skip>${skipTests}</license.skip>
     <maven-surefire-plugin.argLine />
@@ -132,23 +132,23 @@
 
     <go-offline-maven-plugin.version>1.2.8</go-offline-maven-plugin.version>
     <!-- TODO: cleanup any redundant ignores now also in the 4.0 release (once final) -->
-    <license-maven-plugin.version>4.3</license-maven-plugin.version>
-    <maven-assembly-plugin.version>3.6.0</maven-assembly-plugin.version>
+    <license-maven-plugin.version>4.5</license-maven-plugin.version>
+    <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
     <maven-bundle-plugin.version>5.1.9</maven-bundle-plugin.version>
     <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
     <!-- Use same version as https://github.com/openzipkin/docker-java -->
-    <maven-dependency-plugin.version>3.6.1</maven-dependency-plugin.version>
-    <maven-deploy-plugin.version>3.1.1</maven-deploy-plugin.version>
+    <maven-dependency-plugin.version>3.7.1</maven-dependency-plugin.version>
+    <maven-deploy-plugin.version>3.1.2</maven-deploy-plugin.version>
     <maven-enforcer-plugin.version>3.4.1</maven-enforcer-plugin.version>
     <!-- Use same version as https://github.com/openzipkin/docker-java -->
-    <maven-help-plugin.version>3.4.0</maven-help-plugin.version>
-    <maven-install-plugin.version>3.1.1</maven-install-plugin.version>
+    <maven-help-plugin.version>3.4.1</maven-help-plugin.version>
+    <maven-install-plugin.version>3.1.2</maven-install-plugin.version>
     <maven-invoker-plugin.version>3.6.0</maven-invoker-plugin.version>
     <maven-javadoc-plugin.version>3.6.3</maven-javadoc-plugin.version>
-    <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
+    <maven-jar-plugin.version>3.4.1</maven-jar-plugin.version>
     <maven-release-plugin.version>3.0.1</maven-release-plugin.version>
     <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
-    <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
+    <maven-surefire-plugin.version>3.5.0</maven-surefire-plugin.version>
     <nexus-staging-maven-plugin.version>1.6.13</nexus-staging-maven-plugin.version>
   </properties>
 
