@@ -948,6 +948,10 @@ Tracing brave4 = Tracing.newBuilder()...build();
 Brave brave3 = TracerAdapter.newBrave(brave4.tracer());
 ```
 
+## Virtual threads
+
+Virtual threads were added in Java 21 via [JEP 444](https://openjdk.org/jeps/444). While the Brave code makes no special consideration for virtual threads, you can generally use Brave with virtual threads. Prior to Java 24, which integrated [JEP 491](https://openjdk.org/jeps/491), it was possible for a deadlock to occur with specific conditions when finishing `Span`s and `ScopedSpan`s on virtual threads - see [#1440](https://github.com/openzipkin/brave/issues/1440).
+
 ### Converting between types
 Those coding directly to both apis can use `TracerAdapter.toSpan` to
 navigate between span types. This is useful when working with client RPC
