@@ -20,6 +20,7 @@ Here's a brief overview of what's packaged here:
 * [mysql8](mysql8/README.md) - Tracing MySQL v8 statement interceptor
 * [netty-codec-http](netty-codec-http/README.md) - Tracing handler for [Netty](http://netty.io/) 4.x http servers
 * [okhttp3](okhttp3/README.md) - Tracing decorators for [OkHttp](https://github.com/square/okhttp) 3.x
+* [rocketmq-client](rocketmq-client/README.md) - Tracing decorators for RocketMQ producers and consumers.
 * [servlet](servlet/README.md) - Tracing filter for Servlet 2.5+ (including Async)
 * [spring-rabbit](spring-rabbit/README.md) - Tracing MessagePostProcessor and ListenerAdvice for [Spring Rabbit](https://spring.io/guides/gs/messaging-rabbitmq/)
 * [spring-web](spring-web/README.md) - Tracing interceptor for [Spring RestTemplate](https://spring.io/guides/gs/consuming-rest/)
