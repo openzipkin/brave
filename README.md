@@ -30,7 +30,7 @@ Most users won't write tracing code directly. Rather, they reuse
 instrumentation others have written. Check our
 [instrumentation](instrumentation/) and
 [Zipkin's list](https://zipkin.io/pages/tracers_instrumentation.html)
-before rolling your own. Common tracing libraries like JDBC, Servlet
+before rolling your own. Common tracing libraries like Servlet
 and Spring already exist. Instrumentation written here are tested and
 benchmarked.
 
