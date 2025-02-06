@@ -125,6 +125,7 @@
     <mockito.version>5.14.1</mockito.version>
     <jersey.version>2.42</jersey.version>
     <testcontainers.version>1.20.2</testcontainers.version>
+    <rocketmq-client.version>5.3.1</rocketmq-client.version>
 
     <license.skip>${skipTests}</license.skip>
     <maven-surefire-plugin.argLine />
