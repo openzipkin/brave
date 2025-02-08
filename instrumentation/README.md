@@ -25,6 +25,7 @@ Here's a brief overview of what's packaged here:
 * [spring-web](spring-web/README.md) - Tracing interceptor for [Spring RestTemplate](https://spring.io/guides/gs/consuming-rest/)
 * [spring-webmvc](spring-webmvc/README.md) - Tracing filter and span customizing interceptors for [Spring WebMVC](https://docs.spring.io/spring/docs/current/spring-framework-reference/html/mvc.html)
 * [vertx-web](vertx-web/README.md) - Tracing routing context handler for [Vert.x Web](http://vertx.io/docs/vertx-web/js/)
+* [rocketmq-client](rocketmq-client/README.md) - Tracing Producer, MessageListenerConcurrently and MessageListenerOrderly for [Apache RocketMQ](https://github.com/apache/rocketmq/)
 
 Here are other tools we provide for configuring or testing instrumentation:
 * [http](http/README.md) - `HttpTracing` that allows portable configuration of HTTP instrumentation

@@ -16,14 +16,15 @@ import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.SamplerFunction;
 import org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently;
 import org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly;
+import org.apache.rocketmq.client.hook.SendMessageHook;
 
 import java.util.Map;
 
 /** Use this class to decorate your RocketMQ consumer / producer and enable Tracing. */
 public final class RocketMQTracing {
   static final String
-      ROCKETMQ_TOPIC = "rocketmq.topic",
-      ROCKETMQ_TAGS = "rocketmq.tags";
+    ROCKETMQ_TOPIC = "rocketmq.topic",
+    ROCKETMQ_TAGS = "rocketmq.tags";
 
   public static RocketMQTracing create(Tracing tracing) {
     return newBuilder(tracing).build();
@@ -96,7 +97,7 @@ public final class RocketMQTracing {
   }
 
   <R> TraceContextOrSamplingFlags extractAndClearTraceIdHeaders(
-      Extractor<R> extractor, R request, Map<String, String> properties
+    Extractor<R> extractor, R request, Map<String, String> properties
   ) {
     TraceContextOrSamplingFlags extracted = extractor.extract(request);
     // Clear any propagation keys present in the headers
@@ -117,9 +118,9 @@ public final class RocketMQTracing {
 
   /** Creates a potential noop remote span representing this request */
   Span nextMessagingSpan(
-      SamplerFunction<MessagingRequest> sampler,
-      MessagingRequest request,
-      TraceContextOrSamplingFlags extracted
+    SamplerFunction<MessagingRequest> sampler,
+    MessagingRequest request,
+    TraceContextOrSamplingFlags extracted
   ) {
     Boolean sampled = extracted.sampled();
     // only recreate the context if the messaging sampler made a decision
@@ -127,6 +128,13 @@ public final class RocketMQTracing {
       extracted = extracted.sampled(sampled);
     }
     return tracer.nextSpan(extracted);
+  }
+
+  /**
+   * Implements a hook that creates a {@link Span.Kind#PRODUCER} span when a message is sent.
+   */
+  public SendMessageHook newSendMessageHook() {
+    return new TracingSendMessage(this);
   }
 
   /**

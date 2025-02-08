@@ -68,7 +68,7 @@ class ITRocketMQTracing extends ITRemote {
     producer = new DefaultMQProducer(testName);
     producer.setInstanceName(testName);
     producer.setNamesrvAddr(rocket.getNamesrvAddr());
-    producer.getDefaultMQProducerImpl().registerSendMessageHook(new TracingSendMessage(producerTracing));
+    producer.getDefaultMQProducerImpl().registerSendMessageHook(producerTracing.newSendMessageHook());
     producer.setSendMsgTimeout(60_000);
     producer.start();
     Thread.sleep(5000); // wait for producer to be ready.

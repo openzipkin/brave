@@ -8,7 +8,7 @@ This module provides instrumentation for RocketMQ based services.
 
 ### producer
 
-The key is to register our hook to the producer, use `registerSendMessageHook(new TracingSendMessage())`.
+Register `brave.rocketmq.client.RocketMQTracing.newSendMessageHook()` to trace the message.
 
 ```java
 package brave.rocketmq.client;
@@ -32,7 +32,7 @@ public class ProducerExample {
     Message message = new Message(topic, "zipkin", "zipkin".getBytes());
     DefaultMQProducer producer = new DefaultMQProducer("testSend");
     producer.getDefaultMQProducerImpl()
-        .registerSendMessageHook(new TracingSendMessage());
+        .registerSendMessageHook(producerTracing.newSendMessageHook());
     producer.setNamesrvAddr("127.0.0.1:9876");
     producer.start();
     producer.send(message);
@@ -44,7 +44,7 @@ public class ProducerExample {
 
 ### consumer
 
-wrap `org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly`
+Wrap `org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly`
 using `brave.rocketmq.client.RocketMQTracing.messageListenerOrderly(org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly)`,
 or alternatively, wrap `org.apache.rocketmq.client.consumer.listener.messageListenerConcurrently`
 using `brave.rocketmq.client.RocketMQTracing.messageListenerConcurrently(org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently)`;

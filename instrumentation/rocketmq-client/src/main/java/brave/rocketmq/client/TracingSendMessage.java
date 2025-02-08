@@ -27,9 +27,8 @@ import static brave.rocketmq.client.RocketMQTracing.ROCKETMQ_TOPIC;
  * For the user side, there are many overloaded methods for send message in
  * {@link org.apache.rocketmq.client.producer.MQProducer}, so implementing
  * {@link org.apache.rocketmq.client.hook.SendMessageHook} might be an efficient approach to enable tracing.
- * This class is provided to users as one of the sendMessageHookList.
  */
-public final class TracingSendMessage implements SendMessageHook {
+final class TracingSendMessage implements SendMessageHook {
   final RocketMQTracing rocketMQTracing;
   final CurrentTraceContext currentTraceContext;
   final Tracer tracer;
@@ -38,7 +37,7 @@ public final class TracingSendMessage implements SendMessageHook {
   final TraceContext.Injector<MessageProducerRequest> injector;
   @Nullable final String remoteServiceName;
 
-  public TracingSendMessage(RocketMQTracing rocketMQTracing) {
+  TracingSendMessage(RocketMQTracing rocketMQTracing) {
     this.rocketMQTracing = rocketMQTracing;
     this.currentTraceContext = rocketMQTracing.messagingTracing.tracing().currentTraceContext();
     this.tracer = rocketMQTracing.messagingTracing.tracing().tracer();
@@ -67,7 +66,7 @@ public final class TracingSendMessage implements SendMessageHook {
     Span span;
     if (maybeParent == null) {
       TraceContextOrSamplingFlags extracted =
-          rocketMQTracing.extractAndClearTraceIdHeaders(extractor, request, message.getProperties());
+        rocketMQTracing.extractAndClearTraceIdHeaders(extractor, request, message.getProperties());
       span = rocketMQTracing.nextMessagingSpan(sampler, request, extracted);
     } else {
       span = tracer.newChild(maybeParent);
