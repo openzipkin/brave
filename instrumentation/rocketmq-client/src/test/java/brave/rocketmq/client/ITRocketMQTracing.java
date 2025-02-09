@@ -27,10 +27,10 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+
+import java.util.logging.Logger;
 
 import static brave.Span.Kind.CONSUMER;
 import static brave.Span.Kind.PRODUCER;
@@ -40,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers(disabledWithoutDocker = true)
 @Timeout(240)
 class ITRocketMQTracing extends ITRemote {
-  static final Logger LOGGER = LoggerFactory.getLogger(ITRocketMQTracing.class);
+  static final Logger LOGGER = Logger.getLogger(ITRocketMQTracing.class.getName());
 
   @Container RocketMQContainer rocket = new RocketMQContainer();
   @RegisterExtension IntegrationTestSpanHandler producerSpanHandler = new IntegrationTestSpanHandler();
@@ -50,16 +50,16 @@ class ITRocketMQTracing extends ITRemote {
   SamplerFunction<MessagingRequest> consumerSampler = SamplerFunctions.deferDecision();
 
   RocketMQTracing producerTracing = RocketMQTracing.create(
-      MessagingTracing.newBuilder(tracingBuilder(Sampler.ALWAYS_SAMPLE).localServiceName("producer")
-              .clearSpanHandlers().addSpanHandler(producerSpanHandler).build())
-          .producerSampler(r -> producerSampler.trySample(r))
-          .build()
+    MessagingTracing.newBuilder(tracingBuilder(Sampler.ALWAYS_SAMPLE).localServiceName("producer")
+        .clearSpanHandlers().addSpanHandler(producerSpanHandler).build())
+      .producerSampler(r -> producerSampler.trySample(r))
+      .build()
   );
   RocketMQTracing consumerTracing = RocketMQTracing.create(
-      MessagingTracing.newBuilder(tracingBuilder(Sampler.ALWAYS_SAMPLE).localServiceName("consumer")
-              .clearSpanHandlers().addSpanHandler(consumerSpanHandler).build())
-          .consumerSampler(r -> consumerSampler.trySample(r))
-          .build()
+    MessagingTracing.newBuilder(tracingBuilder(Sampler.ALWAYS_SAMPLE).localServiceName("consumer")
+        .clearSpanHandlers().addSpanHandler(consumerSpanHandler).build())
+      .consumerSampler(r -> consumerSampler.trySample(r))
+      .build()
   );
 
   DefaultMQProducer producer;
@@ -94,7 +94,7 @@ class ITRocketMQTracing extends ITRemote {
   @Test void async_send_message() throws Exception {
     producer.send(new Message(testName, testName.getBytes()), new SendCallback() {
       @Override public void onSuccess(SendResult sendResult) {
-        LOGGER.info("Send message success: {}.", sendResult);
+        LOGGER.info("Send message success:" + sendResult.toString());
       }
 
       @Override public void onException(Throwable e) {
@@ -111,7 +111,7 @@ class ITRocketMQTracing extends ITRemote {
     consumer.setNamesrvAddr(rocket.getNamesrvAddr());
     consumer.subscribe(testName, "*");
     MessageListenerConcurrently messageListenerConcurrently = consumerTracing.messageListenerConcurrently(
-        (list, context) -> ConsumeConcurrentlyStatus.CONSUME_SUCCESS);
+      (list, context) -> ConsumeConcurrentlyStatus.CONSUME_SUCCESS);
     consumer.registerMessageListener(messageListenerConcurrently);
     consumer.start();
 
@@ -129,7 +129,7 @@ class ITRocketMQTracing extends ITRemote {
     consumer.setNamesrvAddr(rocket.getNamesrvAddr());
     consumer.subscribe(testName, "*");
     MessageListenerOrderly messageListenerOrderly = consumerTracing.messageListenerOrderly(
-        (list, context) -> ConsumeOrderlyStatus.SUCCESS);
+      (list, context) -> ConsumeOrderlyStatus.SUCCESS);
     consumer.registerMessageListener(messageListenerOrderly);
     consumer.start();
 

@@ -12,7 +12,6 @@ import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import brave.sampler.SamplerFunction;
-import io.opentelemetry.api.internal.StringUtils;
 import org.apache.rocketmq.client.hook.SendMessageContext;
 import org.apache.rocketmq.client.hook.SendMessageHook;
 import org.apache.rocketmq.client.impl.CommunicationMode;
@@ -28,7 +27,7 @@ import static brave.rocketmq.client.RocketMQTracing.ROCKETMQ_TOPIC;
  * {@link org.apache.rocketmq.client.producer.MQProducer}, so implementing
  * {@link org.apache.rocketmq.client.hook.SendMessageHook} might be an efficient approach to enable tracing.
  */
-final class TracingSendMessage implements SendMessageHook {
+final class TracingSendMessageHook implements SendMessageHook {
   final RocketMQTracing rocketMQTracing;
   final CurrentTraceContext currentTraceContext;
   final Tracer tracer;
@@ -37,7 +36,7 @@ final class TracingSendMessage implements SendMessageHook {
   final TraceContext.Injector<MessageProducerRequest> injector;
   @Nullable final String remoteServiceName;
 
-  TracingSendMessage(RocketMQTracing rocketMQTracing) {
+  TracingSendMessageHook(RocketMQTracing rocketMQTracing) {
     this.rocketMQTracing = rocketMQTracing;
     this.currentTraceContext = rocketMQTracing.messagingTracing.tracing().currentTraceContext();
     this.tracer = rocketMQTracing.messagingTracing.tracing().tracer();
@@ -75,7 +74,7 @@ final class TracingSendMessage implements SendMessageHook {
     if (!span.isNoop()) {
       span.kind(PRODUCER).name("send");
       if (remoteServiceName != null) span.remoteServiceName(remoteServiceName);
-      if (!StringUtils.isNullOrEmpty(message.getTags())) {
+      if (message.getTags() != null && !"".equals(message.getTags())) {
         span.tag(ROCKETMQ_TAGS, message.getTags());
       }
       span.tag(ROCKETMQ_TOPIC, message.getTopic());

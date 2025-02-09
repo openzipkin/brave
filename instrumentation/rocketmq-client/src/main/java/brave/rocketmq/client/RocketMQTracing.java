@@ -34,12 +34,12 @@ public final class RocketMQTracing {
     return newBuilder(MessagingTracing.create(tracing));
   }
 
-  /** @since 5.9 */
+  /** @since 6.1 */
   public static RocketMQTracing create(MessagingTracing messagingTracing) {
     return newBuilder(messagingTracing).build();
   }
 
-  /** @since 5.9 */
+  /** @since 6.1 */
   public static Builder newBuilder(MessagingTracing messagingTracing) {
     return new Builder(messagingTracing);
   }
@@ -134,7 +134,7 @@ public final class RocketMQTracing {
    * Implements a hook that creates a {@link Span.Kind#PRODUCER} span when a message is sent.
    */
   public SendMessageHook newSendMessageHook() {
-    return new TracingSendMessage(this);
+    return new TracingSendMessageHook(this);
   }
 
   /**

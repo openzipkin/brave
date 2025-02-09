@@ -46,7 +46,7 @@ public class RocketMQProducerBenchmarks {
     producer = new FakeProducer();
     tracingProducer = new FakeProducer();
     tracingProducer.getDefaultMQProducerImpl().registerSendMessageHook(
-        new TracingSendMessage(RocketMQTracing.newBuilder(tracing).build())
+        new TracingSendMessageHook(RocketMQTracing.newBuilder(tracing).build())
     );
   }
 
