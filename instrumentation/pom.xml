@@ -52,6 +52,7 @@
     <module>kafka-streams</module>
     <module>netty-codec-http</module>
     <module>vertx-web</module>
+    <module>rocketmq-client</module>
   </modules>
 
   <!-- ${project.groupId}:brave version is set in the root pom.
