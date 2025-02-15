@@ -22,7 +22,7 @@
 
     <main.basedir>${project.basedir}/../..</main.basedir>
 
-    <mongodb-driver.version>5.0.1</mongodb-driver.version>
+    <mongodb-driver.version>5.3.1</mongodb-driver.version>
     <floor-mongodb-driver.version>3.11.0</floor-mongodb-driver.version>
   </properties>
 
