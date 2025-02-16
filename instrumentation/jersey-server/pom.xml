@@ -9,7 +9,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
-    <version>6.0.4-SNAPSHOT</version>
+    <version>6.1.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -72,7 +72,7 @@
     <dependency>
       <groupId>com.google.inject</groupId>
       <artifactId>guice</artifactId>
-      <version>${guice.version}</version>
+      <version>${guice6.version}</version>
       <scope>test</scope>
     </dependency>
 

@@ -11,84 +11,100 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>@project.groupId@</groupId>
-  <artifactId>spring_floor</artifactId>
+  <artifactId>spring-webmvc-spring_floor</artifactId>
   <version>@project.version@</version>
-  <name>spring_floor</name>
+  <name>spring-webmvc-spring_floor</name>
 
   <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
-
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
   </properties>
 
   <dependencies>
     <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>brave-spring-beans</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.springframework</groupId>
-      <artifactId>spring-beans</artifactId>
-      <version>@spring-floor.version@</version>
+      <groupId>javax.servlet</groupId>
+      <artifactId>servlet-api</artifactId>
+      <version>2.5</version>
       <scope>provided</scope>
     </dependency>
 
     <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-webmvc</artifactId>
+      <version>@spring2.version@</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-servlet</artifactId>
+      <version>@floor-jetty.version@</version>
+    </dependency>
+
+    <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>brave-tests</artifactId>
+      <artifactId>brave-instrumentation-spring-webmvc</artifactId>
       <version>${project.version}</version>
-      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-instrumentation-http-tests</artifactId>
+      <version>${project.version}</version>
     </dependency>
 
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
       <version>@junit-jupiter.version@</version>
-      <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
       <version>@assertj.version@</version>
-      <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>org.mockito</groupId>
-      <artifactId>mockito-junit-jupiter</artifactId>
+      <artifactId>mockito-core</artifactId>
       <version>@mockito.version@</version>
-      <scope>test</scope>
     </dependency>
 
     <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>brave-context-log4j12</artifactId>
-      <version>${project.version}</version>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
+      <version>@log4j2.version@</version>
       <scope>test</scope>
     </dependency>
-
+    <!-- Spring uses commons logging -->
     <dependency>
-      <groupId>log4j</groupId>
-      <artifactId>log4j</artifactId>
-      <version>@log4j12.version@</version>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-jcl</artifactId>
+      <version>@log4j2.version@</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
 
   <build>
-    <testSourceDirectory>@project.build.testSourceDirectory@</testSourceDirectory>
     <plugins>
       <plugin>
+        <!-- Use surefire to run the ITs until someone figures out how to get invoker to run
+             failsafe -->
         <artifactId>maven-surefire-plugin</artifactId>
         <version>@maven-surefire-plugin.version@</version>
         <configuration>
-          <!-- This helps with mistakes, e.g. testSourceDirectory is wrong -->
           <failIfNoTests>true</failIfNoTests>
+          <includes>
+            <include>**/IT*.java</include>
+          </includes>
+          <!-- Ensure scope leak cause ends up in the console -->
+          <trimStackTrace>false</trimStackTrace>
+          <!-- add opens for old spring to avoid below in JRE 21:
+               Could not initialize class org.springframework.cglib.proxy.Enhancer -->
+          <argLine>
+            --add-opens java.base/java.lang=ALL-UNNAMED
+          </argLine>
         </configuration>
       </plugin>
     </plugins>

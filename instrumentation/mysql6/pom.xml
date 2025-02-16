@@ -9,7 +9,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
-    <version>6.0.4-SNAPSHOT</version>
+    <version>6.1.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -22,13 +22,14 @@
 
     <main.basedir>${project.basedir}/../..</main.basedir>
     <!-- mysql-connector-java 6+ requires Java 8 -->
+    <mysql-connector-java6.version>6.0.6</mysql-connector-java6.version>
   </properties>
 
   <dependencies>
     <dependency>
       <groupId>mysql</groupId>
       <artifactId>mysql-connector-java</artifactId>
-      <version>6.0.6</version>
+      <version>${mysql-connector-java6.version}</version>
       <scope>provided</scope>
     </dependency>
 

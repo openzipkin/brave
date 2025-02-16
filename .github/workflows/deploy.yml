@@ -15,7 +15,7 @@ on:
 jobs:
   deploy:
     name: deploy (${{ matrix.name }})
-    runs-on: ubuntu-22.04  # newest available distribution, aka jellyfish
+    runs-on: ubuntu-24.04  # newest available distribution, aka noble
     strategy:
       fail-fast: false  # don't fail fast as we can re-run one job that failed
       matrix:

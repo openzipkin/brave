@@ -9,7 +9,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-context-parent</artifactId>
-    <version>6.0.4-SNAPSHOT</version>
+    <version>6.1.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -21,13 +21,14 @@
     <module.name>brave.context.slf4j</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
+    <slf4j1.version>1.7.36</slf4j1.version>
   </properties>
 
   <dependencies>
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <version>1.7.36</version>
+      <version>${slf4j1.version}</version>
       <scope>provided</scope>
     </dependency>
   </dependencies>

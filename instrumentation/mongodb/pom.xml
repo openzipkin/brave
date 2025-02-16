@@ -9,7 +9,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
-    <version>6.0.4-SNAPSHOT</version>
+    <version>6.1.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -22,8 +22,8 @@
 
     <main.basedir>${project.basedir}/../..</main.basedir>
 
-    <mongodb-driver.version>5.0.1</mongodb-driver.version>
-    <floor-mongodb-driver.version>3.11.0</floor-mongodb-driver.version>
+    <mongodb-driver.version>5.3.1</mongodb-driver.version>
+    <mongodb-driver3.version>3.11.0</mongodb-driver3.version>
   </properties>
 
   <dependencies>
@@ -75,7 +75,7 @@
             <DynamicDependency>
               <groupId>org.mongodb</groupId>
               <artifactId>mongodb-driver</artifactId>
-              <version>${floor-mongodb-driver.version}</version>
+              <version>${mongodb-driver3.version}</version>
               <repositoryType>MAIN</repositoryType>
               <type>jar</type>
             </DynamicDependency>

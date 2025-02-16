@@ -9,7 +9,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
-    <version>6.0.4-SNAPSHOT</version>
+    <version>6.1.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -22,7 +22,7 @@
 
     <main.basedir>${project.basedir}/../..</main.basedir>
     <!-- Last version before Call.timeout was added -->
-    <okhttp-floor.version>3.11.0</okhttp-floor.version>
+    <floor-okhttp.version>3.11.0</floor-okhttp.version>
     <retrofit.version>2.11.0</retrofit.version>
   </properties>
 
@@ -35,7 +35,7 @@
     <dependency>
       <groupId>com.squareup.okhttp3</groupId>
       <artifactId>okhttp</artifactId>
-      <version>${okhttp.version}</version>
+      <version>${okhttp4.version}</version>
       <scope>provided</scope>
     </dependency>
 
@@ -74,7 +74,7 @@
             <DynamicDependency>
               <groupId>com.squareup.okhttp3</groupId>
               <artifactId>mockwebserver</artifactId>
-              <version>${okhttp-floor.version}</version>
+              <version>${floor-okhttp.version}</version>
               <repositoryType>MAIN</repositoryType>
               <type>jar</type>
             </DynamicDependency>
