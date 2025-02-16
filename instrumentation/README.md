@@ -44,7 +44,7 @@ tools such as SLF4J.
 
 ### XML Configuration
 If you are trying to trace legacy applications, you may be interested in
-[Spring XML Configuration](../brave-spring-beans/README.md). This allows you to setup
+[Spring XML Configuration](../spring-beans/README.md). This allows you to setup
 tracing without any custom code.
 
 ### Custom configuration
