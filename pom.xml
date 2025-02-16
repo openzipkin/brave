@@ -106,7 +106,7 @@
     <finagle.version>20.12.0</finagle.version>
     <log4j2.version>2.24.3</log4j2.version>
     <log4j1.version>1.2.17</log4j1.version>
-    <okhttp.version>4.12.0</okhttp.version>
+    <okhttp4.version>4.12.0</okhttp4.version>
     <httpclient.version>4.5.14</httpclient.version>
 
     <!-- TODO: grpc removed code we use in tests saying is wasn't used.
