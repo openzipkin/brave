@@ -9,10 +9,12 @@ import brave.propagation.CurrentTraceContext.Scope;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import java.io.IOException;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import okhttp3.mockwebserver.MockResponse;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder;
 import org.apache.hc.client5.http.impl.cache.CachingHttpAsyncClientBuilder;
+import org.apache.hc.client5.http.utils.DateUtils;
 import org.junit.jupiter.api.Test;
 
 import static brave.Span.Kind.CLIENT;
@@ -32,6 +34,7 @@ class ITTracingCachingHttpAsyncClientBuilder extends ITTracingHttpAsyncClientBui
     server.enqueue(new MockResponse()
       .addHeader("Content-Type", "text/plain")
       .addHeader("Cache-Control", "max-age=600, stale-while-revalidate=1200")
+      .addHeader("Date", DateUtils.FORMATTER_RFC1123.format(ZonedDateTime.now()))
       .setBody("Hello"));
 
     TraceContext parent = newTraceContext(SamplingFlags.SAMPLED);

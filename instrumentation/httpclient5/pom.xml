@@ -24,8 +24,7 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
 
     <!-- To obey the integration tests, we need to use the version >= 5.2 -->
-    <!-- TODO: pinned due to timeouts on 5.4.x on brave.httpclient5.ITTracingCachingH2ClientBuilder.cacheControl -->
-    <httpclient5.version>5.3.1</httpclient5.version>
+    <httpclient5.version>5.4.1</httpclient5.version>
   </properties>
 
   <dependencies>
