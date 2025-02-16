@@ -22,6 +22,7 @@
 
     <main.basedir>${project.basedir}/../..</main.basedir>
     <!-- mysql-connector-java 8+ requires Java 8 -->
+    <mysql-connector-j8.version>8.3.0</mysql-connector-j8.version>
 
     <!-- disable errorprone return type warning as we do not control the type QueryInterceptor -->
     <errorprone.args>-Xep:TypeParameterUnusedInFormals:OFF</errorprone.args>
@@ -31,7 +32,7 @@
     <dependency>
       <groupId>com.mysql</groupId>
       <artifactId>mysql-connector-j</artifactId>
-      <version>8.3.0</version>
+      <version>${mysql-connector-j8.version}</version>
       <scope>provided</scope>
     </dependency>
 

@@ -21,8 +21,6 @@
     <module.name>brave.spring.webmvc</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
-
-    <spring-floor.version>${spring25.version}</spring-floor.version>
   </properties>
 
   <dependencies>
@@ -82,14 +80,14 @@
             <DynamicDependency>
               <groupId>org.eclipse.jetty</groupId>
               <artifactId>jetty-servlet</artifactId>
-              <version>${jetty-servlet25.version}</version>
+              <version>${floor-jetty.version}</version>
               <repositoryType>MAIN</repositoryType>
               <type>jar</type>
             </DynamicDependency>
             <DynamicDependency>
               <groupId>org.springframework</groupId>
               <artifactId>spring-webmvc</artifactId>
-              <version>${spring-floor.version}</version>
+              <version>${spring2.version}</version>
               <repositoryType>MAIN</repositoryType>
               <type>jar</type>
             </DynamicDependency>

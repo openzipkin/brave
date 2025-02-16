@@ -56,24 +56,24 @@
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-1.2-api</artifactId>
-      <version>@log4j.version@</version>
+      <version>@log4j2.version@</version>
     </dependency>
     <!-- route slf4j over log4j2 during tests -->
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-slf4j-impl</artifactId>
-      <version>@log4j.version@</version>
+      <version>@log4j2.version@</version>
     </dependency>
     <!-- Route jul over log4j2 during integration tests -->
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-jul</artifactId>
-      <version>@log4j.version@</version>
+      <version>@log4j2.version@</version>
     </dependency>
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-core</artifactId>
-      <version>@log4j.version@</version>
+      <version>@log4j2.version@</version>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>

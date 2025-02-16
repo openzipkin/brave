@@ -22,8 +22,6 @@
     <module.name>brave.spring.beans</module.name>
 
     <main.basedir>${project.basedir}/..</main.basedir>
-
-    <spring-floor.version>${spring25.version}</spring-floor.version>
   </properties>
 
   <dependencies>
@@ -85,14 +83,14 @@
             <DynamicDependency>
               <groupId>log4j</groupId>
               <artifactId>log4j</artifactId>
-              <version>${log4j12.version}</version>
+              <version>${log4j1.version}</version>
               <repositoryType>MAIN</repositoryType>
               <type>jar</type>
             </DynamicDependency>
             <DynamicDependency>
               <groupId>org.springframework</groupId>
               <artifactId>spring-beans</artifactId>
-              <version>${spring-floor.version}</version>
+              <version>${spring2.version}</version>
               <repositoryType>MAIN</repositoryType>
               <type>jar</type>
             </DynamicDependency>

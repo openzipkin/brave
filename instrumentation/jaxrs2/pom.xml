@@ -21,6 +21,7 @@
     <module.name>brave.jaxrs2</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
+    <floor-javax.ws.rs-api.version>2.0.1</floor-javax.ws.rs-api.version>
   </properties>
 
   <dependencies>
@@ -32,7 +33,7 @@
     <dependency>
       <groupId>javax.ws.rs</groupId>
       <artifactId>javax.ws.rs-api</artifactId>
-      <version>2.0.1</version>
+      <version>${floor-javax.ws.rs-api.version}</version>
       <scope>provided</scope>
     </dependency>
     <!-- For Priority -->

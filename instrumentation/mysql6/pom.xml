@@ -22,13 +22,14 @@
 
     <main.basedir>${project.basedir}/../..</main.basedir>
     <!-- mysql-connector-java 6+ requires Java 8 -->
+    <mysql-connector-java6.version>6.0.6</mysql-connector-java6.version>
   </properties>
 
   <dependencies>
     <dependency>
       <groupId>mysql</groupId>
       <artifactId>mysql-connector-java</artifactId>
-      <version>6.0.6</version>
+      <version>${mysql-connector-java6.version}</version>
       <scope>provided</scope>
     </dependency>
 

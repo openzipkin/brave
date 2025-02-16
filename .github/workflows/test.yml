@@ -17,7 +17,7 @@ on:
 jobs:
   test-javadoc:
     name: Test JavaDoc Builds
-    runs-on: ubuntu-22.04 # newest available distribution, aka jellyfish
+    runs-on: ubuntu-24.04  # newest available distribution, aka noble
     if: "!contains(github.event.head_commit.message, 'maven-release-plugin')"
     steps:
       - name: Checkout Repository
@@ -38,7 +38,7 @@ jobs:
 
   test:
     name: test (JDK ${{ matrix.java_version }})
-    runs-on: ubuntu-22.04 # newest available distribution, aka jellyfish
+    runs-on: ubuntu-24.04  # newest available distribution, aka noble
     if: "!contains(github.event.head_commit.message, 'maven-release-plugin')"
     strategy:
       fail-fast: false  # don't fail fast as sometimes failures are operating system specific

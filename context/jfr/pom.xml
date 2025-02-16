@@ -32,7 +32,7 @@
     <plugins>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
-        <configuration combine.self="override">
+        <configuration combine.self="append">
           <target>${main.java.version}</target>
           <compilerArgs>
             <arg>--add-modules</arg>

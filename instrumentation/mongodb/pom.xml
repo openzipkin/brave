@@ -23,7 +23,7 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
 
     <mongodb-driver.version>5.3.1</mongodb-driver.version>
-    <floor-mongodb-driver.version>3.11.0</floor-mongodb-driver.version>
+    <mongodb-driver3.version>3.11.0</mongodb-driver3.version>
   </properties>
 
   <dependencies>
@@ -75,7 +75,7 @@
             <DynamicDependency>
               <groupId>org.mongodb</groupId>
               <artifactId>mongodb-driver</artifactId>
-              <version>${floor-mongodb-driver.version}</version>
+              <version>${mongodb-driver3.version}</version>
               <repositoryType>MAIN</repositoryType>
               <type>jar</type>
             </DynamicDependency>

@@ -28,7 +28,7 @@
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-1.2-api</artifactId>
-      <version>${log4j.version}</version>
+      <version>${log4j2.version}</version>
       <scope>provided</scope>
     </dependency>
   </dependencies>
@@ -56,7 +56,7 @@
             <DynamicDependency>
               <groupId>log4j</groupId>
               <artifactId>log4j</artifactId>
-              <version>${log4j12.version}</version>
+              <version>${log4j1.version}</version>
               <repositoryType>MAIN</repositoryType>
               <type>jar</type>
             </DynamicDependency>

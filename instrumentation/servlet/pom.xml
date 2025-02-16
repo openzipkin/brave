@@ -80,7 +80,7 @@
             <DynamicDependency>
               <groupId>org.eclipse.jetty</groupId>
               <artifactId>jetty-servlet</artifactId>
-              <version>${jetty-servlet25.version}</version>
+              <version>${floor-jetty.version}</version>
               <repositoryType>MAIN</repositoryType>
               <type>jar</type>
             </DynamicDependency>
