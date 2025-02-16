@@ -85,7 +85,7 @@
     <dependency>
       <groupId>com.google.inject</groupId>
       <artifactId>guice</artifactId>
-      <version>${guice.version}</version>
+      <version>${guice6.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

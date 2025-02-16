@@ -76,7 +76,7 @@
     <!-- Used for Generated annotations -->
     <javax-annotation-api.version>1.3.2</javax-annotation-api.version>
     <!-- to test @Inject annotations. Note 7.x is for jakarta annotations! -->
-    <guice.version>6.0.0</guice.version>
+    <guice6.version>6.0.0</guice6.version>
 
     <!-- Note: Spring 6 is JDK 17 bytecode, so we can't update to it until we
          stop supporting Java 6 compilation target, or change our release to
@@ -638,7 +638,8 @@
                     <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</arg>
                     <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED</arg>
                     <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED</arg>
-                    <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED</arg>                  </compilerArgs>
+                    <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED</arg>
+                  </compilerArgs>
                   <annotationProcessorPaths>
                     <processorPath>
                       <groupId>com.google.errorprone</groupId>
