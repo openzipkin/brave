@@ -9,6 +9,7 @@ import brave.propagation.TraceContext;
 import java.io.IOException;
 import java.util.concurrent.Future;
 import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
+import org.apache.hc.client5.http.protocol.HttpClientContext;
 import org.apache.hc.core5.concurrent.FutureCallback;
 import org.apache.hc.core5.function.Supplier;
 import org.apache.hc.core5.http.HttpHost;
@@ -58,15 +59,17 @@ class TracingHttpAsyncClient extends CloseableHttpAsyncClient {
     HandlerFactory<AsyncPushConsumer> pushHandlerFactory, HttpContext context,
     FutureCallback<T> callback) {
     TraceContext invocationContext = currentTraceContext.get();
+
+    final HttpClientContext clientContext = HttpClientContext.castOrCreate(context);
     if (invocationContext != null) {
-      context.setAttribute(TraceContext.class.getName(), invocationContext);
+        clientContext.setAttribute(TraceContext.class.getName(), invocationContext);
     }
 
     if (callback != null && invocationContext != null) {
       callback = new TraceContextFutureCallback<>(callback, currentTraceContext, invocationContext);
     }
 
-    return delegate.execute(target, requestProducer, responseConsumer, pushHandlerFactory, context,
+    return delegate.execute(target, requestProducer, responseConsumer, pushHandlerFactory, clientContext,
       callback);
   }
 

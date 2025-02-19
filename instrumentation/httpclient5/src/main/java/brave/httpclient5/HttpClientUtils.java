@@ -58,8 +58,8 @@ class HttpClientUtils {
     if (!HAS_CLIENT_CACHE_SUPPORT) {
       return false;
     }
-    boolean cacheHit = CacheResponseStatus.CACHE_HIT == context.getAttribute(
-      HttpCacheContext.CACHE_RESPONSE_STATUS);
+    final HttpCacheContext cacheContext = HttpCacheContext.cast(context);
+    final boolean cacheHit = CacheResponseStatus.CACHE_HIT == cacheContext.getCacheResponseStatus();
     if (cacheHit) {
       span.tag("http.cache_hit", "");
     }
