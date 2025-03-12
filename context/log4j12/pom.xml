@@ -38,6 +38,9 @@
       <!-- Test log4j:log4j dep via invoker -->
       <plugin>
         <artifactId>maven-invoker-plugin</artifactId>
+        <configuration>
+          <updateSnapshots>true</updateSnapshots>
+        </configuration>
       </plugin>
       <plugin>
         <groupId>de.qaware.maven</groupId>
