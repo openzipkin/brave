@@ -250,21 +250,6 @@ public final class KafkaStreamsTracing {
   }
 
   /**
-   * Similar to {@link KafkaStreamsTracing#peek(String, ForeachAction)} ,
-   * with the ability to inject annotations and tags into the resulting span.
-   */
-  public <K, V> ValueTransformerWithKeySupplier<K, V, KeyValue<K, V>> peek(String spanName,
-    Map<Long, String> annotations, Map<String, String> tags, ForeachAction<K, V> action) {
-    return new TracingValueTransformerWithKeySupplier<>(this, spanName, annotations, tags, () ->
-      new AbstractTracingValueTransformerWithKey<K, V, V>() {
-        @Override public V transform(K key, V value) {
-          action.apply(key, value);
-          return value;
-        }
-      });
-  }
-
-  /**
    * Create a mark transformer, similar to {@link KStream#peek(ForeachAction)}, but no action is
    * executed. Instead, only a span is created to represent an event as part of the stream process.
    * <p>
@@ -285,6 +270,16 @@ public final class KafkaStreamsTracing {
    */
   public <K, V> ValueTransformerWithKeySupplier<K, V, V> mark(String spanName) {
     return new TracingValueTransformerWithKeySupplier<>(this, spanName, () ->
+      new AbstractTracingValueTransformerWithKey<K, V, V>() {
+        @Override public V transform(K key, V value) {
+          return value;
+        }
+      });
+  }
+
+  public <K, V> ValueTransformerWithKeySupplier<K, V, V> mark(String spanName, Map<Long, String> annotations,
+    Map<String, String> tags) {
+    return new TracingValueTransformerWithKeySupplier<>(this, spanName, annotations, tags, () ->
       new AbstractTracingValueTransformerWithKey<K, V, V>() {
         @Override public V transform(K key, V value) {
           return value;

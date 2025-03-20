@@ -23,6 +23,8 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.Properties;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -52,6 +54,8 @@ import org.apache.kafka.streams.processor.ProcessorSupplier;
 import org.junit.After;
 import org.junit.ClassRule;
 import org.junit.Test;
+import zipkin2.Annotation;
+import zipkin2.Span;
 
 import static brave.Span.Kind.CONSUMER;
 import static brave.Span.Kind.PRODUCER;
@@ -618,6 +622,46 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
   }
 
   @Test
+  public void should_create_spans_from_stream_with_tracing_mark_tags() {
+    String inputTopic = testName.getMethodName() + "-input";
+    String outputTopic = testName.getMethodName() + "-output";
+
+    long now = System.currentTimeMillis();
+    Map<Long, String> annotations = new HashMap<Long, String>(){{ put(now, "anno-1"); }};
+    Map<String, String> tags = new HashMap<String, String>() {
+      {
+        put("key-1", "value-1");
+      }
+    };
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+      .transformValues(kafkaStreamsTracing.mark("mark-1", annotations, tags))
+      .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreams(topology);
+
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
+
+    waitForStreamToRun(streams);
+
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertThat(spanProcessor.tags()).containsEntry("key-1", "value-1");
+    assertChildOf(spanProcessor, spanInput);
+
+    MutableSpan spanOutput = testSpanHandler.takeRemoteSpan(PRODUCER);
+    assertThat(spanOutput.tags()).containsEntry("kafka.topic", outputTopic);
+    assertChildOf(spanOutput, spanProcessor);
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
   public void should_create_spans_from_stream_with_tracing_foreach() {
     String inputTopic = testName.getMethodName() + "-input";
 
@@ -642,6 +686,46 @@ public class ITKafkaStreamsTracing extends ITKafkaStreams {
     assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
 
     MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertChildOf(spanProcessor, spanInput);
+
+    streams.close();
+    streams.cleanUp();
+  }
+
+  @Test
+  public void should_create_spans_from_stream_with_tracing_foreach_tags() {
+    String inputTopic = testName.getMethodName() + "-input";
+    long now = System.currentTimeMillis();
+
+    Map<Long, String> annotations = new HashMap<Long, String>(){{ put(now, "anno-1"); }};
+    Map<String, String> tags = new HashMap<String, String>() {
+      {
+        put("key-1", "value-1");
+      }
+    };
+
+    StreamsBuilder builder = new StreamsBuilder();
+    builder.stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
+      .process(kafkaStreamsTracing.foreach("foreach-1",annotations, tags, (key, value) -> {
+        try {
+          Thread.sleep(100L);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }));
+    Topology topology = builder.build();
+
+    KafkaStreams streams = buildKafkaStreams(topology);
+
+    send(new ProducerRecord<>(inputTopic, TEST_KEY, TEST_VALUE));
+
+    waitForStreamToRun(streams);
+
+    MutableSpan spanInput = testSpanHandler.takeRemoteSpan(CONSUMER);
+    assertThat(spanInput.tags()).containsEntry("kafka.topic", inputTopic);
+
+    MutableSpan spanProcessor = testSpanHandler.takeLocalSpan();
+    assertThat(spanProcessor.tags()).containsEntry("key-1", "value-1");
     assertChildOf(spanProcessor, spanInput);
 
     streams.close();
