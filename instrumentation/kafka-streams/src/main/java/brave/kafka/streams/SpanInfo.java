@@ -13,15 +13,23 @@
  */
 package brave.kafka.streams;
 
-import org.apache.kafka.streams.kstream.ValueTransformer;
-import org.apache.kafka.streams.processor.ProcessorContext;
+import java.util.Collections;
+import java.util.Map;
 
-public abstract class AbstractTracingValueTransformer<V, VR> implements
-  ValueTransformer<V, VR> {
+public class SpanInfo {
+  public final String spanName;
+  public final Map<Long, String> annotations;
+  public final Map<String, String> tags;
 
-  @Override public void init(ProcessorContext context) {
+  public SpanInfo(String spanName, Map<Long, String> annotations, Map<String, String> tags) {
+    this.spanName = spanName;
+    this.annotations = annotations;
+    this.tags = tags;
   }
 
-  @Override public void close() {
+  public SpanInfo(String spanName) {
+    this.spanName = spanName;
+    this.annotations = Collections.emptyMap();
+    this.tags = Collections.emptyMap();
   }
 }

@@ -15,26 +15,29 @@ package brave.kafka.streams;
 
 import brave.Span;
 import brave.Tracer;
+import java.util.function.BiFunction;
 import org.apache.kafka.streams.processor.Processor;
 import org.apache.kafka.streams.processor.ProcessorContext;
 
 import static brave.internal.Throwables.propagateIfFatal;
 
-class TracingProcessor<K, V> implements Processor<K, V> {
+public class TracingProcessor<K, V> implements Processor<K, V> {
   final KafkaStreamsTracing kafkaStreamsTracing;
   final Tracer tracer;
-  final String spanName;
   final Processor<K, V> delegateProcessor;
+  final BiFunction<K, V, SpanInfo> mkSpan;
 
   ProcessorContext processorContext;
 
-  TracingProcessor(KafkaStreamsTracing kafkaStreamsTracing,
-    String spanName, Processor<K, V> delegateProcessor) {
+  public TracingProcessor(KafkaStreamsTracing kafkaStreamsTracing,
+    BiFunction<K, V, SpanInfo> mkSpan,
+    Processor<K, V> delegateProcessor) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.tracer = kafkaStreamsTracing.tracer;
-    this.spanName = spanName;
     this.delegateProcessor = delegateProcessor;
+    this.mkSpan = mkSpan;
   }
+
 
   @Override
   public void init(ProcessorContext processorContext) {
@@ -44,9 +47,12 @@ class TracingProcessor<K, V> implements Processor<K, V> {
 
   @Override
   public void process(K k, V v) {
+    SpanInfo info = mkSpan.apply(k, v);
     Span span = kafkaStreamsTracing.nextSpan(processorContext);
     if (!span.isNoop()) {
-      span.name(spanName);
+      span.name(info.spanName);
+      info.annotations.forEach(span::annotate);
+      info.tags.forEach(span::tag);
       span.start();
     }
 

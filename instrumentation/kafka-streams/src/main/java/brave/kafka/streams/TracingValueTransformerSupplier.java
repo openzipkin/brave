@@ -13,24 +13,40 @@
  */
 package brave.kafka.streams;
 
+import java.util.Collections;
+import java.util.Map;
 import org.apache.kafka.streams.kstream.ValueTransformer;
 import org.apache.kafka.streams.kstream.ValueTransformerSupplier;
 
-class TracingValueTransformerSupplier<V, VR> implements ValueTransformerSupplier<V, VR> {
+public class TracingValueTransformerSupplier<V, VR> implements ValueTransformerSupplier<V, VR> {
   final KafkaStreamsTracing kafkaStreamsTracing;
   final String spanName;
   final ValueTransformerSupplier<V, VR> delegateTransformerSupplier;
+  final Map<Long, String> annotations;
+  final Map<String, String> tags;
 
-  TracingValueTransformerSupplier(KafkaStreamsTracing kafkaStreamsTracing,
+  public TracingValueTransformerSupplier(KafkaStreamsTracing kafkaStreamsTracing,
     String spanName,
     ValueTransformerSupplier<V, VR> delegateTransformerSupplier) {
     this.kafkaStreamsTracing = kafkaStreamsTracing;
     this.spanName = spanName;
     this.delegateTransformerSupplier = delegateTransformerSupplier;
+    this.annotations = Collections.emptyMap();
+    this.tags = Collections.emptyMap();
+  }
+
+  public TracingValueTransformerSupplier(KafkaStreamsTracing kafkaStreamsTracing,
+    String spanName, Map<Long, String> annotations, Map<String, String> tags,
+    ValueTransformerSupplier<V, VR> delegateTransformerSupplier) {
+    this.kafkaStreamsTracing = kafkaStreamsTracing;
+    this.spanName = spanName;
+    this.delegateTransformerSupplier = delegateTransformerSupplier;
+    this.annotations = annotations;
+    this.tags = tags;
   }
 
   /** This wraps transform method to enable tracing. */
   @Override public ValueTransformer<V, VR> get() {
-    return new TracingValueTransformer<>(kafkaStreamsTracing, spanName, delegateTransformerSupplier.get());
+    return new TracingValueTransformer<>(kafkaStreamsTracing, spanName, annotations, tags, delegateTransformerSupplier.get());
   }
 }

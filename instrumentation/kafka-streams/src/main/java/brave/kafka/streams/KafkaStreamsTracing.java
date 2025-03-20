@@ -25,6 +25,7 @@ import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import org.apache.kafka.common.header.Header;
@@ -212,6 +213,20 @@ public final class KafkaStreamsTracing {
   }
 
   /**
+   * Similar to {@link KafkaStreamsTracing#foreach(String, ForeachAction)},
+   * with the ability to inject annotations and tags into the resulting span.
+   */
+  public <K, V> ProcessorSupplier<K, V> foreach(String spanName,
+    Map<Long, String> annotations, Map<String, String> tags, ForeachAction<K, V> action) {
+    return new TracingProcessorSupplier<>(this, spanName, annotations, tags, () ->
+      new AbstractProcessor<K, V>() {
+        @Override public void process(K key, V value) {
+          action.apply(key, value);
+        }
+      });
+  }
+
+  /**
    * Create a peek transformer, similar to {@link KStream#peek(ForeachAction)}, where its action
    * will be recorded in a new span with the indicated name.
    *
@@ -226,6 +241,21 @@ public final class KafkaStreamsTracing {
   public <K, V> ValueTransformerWithKeySupplier<K, V, V> peek(String spanName,
     ForeachAction<K, V> action) {
     return new TracingValueTransformerWithKeySupplier<>(this, spanName, () ->
+      new AbstractTracingValueTransformerWithKey<K, V, V>() {
+        @Override public V transform(K key, V value) {
+          action.apply(key, value);
+          return value;
+        }
+      });
+  }
+
+  /**
+   * Similar to {@link KafkaStreamsTracing#peek(String, ForeachAction)} ,
+   * with the ability to inject annotations and tags into the resulting span.
+   */
+  public <K, V> ValueTransformerWithKeySupplier<K, V, KeyValue<K, V>> peek(String spanName,
+    Map<Long, String> annotations, Map<String, String> tags, ForeachAction<K, V> action) {
+    return new TracingValueTransformerWithKeySupplier<>(this, spanName, annotations, tags, () ->
       new AbstractTracingValueTransformerWithKey<K, V, V>() {
         @Override public V transform(K key, V value) {
           action.apply(key, value);
