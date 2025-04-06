@@ -33,6 +33,7 @@
     <module>httpclient5</module>
     <module>jaxrs2</module>
     <module>jersey-server</module>
+    <module>jersey-server-jakarta</module>
     <module>jms</module>
     <module>jms-jakarta</module>
     <module>jakarta-jms</module>

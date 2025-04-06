@@ -1,0 +1,79 @@
+<?xml version="1.0"?>
+<!--
+
+    Copyright The OpenZipkin Authors
+    SPDX-License-Identifier: Apache-2.0
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <parent>
+    <groupId>io.zipkin.brave</groupId>
+    <artifactId>brave-instrumentation-parent</artifactId>
+    <version>6.1.1-SNAPSHOT</version>
+  </parent>
+  <modelVersion>4.0.0</modelVersion>
+
+  <artifactId>brave-instrumentation-jersey-server-jakarta</artifactId>
+  <name>Brave Instrumentation: Jersey Server 3.x (Jakarta)</name>
+
+  <properties>
+    <!-- Matches Export-Package in bnd.bnd -->
+    <module.name>brave.jersey.server</module.name>
+
+    <main.basedir>${project.basedir}/../..</main.basedir>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.glassfish.jersey.core</groupId>
+      <artifactId>jersey-server</artifactId>
+      <version>${jersey3.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-instrumentation-http</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-instrumentation-http-tests-jakarta</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>brave-instrumentation-servlet-jakarta</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-servlet</artifactId>
+      <version>${jetty11.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish.jersey.containers</groupId>
+      <artifactId>jersey-container-servlet</artifactId>
+      <version>${jersey3.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Avoid InjectionManagerFactory not found -->
+    <dependency>
+      <groupId>org.glassfish.jersey.inject</groupId>
+      <artifactId>jersey-hk2</artifactId>
+      <version>${jersey3.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- to test @Inject annotations -->
+    <dependency>
+      <groupId>com.google.inject</groupId>
+      <artifactId>guice</artifactId>
+      <version>${guice6.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

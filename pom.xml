@@ -93,6 +93,8 @@
 
     <!-- Jakarta -->
     <jetty11.version>11.0.24</jetty11.version>
+    <!-- Compatible with Jetty11   -->
+    <jersey3.version>3.0.17</jersey3.version>
     <jakarta.servlet>5.0.0</jakarta.servlet>
 
     <kafka.version>3.9.0</kafka.version>
