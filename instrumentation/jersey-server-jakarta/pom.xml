@@ -18,7 +18,7 @@
 
   <properties>
     <!-- Matches Export-Package in bnd.bnd -->
-    <module.name>brave.jersey.server</module.name>
+    <module.name>brave.jakarta.jersey.server</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
   </properties>

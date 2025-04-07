@@ -1,5 +1,5 @@
-# brave-instrumentation-jersey-server
-This module contains application event listeners for [Jersey Server 2.x](https://jersey.github.io/documentation/latest/monitoring_tracing.html#d0e16007).
+# brave-instrumentation-jersey-server-jakarta
+This module contains application event listeners for [Jersey Server 3.x](https://jersey.github.io/documentation/latest/monitoring_tracing.html#d0e16007).
 
 These instrumentation is an alternative to the [jaxrs2](../jaxrs2) container
 instrumentation. Do *not* use both.
