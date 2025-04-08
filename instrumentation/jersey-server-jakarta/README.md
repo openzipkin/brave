@@ -8,7 +8,7 @@ instrumentation. Do *not* use both.
 requests. Then, it reports Zipkin how long each request takes, along
 with relevant tags like the http url and the resource.
 
-`SpanCustomizingApplicationEventListener` layers over [servlet](../servlet),
+`SpanCustomizingApplicationEventListener` layers over [servlet](../servlet-jakarta),
 adding resource tags and route information to servlet-originated spans.
 
 When in a servlet environment, use `SpanCustomizingApplicationEventListener`.
