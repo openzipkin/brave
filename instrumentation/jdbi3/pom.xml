@@ -13,31 +13,34 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>brave-instrumentation-mysql8</artifactId>
-  <name>Brave Instrumentation: MySQL8</name>
+  <artifactId>brave-instrumentation-jdbi3</artifactId>
+  <name>Brave Instrumentation: JDBI3</name>
 
   <properties>
     <!-- Matches Export-Package in bnd.bnd -->
-    <module.name>brave.mysql8</module.name>
+    <module.name>brave.jdbi3</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
 
-    <!-- disable errorprone return type warning as we do not control the type QueryInterceptor -->
-    <errorprone.args>-Xep:TypeParameterUnusedInFormals:OFF</errorprone.args>
+    <jdbi3.version>3.49.1</jdbi3.version>
   </properties>
 
   <dependencies>
     <dependency>
-      <groupId>com.mysql</groupId>
-      <artifactId>mysql-connector-j</artifactId>
-      <version>${mysql-connector-j8.version}</version>
-      <scope>provided</scope>
+      <groupId>org.jdbi</groupId>
+      <artifactId>jdbi3-core</artifactId>
+      <version>${jdbi3.version}</version>
     </dependency>
-
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>brave-tests</artifactId>
       <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.mysql</groupId>
+      <artifactId>mysql-connector-j</artifactId>
+      <version>${mysql-connector-j8.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

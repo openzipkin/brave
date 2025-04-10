@@ -34,6 +34,7 @@
     <module>jaxrs2</module>
     <module>jersey-server</module>
     <module>jersey-server-jakarta</module>
+    <module>jdbi3</module>
     <module>jms</module>
     <module>jms-jakarta</module>
     <module>jakarta-jms</module>
