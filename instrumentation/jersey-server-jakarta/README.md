@@ -1,5 +1,5 @@
 # brave-instrumentation-jersey-server-jakarta
-This module contains application event listeners for [Jersey Server 3.x](https://jersey.github.io/documentation/latest/monitoring_tracing.html#d0e16007).
+This module contains application event listeners for [Jersey Server 3.x](https://eclipse-ee4j.github.io/jersey.github.io/documentation/latest/monitoring_tracing.html).
 
 These instrumentation is an alternative to the [jaxrs2](../jaxrs2) container
 instrumentation. Do *not* use both.
@@ -25,7 +25,7 @@ To enable tracing, you need to register the `TracingApplicationEventListener`.
 ### Normal configuration (`TracingApplicationEventListener`)
 
 The `TracingApplicationEventListener` requires an instance of
-`HttpTracing` to operate. With that in mind, use [standard means](https://jersey.github.io/apidocs/2.26/jersey/org/glassfish/jersey/server/monitoring/ApplicationEventListener.html)
+`HttpTracing` to operate. With that in mind, use [standard means](https://eclipse-ee4j.github.io/jersey.github.io/apidocs/3.0.17/jersey/org/glassfish/jersey/server/monitoring/ApplicationEventListener.html)
 to register the listener.
 
 For example, you could wire up like this:
