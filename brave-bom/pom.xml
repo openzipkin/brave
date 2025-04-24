@@ -9,7 +9,7 @@
 
   <groupId>io.zipkin.brave</groupId>
   <artifactId>brave-bom</artifactId>
-  <version>6.1.1-SNAPSHOT</version>
+  <version>6.2.0-SNAPSHOT</version>
   <name>Brave BOM</name>
   <description>Bill Of Materials POM for all Brave artifacts</description>
   <packaging>pom</packaging>
@@ -155,6 +155,11 @@
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>brave-instrumentation-jersey-server</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>brave-instrumentation-jersey-server-jakarta</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>

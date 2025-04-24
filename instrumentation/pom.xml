@@ -11,7 +11,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-parent</artifactId>
-    <version>6.1.1-SNAPSHOT</version>
+    <version>6.2.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>brave-instrumentation-parent</artifactId>
@@ -33,6 +33,7 @@
     <module>httpclient5</module>
     <module>jaxrs2</module>
     <module>jersey-server</module>
+    <module>jersey-server-jakarta</module>
     <module>jms</module>
     <module>jms-jakarta</module>
     <module>jakarta-jms</module>
