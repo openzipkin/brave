@@ -9,7 +9,7 @@
 
   <groupId>io.zipkin.brave</groupId>
   <artifactId>brave-bom</artifactId>
-  <version>6.2.1-SNAPSHOT</version>
+  <version>6.3.0-SNAPSHOT</version>
   <name>Brave BOM</name>
   <description>Bill Of Materials POM for all Brave artifacts</description>
   <packaging>pom</packaging>
