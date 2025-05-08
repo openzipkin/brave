@@ -9,7 +9,7 @@
   <parent>
     <groupId>io.zipkin.brave</groupId>
     <artifactId>brave-instrumentation-parent</artifactId>
-    <version>6.2.1-SNAPSHOT</version>
+    <version>6.3.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -21,8 +21,6 @@
     <module.name>brave.mysql8</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
-    <!-- mysql-connector-java 8+ requires Java 8 -->
-    <mysql-connector-j8.version>8.3.0</mysql-connector-j8.version>
 
     <!-- disable errorprone return type warning as we do not control the type QueryInterceptor -->
     <errorprone.args>-Xep:TypeParameterUnusedInFormals:OFF</errorprone.args>
