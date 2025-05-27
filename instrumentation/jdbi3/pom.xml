@@ -13,34 +13,34 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>brave-instrumentation-vertx-web</artifactId>
-  <name>Brave Instrumentation: Vert.x Web</name>
+  <artifactId>brave-instrumentation-jdbi3</artifactId>
+  <name>Brave Instrumentation: JDBI3</name>
 
   <properties>
     <!-- Matches Export-Package in bnd.bnd -->
-    <module.name>brave.vertx.web</module.name>
+    <module.name>brave.jdbi3</module.name>
 
     <main.basedir>${project.basedir}/../..</main.basedir>
-    <vertx.version>3.9.16</vertx.version>
+
+    <jdbi3.version>3.49.1</jdbi3.version>
   </properties>
 
   <dependencies>
     <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>brave-instrumentation-http</artifactId>
-      <version>${project.version}</version>
+      <groupId>org.jdbi</groupId>
+      <artifactId>jdbi3-core</artifactId>
+      <version>${jdbi3.version}</version>
     </dependency>
     <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-web</artifactId>
-      <version>${vertx.version}</version>
-      <scope>provided</scope>
-    </dependency>
-
-    <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>brave-instrumentation-http-tests</artifactId>
+      <artifactId>brave-tests</artifactId>
       <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.mysql</groupId>
+      <artifactId>mysql-connector-j</artifactId>
+      <version>${mysql-connector-j8.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

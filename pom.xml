@@ -10,7 +10,7 @@
 
   <groupId>io.zipkin.brave</groupId>
   <artifactId>brave-parent</artifactId>
-  <version>6.2.1-SNAPSHOT</version>
+  <version>6.3.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Brave (parent)</name>
@@ -120,6 +120,10 @@
     <netty.version>4.1.121.Final</netty.version>
 
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
+
+    <!-- msql connector used for mysql8 instrumentation, and test of jdbi3 instrumentation -->
+    <!-- mysql-connector-java 8+ requires Java 8 -->
+    <mysql-connector-j8.version>8.3.0</mysql-connector-j8.version>
 
     <!-- Test only dependencies -->
     <junit-jupiter.version>5.12.2</junit-jupiter.version>
