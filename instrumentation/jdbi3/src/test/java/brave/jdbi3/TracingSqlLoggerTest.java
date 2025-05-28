@@ -69,4 +69,10 @@ public class TracingSqlLoggerTest {
 
     verify(span).remoteServiceName("sqlite-test.db");
   }
+
+  @Test void parseServerIpAndPort_invalid() {
+    TracingSqlLogger.parseServerIpAndPort("jobc", span, false);
+
+    // expect nothing to happen
+  }
 }

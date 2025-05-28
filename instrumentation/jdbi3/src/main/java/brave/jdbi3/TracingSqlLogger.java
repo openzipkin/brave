@@ -16,6 +16,8 @@ import org.jdbi.v3.core.statement.StatementContext;
 import static brave.Span.Kind.CLIENT;
 
 final class TracingSqlLogger implements SqlLogger {
+  static final String JDBC_PREFIX = "jdbc:";
+
   final Tracing tracing;
   final ThreadLocalSpan threadLocalSpan;
   final String remoteServiceName;
@@ -70,8 +72,9 @@ final class TracingSqlLogger implements SqlLogger {
   }
 
   static void parseServerIpAndPort(String jdbcUrl, Span span, boolean addRemoteServiceName) {
-    // only allocate a URI once for both service name and remote address
-    URI url = URI.create(jdbcUrl.substring(5)); // strip "jdbc:"
+    if (!jdbcUrl.startsWith(JDBC_PREFIX)) return; // unlikely, and no way to parse it
+
+    URI url = URI.create(jdbcUrl.substring(JDBC_PREFIX.length()));
     if (url.getHost() != null) {
       span.remoteIpAndPort(url.getHost(), url.getPort());
     }
