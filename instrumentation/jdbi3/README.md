@@ -1,19 +1,14 @@
 # brave-instrumentation-jdbi3
 
-This includes a JDBI 3 plugin that will report to Zipkin how long each
-statement takes, along with relevant tags like the query.
+This includes [TracingSqlLogger][TracingSqlLogger] for the Jdbi instance that
+reports via Brave how long each query takes, along with relevant tags like the
+query.
 
-To use it, call the `installPlugin` on the `Jdbi` instance you want to
-instrument, or add the statement context listener manually like so:
+Example Usage:
+```java
+SqlLogger sqlLogger = JdbiTracing.create(tracing).sqlLogger();
+jdbi.getConfig(SqlStatements.class).setSqlLogger(sqlLogger);
 ```
-jdbi.getConfig(SqlStatements.class)
-  .addContextListener(new BraveStatementContextListener(tracing));
-```
 
-The remote service name of the span is set to the hostname and port number of
-the database server, if available, and the URL scheme if not. If the database
-URL format allows it, you can add the `zipkinServiceName` query parameter to
-override the remote service name.
-
-Bind variable values are not included in the traces, only the SQL statement
-with placeholders.
+---
+[TracingSqlLogger]: src/main/java/brave/jdbi3/TracingSqlLogger.java

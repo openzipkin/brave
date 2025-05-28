@@ -9,7 +9,7 @@ to the end of the connection url.
 It is also recommended to add the exception interceptor so errors are added to the span, e.g.,
 `?queryInterceptors=brave.mysql8.TracingQueryInterceptor&exceptionInterceptors=brave.mysql8.TracingExceptionInterceptor`
 
-By default the service name corresponding to your database uses the format
+By default, the service name corresponding to your database uses the format
 `mysql-${database}`, but you can append another property `zipkinServiceName` to customise it.
 
 `?queryInterceptors=brave.mysql8.TracingQueryInterceptor&exceptionInterceptors=brave.mysql8.TracingExceptionInterceptor&zipkinServiceName=myDatabaseService`
