@@ -8,8 +8,10 @@ name: deploy
 # See https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
 on:
   push:
-    # Don't deploy tags as they conflict with [maven-release-plugin] prepare release MAJOR.MINOR.PATCH
-    tags: ''
+    # Don't deploy tags because the same commit for MAJOR.MINOR.PATCH is also
+    # on master: Redundant deployment of a release version will fail uploading.
+    tags-ignore:
+      - '*'
     branches: master
 
 jobs:

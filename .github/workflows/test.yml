@@ -6,7 +6,8 @@ name: test
 on:
   # We run tests on non-tagged pushes to master that aren't a commit made by the release plugin
   push:
-    tags: ''
+    tags-ignore:
+      - '*'
     branches: master
     paths-ignore: '**/*.md'
   # We also run tests on pull requests targeted at the master branch.
