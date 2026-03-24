@@ -154,6 +154,9 @@
     <maven-help-plugin.version>3.5.1</maven-help-plugin.version>
     <maven-install-plugin.version>3.1.4</maven-install-plugin.version>
     <maven-invoker-plugin.version>3.9.1</maven-invoker-plugin.version>
+    <!-- default is runtime, but test-scoped reactor deps like brave-tests
+         need to be in the invoker local repo for IT projects to resolve -->
+    <invoker.install.scope>test</invoker.install.scope>
     <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
     <maven-jar-plugin.version>3.5.0</maven-jar-plugin.version>
     <maven-release-plugin.version>3.3.1</maven-release-plugin.version>
