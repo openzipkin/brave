@@ -15,8 +15,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Timeout;
@@ -88,7 +88,7 @@ abstract class ITSpringRabbit extends ITRemote {
 
   static final class RabbitMQContainer extends GenericContainer<RabbitMQContainer> {
     RabbitMQContainer() {
-      super(parse("ghcr.io/openzipkin/zipkin-rabbitmq:3.4.3"));
+      super(parse("ghcr.io/openzipkin/zipkin-rabbitmq:3.6.0"));
       withExposedPorts(RABBIT_PORT);
       waitStrategy = Wait.forLogMessage(".*Server startup complete.*", 1);
       withStartupTimeout(Duration.ofSeconds(60));
@@ -121,8 +121,8 @@ abstract class ITSpringRabbit extends ITRemote {
     }
   }
 
-  @Rule public IntegrationTestSpanHandler producerSpanHandler = new IntegrationTestSpanHandler();
-  @Rule public IntegrationTestSpanHandler consumerSpanHandler = new IntegrationTestSpanHandler();
+  @RegisterExtension IntegrationTestSpanHandler producerSpanHandler = new IntegrationTestSpanHandler();
+  @RegisterExtension IntegrationTestSpanHandler consumerSpanHandler = new IntegrationTestSpanHandler();
 
   SamplerFunction<MessagingRequest> producerSampler = SamplerFunctions.deferDecision();
   SamplerFunction<MessagingRequest> consumerSampler = SamplerFunctions.deferDecision();

@@ -22,7 +22,8 @@
 
     <main.basedir>${project.basedir}/../..</main.basedir>
 
-    <jdbi3.version>3.49.1</jdbi3.version>
+    <!-- 3.50+ is Java 17 bytecode, can't use until we floor JDK 17 -->
+    <jdbi3.version>3.49.6</jdbi3.version>
   </properties>
 
   <dependencies>
@@ -45,7 +46,7 @@
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>junit-jupiter</artifactId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
       <version>${testcontainers.version}</version>
       <scope>test</scope>
     </dependency>

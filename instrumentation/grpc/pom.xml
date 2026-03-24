@@ -30,7 +30,7 @@
     <!-- disable mutability warning as TagContextBinaryMarshaller intentionally returns mixed -->
     <errorprone.args>-Xep:MixedMutabilityReturnType:OFF</errorprone.args>
 
-    <build-helper-maven-plugin.version>3.5.0</build-helper-maven-plugin.version>
+    <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
   </properties>
 
   <dependencies>

@@ -14,18 +14,18 @@ jobs:
     runs-on: ubuntu-24.04  # newest available distribution, aka noble
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # Prevent use of implicit GitHub Actions read-only token GITHUB_TOKEN. We don't deploy on
           # the tag MAJOR.MINOR.PATCH event, but we still need to deploy the maven-release-plugin master commit.
           token: ${{ secrets.GH_TOKEN }}
       - name: Setup java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'zulu'  # zulu as it supports a wide version range
           java-version: '11'  # earliest LTS and last that can compile the 1.6 release profile.
       - name: Cache local Maven repository
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}

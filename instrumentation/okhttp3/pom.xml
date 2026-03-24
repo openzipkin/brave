@@ -23,7 +23,7 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
     <!-- Last version before Call.timeout was added -->
     <floor-okhttp.version>3.11.0</floor-okhttp.version>
-    <retrofit.version>2.11.0</retrofit.version>
+    <retrofit.version>2.12.0</retrofit.version>
   </properties>
 
   <dependencies>

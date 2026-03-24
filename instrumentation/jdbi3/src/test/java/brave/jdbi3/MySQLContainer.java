@@ -21,7 +21,7 @@ final class MySQLContainer extends GenericContainer<MySQLContainer> {
 
   MySQLContainer() {
     // Use OpenZipkin's small test image, which is multi-arch and doesn't consume Docker Hub quota
-    super(parse("ghcr.io/openzipkin/zipkin-mysql:3.4.3"));
+    super(parse("ghcr.io/openzipkin/zipkin-mysql:3.6.0"));
     if ("true".equals(System.getProperty("docker.skip"))) {
       throw new TestAbortedException("${docker.skip} == true");
     }
