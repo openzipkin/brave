@@ -18,9 +18,11 @@
           <url>@localRepositoryUrl@</url>
           <releases>
             <enabled>true</enabled>
+            <updatePolicy>always</updatePolicy>
           </releases>
           <snapshots>
             <enabled>true</enabled>
+            <updatePolicy>always</updatePolicy>
           </snapshots>
         </repository>
       </repositories>
@@ -30,9 +32,11 @@
           <url>@localRepositoryUrl@</url>
           <releases>
             <enabled>true</enabled>
+            <updatePolicy>always</updatePolicy>
           </releases>
           <snapshots>
             <enabled>true</enabled>
+            <updatePolicy>always</updatePolicy>
           </snapshots>
         </pluginRepository>
       </pluginRepositories>
