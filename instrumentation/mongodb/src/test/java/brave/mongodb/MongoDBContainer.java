@@ -30,13 +30,14 @@ final class MongoDBContainer extends GenericContainer<MongoDBContainer> {
   static final int MONGODB_PORT = 27017;
 
   MongoDBContainer() {
-    // Use OpenZipkin's small test image, which is multi-arch and doesn't consume Docker Hub quota
-    super(parse("ghcr.io/openzipkin/mongodb-alpine:4.0.5"));
+    // Mirrored image to avoid docker.io pulls:
+    // docker buildx imagetools create --tag ghcr.io/openzipkin/mongo:8.2.6-noble mongo:8.2.6-noble
+    super(parse("ghcr.io/openzipkin/mongo:8.2.6-noble"));
     if ("true".equals(System.getProperty("docker.skip"))) {
       throw new TestAbortedException("${docker.skip} == true");
     }
     withExposedPorts(MONGODB_PORT);
-    waitStrategy = Wait.forLogMessage(".*waiting for connections.*", 1);
+    waitStrategy = Wait.forLogMessage(".*[wW]aiting for connections.*", 1);
     withStartupTimeout(Duration.ofSeconds(60));
     withLogConsumer(new Slf4jLogConsumer(LOGGER));
   }

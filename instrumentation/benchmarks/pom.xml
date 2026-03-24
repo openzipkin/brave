@@ -19,7 +19,7 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
     <jmh.version>1.37</jmh.version>
     <!-- Note: versions above 2.2 move to jakarta package -->
-    <undertow-servlet.version>2.2.31.Final</undertow-servlet.version>
+    <undertow-servlet.version>2.2.39.Final</undertow-servlet.version>
   </properties>
 
   <!-- All dependencies are marked test, because benchmarks are a form of test.

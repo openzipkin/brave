@@ -71,7 +71,7 @@
 
     <!-- override to set exclusions per-project -->
     <errorprone.args />
-    <errorprone.version>2.36.0</errorprone.version>
+    <errorprone.version>2.48.0</errorprone.version>
 
     <!-- Used for Generated annotations -->
     <javax-annotation-api.version>1.3.2</javax-annotation-api.version>
@@ -87,26 +87,27 @@
     <spring3.version>3.2.18.RELEASE</spring3.version>
 
     <!-- Apis used, but not in Jetty 7.6* imply duplication in servlet25 test fixtures -->
-    <jetty.version>9.4.57.v20241219</jetty.version>
+    <jetty.version>9.4.58.v20250814</jetty.version>
     <floor-jetty.version>7.6.21.v20160908</floor-jetty.version>
     <resteasy.version>3.15.6.Final</resteasy.version>
 
     <!-- Jakarta -->
-    <jetty11.version>11.0.25</jetty11.version>
+    <jetty11.version>11.0.26</jetty11.version>
     <!-- Compatible with Jetty11   -->
     <jersey3.version>3.0.17</jersey3.version>
     <jakarta.servlet>5.0.0</jakarta.servlet>
 
-    <kafka.version>3.9.0</kafka.version>
-    <activemq.version>5.18.6</activemq.version>
-    <activemq.artemis.version>2.33.0</activemq.artemis.version>
+    <kafka.version>3.9.2</kafka.version>
+    <activemq.version>5.19.2</activemq.version>
+    <!-- 2.39+ is Java 17 bytecode, can't use until we floor JDK 17 -->
+    <activemq.artemis.version>2.38.0</activemq.artemis.version>
     <!-- TODO: reflection drift after this version. Make changes as necessary
          and add an invoker test that 2.3.6 still works. -->
     <spring-rabbit.version>2.3.6</spring-rabbit.version>
 
     <!-- TODO: update and fix drift or remove the FinagleContextInteropTest -->
     <finagle.version>20.12.0</finagle.version>
-    <log4j2.version>2.24.3</log4j2.version>
+    <log4j2.version>2.25.3</log4j2.version>
     <log4j1.version>1.2.17</log4j1.version>
     <okhttp4.version>4.12.0</okhttp4.version>
     <httpclient.version>4.5.14</httpclient.version>
@@ -117,21 +118,21 @@
     <grpc.version>1.57.2</grpc.version>
     <protobuf.version>3.25.5</protobuf.version>
     <!-- latest netty 4.1 that works with our version of grpc -->
-    <netty.version>4.1.121.Final</netty.version>
+    <netty.version>4.1.131.Final</netty.version>
 
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
 
     <!-- msql connector used for mysql8 instrumentation, and test of jdbi3 instrumentation -->
     <!-- mysql-connector-java 8+ requires Java 8 -->
-    <mysql-connector-j8.version>8.3.0</mysql-connector-j8.version>
+    <mysql-connector-j8.version>8.4.0</mysql-connector-j8.version>
 
     <!-- Test only dependencies -->
-    <junit-jupiter.version>5.12.2</junit-jupiter.version>
-    <assertj.version>3.27.3</assertj.version>
-    <mockito.version>5.17.0</mockito.version>
-    <jersey.version>2.42</jersey.version>
-    <testcontainers.version>1.20.6</testcontainers.version>
-    <rocketmq-client.version>5.3.2</rocketmq-client.version>
+    <junit-jupiter.version>5.14.3</junit-jupiter.version>
+    <assertj.version>3.27.7</assertj.version>
+    <mockito.version>5.23.0</mockito.version>
+    <jersey.version>2.47</jersey.version>
+    <testcontainers.version>2.0.4</testcontainers.version>
+    <rocketmq-client.version>5.4.0</rocketmq-client.version>
 
     <license.skip>${skipTests}</license.skip>
     <maven-surefire-plugin.argLine />
@@ -141,22 +142,23 @@
     <go-offline-maven-plugin.version>1.2.8</go-offline-maven-plugin.version>
     <!-- TODO: cleanup any redundant ignores now also in the 4.0 release (once final) -->
     <license-maven-plugin.version>5.0.0</license-maven-plugin.version>
-    <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
+    <maven-assembly-plugin.version>3.8.0</maven-assembly-plugin.version>
+    <!-- 6.x depends on bndlib 7.0 which is Java 17 bytecode -->
     <maven-bundle-plugin.version>5.1.9</maven-bundle-plugin.version>
-    <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+    <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
     <!-- Use same version as https://github.com/openzipkin/docker-java -->
-    <maven-dependency-plugin.version>3.8.1</maven-dependency-plugin.version>
-    <maven-deploy-plugin.version>3.1.3</maven-deploy-plugin.version>
-    <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
+    <maven-dependency-plugin.version>3.10.0</maven-dependency-plugin.version>
+    <maven-deploy-plugin.version>3.1.4</maven-deploy-plugin.version>
+    <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
     <!-- Use same version as https://github.com/openzipkin/docker-java -->
     <maven-help-plugin.version>3.5.1</maven-help-plugin.version>
-    <maven-install-plugin.version>3.1.3</maven-install-plugin.version>
-    <maven-invoker-plugin.version>3.9.0</maven-invoker-plugin.version>
-    <maven-javadoc-plugin.version>3.11.2</maven-javadoc-plugin.version>
-    <maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
-    <maven-release-plugin.version>3.1.1</maven-release-plugin.version>
-    <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
-    <maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
+    <maven-install-plugin.version>3.1.4</maven-install-plugin.version>
+    <maven-invoker-plugin.version>3.9.1</maven-invoker-plugin.version>
+    <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
+    <maven-jar-plugin.version>3.5.0</maven-jar-plugin.version>
+    <maven-release-plugin.version>3.3.1</maven-release-plugin.version>
+    <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
+    <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
     <central-publishing-maven-plugin.version>0.10.0</central-publishing-maven-plugin.version>
   </properties>
 
@@ -202,14 +204,6 @@
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
       <version>${assertj.version}</version>
-      <exclusions>
-        <!-- Use newer bytebuddy from mockito, which is JRE 21 compatible.
-             TODO: remove when assertj releases a new version -->
-        <exclusion>
-          <groupId>net.bytebuddy</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-      </exclusions>
       <scope>test</scope>
     </dependency>
     <!-- Main code uses jul and tests log with log4j -->
@@ -466,7 +460,7 @@
                 <requireJavaVersion>
                   <!-- Change this to control LTS JDK versions allowed to build
                        the project. Keep in sync with .github/workflows -->
-                  <version>[11,12),[17,18),[21,22)</version>
+                  <version>[11,12),[25,26)</version>
                 </requireJavaVersion>
               </rules>
             </configuration>
@@ -607,10 +601,10 @@
     </profile>
 
     <profile>
-      <id>error-prone-17+</id>
+      <id>error-prone-21+</id>
       <activation>
-        <!-- Only LTS versions that work with errorprone -->
-        <jdk>[17,18),[21,22)</jdk>
+        <!-- ErrorProne 2.48+ requires JDK 21+ -->
+        <jdk>[21,)</jdk>
       </activation>
       <build>
         <plugins>
@@ -636,6 +630,7 @@
                     <arg>-XDcompilePolicy=simple</arg>
                     <arg>--should-stop=ifError=FLOW</arg>
                     <arg>-Xplugin:ErrorProne ${errorprone.args}</arg>
+                    <arg>-XDaddTypeAnnotationsToSymbol=true</arg>
                     <!-- below needed per https://errorprone.info/docs/installation -->
                     <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED</arg>
                     <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED</arg>
@@ -703,7 +698,7 @@
 
           <plugin>
             <artifactId>maven-gpg-plugin</artifactId>
-            <version>3.2.2</version>
+            <version>3.2.8</version>
             <executions>
               <execution>
                 <id>sign-artifacts</id>
