@@ -24,7 +24,8 @@
     <main.basedir>${project.basedir}/../..</main.basedir>
 
     <!-- To obey the integration tests, we need to use the version >= 5.2 -->
-    <httpclient5.version>5.6</httpclient5.version>
+    <!-- TODO: 5.6 changed error propagation in interceptors -->
+    <httpclient5.version>5.5.2</httpclient5.version>
   </properties>
 
   <dependencies>
