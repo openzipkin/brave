@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"brave.kafka.streams","l":"KafkaStreamsTracing.Builder"},{"p":"brave.kafka.streams","l":"KafkaStreamsTracing"}]

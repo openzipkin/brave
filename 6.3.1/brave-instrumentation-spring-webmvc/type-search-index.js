@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"brave.spring.webmvc","l":"DelegatingTracingFilter"},{"p":"brave.spring.webmvc","l":"HandlerParser"},{"p":"brave.spring.webmvc","l":"SpanCustomizingAsyncHandlerInterceptor"},{"p":"brave.spring.webmvc","l":"SpanCustomizingHandlerInterceptor"}]

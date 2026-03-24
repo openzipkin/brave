@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"brave.okhttp3","l":"TracingCallFactory"},{"p":"brave.okhttp3","l":"TracingInterceptor"}]

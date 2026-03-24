@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"brave.httpclient","l":"TracingCachingHttpClientBuilder"},{"p":"brave.httpclient","l":"TracingHttpClientBuilder"}]

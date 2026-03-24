@@ -1,0 +1,1 @@
+memberSearchIndex = [{"p":"brave.context.log4j2","c":"ThreadContextScopeDecorator","l":"get()"},{"p":"brave.context.log4j2","c":"ThreadContextScopeDecorator","l":"newBuilder()"},{"p":"brave.context.log4j2","c":"ThreadContextScopeDecorator","l":"ThreadContextScopeDecorator()","url":"%3Cinit%3E()"}]
