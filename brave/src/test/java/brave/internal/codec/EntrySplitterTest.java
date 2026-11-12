@@ -240,6 +240,25 @@ class EntrySplitterTest {
       .hasMessage("Invalid input: over 2 entries");
   }
 
+  @Test void parse_maxEntries_doesntThrow() {
+    entrySplitter = EntrySplitter.newBuilder().maxEntries(2).build();
+
+    assertThat(entrySplitter.parse(parseIntoMap, map, "k1=v1,k2=v2")).isTrue();
+    assertThat(map).containsExactly(
+      entry("k1", "v1"),
+      entry("k2", "v2")
+    );
+
+    map.clear();
+
+    // When over maxEntries, parse stops at the limit instead of emitting the extra entries.
+    assertThat(entrySplitter.parse(parseIntoMap, map, "k1=v1,k2=v2,k3=v3")).isFalse();
+    assertThat(map).containsExactly(
+      entry("k1", "v1"),
+      entry("k2", "v2")
+    );
+  }
+
   @Test void parse_whitespaceInKeyValue() {
     entrySplitter.parse(parseIntoMap, map, "k 1=v 1,k 2=v 2");
 
