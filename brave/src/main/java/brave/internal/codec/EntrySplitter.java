@@ -253,7 +253,7 @@ public final class EntrySplitter {
           }
         }
 
-        if (remainingEntries-- == 0) logOrThrow(overMaxEntries, shouldThrow);
+        if (remainingEntries-- == 0) return logOrThrow(overMaxEntries, shouldThrow);
 
         if (!handler.onEntry(target, input, beginKey, endKey, beginValue, endValue)) {
           return false; // assume handler logs
